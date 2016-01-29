@@ -1,0 +1,17 @@
+pharos:
+  verbosity:
+  partitioner: 1
+  json_config: 
+  library:
+  timeout: 900.0
+  relative_timeout: 10.0
+  partitioner_timeout: 300.0
+  relative_partitioner_timeout: 300.0
+  maxmem: 40000.0
+  relative_maxmem: 1000.0
+  counter_limit: 3000
+  func_counter_limit: 50
+
+application:
+  apianalyzer:
+  objdigger:

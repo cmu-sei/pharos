@@ -13,12 +13,36 @@ SIGPLAN on Program Protection and Reverse Engineering Workshop in
 2014.  The tool identifies object members and methods by tracking
 object pointers between functions in the program.
 
-This repo does not currently contain a complete system that compiles
-into an executable.  It instead contains portions of the framework
-that has been reviewed, and is intended to be integrated back into the
-ROSE compiler infrastructure.  We plan for the code available in this
-repo to grow quickly so that objdigger can be built from source.
+FN2YARA is a tool built using the Pharos framework to generate YARA
+signatures for matching functions in an executable program.  Programs
+that share significant numbers of functions are are likely to have
+behavior in common.
 
-In the meantime, a binary distribution of objdigger is available from:
+The Pharos framework is a research project, and the code is undergoing
+active development.  No warranties of fitness for any purpose are
+provided.  The current distribution in particular is part of an
+ongoing process of releasing more of the framework and tools publicly.
+Several libraries are required to build the tools, including
+ROSE.  There is currently no documentation in the distribution.
+
+This distribution includes the code required to build Objdigger and
+FN2YARA, but it has not been extensively tested for build portability
+or reliability.  This distribution has been successfully built with
+the following development version of ROSE from 
+
+  https://github.com/rose-compiler/rose-develop/commit/76ca4b8db9570b517f73e544f4b85de8469ad19d
+
+You are likely to have difficuly building against other versions of
+ROSE since their binary API is also evolving steadily.  We plan to
+release updates to this distribution to support a more recent version
+of ROSE soon.  In the meantime, you may find it more convenient to
+download a binary distribution of the tools from:
 
   https://portal.cert.org/web/mc-portal/pharos-static-analysis-tools
+
+Since the primary objective for releasing this code is to provide
+transparency into our research and stimulate conversation with other
+binary static analysis researchers, please feel free to contact Cory
+Cohen <cfc@cert.org> with questions you may have about this work.  I
+may be unable to respond in a timely manner, but I will do my best.
+

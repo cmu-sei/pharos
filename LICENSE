@@ -2,7 +2,7 @@ Note: see LICENSE_usgov.txt for Government Purpose Rights license info.
 
 -----
 
-Objdigger
+Pharos Static Analysis Tools
 SOFTWARE LICENSE AGREEMENT
 
 BY CHECKING THE BOXES BELOW OR BY USING THE SOFTWARE, YOU ARE AGREEING TO THE
@@ -13,7 +13,7 @@ This is a license agreement ("Agreement") between your company (if being
 installed and used at a company) or self (if being installed and used by an
 individual) (the user is called "Licensee" or "You" in this Agreement) and
 Carnegie Mellon University, having an address of 4500 Fifth Avenue,
-Pittsburgh, PA 15210 (called "Licensor" in this Agreement).  All rights not
+Pittsburgh, PA 15213 (called "Licensor" in this Agreement).  All rights not
 specifically granted to You in this Agreement are reserved to Licensor.
 
 RESERVATION OF OWNERSHIP AND GRANT OF LICENSE: Licensor retains exclusive
@@ -24,13 +24,10 @@ described in this Agreement.  From the date of receipt, Licensee agrees to use
 its best efforts to protect the Software from unauthorized use, reproduction,
 distribution, or publication.
 
-As used in this Agreement, the term "Software" means all or any portion of the
-code (including but not limited to source code) made accessible to Licensee by
-Licensor pursuant to this Agreement, commonly referred to as the "Objdigger"
-and more particularly described as follows:
-
-"This program creates, stores, and compares hashes for functions in binary
-code for the purpose of finding code duplication across binary samples."
+As used in this Agreement, the term "Software" means all or any
+portion of the code (including but not limited to source code) made
+accessible to Licensee by Licensor pursuant to this Agreement,
+commonly referred to as the "Pharos Static Analysis Tools".
 
 It also includes any and all documentation and instructions related to it that
 are provided or made available to you.
@@ -48,10 +45,11 @@ USES NOT PERMITTED: You may not sell, rent, lease, sublicense, lend,
 time-share or transfer, or provide third parties access to, any or all of the
 Software and/or any Derivatives made by you.
 
-You are not granted any trademark license as part of this Agreement and may
-not use any names or trademarks of Licensor, including without limitation the
-name or mark "Objdigger", "Carnegie Mellon," "SEI," or any renditions thereof
-without the prior written permission of Licensor.
+You are not granted any trademark license as part of this Agreement
+and may not use any names or trademarks of Licensor, including without
+limitation the name or mark "Pharos Static Analysis Tools", "Carnegie
+Mellon," "SEI," or any renditions thereof without the prior written
+permission of Licensor.
 
 FEEDBACK: It is anticipated that you will provide suggestions and/or feedback
 regarding the Software.  You agree that Licensor may make use of any of your
@@ -150,7 +148,7 @@ programs administered by the Office of Foreign Assets Control with respect to
 its use of the SOFTWARE.
 
 GOVERNMENT RIGHTS: This Software was created in the performance of Federal
-Government Contract Number FA 8721-05-C-0003 with Carnegie Mellon University
+Government Contract Number FA8721-05-C-0003 with Carnegie Mellon University
 for the operation of the Software Engineering Institute, a federally funded
 research and development center. The Government of the United States has a
 royalty-free government-purpose license to use, duplicate, or disclose the
@@ -163,5 +161,4 @@ the parties as to the matter set forth herein and supersedes any previous
 agreements, understandings, and arrangements between the parties relating
 hereto.
 
-
-
+DM-0003063
