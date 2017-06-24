@@ -1,0 +1,9 @@
+#ifndef Pharos_BUILD_HPP
+#define Pharos_BUILD_HPP
+
+#cmakedefine PHAROS_RELEASE
+
+#define PHAROS_BUILD_LOCATION "@CMAKE_SOURCE_DIR@"
+#define PHAROS_XSB_BUILD_LOCATION "@XSB_INSTALL_DIR@"
+
+#endif  // Pharos_BUILD_HPP

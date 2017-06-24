@@ -1,0 +1,898 @@
+00401000	func	??0ClassA@@QAE@XZ	public: __thiscall ClassA::ClassA(void)
+00401020	func	??1ClassA@@QAE@XZ	public: __thiscall ClassA::~ClassA(void)
+00401030	thunk	?func1@ClassA@@QAEHXZ	public: int __thiscall ClassA::func1(void)
+00401040	func	?func2@ClassA@@QAEHXZ	public: int __thiscall ClassA::func2(void)
+00401050	func	??_GClassA@@QAEPAXI@Z	public: void * __thiscall ClassA::`scalar deleting destructor'(unsigned int)
+00401080	func	_main	None
+004010e0	func	_printf	None
+0040116b	func	$LN9	None
+00401174	func	$LN6	None
+00401186	func	$LN7	None
+00401187	func	__get_printf_count_output	None
+0040119d	func	_rand	None
+004011be	func	??3@YAXPAX@Z	void __cdecl operator delete(void *)
+004011c9	func	??1bad_alloc@std@@UAE@XZ	public: virtual __thiscall std::bad_alloc::~bad_alloc(void)
+004011d4	func	??_Ebad_alloc@std@@UAEPAXI@Z	public: virtual void * __thiscall std::bad_alloc::`vector deleting destructor'(unsigned int)
+004011fb	func	??0bad_alloc@std@@QAE@ABV01@@Z	public: __thiscall std::bad_alloc::bad_alloc(class std::bad_alloc const &)
+00401218	func	??2@YAPAXI@Z	void * __cdecl operator new(unsigned int)
+00401297	name	$LN18	None
+00401298	func	fast_error_exit	None
+004012c1	func	__tmainCRTStartup	None
+004013dd	func	$LN30	None
+004013e4	func	$LN14	None
+004013f7	func	$LN25	None
+004013f8	func	$LN15	None
+0040140d	func	$LN31	None
+00401422	func	_mainCRTStartup	None
+0040142c	func	___iob_func	None
+00401432	func	___initstdio	None
+004014e3	func	___endstdio	None
+00401503	func	__lock_file	None
+00401544	func	__lock_file2	None
+00401576	func	__unlock_file	None
+004015b2	func	__unlock_file2	None
+004015e1	func	__stbuf	None
+0040167d	func	__ftbuf	None
+004016b1	func	??0_LocaleUpdate@@QAE@PAUlocaleinfo_struct@@@Z	public: __thiscall _LocaleUpdate::_LocaleUpdate(struct localeinfo_struct *)
+00401738	func	write_char	None
+0040176b	func	write_string	None
+004017b8	func	__output_l	None
+0040192e	func	$LN130	None
+0040195e	func	$LN129	None
+004019bc	func	$LN121	None
+00401a08	func	$LN117	None
+00401a13	func	$LN116	None
+00401a59	func	$LN112	None
+00401b2f	func	NORMAL_STATE	None
+00401b8a	func	$LN96	None
+00401e26	func	COMMON_INT	None
+00401f9f	func	COMMON_HEX	None
+00402364	func	__initp_misc_invarg	None
+00402373	func	__call_reportfault	None
+0040249c	func	__invoke_watson	None
+004024c1	func	__invalid_parameter	None
+004024ed	func	$LN6_0	None
+004024ee	func	__invalid_parameter_noinfo	None
+004024fe	func	__get_errno_from_oserr	None
+00402540	func	__errno	None
+00402553	func	___doserrno	None
+00402566	func	__dosmaperr	None
+00402590	func	__SEH_prolog4	None
+004025d5	func	__SEH_epilog4	None
+004025f0	func	__except_handler4	None
+0040275f	func	$LN33	None
+0040277f	func	__encoded_null	None
+00402788	func	___crtTlsAlloc@4	__stdcall __crtTlsAlloc(x)
+00402791	func	___set_flsgetvalue	None
+004027c5	func	__mtterm	None
+00402802	func	__initptd	None
+00402866	func	$LN10	None
+00402898	func	$LN14_0	None
+0040289e	func	$LN7_0	None
+004028a4	func	$LN9_0	None
+004028ac	func	$LN8	None
+004028ad	func	$LN11	None
+004028b5	func	$LN12	None
+004028b6	func	__getptd_noexit	None
+0040292f	func	__getptd	None
+00402949	func	__freefls@4	__stdcall _freefls(x)
+00402a0c	func	$LN21	None
+00402a51	func	$LN25_0	None
+00402a60	func	$LN18_0	None
+00402a63	func	$LN20	None
+00402a6b	func	$LN19	None
+00402a6c	func	$LN22	None
+00402a6f	func	$LN24	None
+00402a77	func	$LN23	None
+00402a78	func	__mtinit	None
+00402bf3	func	_free	None
+00402c2d	func	??0exception@std@@QAE@ABQBDH@Z	public: __thiscall std::exception::exception(char const * const &, int)
+00402c4a	func	?what@exception@std@@UBEPBDXZ	public: virtual char const * __thiscall std::exception::what(void)const
+00402c57	func	?_Copy_str@exception@std@@AAEXPBD@Z	private: void __thiscall std::exception::_Copy_str(char const *)
+00402c97	func	?_Tidy@exception@std@@AAEXXZ	private: void __thiscall std::exception::_Tidy(void)
+00402cb5	func	??4exception@std@@QAEAAV01@ABV01@@Z	public: class std::exception & __thiscall std::exception::operator=(class std::exception const &)
+00402cea	func	??1exception@std@@UAE@XZ	public: virtual __thiscall std::exception::~exception(void)
+00402cf5	func	??_Gexception@std@@UAEPAXI@Z	public: virtual void * __thiscall std::exception::`scalar deleting destructor'(unsigned int)
+00402d1c	func	??0exception@std@@QAE@ABV01@@Z	public: __thiscall std::exception::exception(class std::exception const &)
+00402d41	func	??1type_info@@UAE@XZ	public: virtual __thiscall type_info::~type_info(void)
+00402d51	func	??_Gtype_info@@UAEPAXI@Z	public: virtual void * __thiscall type_info::`scalar deleting destructor'(unsigned int)
+00402d72	func	_onexit_nolock	None
+00402e28	func	___onexitinit	None
+00402e59	func	__onexit	None
+00402e86	func	$LN8_0	None
+00402e8f	func	$LN5	None
+00402e94	func	$LN6_1	None
+00402e95	func	_atexit	None
+00402eac	func	_malloc	None
+00402f40	func	__initp_heap_handler	None
+00402f4f	func	__callnewh	None
+00402f77	func	__CxxThrowException@8	__stdcall _CxxThrowException(x, x)
+00402fc3	func	?__CxxUnhandledExceptionFilter@@YGJPAU_EXCEPTION_POINTERS@@@Z	long __stdcall __CxxUnhandledExceptionFilter(struct _EXCEPTION_POINTERS *)
+00402fff	func	$LN6_2	None
+00403005	func	___CxxSetUnhandledExceptionFilter	None
+00403013	func	___crtCorExitProcess	None
+0040303e	func	___crtExitProcess	None
+00403055	func	$LN4	None
+00403056	func	__lockexit	None
+0040305f	func	__unlockexit	None
+00403068	func	__init_pointers	None
+0040309b	func	__initterm_e	None
+004030bf	func	__cinit	None
+00403156	func	doexit	None
+00403261	func	$LN20_0	None
+00403281	func	$LN52	None
+0040328f	func	$LN18_1	None
+00403296	func	_exit	None
+004032ac	func	__exit	None
+004032c2	func	__cexit	None
+004032d1	func	__c_exit	None
+004032e0	func	__amsg_exit	None
+004032fd	name	$LN4_0	None
+004032fe	func	__GET_RTERRMSG	None
+00403324	func	__NMSG_WRITE	None
+004033ee	func	$LN38	None
+004034d3	func	__FF_MSGBANNER	None
+0040350c	func	__XcptFilter	None
+00403656	func	__setenvp	None
+00403731	func	$LN29	None
+00403732	func	parse_cmdline	None
+004038cc	func	__setargv	None
+00403987	func	___crtGetEnvironmentStringsA	None
+00403a1e	func	__ioinit	None
+00403c63	func	__RTC_Initialize	None
+00403c89	func	__RTC_Terminate	None
+00403caf	func	__heap_init	None
+00403ccd	func	___security_init_cookie	None
+00403d68	func	__malloc_crt	None
+00403d71	func	Retry	None
+00403dad	func	__calloc_crt	None
+00403db6	func	Retry_0	None
+00403df9	func	__realloc_crt	None
+00403e02	func	Retry_1	None
+00403e47	func	__fcloseall	None
+00403ed1	func	$LN14_1	None
+00403eda	func	$LN11_0	None
+00403ee2	func	$LN12_0	None
+00403ee3	func	__flush	None
+00403f4b	func	__fflush_nolock	None
+00403f93	func	flsall	None
+0040402d	func	$LN25_1	None
+00404030	func	$LN22_0	None
+00404035	func	$LN24_0	None
+00404045	func	$LN23_0	None
+00404052	func	$LN21_0	None
+00404064	func	$LN18_2	None
+0040406c	func	$LN19_0	None
+0040406d	func	__flushall	None
+00404076	func	__mtinitlocks	None
+004040c0	func	__mtdeletelocks	None
+00404117	func	__unlock	None
+0040412e	func	__mtinitlocknum	None
+004041de	func	$LN15_0	None
+004041e7	func	$LN12_1	None
+004041ef	func	$LN13	None
+004041f0	func	__lock	None
+00404223	func	__isatty	None
+00404279	func	__fileno	None
+0040429f	func	CPtoLCID	None
+004042ce	func	setSBCS	None
+00404332	func	setSBUpLow	None
+004044c2	func	___updatetmbcinfo	None
+004044e8	func	$LN14_2	None
+0040455a	func	$LN11_1	None
+0040455d	func	$LN13_0	None
+00404565	func	$LN12_2	None
+00404566	func	getSystemCP	None
+004045e2	func	__setmbcp_nolock	None
+004047cb	func	__setmbcp	None
+0040492c	func	$LN25_2	None
+00404934	func	$LN26	None
+0040495c	func	$LN28	None
+00404965	func	___initmbctable	None
+00404983	func	___addlocaleref	None
+00404a12	func	___removelocaleref	None
+00404aab	func	___freetlocinfo	None
+00404bf6	func	__updatetlocinfoEx_nolock	None
+00404c43	func	___updatetlocinfo	None
+00404c6e	func	$LN12_3	None
+00404cb0	func	$LN9_1	None
+00404cb8	func	$LN10_0	None
+00404cbc	func	__flsbuf	None
+00404e20	func	__initp_misc_cfltcvt_tab	None
+00404e50	func	_strlen	None
+00404e5c	func	str_misaligned	None
+00404e80	func	main_loop	None
+00404edb	func	__wctomb_s_l	None
+00405030	func	_wctomb_s	None
+0040504d	func	__isleadbyte_l	None
+00405085	func	_isleadbyte	None
+00405098	func	@__security_check_cookie@4	__fastcall __security_check_cookie(x)
+004050a2	func	failure	None
+004050b0	func	__aulldvrm	None
+004050e1	func	L1	None
+004050ef	func	L3	None
+0040511d	func	L4	None
+00405126	func	L5	None
+00405128	func	L2	None
+00405145	func	__crt_debugger_hook	None
+00405150	func	_memset	None
+0040518d	func	adjust_loop	None
+00405197	func	dwords	None
+004051b1	func	main_loop_tail	None
+004051b5	func	tail	None
+004051bf	func	finish	None
+004051c5	func	toend	None
+004051d0	func	__local_unwind4	None
+00405202	func	_lu_top	None
+00405252	func	_lu_done	None
+00405260	func	_unwind_handler4	None
+004052a6	func	__seh_longjmp_unwind4@4	__stdcall _seh_longjmp_unwind4(x)
+004052c2	func	@_EH4_CallFilterFunc@8	__fastcall _EH4_CallFilterFunc(x, x)
+004052d9	func	@_EH4_TransferToHandler@8	__fastcall _EH4_TransferToHandler(x, x)
+004052f2	func	@_EH4_GlobalUnwind2@8	__fastcall _EH4_GlobalUnwind2(x, x)
+00405306	func	ReturnPoint	None
+0040530b	func	@_EH4_LocalUnwind@16	__fastcall _EH4_LocalUnwind(x, x, x, x)
+00405330	func	__ValidateImageBase	None
+00405370	func	__FindPESection	None
+004053c0	func	__IsNonwritableInCurrentImage	None
+0040544b	func	$LN7_1	None
+0040545d	func	$LN11_2	None
+0040545e	func	$LN8_1	None
+0040547c	func	_strcpy_s	None
+004054db	func	?_Type_info_dtor@type_info@@CAXPAV1@@Z	private: static void __cdecl type_info::_Type_info_dtor(class type_info *)
+00405538	func	$LN13_1	None
+00405542	func	$LN10_1	None
+0040554a	func	$LN11_3	None
+00405550	func	_strcmp	None
+00405560	func	dodwords	None
+00405590	func	doneeq	None
+00405594	func	donene	None
+0040559c	func	dopartial	None
+004055bc	func	doword	None
+004055d8	func	__msize	None
+0040560b	func	?terminate@@YAXXZ	void __cdecl terminate(void)
+0040562b	func	$LN6_3	None
+0040562e	func	$LN10_2	None
+0040562f	func	$LN7_2	None
+00405644	func	__initp_eh_hooks	None
+00405655	func	__initp_misc_winsig	None
+00405673	func	siglookup	None
+004056aa	func	___get_sigabrt	None
+004056b7	func	_raise	None
+00405772	func	decode_done	None
+0040578a	func	$LN51	None
+00405809	func	$LN38_0	None
+00405818	func	$LN35	None
+0040581e	func	$LN37	None
+0040582c	func	$LN36	None
+0040585a	func	__initp_misc_rand_s	None
+00405869	func	__initp_misc_purevirt	None
+00405878	func	___crtMessageBoxW	None
+004059e4	func	_wcscat_s	None
+00405a59	func	_wcsncpy_s	None
+00405b26	func	_wcslen	None
+00405b41	func	_wcscpy_s	None
+00405ba4	func	__set_error_mode	None
+00405be3	func	x_ismbbtype_l	None
+00405c36	func	__ismbblead	None
+00405c4e	func	__calloc_impl	None
+00405cd0	func	_realloc	None
+00405d7d	func	__fclose_nolock	None
+00405dea	func	_fclose	None
+00405e27	func	$LN11_4	None
+00405e53	func	$LN8_2	None
+00405e56	func	$LN10_3	None
+00405e5d	func	$LN9_2	None
+00405e5e	func	__write_nolock	None
+0040655b	func	__write	None
+0040661b	func	$LN15_1	None
+00406624	func	$LN12_4	None
+00406627	func	$LN14_3	None
+0040662e	func	$LN13_2	None
+0040662f	func	__commit	None
+004066e8	func	good	None
+004066f4	func	$LN17	None
+004066fd	func	$LN14_4	None
+00406700	func	$LN16	None
+00406707	func	$LN15_2	None
+00406708	func	__freea	None
+00406728	func	__crtLCMapStringA_stat	None
+004068ea	func	error_cleanup	None
+0040690f	func	___crtLCMapStringA	None
+00406955	func	__crtGetStringTypeA_stat	None
+00406a3c	func	___crtGetStringTypeA	None
+00406a7c	func	___free_lc_time	None
+00406df3	func	___free_lconv_num	None
+00406e5c	func	___free_lconv_mon	None
+00406f5a	func	__lseeki64_nolock	None
+00406fdf	func	__lseeki64	None
+004070b3	func	$LN15_3	None
+004070bf	func	$LN12_5	None
+004070c8	func	$LN13_3	None
+004070c9	func	__getbuf	None
+00407112	func	__fptrap	None
+0040711b	func	___report_gsfailure	None
+00407221	func	__VEC_memzero	None
+00407230	func	L_Aligned	None
+00407241	func	L_1	None
+00407271	func	L_1a	None
+00407281	func	L_2	None
+0040728b	func	L_Trailing	None
+00407299	func	L_TrailDword	None
+004072a1	func	L_TrailBytes	None
+004072a6	func	L_TrailNextByte	None
+004072ac	func	L_TrailReturn	None
+004072af	func	L_Notaligned	None
+004072c2	func	L_Byte	None
+004072c8	func	L_MovDword	None
+004072cd	func	L_Dword	None
+004072d5	func	L_Adjustcnt	None
+004072db	func	___sse2_available_init	None
+004072f0	func	__global_unwind2	None
+00407308	func	_gu_return	None
+00407310	func	__unwind_handler	None
+00407354	func	_uh_return	None
+00407355	func	__local_unwind2	None
+0040737e	func	_lu_top_0	None
+0040739a	func	_continue_	None
+004073c5	func	_lu_continue	None
+004073c7	func	_lu_done_0	None
+004073d9	func	__abnormal_termination	None
+004073fb	func	_at_done	None
+004073fc	func	__NLG_Notify1	None
+00407405	func	__NLG_Notify	None
+00407410	func	__NLG_Go	None
+0040741c	func	__NLG_Dispatch2	None
+00407424	func	__NLG_Call	None
+00407426	func	__NLG_Return2	None
+00407427	func	_abort	None
+00407459	func	$LN6_4	None
+00407460	func	_memcpy	None
+00407480	func	CopyUp	None
+004074a4	func	Dword_align	None
+004074c0	func	CopyLeadUp	None
+004074d8	func	ByteCopyUp	None
+004074e0	func	CopyUnwindUp	None
+004074e8	func	LeadUpVec	None
+004074f4	func	LeadUp1	None
+00407520	func	LeadUp2	None
+00407544	func	LeadUp3	None
+00407564	func	UnwindUpVec	None
+00407584	func	UnwindUp7	None
+0040758c	func	UnwindUp6	None
+00407594	func	UnwindUp5	None
+0040759c	func	UnwindUp4	None
+004075a4	func	UnwindUp3	None
+004075ac	func	UnwindUp2	None
+004075b4	func	UnwindUp1	None
+004075c7	func	UnwindUp0	None
+004075d0	func	TrailUpVec	None
+004075e0	func	TrailUp0	None
+004075e8	func	TrailUp1	None
+004075f4	func	TrailUp2	None
+00407608	func	TrailUp3	None
+00407620	func	CopyDown	None
+00407648	func	CopyUnwindDown	None
+00407654	func	CopyLeadDown	None
+0040766c	func	ByteCopyDown	None
+00407674	func	LeadDownVec	None
+00407680	func	LeadDown1	None
+004076a4	func	LeadDown2	None
+004076cc	func	LeadDown3	None
+00407700	func	UnwindDownVec	None
+00407720	func	UnwindDown7	None
+00407728	func	UnwindDown6	None
+00407730	func	UnwindDown5	None
+00407738	func	UnwindDown4	None
+00407740	func	UnwindDown3	None
+00407748	func	UnwindDown2	None
+00407750	func	UnwindDown1	None
+00407763	func	UnwindDown0	None
+0040776c	func	TrailDownVec	None
+0040777c	func	TrailDown0	None
+00407784	func	TrailDown1	None
+00407794	func	TrailDown2	None
+004077a8	func	TrailDown3	None
+004077c1	func	__close_nolock	None
+0040785d	func	__close	None
+0040790d	func	$LN15_4	None
+00407916	func	$LN12_6	None
+00407919	func	$LN14_5	None
+00407920	func	$LN13_4	None
+00407921	func	__freebuf	None
+00407952	func	__putwch_nolock	None
+00407994	func	__mbtowc_l	None
+00407aaa	func	_mbtowc	None
+00407ad0	func	__chkstk	None
+00407ae4	func	cs10	None
+00407af2	func	cs20	None
+00407afb	func	__free_osfhnd	None
+00407b81	func	__get_osfhandle	None
+00407bea	func	___lock_fhandle	None
+00407c50	func	$LN12_7	None
+00407c7b	func	$LN9_3	None
+00407c80	func	$LN11_5	None
+00407c88	func	$LN10_4	None
+00407c89	func	__unlock_fhandle	None
+00407cb0	func	__alloca_probe_16	None
+00407cc6	func	__alloca_probe_8	None
+00407cdc	func	__VEC_memcpy	None
+00407cea	func	L_Aligned_0	None
+00407cfc	func	L_1_0	None
+00407d59	func	L_1a_0	None
+00407d6c	func	L_2_0	None
+00407d7d	func	L_Trailing_0	None
+00407d89	func	L_TrailDword_0	None
+00407d96	func	L_TrailBytes_0	None
+00407d9d	func	L_TrailNextByte_0	None
+00407da6	func	L_Return	None
+00407dab	func	L_Notaligned_0	None
+00407dbe	func	L_Byte_0	None
+00407dc7	func	L_MovDword_0	None
+00407dcc	func	L_Dword_0	None
+00407dd9	func	L_Adjustcnt_0	None
+00407ddf	func	___initconout	None
+00407dfe	func	___termconout	None
+00407e20	func	_strcspn	None
+00407e34	func	listnext	None
+00407e43	func	listdone	None
+00407e4c	func	dstnext	None
+00407e5e	func	dstdone	None
+00407e70	func	_strpbrk	None
+00407e84	func	listnext_0	None
+00407e93	func	listdone_0	None
+00407e98	func	dstnext_0	None
+00407eaa	func	dstdone_0	None
+00407eb0	func	__allmul	None
+00407ec9	func	hard	None
+00407ef0	func	___ascii_strnicmp	None
+00407f0c	func	lupe	None
+00407f28	func	skip1	None
+00407f32	func	skip2	None
+00407f3b	func	eject	None
+00407f41	func	differ	None
+00407f4a	func	toend_0	None
+00407f52	thunk	_RtlUnwind@16	__stdcall RtlUnwind(x, x, x, x)
+00407f58	func	_operator_new_::_6_::_dynamic_atexit_destructor_for__nomem__	None
+00408000	name	__imp__GetCommandLineA@0	__declspec(dllimport) __stdcall GetCommandLineA()
+00408004	name	__imp__HeapSetInformation@16	__declspec(dllimport) __stdcall HeapSetInformation(x, x, x, x)
+00408008	name	__imp__EnterCriticalSection@4	__declspec(dllimport) __stdcall EnterCriticalSection(x)
+0040800c	name	__imp__LeaveCriticalSection@4	__declspec(dllimport) __stdcall LeaveCriticalSection(x)
+00408010	name	__imp__DecodePointer@4	__declspec(dllimport) __stdcall DecodePointer(x)
+00408014	name	__imp__UnhandledExceptionFilter@4	__declspec(dllimport) __stdcall UnhandledExceptionFilter(x)
+00408018	name	__imp__SetUnhandledExceptionFilter@4	__declspec(dllimport) __stdcall SetUnhandledExceptionFilter(x)
+0040801c	name	__imp__IsDebuggerPresent@0	__declspec(dllimport) __stdcall IsDebuggerPresent()
+00408020	name	__imp__EncodePointer@4	__declspec(dllimport) __stdcall EncodePointer(x)
+00408024	name	__imp__TerminateProcess@8	__declspec(dllimport) __stdcall TerminateProcess(x, x)
+00408028	name	__imp__GetCurrentProcess@0	__declspec(dllimport) __stdcall GetCurrentProcess()
+0040802c	name	__imp__TlsAlloc@0	__declspec(dllimport) __stdcall TlsAlloc()
+00408030	name	__imp__TlsGetValue@4	__declspec(dllimport) __stdcall TlsGetValue(x)
+00408034	name	__imp__TlsSetValue@8	__declspec(dllimport) __stdcall TlsSetValue(x, x)
+00408038	name	__imp__TlsFree@4	__declspec(dllimport) __stdcall TlsFree(x)
+0040803c	name	__imp__InterlockedIncrement@4	__declspec(dllimport) __stdcall InterlockedIncrement(x)
+00408040	name	__imp__GetModuleHandleW@4	__declspec(dllimport) __stdcall GetModuleHandleW(x)
+00408044	name	__imp__SetLastError@4	__declspec(dllimport) __stdcall SetLastError(x)
+00408048	name	__imp__GetCurrentThreadId@0	__declspec(dllimport) __stdcall GetCurrentThreadId()
+0040804c	name	__imp__GetLastError@0	__declspec(dllimport) __stdcall GetLastError()
+00408050	name	__imp__InterlockedDecrement@4	__declspec(dllimport) __stdcall InterlockedDecrement(x)
+00408054	name	__imp__GetProcAddress@8	__declspec(dllimport) __stdcall GetProcAddress(x, x)
+00408058	name	__imp__HeapFree@12	__declspec(dllimport) __stdcall HeapFree(x, x, x)
+0040805c	name	__imp__HeapAlloc@12	__declspec(dllimport) __stdcall HeapAlloc(x, x, x)
+00408060	name	__imp__RaiseException@16	__declspec(dllimport) __stdcall RaiseException(x, x, x, x)
+00408064	name	__imp__ExitProcess@4	__declspec(dllimport) __stdcall ExitProcess(x)
+00408068	name	__imp__WriteFile@20	__declspec(dllimport) __stdcall WriteFile(x, x, x, x, x)
+0040806c	name	__imp__GetStdHandle@4	__declspec(dllimport) __stdcall GetStdHandle(x)
+00408070	name	__imp__GetModuleFileNameW@12	__declspec(dllimport) __stdcall GetModuleFileNameW(x, x, x)
+00408074	name	__imp__GetModuleFileNameA@12	__declspec(dllimport) __stdcall GetModuleFileNameA(x, x, x)
+00408078	name	__imp__FreeEnvironmentStringsW@4	__declspec(dllimport) __stdcall FreeEnvironmentStringsW(x)
+0040807c	name	__imp__WideCharToMultiByte@32	__declspec(dllimport) __stdcall WideCharToMultiByte(x, x, x, x, x, x, x, x)
+00408080	name	__imp__GetEnvironmentStringsW@0	__declspec(dllimport) __stdcall GetEnvironmentStringsW()
+00408084	name	__imp__SetHandleCount@4	__declspec(dllimport) __stdcall SetHandleCount(x)
+00408088	name	__imp__InitializeCriticalSectionAndSpinCount@8	__declspec(dllimport) __stdcall InitializeCriticalSectionAndSpinCount(x, x)
+0040808c	name	__imp__GetFileType@4	__declspec(dllimport) __stdcall GetFileType(x)
+00408090	name	__imp__GetStartupInfoW@4	__declspec(dllimport) __stdcall GetStartupInfoW(x)
+00408094	name	__imp__DeleteCriticalSection@4	__declspec(dllimport) __stdcall DeleteCriticalSection(x)
+00408098	name	__imp__HeapCreate@12	__declspec(dllimport) __stdcall HeapCreate(x, x, x)
+0040809c	name	__imp__QueryPerformanceCounter@4	__declspec(dllimport) __stdcall QueryPerformanceCounter(x)
+004080a0	name	__imp__GetTickCount@0	__declspec(dllimport) __stdcall GetTickCount()
+004080a4	name	__imp__GetCurrentProcessId@0	__declspec(dllimport) __stdcall GetCurrentProcessId()
+004080a8	name	__imp__GetSystemTimeAsFileTime@4	__declspec(dllimport) __stdcall GetSystemTimeAsFileTime(x)
+004080ac	name	__imp__Sleep@4	__declspec(dllimport) __stdcall Sleep(x)
+004080b0	name	__imp__GetCPInfo@8	__declspec(dllimport) __stdcall GetCPInfo(x, x)
+004080b4	name	__imp__GetACP@0	__declspec(dllimport) __stdcall GetACP()
+004080b8	name	__imp__GetOEMCP@0	__declspec(dllimport) __stdcall GetOEMCP()
+004080bc	name	__imp__IsValidCodePage@4	__declspec(dllimport) __stdcall IsValidCodePage(x)
+004080c0	name	__imp__RtlUnwind@16	__declspec(dllimport) __stdcall RtlUnwind(x, x, x, x)
+004080c4	name	__imp__HeapSize@12	__declspec(dllimport) __stdcall HeapSize(x, x, x)
+004080c8	name	__imp__LoadLibraryW@4	__declspec(dllimport) __stdcall LoadLibraryW(x)
+004080cc	name	__imp__HeapReAlloc@16	__declspec(dllimport) __stdcall HeapReAlloc(x, x, x, x)
+004080d0	name	__imp__GetConsoleCP@0	__declspec(dllimport) __stdcall GetConsoleCP()
+004080d4	name	__imp__GetConsoleMode@8	__declspec(dllimport) __stdcall GetConsoleMode(x, x)
+004080d8	name	__imp__FlushFileBuffers@4	__declspec(dllimport) __stdcall FlushFileBuffers(x)
+004080dc	name	__imp__LCMapStringW@24	__declspec(dllimport) __stdcall LCMapStringW(x, x, x, x, x, x)
+004080e0	name	__imp__MultiByteToWideChar@24	__declspec(dllimport) __stdcall MultiByteToWideChar(x, x, x, x, x, x)
+004080e4	name	__imp__GetStringTypeW@16	__declspec(dllimport) __stdcall GetStringTypeW(x, x, x, x)
+004080e8	name	__imp__SetFilePointer@16	__declspec(dllimport) __stdcall SetFilePointer(x, x, x, x)
+004080ec	name	__imp__IsProcessorFeaturePresent@4	__declspec(dllimport) __stdcall IsProcessorFeaturePresent(x)
+004080f0	name	__imp__CloseHandle@4	__declspec(dllimport) __stdcall CloseHandle(x)
+004080f4	name	__imp__WriteConsoleW@20	__declspec(dllimport) __stdcall WriteConsoleW(x, x, x, x, x)
+004080f8	name	__imp__SetStdHandle@8	__declspec(dllimport) __stdcall SetStdHandle(x, x)
+004080fc	name	__imp__CreateFileW@28	__declspec(dllimport) __stdcall CreateFileW(x, x, x, x, x, x, x)
+00408100	name	_KERNEL32_NULL_THUNK_DATA	None
+00408104	name	___xc_a	None
+00408108	name	___xc_z	None
+0040810c	name	___xi_a	None
+00408110	name	pinit	None
+00408114	name	pinit_0	None
+00408118	name	pinit_1	None
+0040811c	name	pinit_2	None
+00408120	name	pinit_3	None
+00408124	name	___xi_z	None
+00408128	name	___xp_a	None
+0040812c	name	pterm	None
+00408130	name	pterm_0	None
+00408134	name	___xp_z	None
+00408138	name	___xt_a	None
+0040813c	name	___xt_z	None
+0040815c	name	format	None
+00408170	name	??_7bad_alloc@std@@6B@	const std::bad_alloc::`vftable'
+00408178	name	aBadAllocation	None
+00408188	name	aNull	None
+00408198	name	aNull_0	None
+004081a0	name	___lookuptable	None
+004081fc	name	ModuleName	None
+00408218	name	aFlsfree	None
+00408220	name	aFlssetvalue	None
+0040822c	name	aFlsgetvalue	None
+00408238	name	ProcName	None
+00408248	name	??_7exception@std@@6B@	const std::exception::`vftable'
+00408250	name	aUnknownExcepti	None
+00408268	name	??_7type_info@@6B@	const type_info::`vftable'
+0040826c	name	ExceptionTemplate	None
+0040828c	name	aCorexitprocess	None
+0040829c	name	aMscoree_dll	None
+004082b4	name	aRuntimeError	None
+004082dc	name	aTlossError	None
+004082f8	name	aSingError	None
+00408314	name	aDomainError	None
+00408338	name	aR6033AttemptTo	None
+00408528	name	aR6032NotEnough	None
+00408590	name	aR6031AttemptTo	None
+00408658	name	aR6030CrtNotIni	None
+00408698	name	aR6028UnableToI	None
+004086e8	name	aR6027NotEnough	None
+00408758	name	aR6026NotEnough	None
+004087c8	name	aR6025PureVirtu	None
+00408818	name	aR6024NotEnough	None
+00408888	name	aR6019UnableToO	None
+004088e0	name	aR6018Unexpecte	None
+00408928	name	aR6017Unexpecte	None
+00408988	name	aR6016NotEnough	None
+004089e0	name	aR6010AbortHasB	None
+00408a28	name	aR6009NotEnough	None
+00408a80	name	aR6008NotEnough	None
+00408ad8	name	aR6002FloatingP	None
+00408b38	name	rterrs	None
+00408be8	name	Caption	None
+00408c3c	name	a___	None
+00408c44	name	aProgramNameUnk	None
+00408c74	name	_Src	None
+00408ca8	name	__XcptActTab	None
+00408d38	name	__First_FPE_Indx	None
+00408d3c	name	__Num_FPE	None
+00408d40	name	__XcptActTabSize	None
+00408d44	name	__XcptActTabCount	None
+00408d48	name	aHhMmSs	None
+00408d5c	name	aDdddMmmmDdYyyy	None
+00408d84	name	aMmDdYy_0	None
+00408d98	name	aPm	None
+00408da0	name	aAm_0	None
+00408da8	name	aDecember	None
+00408dbc	name	aNovember	None
+00408dd0	name	aOctober_0	None
+00408de0	name	aSeptember_0	None
+00408df4	name	aAugust_0	None
+00408e04	name	aJuly_0	None
+00408e10	name	aJune	None
+00408e1c	name	aApril_0	None
+00408e28	name	aMarch	None
+00408e34	name	aFebruary_0	None
+00408e48	name	aJanuary	None
+00408e58	name	aDec	None
+00408e60	name	aNov_0	None
+00408e68	name	aOct_0	None
+00408e70	name	aSep	None
+00408e78	name	aAug	None
+00408e80	name	aJul	None
+00408e88	name	aJun_0	None
+00408e90	name	aMay_0	None
+00408e98	name	aApr	None
+00408ea0	name	aMar	None
+00408ea8	name	aFeb_0	None
+00408eb0	name	aJan_0	None
+00408eb8	name	aSaturday	None
+00408ecc	name	aFriday_0	None
+00408edc	name	aThursday_0	None
+00408ef0	name	aWednesday	None
+00408f04	name	aTuesday	None
+00408f14	name	aMonday_0	None
+00408f24	name	aSunday	None
+00408f34	name	aSat	None
+00408f3c	name	aFri_0	None
+00408f44	name	aThu_0	None
+00408f4c	name	aWed	None
+00408f54	name	aTue_0	None
+00408f5c	name	aMon	None
+00408f64	name	aSun_0	None
+00408f6c	name	aHhMmSs_0	None
+00408f78	name	aDdddMmmmDdYy_0	None
+00408f8c	name	aMmDdYy	None
+00408f98	name	aPm_0	None
+00408f9c	name	aAm	None
+00408fa0	name	aDecember_0	None
+00408fac	name	aNovember_0	None
+00408fb8	name	aOctober	None
+00408fc0	name	aSeptember	None
+00408fcc	name	aAugust	None
+00408fd4	name	aJuly	None
+00408fdc	name	aJune_0	None
+00408fe4	name	aApril	None
+00408fec	name	aMarch_0	None
+00408ff4	name	aFebruary	None
+00409000	name	aJanuary_0	None
+00409008	name	aDec_0	None
+0040900c	name	aNov	None
+00409010	name	aOct	None
+00409014	name	aSep_0	None
+00409018	name	aAug_0	None
+0040901c	name	aJul_0	None
+00409020	name	aJun	None
+00409024	name	aMay	None
+00409028	name	aApr_0	None
+0040902c	name	aMar_0	None
+00409030	name	aFeb	None
+00409034	name	aJan	None
+00409038	name	aSaturday_0	None
+00409044	name	aFriday	None
+0040904c	name	aThursday	None
+00409058	name	aWednesday_0	None
+00409064	name	aTuesday_0	None
+0040906c	name	aMonday	None
+00409074	name	aSunday_0	None
+0040907c	name	aSat_0	None
+00409080	name	aFri	None
+00409084	name	aThu	None
+00409088	name	aWed_0	None
+0040908c	name	aTue	None
+00409090	name	aMon_0	None
+00409094	name	aSun	None
+00409098	name	___lookuptable_s	None
+004090f4	name	aGetprocesswind	None
+0040910c	name	aGetuserobjecti	None
+00409128	name	aGetlastactivep	None
+0040913c	name	aGetactivewindo	None
+0040914c	name	aMessageboxw	None
+00409158	name	LibFileName	None
+00409170	name	___newctype	None
+00409470	name	__wctype	None
+00409474	name	aHH	None
+00409678	name	___newclmap	None
+004097f8	name	___newcumap	None
+00409978	name	GS_ExceptionPointers	None
+00409980	name	aCompleteObject	None
+0040999c	name	aClassHierarchy	None
+004099bc	name	aBaseClassArray	None
+004099d0	name	aBaseClassDescr	None
+004099ec	name	aTypeDescriptor	None
+00409a00	name	aLocalStaticThr	None
+00409a1c	name	aManagedVectorC	None
+00409a48	name	aVectorVbaseCop	None
+00409a74	name	aVectorCopyCons	None
+00409a98	name	aDynamicAtexitD	None
+00409abc	name	aDynamicInitial	None
+00409ad8	name	aEhVectorVbas_0	None
+00409b04	name	aEhVectorCopyCo	None
+00409b2c	name	aManagedVectorD	None
+00409b54	name	aManagedVecto_0	None
+00409b7c	name	aPlacementDel_0	None
+00409b9c	name	aPlacementDelet	None
+00409bb8	name	aOmniCallsig	None
+00409bc8	name	aDelete_0	None
+00409bd4	name	aNew_0	None
+00409bdc	name	aLocalVftableCo	None
+00409c00	name	aLocalVftable	None
+00409c10	name	aRtti	None
+00409c18	name	aEh	None
+00409c1c	name	aUdtReturning	None
+00409c2c	name	aCopyConstructo	None
+00409c48	name	aEhVectorVbaseC	None
+00409c70	name	aEhVectorDestru	None
+00409c90	name	aEhVectorConstr	None
+00409cb4	name	aVirtualDisplac	None
+00409cd0	name	aVectorVbaseCon	None
+00409cf4	name	aVectorDestruct	None
+00409d14	name	aVectorConstruc	None
+00409d34	name	aScalarDeleting	None
+00409d54	name	aDefaultConstru	None
+00409d74	name	aVectorDeleting	None
+00409d94	name	aVbaseDestructo	None
+00409da8	name	aString	None
+00409db4	name	aLocalStaticGua	None
+00409dcc	name	aTypeof	None
+00409dd8	name	aVcall	None
+00409de0	name	aVbtable	None
+00409dec	name	aVftable	None
+00409e74	name	aOperator	None
+00409e9c	name	aDelete	None
+00409ea4	name	aNew	None
+00409eac	name	a__unaligned	None
+00409eb8	name	a__restrict	None
+00409ec4	name	a__ptr64	a__ptr64
+00409ecc	name	a__eabi	None
+00409ed4	name	a__clrcall	None
+00409ee0	name	a__fastcall	None
+00409eec	name	a__thiscall	None
+00409ef8	name	a__stdcall	None
+00409f04	name	a__pascal	None
+00409f10	name	a__cdecl	None
+00409f18	name	a__based	None
+00409f28	name	tokenTable	None
+00409f58	name	nameTable	None
+0040a098	name	rttiTable	None
+0040a0b0	name	_first_127char	None
+0040a130	name	FileName	None
+0040a140	name	__load_config_used	None
+0040a1ec	name	??_R4bad_alloc@std@@6B@	const std::bad_alloc::`RTTI Complete Object Locator'
+0040a200	name	??_R3bad_alloc@std@@8	std::bad_alloc::`RTTI Class Hierarchy Descriptor'
+0040a210	name	??_R2bad_alloc@std@@8	std::bad_alloc::`RTTI Base Class Array'
+0040a21c	name	??_R1A@?0A@EA@bad_alloc@std@@8	std::bad_alloc::`RTTI Base Class Descriptor at (0, -1, 0, 64)'
+0040a238	name	??_R1A@?0A@EA@exception@std@@8	std::exception::`RTTI Base Class Descriptor at (0, -1, 0, 64)'
+0040a254	name	??_R3exception@std@@8	std::exception::`RTTI Class Hierarchy Descriptor'
+0040a264	name	??_R2exception@std@@8	std::exception::`RTTI Base Class Array'
+0040a26c	name	??_R4exception@std@@6B@	const std::exception::`RTTI Complete Object Locator'
+0040a280	name	??_R4type_info@@6B@	const type_info::`RTTI Complete Object Locator'
+0040a294	name	??_R3type_info@@8	type_info::`RTTI Class Hierarchy Descriptor'
+0040a2a4	name	??_R2type_info@@8	type_info::`RTTI Base Class Array'
+0040a2ac	name	??_R1A@?0A@EA@type_info@@8	type_info::`RTTI Base Class Descriptor at (0, -1, 0, 64)'
+0040a2d0	name	___safe_se_handler_table	None
+0040a2dc	name	___rtc_iaa	None
+0040a2e0	name	___rtc_izz	None
+0040a2e4	name	___rtc_taa	None
+0040a2e8	name	___rtc_tzz	None
+0040a30c	name	__TI2?AVbad_alloc@std@@	None
+0040a31c	name	__CTA2?AVbad_alloc@std@@	None
+0040a328	name	__CT??_R0?AVbad_alloc@std@@@8??0bad_alloc@std@@QAE@ABV01@@Z12	None
+0040a344	name	__CT??_R0?AVexception@std@@@8??0exception@std@@QAE@ABV01@@Z12	None
+0040a614	name	__IMPORT_DESCRIPTOR_KERNEL32	None
+0040a628	name	__NULL_IMPORT_DESCRIPTOR	None
+0040abda	name	aKernel32_dll	None
+0040b000	name	??_R0?AVbad_alloc@std@@@8	class std::bad_alloc `RTTI Type Descriptor'
+0040b008	name	a_?avbad_alloc@	None
+0040b01c	name	??_R0?AVexception@std@@@8	class std::exception `RTTI Type Descriptor'
+0040b038	name	___app_type	None
+0040b040	name	__iob	None
+0040b2c0	name	___nullstring	None
+0040b2c4	name	___wnullstring	None
+0040b2c8	name	errtable	None
+0040b430	name	ErrnoNoMem	None
+0040b434	name	DoserrorNoMem	None
+0040b440	name	___security_cookie	None
+0040b444	name	___security_cookie_complement	None
+0040b448	name	___flsindex	None
+0040b44c	name	___getvalueindex	None
+0040b450	name	??_R0?AVtype_info@@@8	class type_info `RTTI Type Descriptor'
+0040b458	name	a_?avtype_info@	None
+0040b468	name	___badioinfo	None
+0040b4a8	name	_locktable	None
+0040b5c8	name	___initialmbcinfo	None
+0040b7e8	name	__mbctype	None
+0040b8f0	name	__mbcasemap	None
+0040b9f0	name	___ptmbcinfo	___ptmbcinfo
+0040b9f4	name	__rgctypeflag	None
+0040b9f8	name	__rgcode_page_info	None
+0040bae8	name	___globallocalestatus	None
+0040baec	name	___clocalestr	None
+0040baf0	name	___lc_time_c	None
+0040bc58	name	___initiallocinfo	None
+0040bd30	name	___ptlocinfo	___ptlocinfo
+0040bd34	name	__cfltcvt_tab	None
+0040bd4c	name	Ptr	None
+0040bd60	name	___lconv_static_decimal	None
+0040bd64	name	___lconv_static_W_decimal	None
+0040bd68	name	___lconv_c	None
+0040bdb8	name	___lconv	None
+0040bdbc	name	__pctype	None
+0040bdc0	name	__pwctype	None
+0040bdd0	name	__NLG_Destination	None
+0040bde0	name	___abort_behavior	None
+0040bdf0	name	_ctype_loc_style	None
+0040bdf4	name	__confh	None
+0040bdf8	name	___mb_cur_max	None
+0040bdfc	name	___decimal_point	None
+0040be00	name	___decimal_point_length	None
+0040be20	name	__enable_percent_n	None
+0040be24	name	nomem	None
+0040be30	name	$S1	None
+0040be34	name	__aenvptr	None
+0040be38	name	__wenvptr	None
+0040be3c	name	___error_mode	None
+0040be40	name	__cflush	None
+0040be44	name	__stdbuf	None
+0040be4c	name	___pInvalidArgHandler	None
+0040be50	name	_gpFlsAlloc	None
+0040be54	name	_gpFlsGetValue	None
+0040be58	name	_gpFlsSetValue	None
+0040be5c	name	_gpFlsFree	None
+0040be60	name	?_pnhHeap@@3P6AHI@ZA	int (__cdecl *_pnhHeap)(unsigned int)
+0040be64	name	__umaskval	None
+0040be68	name	___argc	None
+0040be6c	name	___argv	None
+0040be70	name	___wargv	None
+0040be74	name	__environ	None
+0040be78	name	___initenv	None
+0040be7c	name	__wenviron	None
+0040be80	name	___winitenv	None
+0040be84	name	__pgmptr	None
+0040be88	name	__wpgmptr	None
+0040be8c	name	__exitflag	None
+0040be90	name	__C_Termination_Done	None
+0040be94	name	__C_Exit_Done	None
+0040be98	name	outmsg	None
+0040c4c0	name	_pgmname	None
+0040c5c8	name	__crtheap	None
+0040c5cc	name	__maxwait	None
+0040c5d0	name	lclcritsects	None
+0040c720	name	fSystemSet	None
+0040c724	name	___mbulinfo	None
+0040c730	name	___mbcodepage	None
+0040c734	name	___ismbcodepage	None
+0040c738	name	___mblcid	None
+0040c73c	name	__type_info_root_node	None
+0040c744	name	__newmode	None
+0040c748	name	?__pInconsistency@@3P6AXXZA	void (__cdecl *__pInconsistency)(void)
+0040c74c	name	ctrlc_action	None
+0040c750	name	ctrlbreak_action	None
+0040c754	name	abort_action	None
+0040c758	name	term_action	None
+0040c75c	name	ConsoleCtrlHandler_Installed	None
+0040c760	name	g_pfnRtlGenRandom	None
+0040c764	name	___pPurecall	None
+0040c768	name	pfnMessageBox	None
+0040c76c	name	pfnGetActiveWindow	None
+0040c770	name	pfnGetLastActivePopup	None
+0040c774	name	pfnGetProcessWindowStation	None
+0040c778	name	pfnGetUserObjectInformation	None
+0040c77c	name	___lconv_static_null	None
+0040c780	name	___lconv_static_W_null	None
+0040c788	name	GS_ExceptionRecord	None
+0040c7d8	name	DebuggerWasPresent	None
+0040c7e0	name	GS_ContextRecord	None
+0040caac	name	heap	None
+0040cac0	name	?pArgList@UnDecorator@@0PAVReplicator@@A	private: static class Replicator * UnDecorator::pArgList
+0040cac4	name	?pZNameList@UnDecorator@@0PAVReplicator@@A	private: static class Replicator * UnDecorator::pZNameList
+0040cac8	name	?pTemplateArgList@UnDecorator@@0PAVReplicator@@A	private: static class Replicator * UnDecorator::pTemplateArgList
+0040cacc	name	?gName@UnDecorator@@0PBDB	private: static char const * const UnDecorator::gName
+0040cad0	name	?name@UnDecorator@@0PBDB	private: static char const * const UnDecorator::name
+0040cad4	name	?outputString@UnDecorator@@0PADA	private: static char * UnDecorator::outputString
+0040cad8	name	?maxStringLength@UnDecorator@@0HA	private: static int UnDecorator::maxStringLength
+0040cadc	name	?disableFlags@UnDecorator@@0KA	private: static unsigned long UnDecorator::disableFlags
+0040cae0	name	?m_pGetParameter@UnDecorator@@0P6APADJ@ZA	private: static char * (__cdecl *UnDecorator::m_pGetParameter)(long)
+0040cae4	name	?fExplicitTemplateParams@UnDecorator@@0_NA	private: static bool UnDecorator::fExplicitTemplateParams
+0040cae5	name	?fGetTemplateArgumentList@UnDecorator@@0_NA	private: static bool UnDecorator::fGetTemplateArgumentList
+0040cae8	name	___locale_changed	None
+0040caec	name	___sse2_available	None
+0040caf0	name	__debugger_hook_dummy	None
+0040caf4	name	__nhandle	None
+0040cb00	name	___pioinfo	None
+0040cc00	name	___env_initialized	None
+0040cc04	name	___onexitend	None
+0040cc08	name	___onexitbegin	None
+0040cc0c	name	___mbctype_initialized	None
+0040cc10	name	__FPinit	None
+0040cc14	name	___dyn_tls_init_callback	None
+0040cc18	name	__pDestructExceptionObject	None
+0040cc1c	name	___piob	None
+0040cc20	name	__bufin	None
+0040dc20	name	__nstream	None
+0040dc24	name	__acmdln	None
+0040dc28	name	__NoHeapEnableTerminationOnCorruption	None

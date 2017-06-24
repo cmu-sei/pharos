@@ -1,21 +1,45 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "cdg.hpp"
 #include "masm.hpp"
 #include "util.hpp"
 #include "funcs.hpp"
 
+namespace pharos {
+
 CDG::CDG(FunctionDescriptor *f) {
-  rose::BinaryAnalysis::ControlFlow cfg_analysis;
-  rose::BinaryAnalysis::Dominance dom_analysis;
+  Rose::BinaryAnalysis::ControlFlow cfg_analysis;
+  Rose::BinaryAnalysis::Dominance dom_analysis;
 
   // Save a copy of the SgAsmFunction.
   func = f->get_func();
 
   // Build the CFG and get the blocks in forward flow order
   cfg = cfg_analysis.build_block_cfg_from_ast<ControlFlowGraph>(func);
+
+  // Some sanity checking to prove that the true entry vertex is always zero.  This test still
+  // fails in some rare cases where function's entry_block() is NULL.  This is apparently due
+  // to some bug in the partitioner, because the case I looked at was garbage code made from
+  // bytes in the import segment.  More analysis is sadly still required.
   CFGVertex entry = 0;
-  assert(get(boost::vertex_name, cfg, entry) == func->get_entry_block());
+
+  // The entry block from the perspective of the control flow graph.
+  SgAsmBlock *eblock = get(boost::vertex_name, cfg, entry);
+  // The entry block from the perspective of the SgAsmFunction object.
+  SgAsmBlock *feblock = func->get_entry_block();
+
+  // Now report various failures without asserting.
+  if (eblock == NULL) {
+    GERROR << "CFG entry block is NULL for function: " << f->address_string() << LEND;
+  }
+  if (feblock == NULL) {
+    GERROR << "Entry block is NULL for function: " << f->address_string() << LEND;
+  }
+  if (eblock != NULL and feblock != NULL and eblock != feblock) {
+    GERROR << "Unexpected entry block mismatch " << addr_str(eblock->get_address())
+           << " != " << addr_str(feblock->get_address()) << "." << LEND;
+  }
+
   forward_list = cfg_analysis.flow_order(cfg,entry,NULL);
 
   // If building the dominance and post-dominance maps turns out to be expensive, we could
@@ -50,7 +74,7 @@ CDG::CDG(FunctionDescriptor *f) {
 // A helper routine to evaluate the immediate (or post) dominance map recursively, turning an
 // immediate result into an overall result.  The return value is whether A dominates B.
 bool CDG::dominance_helper(
-  const rose::BinaryAnalysis::Dominance::RelationMap<ControlFlowGraph> & map,
+  const Rose::BinaryAnalysis::Dominance::RelationMap<ControlFlowGraph> & map,
   const CFGVertex &a, const CFGVertex &b)
 {
   // This at() call will throw an exception if b is not in the map.
@@ -209,7 +233,7 @@ X86InsnSet CDG::getControlDependencies(const SgAsmX86Instruction *insn) const {
   // creation behavior of the [x] operator.  It's unclear what the impact of that was, but it
   // seems very unlikely to have been intentional.
   if (depends_on.find(v) != depends_on.end()) {
-    BOOST_FOREACH(const CFGVertex &o, depends_on.at(v)) {
+    for (const CFGVertex &o : depends_on.at(v)) {
       SgAsmX86Instruction *c = getControllingInstruction(o);
       if (c)
         out.insert(c);
@@ -221,10 +245,10 @@ X86InsnSet CDG::getControlDependencies(const SgAsmX86Instruction *insn) const {
 
 Insn2InsnSetMap CDG::getControlDependencies() const {
   Insn2InsnSetMap out;
-  BOOST_FOREACH(const SgAsmStatement* bs, func->get_statementList()) {
+  for (const SgAsmStatement* bs : func->get_statementList()) {
     const SgAsmBlock *bb = isSgAsmBlock(bs);
     assert(bb);
-    BOOST_FOREACH(SgAsmStatement* is, bb->get_statementList()) {
+    for (SgAsmStatement* is : bb->get_statementList()) {
       SgAsmX86Instruction *insn = isSgAsmX86Instruction(is);
       InsnSet temp;
       X86InsnSet deps = getControlDependencies(insn);
@@ -294,7 +318,7 @@ void CDG::dumpBlock(const CFGVertex& vertex) const {
 
   // Dump statements
   SINFO << "CFG Vertex " << vertex << " " << addr_str(bb->get_address()) <<LEND;
-  BOOST_FOREACH(const SgAsmStatement* s, bb->get_statementList()) {
+  for (const SgAsmStatement* s : bb->get_statementList()) {
     const SgAsmX86Instruction *insn = isSgAsmX86Instruction(s);
     SINFO << debug_instruction(insn) << LEND;
   }
@@ -308,14 +332,14 @@ void CDG::dumpControlDependencies() const {
     SINFO << "Vertex: " << v << LEND;
     if (depends_on.find(v) != depends_on.end()) {
       SINFO << "  Depends on:";
-      BOOST_FOREACH(const CFGVertex& dv, depends_on.at(v)) {
+      for (const CFGVertex& dv : depends_on.at(v)) {
         SINFO << " " << dv;
       }
       SINFO << LEND;
     }
     if (dependents_of.find(v) != dependents_of.end()) {
       SINFO << "  Dependants:";
-      BOOST_FOREACH(const CFGVertex& dv, dependents_of.at(v)) {
+      for (const CFGVertex& dv : dependents_of.at(v)) {
         SINFO << " " << dv;
       }
       SINFO << LEND;
@@ -324,17 +348,17 @@ void CDG::dumpControlDependencies() const {
 }
 
 void CDG::dumpInsnDependencies() const {
-  BOOST_FOREACH(const SgAsmStatement* bs, func->get_statementList()) {
+  for (const SgAsmStatement* bs : func->get_statementList()) {
     const SgAsmBlock *bb = isSgAsmBlock(bs);
     assert(bb);
-    BOOST_FOREACH(const SgAsmStatement* is, bb->get_statementList()) {
+    for (const SgAsmStatement* is : bb->get_statementList()) {
       const SgAsmX86Instruction *insn = isSgAsmX86Instruction(is);
       SINFO << debug_instruction(insn) << " =f=> ";
       X86InsnSet deps = getControlDependencies(insn);
       if (deps.size() == 0) {
         SINFO << "ENTRY" << LEND;
       } else {
-        BOOST_FOREACH(const SgAsmX86Instruction *dep, deps) {
+        for (const SgAsmX86Instruction *dep : deps) {
           SINFO << addr_str(dep->get_address()) << " ";
         }
         SINFO << LEND;
@@ -342,6 +366,9 @@ void CDG::dumpInsnDependencies() const {
     }
   }
 }
+
+} // namespace pharos
+
 /* Local Variables:   */
 /* mode: c++          */
 /* fill-column:    95 */

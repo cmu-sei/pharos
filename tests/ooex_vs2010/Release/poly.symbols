@@ -1,0 +1,212 @@
+00401000	func	?draw@Rectangle@@UAEXXZ	public: virtual void __thiscall Rectangle::draw(void)
+00401030	func	?draw@Circle@@UAEXXZ	public: virtual void __thiscall Circle::draw(void)
+00401060	func	?draw@Triangle@@UAEXXZ	public: virtual void __thiscall Triangle::draw(void)
+00401090	func	_main	None
+00401110	func	??1sentry@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAE@XZ	public: __thiscall std::basic_ostream<char, struct std::char_traits<char>>::sentry::~sentry(void)
+00401180	func	??1_Sentry_base@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAE@XZ	public: __thiscall std::basic_ostream<char, struct std::char_traits<char>>::_Sentry_base::~_Sentry_base(void)
+004011a0	func	??$?6U?$char_traits@D@std@@@std@@YAAAV?$basic_ostream@DU?$char_traits@D@std@@@0@AAV10@PBD@Z	class std::basic_ostream<char, struct std::char_traits<char>> & __cdecl std::operator<<<struct std::char_traits<char>>(class std::basic_ostream<char, struct std::char_traits<char>> &, char const *)
+004013c4	func	__catch$??$?6U?$char_traits@D@std@@@std@@YAAAV?$basic_ostream@DU?$char_traits@D@std@@@0@AAV10@PBD@Z$0	None
+004013e5	func	$LN23	None
+004013ed	func	@__security_check_cookie@4	__fastcall __security_check_cookie(x)
+004013f7	func	failure	None
+004013fc	func	??_Etype_info@@UAEPAXI@Z	public: virtual void * __thiscall type_info::`vector deleting destructor'(unsigned int)
+00401448	func	pre_cpp_init	None
+00401493	func	__tmainCRTStartup	None
+004015cc	func	$LN36	None
+004015df	func	$LN32	None
+004015e0	func	$LN22	None
+004015fc	func	$LN37	None
+0040161c	func	pre_c_init	None
+004016d6	func	_mainCRTStartup	None
+004016e0	func	___report_gsfailure	None
+004017e6	func	??3@YAXPAX@Z_0	void __cdecl operator delete(void *)
+004017ec	func	?__ArrayUnwind@@YGXPAXIHP6EX0@Z@Z	void __stdcall __ArrayUnwind(void *, unsigned int, int, void (__thiscall *)(void *))
+0040180f	func	$LN7	None
+00401832	func	$LN9	None
+00401838	func	$LN23_0	None
+0040184a	func	??_M@YGXPAXIHP6EX0@Z@Z	void __stdcall `eh vector destructor iterator'(void *, unsigned int, int, void (__thiscall *)(void *))
+0040188d	func	$LN14	None
+00401895	func	$LN11	None
+004018ac	func	$LN12	None
+004018ad	func	?__CxxUnhandledExceptionFilter@@YGJPAU_EXCEPTION_POINTERS@@@Z	long __stdcall __CxxUnhandledExceptionFilter(struct _EXCEPTION_POINTERS *)
+004018e9	func	$LN6	None
+004018ef	func	___CxxSetUnhandledExceptionFilter	None
+004018fe	thunk	__amsg_exit	None
+00401904	func	__onexit	None
+00401993	func	$LN9_0	None
+0040199c	func	$LN6_0	None
+004019a4	func	$LN7_0	None
+004019a5	func	_atexit	None
+004019bc	func	__RTC_Initialize	None
+004019e2	func	__RTC_Terminate	None
+00401a08	thunk	__XcptFilter	None
+00401a10	func	__ValidateImageBase	None
+00401a50	func	__FindPESection	None
+00401aa0	func	__IsNonwritableInCurrentImage	None
+00401b2b	func	$LN7_1	None
+00401b3d	func	$LN11_0	None
+00401b3e	func	$LN8	None
+00401b5c	thunk	__initterm	None
+00401b62	thunk	__initterm_e	None
+00401b70	func	__SEH_prolog4	None
+00401bb5	func	__SEH_epilog4	None
+00401bc9	func	__except_handler4	None
+00401bee	func	__setdefaultprecision	None
+00401c14	func	$LN8_0	None
+00401c16	func	__setargv	None
+00401c19	func	___security_init_cookie	None
+00401cb4	thunk	__crt_debugger_hook	None
+00401cba	func	?terminate@@YAXXZ_0	void __cdecl terminate(void)
+00401cc0	func	??1type_info@@UAE@XZ	public: virtual __thiscall type_info::~type_info(void)
+00401cc6	thunk	__unlock	None
+00401ccc	thunk	___dllonexit	None
+00401cd2	thunk	__lock	None
+00401cd8	thunk	__except_handler4_common	None
+00401cde	thunk	__invoke_watson	None
+00401ce4	thunk	__controlfp_s	None
+00401cea	thunk	___CxxFrameHandler3	None
+00401cf0	func	__unwindfunclet$??1sentry@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAE@XZ$0	None
+00401cf8	func	__ehhandler$??1sentry@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAE@XZ	None
+00401d20	func	__unwindfunclet$??$?6U?$char_traits@D@std@@@std@@YAAAV?$basic_ostream@DU?$char_traits@D@std@@@0@AAV10@PBD@Z$3	None
+00401d28	func	__unwindfunclet$??$?6U?$char_traits@D@std@@@std@@YAAAV?$basic_ostream@DU?$char_traits@D@std@@@0@AAV10@PBD@Z$2	None
+00401d32	func	__unwindfunclet$??$?6U?$char_traits@D@std@@@std@@YAAAV?$basic_ostream@DU?$char_traits@D@std@@@0@AAV10@PBD@Z$4	None
+00401d3a	func	__ehhandler$??$?6U?$char_traits@D@std@@@std@@YAAAV?$basic_ostream@DU?$char_traits@D@std@@@0@AAV10@PBD@Z	None
+00402000	name	__imp__Sleep@4	__declspec(dllimport) __stdcall Sleep(x)
+00402004	name	__imp__InterlockedCompareExchange@12	__declspec(dllimport) __stdcall InterlockedCompareExchange(x, x, x)
+00402008	name	__imp__HeapSetInformation@16	__declspec(dllimport) __stdcall HeapSetInformation(x, x, x, x)
+0040200c	name	__imp__EncodePointer@4	__declspec(dllimport) __stdcall EncodePointer(x)
+00402010	name	__imp__TerminateProcess@8	__declspec(dllimport) __stdcall TerminateProcess(x, x)
+00402014	name	__imp__GetCurrentProcess@0	__declspec(dllimport) __stdcall GetCurrentProcess()
+00402018	name	__imp__UnhandledExceptionFilter@4	__declspec(dllimport) __stdcall UnhandledExceptionFilter(x)
+0040201c	name	__imp__SetUnhandledExceptionFilter@4	__declspec(dllimport) __stdcall SetUnhandledExceptionFilter(x)
+00402020	name	__imp__IsDebuggerPresent@0	__declspec(dllimport) __stdcall IsDebuggerPresent()
+00402024	name	__imp__DecodePointer@4	__declspec(dllimport) __stdcall DecodePointer(x)
+00402028	name	__imp__QueryPerformanceCounter@4	__declspec(dllimport) __stdcall QueryPerformanceCounter(x)
+0040202c	name	__imp__GetTickCount@0	__declspec(dllimport) __stdcall GetTickCount()
+00402030	name	__imp__GetCurrentThreadId@0	__declspec(dllimport) __stdcall GetCurrentThreadId()
+00402034	name	__imp__GetCurrentProcessId@0	__declspec(dllimport) __stdcall GetCurrentProcessId()
+00402038	name	__imp__GetSystemTimeAsFileTime@4	__declspec(dllimport) __stdcall GetSystemTimeAsFileTime(x)
+0040203c	name	__imp__InterlockedExchange@8	__declspec(dllimport) __stdcall InterlockedExchange(x, x)
+00402040	name	_KERNEL32_NULL_THUNK_DATA	None
+00402044	name	__imp_?endl@std@@YAAAV?$basic_ostream@DU?$char_traits@D@std@@@1@AAV21@@Z	__declspec(dllimport) class std::basic_ostream<char, struct std::char_traits<char>> & __cdecl std::endl(class std::basic_ostream<char, struct std::char_traits<char>> &)
+00402048	name	__imp_?setstate@?$basic_ios@DU?$char_traits@D@std@@@std@@QAEXH_N@Z	__declspec(dllimport) public: void __thiscall std::basic_ios<char, struct std::char_traits<char>>::setstate(int, bool)
+0040204c	name	__imp_??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@P6AAAV01@AAV01@@Z@Z	__declspec(dllimport) public: class std::basic_ostream<char, struct std::char_traits<char>> & __thiscall std::basic_ostream<char, struct std::char_traits<char>>::operator<<(class std::basic_ostream<char, struct std::char_traits<char>> & (__cdecl *)(class std::basic_ostream<char, struct std::char_traits<char>> &))
+00402050	name	__imp_?flush@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV12@XZ	__declspec(dllimport) public: class std::basic_ostream<char, struct std::char_traits<char>> & __thiscall std::basic_ostream<char, struct std::char_traits<char>>::flush(void)
+00402054	name	__imp_?sputc@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAEHD@Z	__declspec(dllimport) public: int __thiscall std::basic_streambuf<char, struct std::char_traits<char>>::sputc(char)
+00402058	name	__imp_?_Osfx@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEXXZ	__declspec(dllimport) public: void __thiscall std::basic_ostream<char, struct std::char_traits<char>>::_Osfx(void)
+0040205c	name	__imp_?sputn@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAE_JPBD_J@Z	__declspec(dllimport) public: __int64 __thiscall std::basic_streambuf<char, struct std::char_traits<char>>::sputn(char const *, __int64)
+00402060	name	__imp_?cout@std@@3V?$basic_ostream@DU?$char_traits@D@std@@@1@A	__declspec(dllimport) class std::basic_ostream<char, struct std::char_traits<char>> std::cout
+00402064	name	__imp_?uncaught_exception@std@@YA_NXZ	__declspec(dllimport) bool __cdecl std::uncaught_exception(void)
+00402068	name	_MSVCP100_NULL_THUNK_DATA	None
+0040206c	name	__imp___crt_debugger_hook	None
+00402070	name	__imp_?terminate@@YAXXZ	__declspec(dllimport) void __cdecl terminate(void)
+00402074	name	__imp_?_type_info_dtor_internal_method@type_info@@QAEXXZ	__declspec(dllimport) public: void __thiscall type_info::_type_info_dtor_internal_method(void)
+00402078	name	__imp___unlock	None
+0040207c	name	__imp____dllonexit	None
+00402080	name	__imp___lock	None
+00402084	name	__imp___onexit	None
+00402088	name	__imp___except_handler4_common	None
+0040208c	name	__imp___invoke_watson	None
+00402090	name	__imp___controlfp_s	None
+00402094	name	__imp____set_app_type	None
+00402098	name	__imp___fmode	None
+0040209c	name	__imp___commode	None
+004020a0	name	__imp___configthreadlocale	None
+004020a4	name	__imp___initterm_e	None
+004020a8	name	__imp___initterm	None
+004020ac	name	__imp____initenv	None
+004020b0	name	__imp__exit	None
+004020b4	name	__imp___XcptFilter	None
+004020b8	name	__imp___exit	None
+004020bc	name	__imp___cexit	None
+004020c0	name	__imp____getmainargs	None
+004020c4	name	__imp___amsg_exit	None
+004020c8	name	__imp_??3@YAXPAX@Z	__declspec(dllimport) void __cdecl operator delete(void *)
+004020cc	name	__imp_??2@YAPAXI@Z	__declspec(dllimport) void * __cdecl operator new(unsigned int)
+004020d0	name	__imp____setusermatherr	None
+004020d4	name	__imp____CxxFrameHandler3	None
+004020d8	name	_MSVCR100_NULL_THUNK_DATA	None
+004020dc	name	___xc_a	None
+004020e0	name	pcppinit	None
+004020e4	name	___xc_z	None
+004020e8	name	___xi_a	None
+004020ec	name	pcinit	None
+004020f0	name	pinit	None
+004020f4	name	___xi_z	None
+00402120	name	??_7type_info@@6B@	const type_info::`vftable'
+00402124	name	GS_ExceptionPointers	None
+0040212c	name	_Val	None
+00402140	name	aDrawingCircle	None
+00402150	name	aDrawingTriangl	None
+00402168	name	??_7Rectangle@@6B@	const Rectangle::`vftable'
+00402170	name	??_7Circle@@6B@	const Circle::`vftable'
+00402178	name	??_7Triangle@@6B@	const Triangle::`vftable'
+00402180	name	__load_config_used	None
+00402214	name	??_R4type_info@@6B@	const type_info::`RTTI Complete Object Locator'
+00402228	name	??_R3type_info@@8	type_info::`RTTI Class Hierarchy Descriptor'
+00402238	name	??_R2type_info@@8	type_info::`RTTI Base Class Array'
+00402240	name	??_R1A@?0A@EA@type_info@@8	type_info::`RTTI Base Class Descriptor at (0, -1, 0, 64)'
+0040225c	name	??_R4Triangle@@6B@	const Triangle::`RTTI Complete Object Locator'
+00402270	name	??_R3Triangle@@8	Triangle::`RTTI Class Hierarchy Descriptor'
+00402280	name	??_R2Triangle@@8	Triangle::`RTTI Base Class Array'
+0040228c	name	??_R1A@?0A@EA@Triangle@@8	Triangle::`RTTI Base Class Descriptor at (0, -1, 0, 64)'
+004022a8	name	??_R4Circle@@6B@	const Circle::`RTTI Complete Object Locator'
+004022bc	name	??_R3Circle@@8	Circle::`RTTI Class Hierarchy Descriptor'
+004022cc	name	??_R2Circle@@8	Circle::`RTTI Base Class Array'
+004022d8	name	??_R1A@?0A@EA@Circle@@8	Circle::`RTTI Base Class Descriptor at (0, -1, 0, 64)'
+004022f4	name	??_R4Rectangle@@6B@	const Rectangle::`RTTI Complete Object Locator'
+00402308	name	??_R3Rectangle@@8	Rectangle::`RTTI Class Hierarchy Descriptor'
+00402318	name	??_R2Rectangle@@8	Rectangle::`RTTI Base Class Array'
+00402324	name	??_R1A@?0A@EA@Rectangle@@8	Rectangle::`RTTI Base Class Descriptor at (0, -1, 0, 64)'
+00402340	name	??_R3Shape@@8	Shape::`RTTI Class Hierarchy Descriptor'
+00402350	name	??_R2Shape@@8	Shape::`RTTI Base Class Array'
+00402358	name	??_R1A@?0A@EA@Shape@@8	Shape::`RTTI Base Class Descriptor at (0, -1, 0, 64)'
+00402380	name	___safe_se_handler_table	None
+0040238c	name	___rtc_iaa	None
+00402390	name	___rtc_izz	None
+00402394	name	___rtc_taa	None
+00402398	name	___rtc_tzz	None
+004024d8	name	__IMPORT_DESCRIPTOR_MSVCP100	None
+004024ec	name	__IMPORT_DESCRIPTOR_MSVCR100	None
+00402500	name	__IMPORT_DESCRIPTOR_KERNEL32	None
+00402514	name	__NULL_IMPORT_DESCRIPTOR	None
+0040283e	name	aMsvcp100_dll	None
+0040285c	name	aMsvcr100_dll	None
+00402b56	name	aKernel32_dll	None
+00403000	name	??_R0?AVtype_info@@@8	class type_info `RTTI Type Descriptor'
+00403008	name	a_?avtype_info@	None
+00403018	name	___security_cookie	None
+0040301c	name	___security_cookie_complement	None
+00403020	name	___native_dllmain_reason	None
+00403024	name	___native_vcclrit_reason	None
+00403030	name	___globallocalestatus	None
+00403034	name	___defaultmatherr	None
+00403038	name	??_R0?AVTriangle@@@8	class Triangle `RTTI Type Descriptor'
+00403040	name	a_?avtriangle@@	None
+00403050	name	??_R0?AVCircle@@@8	class Circle `RTTI Type Descriptor'
+00403058	name	a_?avcircle@@	None
+00403068	name	??_R0?AVRectangle@@@8	class Rectangle `RTTI Type Descriptor'
+00403070	name	a_?avrectangle@	None
+00403080	name	??_R0?AVShape@@@8	class Shape `RTTI Type Descriptor'
+00403088	name	a_?avshape@@	None
+00403098	name	argc	None
+0040309c	name	envp	None
+004030a0	name	argv	None
+004030a4	name	managedapp	None
+004030a8	name	argret	None
+004030ac	name	startinfo	None
+004030b0	name	mainret	None
+004030b4	name	has_cctor	None
+004030b8	name	GS_ExceptionRecord	None
+00403108	name	DebuggerWasPresent	None
+00403110	name	GS_ContextRecord	None
+004033dc	name	__dowildcard	None
+004033e0	name	__newmode	None
+004033e4	name	__commode	None
+004033e8	name	__fmode	None
+004033ec	name	___native_startup_state	None
+004033f0	name	___native_startup_lock	None
+004033f4	name	___onexitend	None
+004033f8	name	___onexitbegin	None
+004033fc	name	__NoHeapEnableTerminationOnCorruption	None
+00403400	name	___dyn_tls_init_callback	None

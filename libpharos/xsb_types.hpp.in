@@ -1,0 +1,24 @@
+// Copyright 2016 Carnegie Mellon University.  See LICENSE file for terms.
+
+// Author: Michael Duggan
+
+#ifndef Pharos_XSB_TYPES_HPP
+#define Pharos_XSB_TYPES_HPP
+
+#include <cstdint>
+
+namespace pharos { namespace prolog { namespace impl { namespace xsb {
+
+// This validity of these types are asserted in xsb.cpp.
+using xsb_int = @XSB_PINT_TYPE@ ;
+using xsb_term = @XSB_PTERM_TYPE@ ;
+
+}}}}
+
+#endif
+
+/* Local Variables:   */
+/* mode: c++          */
+/* fill-column:    95 */
+/* comment-column: 0  */
+/* End:               */

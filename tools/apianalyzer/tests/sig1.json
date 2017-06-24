@@ -1,0 +1,21 @@
+{
+    "Sig" : { 
+	"Name":"TestParamSig",
+	"Description" : "Testing",
+	"Pattern" : 
+        [
+            {
+                "API": "KERNEL32.DLL!PEEKNAMEDPIPE",
+                "Args": [
+                    { "Name": "HPIPE","Index":0,"Type":"VAL" }
+                ]
+            },
+	    {
+                "API": "KERNEL32.DLL!READFILE",
+                "Args": [
+                    { "Name": "HPIPE","Index":0,"Type":"VAL" }
+                ]
+            }
+	]
+    }
+}

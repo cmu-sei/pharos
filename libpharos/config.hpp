@@ -1,9 +1,12 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016, 2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Config_H
 #define Config_H
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
 #include <yaml-cpp/yaml.h>
+#pragma GCC diagnostic pop
 #include <fstream>
 #include <boost/algorithm/string.hpp>
 #include <boost/optional.hpp>
@@ -36,16 +39,19 @@ class ConfigNode_iterator :
 
   // Return the key/value pair, wrapped as ConfigNode objects
   std::pair<Node, Node> dereference() const {
-    if (*this->base()) {
+    auto & node = this->base();
+    if (parent_.IsSequence()) {
       Node key;
-      Node value(*this->base());
-      value.add_path(parent_, this->base()->first);
+      Node value(*node);
+      // the following shiould really have the sequence index as the second argument.
+      // Currently that's hard to get.  Save it for a later version of yaml-cpp.
+      // value.add_path(parent_, node->first);
       value.filemap_ = parent_.filemap_;
       return std::make_pair(key, value);
     } else {
-      Node key(this->base()->first);
-      Node value(this->base()->second);
-      value.add_path(parent_, this->base()->first);
+      Node key(node->first);
+      Node value(node->second);
+      value.add_path(parent_, node->first);
       key.filemap_ = parent_.filemap_;
       value.filemap_ = parent_.filemap_;
       return std::make_pair(key, value);
@@ -59,7 +65,33 @@ class ConfigNode_iterator :
 } // namespace detail
 
 
-class BadNodeError;
+/// An exception representing an invalid node value
+class BadFileError : public std::runtime_error {
+ public:
+  BadFileError() : std::runtime_error("Cannot open file") {}
+  BadFileError(const std::string &filename) : std::runtime_error(build_what(filename)) {}
+ private:
+  static std::string build_what(const std::string &filename);
+};
+
+class ConfigNode;
+
+/// Exceptions from the ConfigNode module that can output information about a failed node's
+/// path and source
+class ConfigException : public std::runtime_error {
+ public:
+  ConfigException(const ConfigNode &node, const std::string & msg)
+    : std::runtime_error(build_what(node, msg)) {}
+ private:
+  static std::string build_what(const ConfigNode &node, const std::string & msg);
+};
+
+/// An exception representing an invalid node value
+class BadNodeError : public ConfigException {
+ public:
+  BadNodeError(const ConfigNode &node, const std::string &msg)
+    : ConfigException(node, msg) {}
+};
 
 // Inherit privately from YAML::Node.  This lets us pick and choose which YAML::Node methods to
 // show up in a ConfigNode;
@@ -79,7 +111,7 @@ class ConfigNode : protected YAML::Node {
   using Node::size;
   using Node::operator YAML::detail::unspecified_bool_type;
 
-  /// Define the iterator type, which will iterator over std::pair<ConfigNode,ConfigNode>
+  /// Define the iterator type, which will iterate over std::pair<ConfigNode,ConfigNode>
   /// elements
   typedef detail::ConfigNode_iterator<ConfigNode, Node::const_iterator> iterator;
 
@@ -94,7 +126,9 @@ class ConfigNode : protected YAML::Node {
   template <typename Key>
   ConfigNode operator[](const Key& key) const {
     ConfigNode c;
-    if (IsDefined()) {
+    if (IsScalar()) {
+      c = new_node(YAML::Node());
+    } else if (IsDefined()) {
       c = new_node(cnode(*this)[key]);
     } else {
       c = new_node(*this);
@@ -103,15 +137,10 @@ class ConfigNode : protected YAML::Node {
     return c;
   }
 
-  /// A version of operator[] that only works with strings and is virtual
-  virtual ConfigNode get(const std::string &key) const {
-    return (*this)[key];
-  }
-
   /// Look up the given path in the ConfigNode.  If the seperator is '.', cfg.path_get("A.B.C")
   /// is equivalent to cfg["A"]["B"]["C"].
-  ConfigNode path_get(const std::string &path,
-                      char sep = CONFIG_PATH_SEPERATOR) const;
+  virtual ConfigNode path_get(const std::string &path,
+                              char sep = CONFIG_PATH_SEPERATOR) const;
 
   /// If 'value' is a scalar, this is a map, and the map contains the value, return the value
   /// in the map.  Otherwise, return 'value'.
@@ -180,6 +209,11 @@ class ConfigNode : protected YAML::Node {
     return iterator(*this, Node::end());
   }
 
+  // Return as YAML::Node
+  Node as_node() const {
+    return *this;
+  }
+
  protected:
   /// Construct an empty ConfigNode from a Node
   ConfigNode(const Node &o) : Node(o) {}
@@ -203,11 +237,11 @@ class ConfigNode : protected YAML::Node {
   /// Maintains a linked list of key values that led to this config
   struct Pathlist {
     std::string key;
-    boost::shared_ptr<const Pathlist> next;
+    std::shared_ptr<const Pathlist> next;
     void path(std::ostream& s, char sep) const;
     std::string path(char sep) const;
   };
-  boost::shared_ptr<Pathlist> path_;
+  std::shared_ptr<Pathlist> path_;
 
   /// Merge node 'b' into node 'a', returning 'a'.
   static
@@ -306,6 +340,9 @@ class Config : public ConfigNode {
           const std::string &name = empty_string) const
   {
     std::ifstream s(filename.c_str());
+    if (!s) {
+      throw BadFileError(filename);
+    }
     return include<std::ifstream&>(s, name.empty() ? filename : name);
   }
 
@@ -325,11 +362,7 @@ class Config : public ConfigNode {
   /// source's name.
   Config &
   mergeFile(const std::string &filename,
-            const std::string &name = empty_string)
-  {
-    *static_cast<ConfigNode *>(this) = include(filename, name);
-    return *this;
-  }
+            const std::string &name = empty_string);
 
   /// Look up the value of the current ConfigNode's 'key' attribute.  The attribute will first
   /// be looked up in the "application.<appname>" path.  Otherwise it will be looked for from
@@ -350,9 +383,20 @@ class Config : public ConfigNode {
     return ConfigNode::operator[](key);
   }
 
-  /// A version of operator[] that only works with strings and is virtual
-  virtual ConfigNode get(const std::string &key) const {
-    return (*this)[key];
+  /// Look up the given path in the ConfigNode.  If the seperator is '.', cfg.path_get("A.B.C")
+  /// is equivalent to cfg["A"]["B"]["C"].
+  virtual ConfigNode path_get(const std::string &p,
+                              char sep = CONFIG_PATH_SEPERATOR) const
+  {
+    ConfigNode appnode = (*static_cast<const ConfigNode *>(const_cast<const Config *>(this)))
+                         ["application"][appname];
+    if (appnode) {
+      ConfigNode val = appnode.path_get(p, sep);
+      if (val) {
+        return val;
+      }
+    }
+    return ConfigNode::path_get(p, sep);
   }
 
  private:
@@ -368,23 +412,6 @@ class Config : public ConfigNode {
   }
 
   std::string appname;
-};
-
-/// Exceptions from the ConfigNode module that can output information about a failed node's
-/// path and source
-class ConfigException : public std::runtime_error {
- public:
-  ConfigException(const ConfigNode &node, const std::string & msg)
-    : std::runtime_error(build_what(node, msg)) {}
- private:
-  static std::string build_what(const ConfigNode &node, const std::string & msg);
-};
-
-/// An exception representing an invalid node value
-class BadNodeError : public ConfigException {
- public:
-  BadNodeError(const ConfigNode &node, const std::string &msg)
-    : ConfigException(node, msg) {}
 };
 
 } // namespace pharos

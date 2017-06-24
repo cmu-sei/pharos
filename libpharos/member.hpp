@@ -1,10 +1,12 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Member_H
 #define Pharos_Member_H
 
 #include "vftable.hpp"
 #include "oo.hpp"
+
+namespace pharos {
 
 // This class is just so that we could eliminate maps of pairs, and be clear about what
 // represents a "member".  This should probably be replaced with a class that we've given some
@@ -87,6 +89,8 @@ public:
 };
 
 typedef std::map<unsigned int, Member> MemberMap;
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

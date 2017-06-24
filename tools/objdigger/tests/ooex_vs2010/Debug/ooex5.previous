@@ -1,0 +1,384 @@
+OPTI[WHERE]: Verbose logging level set to 4.
+OPTI[INFO ]: Analyzing executable: tests/ooex_vs2010/Debug/ooex5.exe
+OPTI[INFO ]: Object Digger version X.
+OBJD[INFO ]: Using version two of function partitioner.
+OBJD[INFO ]: Enabling semantic control flow analysis during function partitioning.
+OPTI[WHERE]: Forcing non-color logging.
+OPTI[INFO ]: ROSE disassembly complete.
+OBJD[INFO ]: Loaded API database: kernel32.json
+OBJD[INFO ]: Loaded API database: msvcr100d.json
+OBJD[WARN ]: No stack delta information for: MSVCR100D.dll:__dllonexit
+OBJD[WARN ]: No stack delta information for: MSVCR100D.dll:_onexit
+OBJD[WARN ]: No stack delta information for: MSVCR100D.dll:?terminate@@YAXXZ
+OBJD[WARN ]: No stack delta information for: MSVCR100D.dll:__initenv
+OBJD[WARN ]: No stack delta information for: MSVCR100D.dll:_amsg_exit
+OBJD[WARN ]: No stack delta information for: MSVCR100D.dll:_fmode
+OBJD[WARN ]: No stack delta information for: MSVCR100D.dll:_commode
+OBJD[WARN ]: No stack delta information for: MSVCR100D.dll:_purecall
+OBJD[WARN ]: No stack delta information for: MSVCR100D.dll:??3@YAXPAX@Z
+OBJD[INFO ]: Finding imported new methods...
+OBJD[INFO ]: Imported new '??2@YAPAXI@Z' found at address 0x0041A2D0 __declspec(dllimport) void * __cdecl operator new(unsigned int).
+OBJD[INFO ]: Function at 0x0041196C void * __cdecl operator new(unsigned int) is a thunk to a new() method.
+OBJD[INFO ]: Function at 0x004111C2 void * __cdecl operator new(unsigned int) is a thunk to a thunk to a new() method.
+OBJD[INFO ]: Finding imported delete methods...
+OBJD[INFO ]: Imported delete '??3@YAXPAX@Z' found at address 0x0041A2D4 __declspec(dllimport) void __cdecl operator delete(void *).
+OBJD[INFO ]: Function at 0x00411966 void __cdecl operator delete(void *) is a thunk to a delete() method.
+OBJD[INFO ]: Function at 0x00411096 void __cdecl operator delete(void *) is a thunk to a thunk to a delete() method.
+OBJD[INFO ]: Finding imported purecall methods...
+OBJD[INFO ]: Imported purecall '_purecall' found at address 0x0041A2C8 __imp___purecall.
+OBJD[INFO ]: Function at 0x00411CD6 __purecall is a thunk to a purecall() method.
+OBJD[INFO ]: Function at 0x00411168 j___purecall is a thunk to a thunk to a purecall() method.
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 412227: mov       eax, [ebp+4]
+OBJD[WARN ]: Function 0x00411980 __fastcall __security_check_cookie(x) includes only 3 of 12 blocks in the control flow.
+FSEM[WARN ]: Counted stack parameters for function 0x00411CC0 class type_info & __thiscall type_info::operator=(class type_info const &) do not match the non-zero stack delta.
+FSEM[WARN ]: Unknown call target at: 413077: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413077: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413077: call      eax, parameter analysis failed.
+FSEM[WARN ]: There were 2 stack delta analysis failures in function 0x00413060 __RTC_Terminate
+FSEM[WARN ]: Replaced excessively large expression with v?[32]<unspec,f=10000>
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00411A6F in function 0x00411A50 __fastcall _RTC_AllocaHelper(x, x, x)
+FSEM[WARN ]: Unknown call target at: 413A42: call      [ebp-218], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413A93: call      ebx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413A9E: call      edi, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +005C(Wrong) at instruction: 4136E2: call      [41A1E0]
+FSEM[WARN ]: Unknown call target at: 4136FF: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41371B: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41373A: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413755: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41376E: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413788: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4137AE: call      edx, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +00A0(Wrong) at instruction: 413808: call      [41A1BC]
+FSEM[WARN ]: Unknown call target at: 41382F: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41387A: call      edx, parameter analysis failed.
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Unknown call target at: 4137D6: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 413891: call      [41A1C0]
+FSEM[WARN ]: Unknown call target at: 41389E: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4138A8: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4138B2: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4138BC: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4137AE: call      edx, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +00A0(Wrong) at instruction: 413808: call      [41A1BC]
+FSEM[WARN ]: Unknown call target at: 41382F: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41387A: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4137D6: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 413891: call      [41A1C0]
+FSEM[WARN ]: Unknown call target at: 41389E: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4138A8: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4138B2: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4138BC: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4137AE: call      edx, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +00A0(Wrong) at instruction: 413808: call      [41A1BC]
+FSEM[WARN ]: Unknown call target at: 41382F: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41387A: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4137D6: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 413891: call      [41A1C0]
+FSEM[WARN ]: Unknown call target at: 41389E: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4138A8: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4138B2: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4138BC: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4137AE: call      edx, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +00A0(Wrong) at instruction: 413808: call      [41A1BC]
+FSEM[WARN ]: Unknown call target at: 41382F: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41387A: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4137D6: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 413891: call      [41A1C0]
+FSEM[WARN ]: Unknown call target at: 41389E: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4138A8: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4138B2: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4138BC: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4137AE: call      edx, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +00A0(Wrong) at instruction: 413808: call      [41A1BC]
+FSEM[WARN ]: Unknown call target at: 41382F: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41387A: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4137D6: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 413891: call      [41A1C0]
+FSEM[WARN ]: Unknown call target at: 41389E: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4138A8: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4138B2: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4138BC: call      edx, parameter analysis failed.
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00413792 in function 0x00413610 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long)
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00413848 in function 0x00413610 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long)
+FSEM[WARN ]: There were 462 stack delta analysis failures in function 0x00413610 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long)
+OBJD[WARN ]: Function 0x00412630 DebuggerProbe includes only 3 of 5 blocks in the control flow.
+OBJD[WARN ]: Function 0x004126E0 DebuggerRuntime includes only 3 of 5 blocks in the control flow.
+FSEM[WARN ]: Skipping creation of 32 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0E70(Wrong) at instruction: 412524: call      edi
+FSEM[WARN ]: Skipping creation of 32 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0E70(Wrong) at instruction: 412555: call      edi
+FSEM[WARN ]: Unknown call target at: 412581: call      [ebp-E3C], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4124F2: call      esi, parameter analysis failed.
+FSEM[WARN ]: Unexpected instruction at end of basic block: 41258F: int3      
+FSEM[WARN ]: There were 2 stack delta analysis failures in function 0x00412390 failwithmessage
+FSEM[WARN ]: Replaced excessively large expression with v?[32]<unspec,f=10000>
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x004127F0 in function 0x004127B0 void __cdecl _RTC_StackFailure(void *, char const *)
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412810 in function 0x004127B0 void __cdecl _RTC_StackFailure(void *, char const *)
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412824 in function 0x004127B0 void __cdecl _RTC_StackFailure(void *, char const *)
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412835 in function 0x004127B0 void __cdecl _RTC_StackFailure(void *, char const *)
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412854 in function 0x004127B0 void __cdecl _RTC_StackFailure(void *, char const *)
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412866 in function 0x004127B0 void __cdecl _RTC_StackFailure(void *, char const *)
+OBJD[WARN ]: Function 0x004119D0 __fastcall _RTC_CheckStackVars(x, x) includes only 8 of 9 blocks in the control flow.
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 411A13: mov       edx, [ebp+4]
+FSEM[WARN ]: Replaced excessively large expression with v?[32]<unspec,f=10000>
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412B34 in function 0x00412B00 __RTC_UninitUse
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412B50 in function 0x00412B00 __RTC_UninitUse
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412B64 in function 0x00412B00 __RTC_UninitUse
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412B75 in function 0x00412B00 __RTC_UninitUse
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412B94 in function 0x00412B00 __RTC_UninitUse
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412BA6 in function 0x00412B00 __RTC_UninitUse
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 412BCD: mov       eax, [ebp+4]
+FSEM[WARN ]: Unknown call target at: 412E43: call      [ebp+14], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 412E43: call      [ebp+14], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 412D78: call      [ebp+14], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 412D78: call      [ebp+14], parameter analysis failed.
+FSEM[WARN ]: There were 8 stack delta analysis failures in function 0x00412D10 void __stdcall `eh vector destructor iterator'(void *, unsigned int, int, void (__thiscall *)(void *))
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 4119AE: mov       eax, [ebp+4]
+FSEM[WARN ]: Unknown call target at: 4114F3: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41150B: call      eax, parameter analysis failed.
+OBJD[WARN ]: Function 0x00411E20 __tmainCRTStartup includes only 41 of 48 blocks in the control flow.
+FSEM[WARN ]: Unknown call target at: 411FA7: call      [4195E8], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 411FA7: call      [4195E8], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 411FA7: call      [4195E8], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 411FA7: call      [4195E8], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 411FA7: call      [4195E8], parameter analysis failed.
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00411E8C in function 0x00411E20 __tmainCRTStartup
+FSEM[WARN ]: Unexpected instruction at end of basic block: 411F73: int3      
+FSEM[WARN ]: There were 10 stack delta analysis failures in function 0x00411E20 __tmainCRTStartup
+FSEM[WARN ]: Unknown call target at: 412AB1: call      [419594], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 412AB1: call      [419594], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41298B: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +016C(Wrong) at instruction: 4129C3: call      [41A1E4]
+FSEM[WARN ]: Unknown call target at: 4129D1: call      [419594], parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +017C(Wrong) at instruction: 4129E8: call      412390
+FSEM[WARN ]: There were 2 stack delta analysis failures in function 0x004128F0 void __cdecl _RTC_AllocaFailure(void *, struct _RTC_ALLOCA_NODE *, int)
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0020(Wrong) at instruction: 411B46: call      411203
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0020(Wrong) at instruction: 411B46: call      411203
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00411B05 in function 0x00411A90 __fastcall _RTC_CheckStackVars2(x, x, x)
+FSEM[WARN ]: There were 2 stack delta analysis failures in function 0x00411A90 __fastcall _RTC_CheckStackVars2(x, x, x)
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 411AD3: mov       eax, [ebp+4]
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 411B24: mov       ecx, [ebp+4]
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 411B40: mov       ecx, [ebp+4]
+FSEM[WARN ]: Unknown call target at: 413047: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413047: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413047: call      eax, parameter analysis failed.
+FSEM[WARN ]: There were 2 stack delta analysis failures in function 0x00413030 __RTC_Initialize
+FSEM[WARN ]: Counted stack parameters for function 0x00411C00 __thiscall type_info::type_info(class type_info const &) do not match the non-zero stack delta.
+OBJD[WARN ]: Function 0x00412130 check_managed_app includes only 2 of 6 blocks in the control flow.
+OPTI[INFO ]: Function analysis took X seconds.
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=8 thisptr=RC_of_0x41148F[32] insn=4114F3: call      eax
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=8 thisptr=RC_of_0x41148F[32] insn=41150B: call      eax
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=0 thisptr=v?[32] insn=41371B: call      edx
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=28 thisptr=v?[32] insn=41373A: call      eax
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=32 thisptr=v?[32] insn=413755: call      edx
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=104 thisptr=v?[32] insn=41376E: call      eax
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=112 thisptr=v?[32] insn=41387A: call      edx
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=64 thisptr=v?[32] insn=4138A8: call      edx
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=56 thisptr=v?[32] insn=4138B2: call      edx
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=40 thisptr=v?[32] insn=4138BC: call      edx
+OBJD[INFO ]: RTTI was found at 0x00416750 with a class name: .?AVDerived@@
+OBJD[INFO ]: Virtual function table at 0x00416754 const Derived::`vftable'{for `Base'} has at most 3 entries.
+OBJD[INFO ]: The entries are: 0x004111FE virtual int __thiscall Base::func1(void) 0x00411104 virtual int __thiscall Base::func2(void) 0x0041113B virtual int __thiscall Derived::func3(void)
+OBJD[INFO ]: Possible virtual function table found at 0x00416754 const Derived::`vftable'{for `Base'} installed by 0x004115E9
+OBJD[INFO ]: RTTI was found at 0x0041673C with a class name: .?AVDerived@@
+OBJD[INFO ]: Virtual function table at 0x00416740 const Derived::`vftable'{for `Base2'} has at most 3 entries.
+OBJD[INFO ]: The entries are: 0x00411190 virtual int __thiscall Base2::func1(void) 0x00411154 virtual int __thiscall Base2::func2(void) 0x0041100A virtual int __thiscall Derived::func4(void)
+OBJD[INFO ]: Possible virtual function table found at 0x00416740 const Derived::`vftable'{for `Base2'} installed by 0x004115F2
+OBJD[INFO ]: Function 0x004115B0 __thiscall Derived::Derived(void) uses __thiscall convention.
+OBJD[INFO ]: RTTI was found at 0x00416764 with a class name: .?AVBase@@
+OBJD[INFO ]: Virtual function table at 0x00416768 const Base::`vftable' has at most 3 entries.
+OBJD[INFO ]: The entries are: 0x004111FE virtual int __thiscall Base::func1(void) 0x00411104 virtual int __thiscall Base::func2(void) 0x00411168 j___purecall
+OBJD[INFO ]: Possible virtual function table found at 0x00416768 const Base::`vftable' installed by 0x004116A6
+OBJD[INFO ]: Function 0x00411680 __thiscall Base::Base(void) uses __thiscall convention.
+OBJD[INFO ]: Function 0x004116F0 virtual int __thiscall Base::func1(void) uses __thiscall convention.
+OBJD[INFO ]: Function 0x00411750 virtual int __thiscall Base::func2(void) uses __thiscall convention.
+OBJD[INFO ]: RTTI was found at 0x00416778 with a class name: .?AVBase2@@
+OBJD[INFO ]: Virtual function table at 0x0041677C const Base2::`vftable' has at most 3 entries.
+OBJD[INFO ]: The entries are: 0x00411190 virtual int __thiscall Base2::func1(void) 0x00411154 virtual int __thiscall Base2::func2(void) 0x00411168 j___purecall
+OBJD[INFO ]: Possible virtual function table found at 0x0041677C const Base2::`vftable' installed by 0x004117D6
+OBJD[INFO ]: Function 0x004117B0 __thiscall Base2::Base2(void) uses __thiscall convention.
+OBJD[INFO ]: Function 0x00411820 virtual int __thiscall Base2::func1(void) uses __thiscall convention.
+OBJD[INFO ]: Function 0x00411880 virtual int __thiscall Base2::func2(void) uses __thiscall convention.
+OBJD[INFO ]: Function 0x004118E0 virtual int __thiscall Derived::func4(void) uses __thiscall convention.
+OBJD[INFO ]: Function 0x00411920 virtual int __thiscall Derived::func3(void) uses __thiscall convention.
+OBJD[INFO ]: Function 0x00411980 __fastcall __security_check_cookie(x) uses __thiscall convention.
+OBJD[INFO ]: RTTI was found at 0x0041678C with a class name: .?AVtype_info@@
+OBJD[INFO ]: Virtual function table at 0x00416790 const type_info::`vftable' has at most 1 entries.
+OBJD[INFO ]: The entries are: 0x004110C8 virtual void * __thiscall type_info::`vector deleting destructor'(unsigned int)
+OBJD[INFO ]: Possible virtual function table found at 0x00416790 const type_info::`vftable' installed by 0x00411C0C
+OBJD[INFO ]: Function 0x00411C00 __thiscall type_info::type_info(class type_info const &) uses __thiscall convention.
+OBJD[INFO ]: Function 0x00411C30 virtual void * __thiscall type_info::`vector deleting destructor'(unsigned int) uses __thiscall convention.
+OBJD[INFO ]: Function 0x00411CC0 class type_info & __thiscall type_info::operator=(class type_info const &) uses __thiscall convention.
+OBJD[INFO ]: Member at offset 0 in function 0x004115B0 __thiscall Derived::Derived(void) is a parent class.
+OBJD[INFO ]: Member at offset 16 in function 0x004115B0 __thiscall Derived::Derived(void) is a parent class.
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Virtual function table at 0x00416870 GS_ExceptionPointers entry 1, has a non-function pointer 0x004191D0 GS_ExceptionRecord at address 0x00416870
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Virtual function table at 0x00416870 GS_ExceptionPointers entry 2, has a non-function pointer 0x00419228 GS_ContextRecord at address 0x00416874
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OPTI[INFO ]: Exported 349 Prolog facts to ...
+OPTI[INFO ]: Analyzing object oriented data structures...
+OPTI[INFO ]: Exported 49 Prolog results to ...
+OBJD[INFO ]: Possible parent constructor found at 0x00411680 __thiscall Base::Base(void)
+OBJD[INFO ]: Possible member function found in constructor 0x004115B0 __thiscall Derived::Derived(void) 0x00411750 virtual int __thiscall Base::func2(void)
+OBJD[INFO ]: Possible parent constructor found at 0x004117B0 __thiscall Base2::Base2(void)
+OBJD[INFO ]: Recursively finding methods...
+OBJD[INFO ]: Removing ancestor methods...
+OBJD[INFO ]: Analyzing vtable overlap...
+OBJD[INFO ]: Analyzing virtual function calls...
+OBJD[INFO ]: Call at 0x004114F3 uses the this-constructor at 0x004115B0 __thiscall Derived::Derived(void).
+OBJD[INFO ]: Call at 0x004114F3 was resolved to OO method 0x0041113B virtual int __thiscall Derived::func3(void).
+OBJD[INFO ]: Call at 0x0041150B uses the this-constructor at 0x004115B0 __thiscall Derived::Derived(void).
+OBJD[INFO ]: Call at 0x0041150B was resolved to OO method 0x0041113B virtual int __thiscall Derived::func3(void).
+OBJD[WARN ]: Call at 0x0041371B is in function 0x00413610 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long) which has no known object uses.
+OBJD[WARN ]: Call at 0x0041373A is in function 0x00413610 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long) which has no known object uses.
+OBJD[WARN ]: Call at 0x00413755 is in function 0x00413610 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long) which has no known object uses.
+OBJD[WARN ]: Call at 0x0041376E is in function 0x00413610 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long) which has no known object uses.
+OBJD[WARN ]: Call at 0x0041387A is in function 0x00413610 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long) which has no known object uses.
+OBJD[WARN ]: Call at 0x004138A8 is in function 0x00413610 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long) which has no known object uses.
+OBJD[WARN ]: Call at 0x004138B2 is in function 0x00413610 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long) which has no known object uses.
+OBJD[WARN ]: Call at 0x004138BC is in function 0x00413610 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long) which has no known object uses.
+OBJD[INFO ]: Merging classes that share methods...
+OBJD[INFO ]: Removing empty classes...
+OBJD[INFO ]: Reanalyzing members from methods...
+OBJD[INFO ]: Setting members from methods in classes...
+OBJD[INFO ]: Analyzing embedded objects...
+OBJD[INFO ]: Disallowing virtual constructors...
+OBJD[INFO ]: Evaluating virtual destructors...
+OBJD[INFO ]: Analyzing final class sizes...
+OPTI[INFO ]: ================================================================================
+OPTI[INFO ]: Constructor: Derived (0x004115B0 __thiscall Derived::Derived(void))
+OPTI[INFO ]: Member: Offset: 0x0000 Size: 0x0010 [parent class] [vftable at 0x00416754 const Derived::`vftable'{for `Base'}]
+OPTI[INFO ]:   Passed to method at 0x00411680 __thiscall Base::Base(void)
+OPTI[INFO ]:   Passed to method at 0x00411750 virtual int __thiscall Base::func2(void)
+OPTI[INFO ]:   Member used at: 4115D6: call      4110F0 in function 0x004115B0 __thiscall Derived::Derived(void)
+OPTI[INFO ]:   Member used at: 4115E9: mov       [eax], 416754 in function 0x004115B0 __thiscall Derived::Derived(void)
+OPTI[INFO ]:   Member used at: 411617: call      411104 in function 0x004115B0 __thiscall Derived::Derived(void)
+OPTI[INFO ]:   VTable Entry: 0 points to method 0x004111FE virtual int __thiscall Base::func1(void)
+OPTI[INFO ]:   VTable Entry: 1 points to method 0x00411104 virtual int __thiscall Base::func2(void)
+OPTI[INFO ]:   VTable Entry: 2 points to method 0x0041113B virtual int __thiscall Derived::func3(void)
+OPTI[INFO ]: Member: Offset: 0x0010 Size: 0x0010 [parent class] [vftable at 0x00416740 const Derived::`vftable'{for `Base2'}]
+OPTI[INFO ]:   Passed to method at 0x004117B0 __thiscall Base2::Base2(void)
+OPTI[INFO ]:   Passed to method at 0x00411820 virtual int __thiscall Base2::func1(void)
+OPTI[INFO ]:   Member used at: 4115E1: call      411014 in function 0x004115B0 __thiscall Derived::Derived(void)
+OPTI[INFO ]:   Member used at: 4115F2: mov       [eax+10], 416740 in function 0x004115B0 __thiscall Derived::Derived(void)
+OPTI[INFO ]:   Member used at: 41162A: call      411190 in function 0x004115B0 __thiscall Derived::Derived(void)
+OPTI[INFO ]:   VTable Entry: 0 points to method 0x00411190 virtual int __thiscall Base2::func1(void)
+OPTI[INFO ]:   VTable Entry: 1 points to method 0x00411154 virtual int __thiscall Base2::func2(void)
+OPTI[INFO ]:   VTable Entry: 2 points to method 0x0041100A virtual int __thiscall Derived::func4(void)
+OPTI[INFO ]: Member: Offset: 0x0020 Size: 0x0004
+OPTI[INFO ]:   Member used at: 41161F: mov       [ecx+20], eax in function 0x004115B0 __thiscall Derived::Derived(void)
+OPTI[INFO ]:   Member used at: 411632: mov       [ecx+20], eax in function 0x004115B0 __thiscall Derived::Derived(void)
+OPTI[INFO ]: Total object instance size: 0x24
+OPTI[INFO ]: Constructor: 0x004115B0 __thiscall Derived::Derived(void)
+OPTI[INFO ]: ================================================================================
+OPTI[INFO ]: Constructor: Base (0x00411680 __thiscall Base::Base(void))
+OPTI[INFO ]: Member: Offset: 0x0000 Size: 0x0004 [vftable at 0x00416768 const Base::`vftable']
+OPTI[INFO ]:   Member used at: 4116A6: mov       [eax], 416768 in function 0x00411680 __thiscall Base::Base(void)
+OPTI[INFO ]:   VTable Entry: 0 points to method 0x004111FE virtual int __thiscall Base::func1(void)
+OPTI[INFO ]:   VTable Entry: 1 points to method 0x00411104 virtual int __thiscall Base::func2(void)
+OPTI[INFO ]:   VTable Entry: 2 points to function 0x00411168 j___purecall
+OPTI[INFO ]: Member: Offset: 0x0004 Size: 0x0004
+OPTI[INFO ]:   Member used at: 4116AF: mov       [eax+4], 1 in function 0x00411680 __thiscall Base::Base(void)
+OPTI[INFO ]:   Member used at: 411776: mov       [eax+4], 3 in function 0x00411750 virtual int __thiscall Base::func2(void)
+OPTI[INFO ]: Member: Offset: 0x0008 Size: 0x0001
+OPTI[INFO ]:   Member used at: 4116B9: mov       [eax+8], 61 in function 0x00411680 __thiscall Base::Base(void)
+OPTI[INFO ]:   Member used at: 411780: mov       [eax+8], 63 in function 0x00411750 virtual int __thiscall Base::func2(void)
+OPTI[INFO ]: Member: Offset: 0x000C Size: 0x0004
+OPTI[INFO ]:   Member used at: 4116C0: mov       [eax+C], -1 in function 0x00411680 __thiscall Base::Base(void)
+OPTI[INFO ]:   Member used at: 411787: mov       [eax+C], -3 in function 0x00411750 virtual int __thiscall Base::func2(void)
+OPTI[INFO ]: Total object instance size: 0x10
+OPTI[INFO ]: Constructor: 0x00411680 __thiscall Base::Base(void)
+OPTI[INFO ]: Method: 0x00411750 virtual int __thiscall Base::func2(void)
+OPTI[INFO ]: ================================================================================
+OPTI[INFO ]: Constructor: Base2 (0x004117B0 __thiscall Base2::Base2(void))
+OPTI[INFO ]: Member: Offset: 0x0000 Size: 0x0004 [vftable at 0x0041677C const Base2::`vftable']
+OPTI[INFO ]:   Member used at: 4117D6: mov       [eax], 41677C in function 0x004117B0 __thiscall Base2::Base2(void)
+OPTI[INFO ]:   VTable Entry: 0 points to method 0x00411190 virtual int __thiscall Base2::func1(void)
+OPTI[INFO ]:   VTable Entry: 1 points to method 0x00411154 virtual int __thiscall Base2::func2(void)
+OPTI[INFO ]:   VTable Entry: 2 points to function 0x00411168 j___purecall
+OPTI[INFO ]: Member: Offset: 0x0004 Size: 0x0004
+OPTI[INFO ]:   Member used at: 4117DF: mov       [eax+4], -64 in function 0x004117B0 __thiscall Base2::Base2(void)
+OPTI[INFO ]:   Member used at: 411846: mov       [eax+4], C8 in function 0x00411820 virtual int __thiscall Base2::func1(void)
+OPTI[INFO ]: Member: Offset: 0x0008 Size: 0x0001
+OPTI[INFO ]:   Member used at: 4117E9: mov       [eax+8], 41 in function 0x004117B0 __thiscall Base2::Base2(void)
+OPTI[INFO ]:   Member used at: 411850: mov       [eax+8], 42 in function 0x00411820 virtual int __thiscall Base2::func1(void)
+OPTI[INFO ]: Member: Offset: 0x000C Size: 0x0004
+OPTI[INFO ]:   Member used at: 4117F0: mov       [eax+C], -64 in function 0x004117B0 __thiscall Base2::Base2(void)
+OPTI[INFO ]:   Member used at: 411857: mov       [eax+C], -C8 in function 0x00411820 virtual int __thiscall Base2::func1(void)
+OPTI[INFO ]: Total object instance size: 0x10
+OPTI[INFO ]: Constructor: 0x004117B0 __thiscall Base2::Base2(void)
+OPTI[INFO ]: Method: 0x00411820 virtual int __thiscall Base2::func1(void)
+OPTI[INFO ]: ================================================================================
+OPTI[INFO ]: Constructor: type_info (0x00411C00 __thiscall type_info::type_info(class type_info const &))
+OPTI[INFO ]: Member: Offset: 0x0000 Size: 0x0004 [vftable at 0x00416790 const type_info::`vftable']
+OPTI[INFO ]:   Member used at: 411C0C: mov       [eax], 416790 in function 0x00411C00 __thiscall type_info::type_info(class type_info const &)
+OPTI[INFO ]:   VTable Entry: 0 points to method 0x004110C8 virtual void * __thiscall type_info::`vector deleting destructor'(unsigned int)
+OPTI[INFO ]: Total object instance size: 0x4
+OPTI[INFO ]: Constructor: 0x00411C00 __thiscall type_info::type_info(class type_info const &)
+OPTI[INFO ]: ================================================================================
+OBJD[INFO ]: Exporting classes to JSON file: tests/ooex_vs2010/Debug/ooex5.json
+OPTI[INFO ]: Found 4 classes, 14 methods, 2 virtual calls, and 23 usage instructions.
+OPTI[INFO ]: Successfully exported to JSON file 'tests/ooex_vs2010/Debug/ooex5.json'.
+OPTI[INFO ]: Object digger analysis complete.

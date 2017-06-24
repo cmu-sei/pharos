@@ -1,0 +1,49 @@
+pharos:
+  verbosity:                    # an integer value 1-14, higher number chattier
+  partitioner_semantics: true   # affects partioner version 2
+  json_config:
+  library:
+  prolog_dir: 
+  prolog_rules_dir:
+  apidb: [ apidb/pharos-win7.sqlite, configs ]
+  timeout: 900.0
+  relative_timeout: 20.0
+  partitioner_timeout: 300.0
+  relative_partitioner_timeout: 300.0
+  maxmem: 40000.0
+  relative_maxmem: 1000.0
+  block_counter_limit: 3000
+  func_counter_limit: 3000
+  typedb: [ typedb/types.json ]
+
+# application specific overrides, based on the executable name
+application:
+  apianalyzer:
+  apianalyzer-static:
+  objdigger:
+  objdigger-static:
+  fn2yara:
+    pharos:
+      allow-64bit: true
+  fn2yara-static:
+    pharos:
+      allow-64bit: true
+  fn2hash:
+    pharos:
+      verbosity:
+      allow-64bit: true
+  fn2hash-static:
+    pharos:
+      verbosity:
+      allow-64bit: true
+  stackstrings:
+    convolution-limit: 25 # maximum number of strings deduced for a single stack location
+    convolution-key-limit: 50 # maximum number of keys deduced for a single string
+    pharos:
+      allow-64bit: true
+  stackstrings-static:
+    convolution-limit: 25 # maximum number of strings deduced for a single stack location
+    convolution-key-limit: 50 # maximum number of keys deduced for a single string
+    pharos:
+      allow-64bit: true
+

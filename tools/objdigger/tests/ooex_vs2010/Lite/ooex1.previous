@@ -1,0 +1,1643 @@
+OPTI[WHERE]: Verbose logging level set to 4.
+OPTI[INFO ]: Analyzing executable: tests/ooex_vs2010/Lite/ooex1.exe
+OPTI[INFO ]: Object Digger version X.
+OBJD[INFO ]: Using version two of function partitioner.
+OBJD[INFO ]: Enabling semantic control flow analysis during function partitioning.
+OPTI[WHERE]: Forcing non-color logging.
+OPTI[INFO ]: ROSE disassembly complete.
+OBJD[INFO ]: Loaded API database: kernel32.json
+OBJD[INFO ]: Finding imported new methods...
+OBJD[INFO ]: Finding imported delete methods...
+OBJD[INFO ]: Finding imported purecall methods...
+OBJD[WARN ]: Function call graph has a cycle: src=0x00403055 doexit dst=0x00404329 __lock stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x004031DF __amsg_exit dst=0x00403223 __NMSG_WRITE stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x004033D2 __FF_MSGBANNER dst=0x00403223 __NMSG_WRITE stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x00405B88 __set_error_mode dst=0x0040419C __errno stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x00401FBA _free dst=0x0040419C __errno stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x00404267 __mtinitlocknum dst=0x00403223 __NMSG_WRITE stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x00404048 __malloc_crt dst=0x00401A2F _malloc stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x00404267 __mtinitlocknum dst=0x0040419C __errno stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x00404267 __mtinitlocknum dst=0x00404329 __lock stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x00405D92 __calloc_impl dst=0x0040419C __errno stack analysis may be incorrect.
+FSEM[WARN ]: Counted stack parameters for function 0x00401769 __thiscall std::exception::exception(char const * const &, int) do not match the non-zero stack delta.
+FSEM[WARN ]: Unknown call target at: 401AEA: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 402F39: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 402F4E: call      [407060]
+FSEM[WARN ]: Unexpected instruction at end of basic block: 402F54: int3      
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x00402F3D ___crtExitProcess
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 402E23: mov       eax, [ebp+4]
+OBJD[WARN ]: Function 0x004015C6 __fastcall __security_check_cookie(x) includes only 3 of 12 blocks in the control flow.
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00403ECC str_misaligned in function 0x00403EC0 _strlen
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00403EF0 main_loop in function 0x00403EC0 _strlen
+OBJD[WARN ]: Function 0x004063A0 _memset includes only 36 of 37 blocks in the control flow.
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x004063DD adjust_loop in function 0x004063A0 _memset
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x004063FF in function 0x004063A0 _memset
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00406D56 L_Byte_0 in function 0x004063A0 _memset
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00406D61 L_Dword_0 in function 0x004063A0 _memset
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00406CD5 L_1_0 in function 0x004063A0 _memset
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00406D15 L_2_0 in function 0x004063A0 _memset
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00406D2D L_TrailDword_0 in function 0x004063A0 _memset
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00406D3A L_TrailNextByte_0 in function 0x004063A0 _memset
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 40560E: mov       eax, [ebp+4]
+FSEM[WARN ]: Unknown call target at: 405940: call      edi, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 405953: call      ebx, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 405973: call      esi
+FSEM[WARN ]: Unknown call target at: 405979: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40598D: call      esi
+FSEM[WARN ]: Unknown call target at: 405996: call      eax, parameter analysis failed.
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4059A1: call      esi
+FSEM[WARN ]: Unknown call target at: 4059B3: call      eax, parameter analysis failed.
+FSEM[WARN ]: There were 3 stack delta analysis failures in function 0x0040585C ___crtMessageBoxW
+FSEM[WARN ]: Lost track of stack pointer: 403BE8: sub       esp, eax
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 403BFB: push      [ebp-8]
+FSEM[WARN ]: Lost track of stack pointer: 403C24: mov       esp, ebp
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 403C1F: pop       ecx
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 40309F: call      esi
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 4030B0: call      esi
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 40318F: call      403C15
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 403172: call      404250
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 40317B: call      402F3D
+FSEM[WARN ]: Unknown call target at: 40314C: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 40312B: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 4030D6: call      esi
+FSEM[WARN ]: Unknown call target at: 4030E1: call      ebx, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 4030E9: call      esi
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 4030F3: call      esi
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 40318F: call      403C15
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 403172: call      404250
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 40317B: call      402F3D
+FSEM[WARN ]: Unknown call target at: 40314C: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 40312B: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 4030D6: call      esi
+FSEM[WARN ]: Unknown call target at: 4030E1: call      ebx, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 4030E9: call      esi
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 4030F3: call      esi
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 40318F: call      403C15
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 403172: call      404250
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 40317B: call      402F3D
+FSEM[WARN ]: Unknown call target at: 40314C: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 40312B: call      eax, parameter analysis failed.
+FSEM[WARN ]: Block is a 'return' block, ending with a CALL instruction:40317B: call      402F3D
+FSEM[WARN ]: Function 0x00403055 doexit has inconsistent return stack deltas: delta1=+0000(None) delta2=+0008(Wrong)
+FSEM[WARN ]: There were 125 stack delta analysis failures in function 0x00403055 doexit
+FSEM[WARN ]: Unexpected instruction at end of basic block: 4056DB: int3      
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 4031F7: call      4031AB
+FSEM[WARN ]: Unexpected instruction at end of basic block: 4031FC: int3      
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x004031DF __amsg_exit
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 404294: call      402F3D
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 4042AF: call      404048
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 404305: call      401FBA
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 4042DF: call      [407084]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 4042EA: call      401FBA
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40431A: call      403C15
+FSEM[WARN ]: Unified stack delta for function 0x00404267 __mtinitlocknum does not match RETN size of: 0 unified stack delta was: -0004(Wrong)
+FSEM[WARN ]: There were 8 stack delta analysis failures in function 0x00404267 __mtinitlocknum
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 401BDA: call      [407030]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 401C0E: call      404329
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 401C1B: call      [40702C]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 401C2F: call      404329
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 401C4D: call      40435C
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 401C5F: call      403C15
+FSEM[WARN ]: Unified stack delta for function 0x00401BC9 __initptd does not match RETN size of: 0 unified stack delta was: +0008(Wrong)
+FSEM[WARN ]: There were 6 stack delta analysis failures in function 0x00401BC9 __initptd
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 405DD5: call      [407014]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 405DE9: call      401AD2
+FSEM[WARN ]: There were 2 stack delta analysis failures in function 0x00405D92 __calloc_impl
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 4040B5: call      [4070A8]
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 40409E: call      405D92
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 4040B5: call      [4070A8]
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 40409E: call      405D92
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 4040B5: call      [4070A8]
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 40409E: call      405D92
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 4040B5: call      [4070A8]
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 40409E: call      405D92
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 4040B5: call      [4070A8]
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00404096 Retry_0 in function 0x0040408D __calloc_crt
+FSEM[WARN ]: There were 9 stack delta analysis failures in function 0x0040408D __calloc_crt
+FSEM[WARN ]: Unknown call target at: 401C94: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401CBD: call      [407010]
+FSEM[WARN ]: Unknown call target at: 401CC3: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401CE2: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 401CEB: call      [407034]
+FSEM[WARN ]: There were 5 stack delta analysis failures in function 0x00401C7D __getptd_noexit
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00405B12 in function 0x00405B0A _wcslen
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403371: call      [407068]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4033AE: call      403EC0
+FSEM[WARN ]: Skipping creation of 20 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4033BD: call      [407064]
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0218(Wrong) at instruction: 4032BF: call      [40706C]
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0218(Wrong) at instruction: 4032D5: call      405B25
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4032EE: call      405B0A
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4032FB: call      405B0A
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403318: call      405A3D
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403330: call      4059C8
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403344: call      4059C8
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40335B: call      40585C
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4033AE: call      403EC0
+FSEM[WARN ]: Skipping creation of 20 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4033BD: call      [407064]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4032EE: call      405B0A
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4032FB: call      405B0A
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403318: call      405A3D
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403330: call      4059C8
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403344: call      4059C8
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40335B: call      40585C
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4032EE: call      405B0A
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4032FB: call      405B0A
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403318: call      405A3D
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403330: call      4059C8
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403344: call      4059C8
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40335B: call      40585C
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4032EE: call      405B0A
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4032FB: call      405B0A
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403318: call      405A3D
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403330: call      4059C8
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403344: call      4059C8
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40335B: call      40585C
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4032EE: call      405B0A
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4032FB: call      405B0A
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403318: call      405A3D
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403330: call      4059C8
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403344: call      4059C8
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40335B: call      40585C
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x004032E1 in function 0x00403223 __NMSG_WRITE
+FSEM[WARN ]: There were 83 stack delta analysis failures in function 0x00403223 __NMSG_WRITE
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 401A4F: call      403223
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401A59: call      402F3D
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +001C(Wrong) at instruction: 401A74: call      [407014]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 401A8C: call      401AD2
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 401A4F: call      403223
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401A59: call      402F3D
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +001C(Wrong) at instruction: 401A74: call      [407014]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 401A8C: call      401AD2
+FSEM[WARN ]: There were 8 stack delta analysis failures in function 0x00401A2F _malloc
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 4017C1: call      403E5A
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x00401793 void __thiscall std::exception::_Copy_str(char const *)
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 401838: call      401793
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x00401818 class std::exception & __thiscall std::exception::operator=(class std::exception const &)
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 405EB5: call      40415A
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 405E9D: call      40415A
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 405E78: call      401AD2
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +001C(Wrong) at instruction: 405E53: call      [4070CC]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 405EB5: call      40415A
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 405E68: call      401AD2
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 405E9D: call      40415A
+FSEM[WARN ]: There were 7 stack delta analysis failures in function 0x00405E14 _realloc
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 404103: call      [4070A8]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 4040E8: call      405E14
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 404103: call      [4070A8]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 4040E8: call      405E14
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 404103: call      [4070A8]
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 4040E8: call      405E14
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 404103: call      [4070A8]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 4040E8: call      405E14
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 404103: call      [4070A8]
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x004040E2 Retry_1 in function 0x004040D9 __realloc_crt
+FSEM[WARN ]: There were 9 stack delta analysis failures in function 0x004040D9 __realloc_crt
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +001C(Wrong) at instruction: 401954: call      4040D9
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +001C(Wrong) at instruction: 40196A: call      4040D9
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 40197C: call      [40700C]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401990: call      edi
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401998: call      edi
+FSEM[WARN ]: There were 5 stack delta analysis failures in function 0x004018F5 _onexit_nolock
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 4019F4: call      4018F5
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 401A0C: call      403C15
+FSEM[WARN ]: Unified stack delta for function 0x004019DC __onexit does not match RETN size of: 0 unified stack delta was: +0008(Wrong)
+FSEM[WARN ]: There were 2 stack delta analysis failures in function 0x004019DC __onexit
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401143: call      401AD2
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401195: call      401A18
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 40119F: call      40187F
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +001C(Wrong) at instruction: 4011B0: call      401AFA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401150: call      401A2F
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401143: call      401AD2
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401195: call      401A18
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 40119F: call      40187F
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +001C(Wrong) at instruction: 4011B0: call      401AFA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401150: call      401A2F
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401143: call      401AD2
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401195: call      401A18
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 40119F: call      40187F
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +001C(Wrong) at instruction: 4011B0: call      401AFA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401150: call      401A2F
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401143: call      401AD2
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401195: call      401A18
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 40119F: call      40187F
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +001C(Wrong) at instruction: 4011B0: call      401AFA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401150: call      401A2F
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401143: call      401AD2
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401195: call      401A18
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 40119F: call      40187F
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +001C(Wrong) at instruction: 4011B0: call      401AFA
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x0040114D in function 0x00401136 void * __cdecl operator new(unsigned int)
+FSEM[WARN ]: Unexpected instruction at end of basic block: 4011B5: int3      
+FSEM[WARN ]: There were 24 stack delta analysis failures in function 0x00401136 void * __cdecl operator new(unsigned int)
+OBJD[INFO ]: Function at 0x00401136 void * __cdecl operator new(unsigned int) matches hash 9F377A6D9EDE41E4F1B43C475069EE28 of known new() method.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 401D06: call      4031DF
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x00401CF6 __getptd
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 40103F: call      401136
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x00401020 __thiscall Derived::Derived(void)
+OBJD[INFO ]: Function at 0x004011D7 void __cdecl operator delete(void *) matches hash 3D3F9E46688A1687E2AB372921A31394 of known delete() method.
+FSEM[WARN ]: Lost track of stack pointer: 40120A: mov       esp, [ebx-4]
+FSEM[WARN ]: Lost track of stack pointer: 401210: leave     
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 40120F: pop       ebx
+FSEM[WARN ]: Counted stack parameters for function 0x0040120F do not match the non-zero stack delta.
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 401214: pop       eax
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 405443: call      [407010]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 4053EB: call      40534D
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 40545F: call      4031AB
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40546A: call      404329
+FSEM[WARN ]: Unknown call target at: 405508: call      [ebp-20], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4054EC: call      [ebp-20], parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 40552E: call      403C15
+FSEM[WARN ]: Unknown call target at: 405508: call      [ebp-20], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4054EC: call      [ebp-20], parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 40552E: call      403C15
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Unified stack delta for function 0x00405391 _raise does not match RETN size of: 0 unified stack delta was: -0004(Wrong)
+FSEM[WARN ]: There were 12 stack delta analysis failures in function 0x00405391 _raise
+FSEM[WARN ]: Unexpected instruction at end of basic block: 4051E3: int3      
+OBJD[WARN ]: Function 0x00402CCC void __cdecl terminate(void) includes only 9 of 11 blocks in the control flow.
+FSEM[WARN ]: Unknown call target at: 402CE8: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: -0004(Wrong) at instruction: 402CFF: call      403C15
+FSEM[WARN ]: Unified stack delta for function 0x00402CCC void __cdecl terminate(void) does not match RETN size of: 0 unified stack delta was: -0004(Wrong)
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x00402CCC void __cdecl terminate(void)
+FSEM[WARN ]: Counted stack parameters for function 0x00402085 ___FrameUnwindFilter do not match the non-zero stack delta.
+OBJD[WARN ]: Function 0x00402D18 void __cdecl _inconsistency(void) includes only 8 of 10 blocks in the control flow.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 402D2A: call      [407010]
+FSEM[WARN ]: Unknown call target at: 402D38: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unexpected instruction at end of basic block: 402D4F: int3      
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x00402D18 void __cdecl _inconsistency(void)
+FSEM[WARN ]: Counted stack parameters for function 0x004052FC __NLG_Notify1 do not match the non-zero stack delta.
+FSEM[WARN ]: Unknown call target at: 402D95: call      eax, parameter analysis failed.
+FSEM[WARN ]: Lost track of stack pointer: 402DB8: leave     
+OBJD[WARN ]: Function 0x004020D4 ___FrameUnwindToState includes only 19 of 22 blocks in the control flow.
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 40218A: call      403C15
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 402147: call      402D70
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 40218A: call      403C15
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 402147: call      402D70
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Unified stack delta for function 0x004020D4 ___FrameUnwindToState does not match RETN size of: 0 unified stack delta was: +0008(Wrong)
+FSEM[WARN ]: There were 4 stack delta analysis failures in function 0x004020D4 ___FrameUnwindToState
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+OBJD[WARN ]: Function 0x00403FC0 _strcmp includes only 21 of 22 blocks in the control flow.
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 402226: call      401214
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 402232: call      403C15
+FSEM[WARN ]: Unified stack delta for function 0x004021F5 ___DestructExceptionObject does not match RETN size of: 0 unified stack delta was: -0004(Wrong)
+FSEM[WARN ]: There were 3 stack delta analysis failures in function 0x004021F5 ___DestructExceptionObject
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x004022CA in function 0x00402273 IsInExceptionSpec
+FSEM[WARN ]: Unknown call target at: 402D11: call      eax, parameter analysis failed.
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x00402D05 void __cdecl unexpected(void)
+FSEM[WARN ]: Counted stack parameters for function 0x00402D05 void __cdecl unexpected(void) do not match the non-zero stack delta.
+FSEM[WARN ]: Lost track of stack pointer: 404E0C: sub       esp, [esp+C]
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 404E22: push      [ebp-4]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 40232C: call      401AFA
+FSEM[WARN ]: Unexpected instruction at end of basic block: 402331: int3      
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x004022E9 CallUnexpected
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0004(Wrong) at instruction: 4024B8: call      4014ED
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x00402458 $LN16_0
+OBJD[WARN ]: Function 0x00402332 CallCatchBlock includes only 11 of 25 blocks in the control flow.
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 40235A: call      4014C1
+FSEM[WARN ]: Skipping creation of 20 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +001C(Wrong) at instruction: 4023B1: call      401566
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 402447: call      403C15
+FSEM[WARN ]: Unified stack delta for function 0x00402332 CallCatchBlock does not match RETN size of: 0 unified stack delta was: +0008(Wrong)
+FSEM[WARN ]: There were 3 stack delta analysis failures in function 0x00402332 CallCatchBlock
+OBJD[WARN ]: Function 0x00404E50 _memmove includes only 60 of 70 blocks in the control flow.
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+OBJD[WARN ]: Function 0x004024CE ___BuildCatchObjectHelper includes only 44 of 46 blocks in the control flow.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 4025F4: call      404E36
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 402601: call      404E36
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 40260F: call      404E36
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 4025BC: call      404E36
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 4025C9: call      404E36
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 4025E1: call      40224A
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 4025EA: call      404E50
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 40256F: call      404E36
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 402580: call      404E36
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 402599: call      404E50
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 402527: call      404E36
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 402538: call      404E36
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 402554: call      40224A
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 402647: call      403C15
+FSEM[WARN ]: Unified stack delta for function 0x004024CE ___BuildCatchObjectHelper does not match RETN size of: 0 unified stack delta was: +0008(Wrong)
+FSEM[WARN ]: There were 14 stack delta analysis failures in function 0x004024CE ___BuildCatchObjectHelper
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 4026B4: call      40224A
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 4026C0: call      401214
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 40269A: call      40224A
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 4026A6: call      401214
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4026CC: call      403C15
+FSEM[WARN ]: Unified stack delta for function 0x0040264D ___BuildCatchObject does not match RETN size of: 0 unified stack delta was: -0004(Wrong)
+FSEM[WARN ]: There were 7 stack delta analysis failures in function 0x0040264D ___BuildCatchObject
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x004026DF CatchIt
+FSEM[WARN ]: Unknown call target at: 40137A: call      [ebp-2C], parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 28 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0034(Wrong) at instruction: 4027AB: call      4012D8
+FSEM[WARN ]: Skipping creation of 20 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +002C(Wrong) at instruction: 4027D9: call      40144E
+FSEM[WARN ]: Skipping creation of 28 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0038(Wrong) at instruction: 402830: call      4026DF
+FSEM[WARN ]: Skipping creation of 28 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0038(Wrong) at instruction: 402830: call      4026DF
+FSEM[WARN ]: There were 4 stack delta analysis failures in function 0x0040274D FindHandlerForForeignException
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +004C(Wrong) at instruction: 402900: call      404E36
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0048(Wrong) at instruction: 402967: call      402273
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0048(Wrong) at instruction: 402983: call      4018D5
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0048(Wrong) at instruction: 4029B3: call      4017F1
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +004C(Wrong) at instruction: 4029C8: call      401AFA
+FSEM[WARN ]: Skipping creation of 20 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0058(Wrong) at instruction: 402A1C: call      40144E
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0050(Wrong) at instruction: 402A7D: call      402026
+FSEM[WARN ]: Skipping creation of 28 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 402AC3: call      4026DF
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 402B21: call      402273
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 402B61: call      40121B
+FSEM[WARN ]: Skipping creation of 32 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 402BA9: call      40274D
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0048(Wrong) at instruction: 402983: call      4018D5
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0048(Wrong) at instruction: 4029B3: call      4017F1
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +004C(Wrong) at instruction: 4029C8: call      401AFA
+FSEM[WARN ]: Skipping creation of 20 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0058(Wrong) at instruction: 402A1C: call      40144E
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0050(Wrong) at instruction: 402A7D: call      402026
+FSEM[WARN ]: Skipping creation of 28 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 402AC3: call      4026DF
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 402B21: call      402273
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 402B61: call      40121B
+FSEM[WARN ]: Skipping creation of 32 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 402BA9: call      40274D
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0048(Wrong) at instruction: 402983: call      4018D5
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0048(Wrong) at instruction: 4029B3: call      4017F1
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +004C(Wrong) at instruction: 4029C8: call      401AFA
+FSEM[WARN ]: Skipping creation of 20 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0058(Wrong) at instruction: 402A1C: call      40144E
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0050(Wrong) at instruction: 402A7D: call      402026
+FSEM[WARN ]: Skipping creation of 28 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 402AC3: call      4026DF
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 402B21: call      402273
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 402B61: call      40121B
+FSEM[WARN ]: Skipping creation of 32 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 402BA9: call      40274D
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0048(Wrong) at instruction: 402983: call      4018D5
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0048(Wrong) at instruction: 4029B3: call      4017F1
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +004C(Wrong) at instruction: 4029C8: call      401AFA
+FSEM[WARN ]: Skipping creation of 20 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0058(Wrong) at instruction: 402A1C: call      40144E
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0050(Wrong) at instruction: 402A7D: call      402026
+FSEM[WARN ]: Skipping creation of 28 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 402AC3: call      4026DF
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 402B21: call      402273
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 402B61: call      40121B
+FSEM[WARN ]: Skipping creation of 32 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 402BA9: call      40274D
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0048(Wrong) at instruction: 402983: call      4018D5
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0048(Wrong) at instruction: 4029B3: call      4017F1
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +004C(Wrong) at instruction: 4029C8: call      401AFA
+FSEM[WARN ]: Skipping creation of 20 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0058(Wrong) at instruction: 402A1C: call      40144E
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0050(Wrong) at instruction: 402A7D: call      402026
+FSEM[WARN ]: Skipping creation of 28 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 402AC3: call      4026DF
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 402B21: call      402273
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 402B61: call      40121B
+FSEM[WARN ]: Skipping creation of 32 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 402BA9: call      40274D
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00402977 in function 0x00402854 FindHandler
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00402994 in function 0x00402854 FindHandler
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00402A36 in function 0x00402854 FindHandler
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00402A5F in function 0x00402854 FindHandler
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00402A71 in function 0x00402854 FindHandler
+FSEM[WARN ]: There were 551 stack delta analysis failures in function 0x00402854 FindHandler
+FSEM[WARN ]: Skipping creation of 32 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0030(Wrong) at instruction: 402CBC: call      402854
+FSEM[WARN ]: Unknown call target at: 402CA1: call      edx, parameter analysis failed.
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x00402BE6 ___InternalCxxFrameHandler
+OBJD[WARN ]: Function 0x004013AF TranslatorGuardHandler includes only 9 of 11 blocks in the control flow.
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 40141A: call      40121B
+FSEM[WARN ]: Skipping creation of 28 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0028(Wrong) at instruction: 401432: call      4012D8
+FSEM[WARN ]: Lost track of stack pointer: 401440: mov       esp, [ebx+1C]
+FSEM[WARN ]: There were 2 stack delta analysis failures in function 0x004013AF TranslatorGuardHandler
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 4015EB: call      403223
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 4015F5: call      402F3D
+FSEM[WARN ]: There were 2 stack delta analysis failures in function 0x004015D5 fast_error_exit
+FSEM[WARN ]: Unknown call target at: 401BA3: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 401BB7: call      [407028]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404216: call      ebx
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404219: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404240: call      ebx
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404216: call      ebx
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404219: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404240: call      ebx
+FSEM[WARN ]: There were 9 stack delta analysis failures in function 0x00401B8C __mtterm
+FSEM[WARN ]: Unknown call target at: 401F60: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401F8D: call      edi
+FSEM[WARN ]: Unknown call target at: 401F8F: call      eax, parameter analysis failed.
+FSEM[WARN ]: There were 3 stack delta analysis failures in function 0x00401E3F __mtinit
+FSEM[WARN ]: Unknown call target at: 402FB1: call      ecx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 402FB1: call      ecx, parameter analysis failed.
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x00402F9A __initterm_e
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x004056F2 in function 0x004056EC __initp_misc_cfltcvt_tab
+OBJD[WARN ]: Function 0x004057A0 __IsNonwritableInCurrentImage includes only 6 of 8 blocks in the control flow.
+FSEM[WARN ]: Unknown call target at: 402FDE: call      [40B9B0], parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 402FF4: call      402F9A
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403006: call      401A18
+FSEM[WARN ]: Unknown call target at: 403022: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40303B: call      4057A0
+FSEM[WARN ]: Unknown call target at: 40304B: call      [40B9B4], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 403022: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40303B: call      4057A0
+FSEM[WARN ]: Unknown call target at: 40304B: call      [40B9B4], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 403022: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40303B: call      4057A0
+FSEM[WARN ]: Unknown call target at: 40304B: call      [40B9B4], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 403022: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40303B: call      4057A0
+FSEM[WARN ]: Unknown call target at: 40304B: call      [40B9B4], parameter analysis failed.
+FSEM[WARN ]: Replaced excessively large expression with v?[32]<unspec,f=10000>
+FSEM[WARN ]: Unknown call target at: 403022: call      eax, parameter analysis failed.
+FSEM[WARN ]: There were 15 stack delta analysis failures in function 0x00402FBE __cinit
+FSEM[WARN ]: Unknown call target at: 403547: call      edx, parameter analysis failed.
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Unknown call target at: 40353A: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 403547: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 40353A: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 40353A: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 40353A: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 40353A: call      edx, parameter analysis failed.
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x0040348F in function 0x0040340B __XcptFilter
+FSEM[WARN ]: There were 11 stack delta analysis failures in function 0x0040340B __XcptFilter
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 4048F4: call      404329
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 404911: call      [407040]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 404924: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40493C: call      [40702C]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4048E4: call      4031DF
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4048EC: call      403C15
+FSEM[WARN ]: Unified stack delta for function 0x004048B8 ___updatetmbcinfo does not match RETN size of: 0 unified stack delta was: -0004(Wrong)
+FSEM[WARN ]: There were 8 stack delta analysis failures in function 0x004048B8 ___updatetmbcinfo
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 406262: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 406274: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 406286: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 406298: call      401FBA
+FSEM[WARN ]: There were 4 stack delta analysis failures in function 0x00406238 ___free_lconv_num
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4062D0: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4062E2: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4062F4: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 406306: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 406318: call      401FBA
+FSEM[WARN ]: Replaced excessively large expression with v?[32]<unspec,f=10000>
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40632A: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40633C: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40634E: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 406360: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 406372: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 406384: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 406396: call      401FBA
+FSEM[WARN ]: There were 12 stack delta analysis failures in function 0x004062A1 ___free_lconv_mon
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4044E0: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4044EB: call      406238
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4044F8: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404503: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404524: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404537: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404545: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404550: call      401FBA
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40456E: call      405EC1
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404579: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40459E: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4045B5: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4045C4: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40459E: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4045B5: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4045C4: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 40459E: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4045B5: call      401FBA
+FSEM[WARN ]: There were 18 stack delta analysis failures in function 0x00404484 ___freetlocinfo
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 40465D: call      404329
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 404671: call      4045CF
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 40464D: call      4031DF
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 404655: call      403C15
+FSEM[WARN ]: Unified stack delta for function 0x0040461C ___updatetlocinfo does not match RETN size of: 0 unified stack delta was: +0008(Wrong)
+FSEM[WARN ]: There were 4 stack delta analysis failures in function 0x0040461C ___updatetlocinfo
+OBJD[WARN ]: Function 0x00406D70 __alloca_probe_16 includes only 5 of 10 blocks in the control flow.
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Lost track of stack pointer: 406DBB: xchg      esp, eax
+FSEM[WARN ]: Lost track of stack pointer: 406DBB: xchg      esp, eax
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406DBC: mov       eax, [eax]
+FSEM[WARN ]: Skipping creation of 24 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0038(Wrong) at instruction: 406519: call      esi
+FSEM[WARN ]: Skipping creation of 24 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0038(Wrong) at instruction: 406535: call      esi
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0024(Wrong) at instruction: 4065A7: call      401A2F
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0020(Wrong) at instruction: 406590: call      406D70
+FSEM[WARN ]: Skipping creation of 24 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0038(Wrong) at instruction: 4065D4: call      esi
+FSEM[WARN ]: Skipping creation of 32 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0040(Wrong) at instruction: 4065F3: call      [407078]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0024(Wrong) at instruction: 4065FD: call      40641A
+FSEM[WARN ]: Skipping creation of 24 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0038(Wrong) at instruction: 40656E: call      esi
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0024(Wrong) at instruction: 406606: call      40641A
+FSEM[WARN ]: Skipping creation of 24 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0038(Wrong) at instruction: 406519: call      esi
+FSEM[WARN ]: Skipping creation of 24 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0038(Wrong) at instruction: 406535: call      esi
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0024(Wrong) at instruction: 4065A7: call      401A2F
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0020(Wrong) at instruction: 406590: call      406D70
+FSEM[WARN ]: Skipping creation of 24 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0038(Wrong) at instruction: 4065D4: call      esi
+FSEM[WARN ]: Skipping creation of 32 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0040(Wrong) at instruction: 4065F3: call      [407078]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0024(Wrong) at instruction: 4065FD: call      40641A
+FSEM[WARN ]: Skipping creation of 24 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0038(Wrong) at instruction: 40656E: call      esi
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0024(Wrong) at instruction: 406606: call      40641A
+FSEM[WARN ]: There were 18 stack delta analysis failures in function 0x0040643A __crtLCMapStringA_stat
+FSEM[WARN ]: Skipping creation of 36 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0038(Wrong) at instruction: 406650: call      40643A
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x00406621 ___crtLCMapStringA
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0024(Wrong) at instruction: 406706: call      4063A0
+FSEM[WARN ]: Skipping creation of 24 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0030(Wrong) at instruction: 40671B: call      esi
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0028(Wrong) at instruction: 406729: call      [4070D8]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +001C(Wrong) at instruction: 406733: call      40641A
+FSEM[WARN ]: There were 4 stack delta analysis failures in function 0x00406667 __crtGetStringTypeA_stat
+FSEM[WARN ]: Skipping creation of 28 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0030(Wrong) at instruction: 406777: call      406667
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x0040674E ___crtGetStringTypeA
+FSEM[WARN ]: Skipping creation of 36 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +056C(Wrong) at instruction: 4047E6: call      406621
+FSEM[WARN ]: Skipping creation of 36 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +054C(Wrong) at instruction: 40480B: call      406621
+FSEM[WARN ]: Skipping creation of 36 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +056C(Wrong) at instruction: 4047E6: call      406621
+FSEM[WARN ]: Skipping creation of 36 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +054C(Wrong) at instruction: 40480B: call      406621
+FSEM[WARN ]: There were 4 stack delta analysis failures in function 0x00404728 setSBUpLow
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +003C(Wrong) at instruction: 404B44: call      4063A0
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0034(Wrong) at instruction: 404AD2: call      [4070C4]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0038(Wrong) at instruction: 404AE5: call      [4070B8]
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +003C(Wrong) at instruction: 404AFD: call      4063A0
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +003C(Wrong) at instruction: 404B44: call      4063A0
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0034(Wrong) at instruction: 404AD2: call      [4070C4]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0038(Wrong) at instruction: 404AE5: call      [4070B8]
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +003C(Wrong) at instruction: 404AFD: call      4063A0
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +003C(Wrong) at instruction: 404B44: call      4063A0
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: There were 9 stack delta analysis failures in function 0x00404A5F __setmbcp_nolock
+FSEM[WARN ]: Unexpected parameter offset (0) at call: 404DDC: call      403C15
+FSEM[WARN ]: Unexpected parameter offset (4) at call: 404DDC: call      403C15
+FSEM[WARN ]: Unexpected parameter offset (8) at call: 404DDC: call      403C15
+FSEM[WARN ]: Unexpected parameter offset (12) at call: 404DDC: call      403C15
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 404C83: call      404048
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 404CA6: call      404A5F
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 404DC2: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 404CBE: call      [407040]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 404CD3: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404CE3: call      edi
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404CFE: call      404329
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404D75: call      [407040]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404D8C: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404D99: call      edi
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404DDC: call      403C15
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 404CA6: call      404A5F
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 404DC2: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 404CBE: call      [407040]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 404CD3: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404CE3: call      edi
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404CFE: call      404329
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404D75: call      [407040]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404D8C: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404D99: call      edi
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 404DDC: call      403C15
+FSEM[WARN ]: There were 31 stack delta analysis failures in function 0x00404C48 __setmbcp
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 403593: call      40408D
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 4035ED: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 4035B0: call      403EC0
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 4035C1: call      40408D
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 403613: call      401FBA
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 4035D1: call      403E5A
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 40357F: call      403EC0
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 403593: call      40408D
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 4035ED: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 4035B0: call      403EC0
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0014(Wrong) at instruction: 4035C1: call      40408D
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 403613: call      401FBA
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 4035D1: call      403E5A
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 40357F: call      403EC0
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0010(Wrong) at instruction: 403593: call      40408D
+FSEM[WARN ]: Unexpected instruction at end of basic block: 403630: int3      
+FSEM[WARN ]: There were 15 stack delta analysis failures in function 0x00403555 __setenvp
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00403739 in function 0x00403631 parse_cmdline
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0028(Wrong) at instruction: 4037F7: call      [407070]
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0028(Wrong) at instruction: 403822: call      403631
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0020(Wrong) at instruction: 403849: call      404048
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0028(Wrong) at instruction: 403863: call      403631
+FSEM[WARN ]: There were 5 stack delta analysis failures in function 0x004037CB __setargv
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403910: call      [407074]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403904: call      [407074]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403910: call      [407074]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403904: call      [407074]
+FSEM[WARN ]: There were 4 stack delta analysis failures in function 0x00403886 ___crtGetEnvironmentStringsA
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0064(Wrong) at instruction: 4039D6: call      40408D
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403A5D: call      [407088]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0064(Wrong) at instruction: 403A93: call      [407084]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403AE7: call      [407068]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403AF9: call      [407088]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0064(Wrong) at instruction: 403B27: call      [407084]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403B50: call      [407080]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0064(Wrong) at instruction: 4039D6: call      40408D
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403A5D: call      [407088]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0064(Wrong) at instruction: 403A93: call      [407084]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403AE7: call      [407068]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403AF9: call      [407088]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0064(Wrong) at instruction: 403B27: call      [407084]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403B50: call      [407080]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0064(Wrong) at instruction: 4039D6: call      40408D
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403A5D: call      [407088]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0064(Wrong) at instruction: 403A93: call      [407084]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403AE7: call      [407068]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403AF9: call      [407088]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0064(Wrong) at instruction: 403B27: call      [407084]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403B50: call      [407080]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0064(Wrong) at instruction: 4039D6: call      40408D
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403A5D: call      [407088]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0064(Wrong) at instruction: 403A93: call      [407084]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403AE7: call      [407068]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403AF9: call      [407088]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0064(Wrong) at instruction: 403B27: call      [407084]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403B50: call      [407080]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0064(Wrong) at instruction: 4039D6: call      40408D
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403A5D: call      [407088]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0064(Wrong) at instruction: 403A93: call      [407084]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403AE7: call      [407068]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403AF9: call      [407088]
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0064(Wrong) at instruction: 403B27: call      [407084]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0060(Wrong) at instruction: 403B50: call      [407080]
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00403963 in function 0x0040391D __ioinit
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x004039D2 in function 0x0040391D __ioinit
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x004039F7 in function 0x0040391D __ioinit
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00403A3E in function 0x0040391D __ioinit
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00403AB2 in function 0x0040391D __ioinit
+FSEM[WARN ]: There were 35 stack delta analysis failures in function 0x0040391D __ioinit
+OBJD[WARN ]: Function 0x00403B62 __RTC_Initialize includes only 2 of 5 blocks in the control flow.
+OBJD[WARN ]: Function 0x0040175F _mainCRTStartup includes only 39 of 45 blocks in the control flow.
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0018(Wrong) at instruction: 401619: call      [407008]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 401673: call      4015D5
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 401684: call      4015D5
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 40169D: call      4031DF
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 4016C3: call      4031DF
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 4016D4: call      4031DF
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 4016DC: call      402FBE
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 4016E7: call      4031DF
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 401715: call      403195
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 401759: call      403C15
+FSEM[WARN ]: Unified stack delta for function 0x0040175F _mainCRTStartup does not match RETN size of: 0 unified stack delta was: -0004(Wrong)
+FSEM[WARN ]: There were 11 stack delta analysis failures in function 0x0040175F _mainCRTStartup
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 403F59: call      404329
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 403F89: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403F92: call      401FBA
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: -0004(Wrong) at instruction: 403FA8: call      403C15
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 403F89: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403F92: call      401FBA
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: -0004(Wrong) at instruction: 403FA8: call      403C15
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403F92: call      401FBA
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: -0004(Wrong) at instruction: 403FA8: call      403C15
+FSEM[WARN ]: Unified stack delta for function 0x00403F4B static void __cdecl type_info::_Type_info_dtor(class type_info *) does not match RETN size of: 0 unified stack delta was: -0004(Wrong)
+FSEM[WARN ]: There were 12 stack delta analysis failures in function 0x00403F4B static void __cdecl type_info::_Type_info_dtor(class type_info *)
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 4019BC: call      [40700C]
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x004019AB ___onexitinit
+FSEM[WARN ]: Counted stack parameters for function 0x00401B4F __stdcall __crtTlsAlloc(x) do not match the non-zero stack delta.
+FSEM[WARN ]: Unexpected instruction at end of basic block: 401C68: mov       esi, [ebp+8]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +000C(Wrong) at instruction: 401D2F: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 401D3D: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 401D4B: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 401D59: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 401D67: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 401D75: call      401FBA
+FSEM[WARN ]: Replaced excessively large expression with v?[32]<unspec,f=10000>
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 401D83: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 401D94: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 401D9C: call      404329
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 401DAE: call      [407040]
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 401DC1: call      401FBA
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 401DD5: call      404329
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 401DEA: call      4043EB
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 401E06: call      404484
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 401E19: call      401FBA
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0008(Wrong) at instruction: 401E1F: call      403C15
+FSEM[WARN ]: Unified stack delta for function 0x00401D10 __stdcall _freefls(x) does not match RETN size of: 4 unified stack delta was: +0000(Wrong)
+FSEM[WARN ]: There were 17 stack delta analysis failures in function 0x00401D10 __stdcall _freefls(x)
+FSEM[WARN ]: Counted stack parameters for function 0x00401D10 __stdcall _freefls(x) do not match the non-zero stack delta.
+FSEM[WARN ]: Unexpected instruction at end of basic block: 401E27: mov       esi, [ebp+8]
+FSEM[WARN ]: Unexpected instruction at end of basic block: 401E33: mov       esi, [ebp+8]
+FSEM[WARN ]: Unexpected instruction at end of basic block: 402193: mov       esi, [ebp-1C]
+FSEM[WARN ]: Lost track of stack pointer: 402241: mov       esp, [ebp-18]
+FSEM[WARN ]: Unexpected instruction at end of basic block: 402249: int3      
+FSEM[WARN ]: Unexpected instruction at end of basic block: 402455: mov       esi, [ebp+8]
+FSEM[WARN ]: Lost track of stack pointer: 4026D6: mov       esp, [ebp-18]
+FSEM[WARN ]: Unexpected instruction at end of basic block: 4026DE: int3      
+OBJD[WARN ]: Function 0x00403B88 __RTC_Terminate includes only 2 of 5 blocks in the control flow.
+FSEM[WARN ]: Unknown call target at: 405D42: call      ecx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 405324: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 405CAE: call      405305
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x00405C40 __local_unwind4
+FSEM[WARN ]: Unknown call target at: 403D3A: call      [4071E8], parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403D60: call      405D7B
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403DB5: call      405D7B
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403D28: call      4057A0
+FSEM[WARN ]: Unknown call target at: 403D3A: call      [4071E8], parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403D60: call      405D7B
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403DB5: call      405D7B
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403D28: call      4057A0
+FSEM[WARN ]: Unknown call target at: 403D3A: call      [4071E8], parameter analysis failed.
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 403D60: call      405D7B
+FSEM[WARN ]: There were 14 stack delta analysis failures in function 0x00403C30 __except_handler4
+FSEM[WARN ]: Unexpected instruction at end of basic block: 404950: mov       esi, [ebp-1C]
+FSEM[WARN ]: Semantics exception: no dispatch ability for "in" instruction: 404ED8: in        al, 4E
+FSEM[WARN ]: Lost track of stack pointer: 40500D: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FF3: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FE1: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FD5: leave     
+FSEM[WARN ]: Lost track of stack pointer: 40500D: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FF3: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FE1: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FD5: leave     
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: There were 9 stack delta analysis failures in function 0x00404EF9
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 404FD3: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 404FDF: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 404FF1: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 40500B: pop       esi
+FSEM[WARN ]: Lost track of stack pointer: 40500D: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FF3: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FE1: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FD5: leave     
+FSEM[WARN ]: Lost track of stack pointer: 40500D: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FF3: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FE1: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FD5: leave     
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 404FD3: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 404FDF: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 404FF1: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 40500B: pop       esi
+FSEM[WARN ]: Lost track of stack pointer: 40500D: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FF3: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FE1: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FD5: leave     
+FSEM[WARN ]: Lost track of stack pointer: 40500D: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FF3: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FE1: leave     
+FSEM[WARN ]: Lost track of stack pointer: 404FD5: leave     
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 404FD3: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 404FDF: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 404FF1: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 40500B: pop       esi
+OBJD[WARN ]: Function 0x00405064 LeadDownVec includes only 11 of 15 blocks in the control flow.
+FSEM[WARN ]: Lost track of stack pointer: 4050B7: pop       esp
+FSEM[WARN ]: Lost track of stack pointer: 4051AF: leave     
+FSEM[WARN ]: Lost track of stack pointer: 405195: leave     
+FSEM[WARN ]: Lost track of stack pointer: 40517F: leave     
+FSEM[WARN ]: Lost track of stack pointer: 405171: leave     
+FSEM[WARN ]: Lost track of stack pointer: 4051AF: leave     
+FSEM[WARN ]: Lost track of stack pointer: 405195: leave     
+FSEM[WARN ]: Lost track of stack pointer: 40517F: leave     
+FSEM[WARN ]: Lost track of stack pointer: 405171: leave     
+FSEM[WARN ]: There were 5 stack delta analysis failures in function 0x00405064 LeadDownVec
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 4050B7: pop       esp
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 40516F: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 40517D: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 405193: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 4051AD: pop       esi
+FSEM[WARN ]: Lost track of stack pointer: 4051AF: leave     
+FSEM[WARN ]: Lost track of stack pointer: 405195: leave     
+FSEM[WARN ]: Lost track of stack pointer: 40517F: leave     
+FSEM[WARN ]: Lost track of stack pointer: 405171: leave     
+FSEM[WARN ]: Lost track of stack pointer: 4051AF: leave     
+FSEM[WARN ]: Lost track of stack pointer: 405195: leave     
+FSEM[WARN ]: Lost track of stack pointer: 40517F: leave     
+FSEM[WARN ]: Lost track of stack pointer: 405171: leave     
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 40516F: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 40517D: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 405193: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 4051AD: pop       esi
+FSEM[WARN ]: Semantics exception: no dispatch ability for "unknown" instruction: 405116: unknown   
+FSEM[WARN ]: Unexpected instruction at end of basic block: 405116: unknown   
+FSEM[WARN ]: Lost track of stack pointer: 4051AF: leave     
+FSEM[WARN ]: Lost track of stack pointer: 405195: leave     
+FSEM[WARN ]: Lost track of stack pointer: 40517F: leave     
+FSEM[WARN ]: Lost track of stack pointer: 405171: leave     
+FSEM[WARN ]: There were 4 stack delta analysis failures in function 0x00405117
+FSEM[WARN ]: Unexpected stack address (1) for parameter ignored at: 40516F: pop       esi
+FSEM[WARN ]: Unexpected stack address (5) for parameter ignored at: 405170: pop       edi
+FSEM[WARN ]: Unexpected stack address (1) for parameter ignored at: 40517D: pop       esi
+FSEM[WARN ]: Unexpected stack address (5) for parameter ignored at: 40517E: pop       edi
+FSEM[WARN ]: Unexpected stack address (1) for parameter ignored at: 405193: pop       esi
+FSEM[WARN ]: Unexpected stack address (5) for parameter ignored at: 405194: pop       edi
+FSEM[WARN ]: Unexpected stack address (1) for parameter ignored at: 4051AD: pop       esi
+FSEM[WARN ]: Unexpected stack address (5) for parameter ignored at: 4051AE: pop       edi
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4052B7: call      405305
+FSEM[WARN ]: There were 2 stack delta analysis failures in function 0x00405255 __local_unwind2
+FSEM[WARN ]: Unexpected instruction at end of basic block: 4054F5: mov       edi, [ebp-28]
+OBJD[WARN ]: Function 0x004068B0 _memcpy includes only 60 of 70 blocks in the control flow.
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Function 0x004068B0 _memcpy has inconsistent return stack deltas: delta1=+0000(Certain) delta2=+000C(None)
+FSEM[WARN ]: Unified stack delta for function 0x004068B0 _memcpy does not match RETN size of: 12 unified stack delta was: +0000(None)
+FSEM[WARN ]: Lost track of stack pointer: 406940: xchg      esp, eax
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Unexpected stack address (1) for parameter ignored at: 406941: imul      eax, [eax+0], 68AD123
+FSEM[WARN ]: Lost track of stack pointer: 406A6D: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406A53: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406A41: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406A35: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406A6D: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406A53: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406A41: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406A35: leave     
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406A33: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406A3F: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406A51: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406A6B: pop       esi
+FSEM[WARN ]: Lost track of stack pointer: 406A6D: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406A53: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406A41: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406A35: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406A6D: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406A53: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406A41: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406A35: leave     
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406A33: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406A3F: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406A51: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406A6B: pop       esi
+FSEM[WARN ]: Lost track of stack pointer: 406C0F: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BF5: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BDF: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BD1: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406C0F: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BF5: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BDF: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BD1: leave     
+FSEM[WARN ]: There were 5 stack delta analysis failures in function 0x00406AC4 LeadDownVec_0
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406BD0: pop       edi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406BDE: pop       edi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406BF4: pop       edi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406C0E: pop       edi
+FSEM[WARN ]: Lost track of stack pointer: 406C0F: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BF5: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BDF: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BD1: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406C0F: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BF5: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BDF: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BD1: leave     
+FSEM[WARN ]: There were 4 stack delta analysis failures in function 0x00406AF1
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406BCF: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406BDD: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406BF3: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406C0D: pop       esi
+FSEM[WARN ]: Lost track of stack pointer: 406C0F: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BF5: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BDF: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BD1: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406C0F: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BF5: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BDF: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BD1: leave     
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406BCF: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406BDD: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406BF3: pop       esi
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 406C0D: pop       esi
+FSEM[WARN ]: Semantics exception: no dispatch ability for "unknown" instruction: 406B76: unknown   
+FSEM[WARN ]: Unexpected instruction at end of basic block: 406B76: unknown   
+FSEM[WARN ]: Unexpected instruction at end of basic block: 406BCD: inc       ebp
+FSEM[WARN ]: Lost track of stack pointer: 406C0F: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BF5: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BDF: leave     
+FSEM[WARN ]: Lost track of stack pointer: 406BD1: leave     
+FSEM[WARN ]: There were 4 stack delta analysis failures in function 0x00406B77
+FSEM[WARN ]: Unexpected stack address (1) for parameter ignored at: 406BCF: pop       esi
+FSEM[WARN ]: Unexpected stack address (5) for parameter ignored at: 406BD0: pop       edi
+FSEM[WARN ]: Unexpected stack address (1) for parameter ignored at: 406BDD: pop       esi
+FSEM[WARN ]: Unexpected stack address (5) for parameter ignored at: 406BDE: pop       edi
+FSEM[WARN ]: Unexpected stack address (1) for parameter ignored at: 406BF3: pop       esi
+FSEM[WARN ]: Unexpected stack address (5) for parameter ignored at: 406BF4: pop       edi
+FSEM[WARN ]: Unexpected stack address (1) for parameter ignored at: 406C0D: pop       esi
+FSEM[WARN ]: Unexpected stack address (5) for parameter ignored at: 406C0E: pop       edi
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00406C5F L3 in function 0x00406C20 __aulldvrm
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00406E24 listnext in function 0x00406E10 _strcspn
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00406E3C dstnext in function 0x00406E10 _strcspn
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00406E74 listnext_0 in function 0x00406E60 _strpbrk
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00406E88 dstnext_0 in function 0x00406E60 _strpbrk
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+OPTI[INFO ]: Function analysis took X seconds.
+OBJD[INFO ]: Virtual Call: vtoff=28 vfoff=8 thisptr=v?[32] insn=402CA1: call      edx
+OBJD[INFO ]: Virtual Call: vtoff=4 vfoff=0 thisptr=esp_0[32] insn=402FB1: call      ecx
+OBJD[INFO ]: Function 0x00401000 __thiscall Composite::Composite(void) uses __thiscall convention.
+OBJD[INFO ]: Function 0x00401010 int __thiscall Composite::func3(void) uses __thiscall convention.
+OBJD[INFO ]: Function 0x00401020 __thiscall Derived::Derived(void) uses __thiscall convention.
+OBJD[INFO ]: Function 0x004010E7 virtual __thiscall std::bad_alloc::~bad_alloc(void) uses __thiscall convention.
+OBJD[INFO ]: RTTI was found at 0x0040713C with a class name: .?AVbad_alloc@std@@
+OBJD[INFO ]: Virtual function table at 0x00407140 const std::bad_alloc::`vftable' has at most 2 entries.
+OBJD[INFO ]: The entries are: 0x004010F2 virtual void * __thiscall std::bad_alloc::`vector deleting destructor'(unsigned int) 0x00401786 virtual char const * __thiscall std::exception::what(void)const
+OBJD[INFO ]: Possible virtual function table found at 0x00407140 const std::bad_alloc::`vftable' installed by 0x004010FA
+OBJD[INFO ]: Function 0x004010F2 virtual void * __thiscall std::bad_alloc::`vector deleting destructor'(unsigned int) uses __thiscall convention.
+OBJD[INFO ]: Possible virtual function table found at 0x00407140 const std::bad_alloc::`vftable' installed by 0x00401129
+OBJD[INFO ]: Function 0x00401119 __thiscall std::bad_alloc::bad_alloc(class std::bad_alloc const &) uses __thiscall convention.
+OBJD[INFO ]: Function 0x004013AF TranslatorGuardHandler uses __thiscall convention.
+OBJD[INFO ]: Function 0x004015C6 __fastcall __security_check_cookie(x) uses __thiscall convention.
+OBJD[INFO ]: RTTI was found at 0x00407158 with a class name: .?AVexception@std@@
+OBJD[INFO ]: Virtual function table at 0x0040715C const std::exception::`vftable' has at most 2 entries.
+OBJD[INFO ]: The entries are: 0x00401858 virtual void * __thiscall std::exception::`scalar deleting destructor'(unsigned int) 0x00401786 virtual char const * __thiscall std::exception::what(void)const
+OBJD[INFO ]: Possible virtual function table found at 0x0040715C const std::exception::`vftable' installed by 0x00401773
+OBJD[INFO ]: Function 0x00401769 __thiscall std::exception::exception(char const * const &, int) uses __thiscall convention.
+OBJD[INFO ]: Function 0x00401786 virtual char const * __thiscall std::exception::what(void)const uses __thiscall convention.
+OBJD[INFO ]: Function 0x00401793 void __thiscall std::exception::_Copy_str(char const *) uses __thiscall convention.
+OBJD[INFO ]: Function 0x004017D3 void __thiscall std::exception::_Tidy(void) uses __thiscall convention.
+OBJD[INFO ]: Possible virtual function table found at 0x0040715C const std::exception::`vftable' installed by 0x00401800
+OBJD[INFO ]: Function 0x004017F1 __thiscall std::exception::exception(char const * const &) uses __thiscall convention.
+OBJD[INFO ]: Function 0x00401818 class std::exception & __thiscall std::exception::operator=(class std::exception const &) uses __thiscall convention.
+OBJD[INFO ]: Function 0x0040184D virtual __thiscall std::exception::~exception(void) uses __thiscall convention.
+OBJD[INFO ]: Possible virtual function table found at 0x0040715C const std::exception::`vftable' installed by 0x00401860
+OBJD[INFO ]: Function 0x00401858 virtual void * __thiscall std::exception::`scalar deleting destructor'(unsigned int) uses __thiscall convention.
+OBJD[INFO ]: Possible virtual function table found at 0x0040715C const std::exception::`vftable' installed by 0x0040188E
+OBJD[INFO ]: Function 0x0040187F __thiscall std::exception::exception(class std::exception const &) uses __thiscall convention.
+OBJD[INFO ]: Function 0x004018A4 virtual __thiscall type_info::~type_info(void) uses __thiscall convention.
+OBJD[INFO ]: Function 0x004018B4 virtual void * __thiscall type_info::`scalar deleting destructor'(unsigned int) uses __thiscall convention.
+OBJD[INFO ]: Function 0x004018D5 bool __thiscall type_info::operator==(class type_info const &)const uses __thiscall convention.
+OBJD[INFO ]: Function 0x00401FF4 virtual __thiscall std::bad_exception::~bad_exception(void) uses __thiscall convention.
+OBJD[INFO ]: RTTI was found at 0x004071EC with a class name: .?AVbad_exception@std@@
+OBJD[INFO ]: Virtual function table at 0x004071F0 const std::bad_exception::`vftable' has at most 2 entries.
+OBJD[INFO ]: The entries are: 0x00401FFF virtual void * __thiscall std::bad_exception::`vector deleting destructor'(unsigned int) 0x00401786 virtual char const * __thiscall std::exception::what(void)const
+OBJD[INFO ]: Possible virtual function table found at 0x004071F0 const std::bad_exception::`vftable' installed by 0x00402007
+OBJD[INFO ]: Function 0x00401FFF virtual void * __thiscall std::bad_exception::`vector deleting destructor'(unsigned int) uses __thiscall convention.
+OBJD[INFO ]: Function 0x00402332 CallCatchBlock uses __thiscall convention.
+OBJD[INFO ]: Possible virtual function table found at 0x004071F0 const std::bad_exception::`vftable' installed by 0x00402BD9
+OBJD[INFO ]: Function 0x00402BC9 __thiscall std::bad_exception::bad_exception(class std::bad_exception const &) uses __thiscall convention.
+OBJD[INFO ]: Function 0x0040495C __thiscall _LocaleUpdate::_LocaleUpdate(struct localeinfo_struct *) uses __thiscall convention.
+OBJD[INFO ]: Function 0x00404F34 LeadUp3 uses __thiscall convention.
+OBJD[INFO ]: Function 0x004050ED uses __thiscall convention.
+OBJD[INFO ]: Function 0x004052FC __NLG_Notify1 uses __thiscall convention.
+OBJD[INFO ]: Function 0x00406994 LeadUp3_0 uses __thiscall convention.
+OBJD[INFO ]: Function 0x00406B1C LeadDown3_0 uses __thiscall convention.
+OBJD[INFO ]: Function 0x00406B4D uses __thiscall convention.
+OBJD[INFO ]: Function 0x00406D70 __alloca_probe_16 uses __thiscall convention.
+OBJD[INFO ]: Function 0x00406E10 _strcspn uses __thiscall convention.
+OBJD[INFO ]: Function 0x00406E60 _strpbrk uses __thiscall convention.
+OBJD[INFO ]: Member at offset 0 in function 0x004010F2 virtual void * __thiscall std::bad_alloc::`vector deleting destructor'(unsigned int) is a parent class.
+OBJD[INFO ]: Member at offset 0 in function 0x00401119 __thiscall std::bad_alloc::bad_alloc(class std::bad_alloc const &) is a parent class.
+OBJD[INFO ]: Member at offset 0 in function 0x004017F1 __thiscall std::exception::exception(char const * const &) is a parent class.
+OBJD[INFO ]: Member at offset 0 in function 0x00401858 virtual void * __thiscall std::exception::`scalar deleting destructor'(unsigned int) is a parent class.
+OBJD[INFO ]: Member at offset 0 in function 0x0040187F __thiscall std::exception::exception(class std::exception const &) is a parent class.
+OBJD[INFO ]: Member at offset 0 in function 0x00401FFF virtual void * __thiscall std::bad_exception::`vector deleting destructor'(unsigned int) is a parent class.
+OBJD[INFO ]: Member at offset 0 in function 0x00402BC9 __thiscall std::bad_exception::bad_exception(class std::bad_exception const &) is a parent class.
+OBJD[WARN ]: Unable to find parameter for new() call at 0x0040103F
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[INFO ]: RTTI was found at 0x00407178 with a class name: .?AVtype_info@@
+OBJD[INFO ]: Virtual function table at 0x0040717C const type_info::`vftable' has at most 1 entries.
+OBJD[INFO ]: The entries are: 0x004018B4 virtual void * __thiscall type_info::`scalar deleting destructor'(unsigned int)
+OBJD[INFO ]: Possible extra virtual function table found at0x0040717C const type_info::`vftable' installed by 0x004018A7
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Virtual function table at 0x0040A064 class std::bad_exception `RTTI Type Descriptor' entry 1, has a non-function pointer 0x0040717C const type_info::`vftable' at address 0x0040A064
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Virtual function table at 0x00407208 GS_ExceptionPointers entry 1, has a non-function pointer 0x0040ABF8 GS_ExceptionRecord at address 0x00407208
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Virtual function table at 0x00407208 GS_ExceptionPointers entry 2, has a non-function pointer 0x0040AC50 GS_ContextRecord at address 0x0040720C
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[INFO ]: Virtual function table at 0x004071E8 __pDestructExceptionObject has at most 1 entries.
+OBJD[INFO ]: The entries are: 0x004021F5 ___DestructExceptionObject
+OBJD[INFO ]: Possible extra virtual function table found at0x004071E8 __pDestructExceptionObject installed by 0x00403D23
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OPTI[INFO ]: Exported 885 Prolog facts to ...
+OPTI[INFO ]: Analyzing object oriented data structures...
+OPTI[INFO ]: Exported 68 Prolog results to ...
+OBJD[INFO ]: Possible inherited constructor: 0x00401020 __thiscall Derived::Derived(void) inherits from 0x00401000 __thiscall Composite::Composite(void)
+OBJD[INFO ]: Parent constructor is located at offset 0x4
+OBJD[INFO ]: Possible member function found in constructor 0x004017F1 __thiscall std::exception::exception(char const * const &) 0x00401793 void __thiscall std::exception::_Copy_str(char const *)
+OBJD[INFO ]: Possible parent constructor found at 0x00401818 class std::exception & __thiscall std::exception::operator=(class std::exception const &)
+OBJD[WARN ]: Function call graph has a cycle: src=0x00403055 doexit dst=0x00404329 __lock stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x004031DF __amsg_exit dst=0x00403223 __NMSG_WRITE stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x004033D2 __FF_MSGBANNER dst=0x00403223 __NMSG_WRITE stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x00405B88 __set_error_mode dst=0x0040419C __errno stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x00401FBA _free dst=0x0040419C __errno stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x00404267 __mtinitlocknum dst=0x00403223 __NMSG_WRITE stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x00404048 __malloc_crt dst=0x00401A2F _malloc stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x00404267 __mtinitlocknum dst=0x0040419C __errno stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x00404267 __mtinitlocknum dst=0x00404329 __lock stack analysis may be incorrect.
+OBJD[WARN ]: Function call graph has a cycle: src=0x00405D92 __calloc_impl dst=0x0040419C __errno stack analysis may be incorrect.
+OBJD[INFO ]: Recursively finding methods...
+OBJD[INFO ]: Member at offset 0 in function 0x00401FFF virtual void * __thiscall std::bad_exception::`vector deleting destructor'(unsigned int) is a parent class.
+OBJD[INFO ]: Removing ancestor methods...
+OBJD[INFO ]: Analyzing vtable overlap...
+OBJD[INFO ]: Virtual function table at 0x004071E8 __pDestructExceptionObject includes the RTTI pointer from the virtual function table at 0x004071F0 const std::bad_exception::`vftable'. Adjusting best size to 0 (4223464)
+OBJD[INFO ]: Analyzing virtual function calls...
+OBJD[WARN ]: Call at 0x00402CA1 is in function 0x00402BE6 ___InternalCxxFrameHandler which has no known object uses.
+OBJD[WARN ]: Call at 0x00402FB1 is in function 0x00402F9A __initterm_e which has no known object uses.
+OBJD[INFO ]: Merging classes that share methods...
+OBJD[INFO ]: Removing empty classes...
+OBJD[INFO ]: Reanalyzing members from methods...
+OBJD[INFO ]: Setting members from methods in classes...
+OBJD[INFO ]: Member at offset 0 in function 0x004010F2 virtual void * __thiscall std::bad_alloc::`vector deleting destructor'(unsigned int) is a parent class.
+OBJD[INFO ]: Member at offset 0 in function 0x00401769 __thiscall std::exception::exception(char const * const &, int) is a parent class.
+OBJD[INFO ]: Analyzing embedded objects...
+OBJD[INFO ]: Disallowing virtual constructors...
+OBJD[INFO ]: Evaluating virtual destructors...
+OBJD[INFO ]: Analyzing final class sizes...
+OPTI[INFO ]: ================================================================================
+OPTI[INFO ]: Constructor: Cls_401000 (0x00401000 __thiscall Composite::Composite(void))
+OPTI[INFO ]: Member: Offset: 0x0000 Size: 0x0004
+OPTI[INFO ]:   Member used at: 401002: mov       [eax], 1 in function 0x00401000 __thiscall Composite::Composite(void)
+OPTI[INFO ]:   Member used at: 401014: add       eax, [ecx] in function 0x00401010 int __thiscall Composite::func3(void)
+OPTI[INFO ]: Member: Offset: 0x0004 Size: 0x0001
+OPTI[INFO ]:   Member used at: 401008: mov       [eax+4], 61 in function 0x00401000 __thiscall Composite::Composite(void)
+OPTI[INFO ]:   Member used at: 401010: movsx     eax, [ecx+4] in function 0x00401010 int __thiscall Composite::func3(void)
+OPTI[INFO ]: Total object instance size: 0x5
+OPTI[INFO ]: Constructor: 0x00401000 __thiscall Composite::Composite(void)
+OPTI[INFO ]: Method: 0x00401010 int __thiscall Composite::func3(void)
+OPTI[INFO ]: ================================================================================
+OPTI[INFO ]: Constructor: Cls_401020 (0x00401020 __thiscall Derived::Derived(void))
+OPTI[INFO ]: Member: Offset: 0x0000 Size: 0x0004
+OPTI[INFO ]:   Member used at: 40105D: mov       [esi], eax in function 0x00401020 __thiscall Derived::Derived(void)
+OPTI[INFO ]:   Member used at: 401071: mov       [esi], eax in function 0x00401020 __thiscall Derived::Derived(void)
+OPTI[INFO ]: Member: Offset: 0x0004 Size: 0x0005 [embedded object]
+OPTI[INFO ]:   Passed to method at 0x00401000 __thiscall Composite::Composite(void)
+OPTI[INFO ]:   Passed to method at 0x00401010 int __thiscall Composite::func3(void)
+OPTI[INFO ]:   Member used at: 401027: call      401000 in function 0x00401020 __thiscall Derived::Derived(void)
+OPTI[INFO ]:   Member used at: 401058: call      401010 in function 0x00401020 __thiscall Derived::Derived(void)
+OPTI[INFO ]: Member: Offset: 0x000C Size: 0x0004
+OPTI[INFO ]:   Member used at: 401055: mov       [esi+C], eax in function 0x00401020 __thiscall Derived::Derived(void)
+OPTI[INFO ]:   Member used at: 401066: mov       [esi+C], eax in function 0x00401020 __thiscall Derived::Derived(void)
+OPTI[INFO ]: Total object instance size: 0x10
+OPTI[INFO ]: Constructor: 0x00401020 __thiscall Derived::Derived(void)
+OPTI[INFO ]: Inherited Method: 0x00401000 __thiscall Composite::Composite(void) Offset: 0x4
+OPTI[INFO ]: ================================================================================
+OPTI[INFO ]: Constructor: Cls_401818 (0x00401818 class std::exception & __thiscall std::exception::operator=(class std::exception const &))
+OPTI[INFO ]: Total object instance size: 0x0
+OPTI[INFO ]: ================================================================================
+OPTI[INFO ]: Constructor: Cls_40495c (0x0040495C __thiscall _LocaleUpdate::_LocaleUpdate(struct localeinfo_struct *))
+OPTI[INFO ]: Member: Offset: 0x0000 Size: 0x0004
+OPTI[INFO ]:   Member used at: 40497A: mov       [esi], ecx in function 0x0040495C __thiscall _LocaleUpdate::_LocaleUpdate(struct localeinfo_struct *)
+OPTI[INFO ]:   Member used at: 404982: mov       ecx, [esi] in function 0x0040495C __thiscall _LocaleUpdate::_LocaleUpdate(struct localeinfo_struct *)
+OPTI[INFO ]:   Member used at: 40499C: mov       [esi], eax in function 0x0040495C __thiscall _LocaleUpdate::_LocaleUpdate(struct localeinfo_struct *)
+OPTI[INFO ]:   Member used at: 4049D4: mov       [esi], ecx in function 0x0040495C __thiscall _LocaleUpdate::_LocaleUpdate(struct localeinfo_struct *)
+OPTI[INFO ]: Member: Offset: 0x0004 Size: 0x0004
+OPTI[INFO ]:   Member used at: 40497F: mov       [esi+4], ecx in function 0x0040495C __thiscall _LocaleUpdate::_LocaleUpdate(struct localeinfo_struct *)
+OPTI[INFO ]:   Member used at: 40499E: mov       eax, [esi+4] in function 0x0040495C __thiscall _LocaleUpdate::_LocaleUpdate(struct localeinfo_struct *)
+OPTI[INFO ]:   Member used at: 4049BC: mov       [esi+4], eax in function 0x0040495C __thiscall _LocaleUpdate::_LocaleUpdate(struct localeinfo_struct *)
+OPTI[INFO ]:   Member used at: 4049D9: mov       [esi+4], eax in function 0x0040495C __thiscall _LocaleUpdate::_LocaleUpdate(struct localeinfo_struct *)
+OPTI[INFO ]: Member: Offset: 0x0008 Size: 0x0004
+OPTI[INFO ]:   Member used at: 404974: mov       [esi+8], eax in function 0x0040495C __thiscall _LocaleUpdate::_LocaleUpdate(struct localeinfo_struct *)
+OPTI[INFO ]:   Member used at: 4049A9: mov       eax, [esi+8] in function 0x0040495C __thiscall _LocaleUpdate::_LocaleUpdate(struct localeinfo_struct *)
+OPTI[INFO ]:   Member used at: 4049BF: mov       eax, [esi+8] in function 0x0040495C __thiscall _LocaleUpdate::_LocaleUpdate(struct localeinfo_struct *)
+OPTI[INFO ]: Member: Offset: 0x000C Size: 0x0001
+OPTI[INFO ]:   Member used at: 404967: mov       [esi+C], 0 in function 0x0040495C __thiscall _LocaleUpdate::_LocaleUpdate(struct localeinfo_struct *)
+OPTI[INFO ]:   Member used at: 4049CC: mov       [esi+C], 1 in function 0x0040495C __thiscall _LocaleUpdate::_LocaleUpdate(struct localeinfo_struct *)
+OPTI[INFO ]: Total object instance size: 0xd
+OPTI[INFO ]: Constructor: 0x0040495C __thiscall _LocaleUpdate::_LocaleUpdate(struct localeinfo_struct *)
+OPTI[INFO ]: ================================================================================
+OPTI[INFO ]: Constructor: bad_alloc (0x004010F2 virtual void * __thiscall std::bad_alloc::`vector deleting destructor'(unsigned int))
+OPTI[INFO ]: Member: Offset: 0x0000 Size: 0x0009 [parent class] [vftable at 0x00407140 const std::bad_alloc::`vftable']
+OPTI[INFO ]:   Passed to method at 0x0040184D virtual __thiscall std::exception::~exception(void)
+OPTI[INFO ]:   Passed to method at 0x0040187F __thiscall std::exception::exception(class std::exception const &)
+OPTI[INFO ]:   Member used at: 4010FA: mov       [esi], 407140 in function 0x004010F2 virtual void * __thiscall std::bad_alloc::`vector deleting destructor'(unsigned int)
+OPTI[INFO ]:   Member used at: 401100: call      40184D in function 0x004010F2 virtual void * __thiscall std::bad_alloc::`vector deleting destructor'(unsigned int)
+OPTI[INFO ]:   Member used at: 401124: call      40187F in function 0x00401119 __thiscall std::bad_alloc::bad_alloc(class std::bad_alloc const &)
+OPTI[INFO ]:   Member used at: 401129: mov       [esi], 407140 in function 0x00401119 __thiscall std::bad_alloc::bad_alloc(class std::bad_alloc const &)
+OPTI[INFO ]:   Member used at: 40184D: mov       [ecx], 40715C in function 0x0040184D virtual __thiscall std::exception::~exception(void)
+OPTI[INFO ]:   Member used at: 402007: mov       [esi], 4071F0 in function 0x00401FFF virtual void * __thiscall std::bad_exception::`vector deleting destructor'(unsigned int)
+OPTI[INFO ]:   Member used at: 40200D: call      40184D in function 0x00401FFF virtual void * __thiscall std::bad_exception::`vector deleting destructor'(unsigned int)
+OPTI[INFO ]:   VTable Entry: 0 points to method 0x004010F2 virtual void * __thiscall std::bad_alloc::`vector deleting destructor'(unsigned int)
+OPTI[INFO ]:   VTable Entry: 1 points to method 0x00401786 virtual char const * __thiscall std::exception::what(void)const
+OPTI[INFO ]: Total object instance size: 0x9
+OPTI[INFO ]: Destructor: 0x004010F2 virtual void * __thiscall std::bad_alloc::`vector deleting destructor'(unsigned int)
+OPTI[INFO ]: Constructor: 0x00401119 __thiscall std::bad_alloc::bad_alloc(class std::bad_alloc const &)
+OPTI[INFO ]: Method: 0x0040184D virtual __thiscall std::exception::~exception(void)
+OPTI[INFO ]: Destructor: 0x00401FFF virtual void * __thiscall std::bad_exception::`vector deleting destructor'(unsigned int)
+OPTI[INFO ]: ================================================================================
+OPTI[INFO ]: Constructor: exception (0x00401769 __thiscall std::exception::exception(char const * const &, int))
+OPTI[INFO ]: Member: Offset: 0x0000 Size: 0x0000 [parent class] [vftable at 0x0040715C const std::exception::`vftable']
+OPTI[INFO ]:   Passed to method at 0x00401793 void __thiscall std::exception::_Copy_str(char const *)
+OPTI[INFO ]:   Passed to method at 0x004017D3 void __thiscall std::exception::_Tidy(void)
+OPTI[INFO ]:   Passed to method at 0x00401818 class std::exception & __thiscall std::exception::operator=(class std::exception const &)
+OPTI[INFO ]:   Member used at: 401773: mov       [eax], 40715C in function 0x00401769 __thiscall std::exception::exception(char const * const &, int)
+OPTI[INFO ]:   Member used at: 401800: mov       [esi], 40715C in function 0x004017F1 __thiscall std::exception::exception(char const * const &)
+OPTI[INFO ]:   Member used at: 40180C: call      401793 in function 0x004017F1 __thiscall std::exception::exception(char const * const &)
+OPTI[INFO ]:   Member used at: 401828: call      4017D3 in function 0x00401818 class std::exception & __thiscall std::exception::operator=(class std::exception const &)
+OPTI[INFO ]:   Member used at: 401838: call      401793 in function 0x00401818 class std::exception & __thiscall std::exception::operator=(class std::exception const &)
+OPTI[INFO ]:   Member used at: 401860: mov       [esi], 40715C in function 0x00401858 virtual void * __thiscall std::exception::`scalar deleting destructor'(unsigned int)
+OPTI[INFO ]:   Member used at: 401866: call      4017D3 in function 0x00401858 virtual void * __thiscall std::exception::`scalar deleting destructor'(unsigned int)
+OPTI[INFO ]:   Member used at: 40188E: mov       [esi], 40715C in function 0x0040187F __thiscall std::exception::exception(class std::exception const &)
+OPTI[INFO ]:   Member used at: 401898: call      401818 in function 0x0040187F __thiscall std::exception::exception(class std::exception const &)
+OPTI[INFO ]:   VTable Entry: 0 points to method 0x00401858 virtual void * __thiscall std::exception::`scalar deleting destructor'(unsigned int)
+OPTI[INFO ]:   VTable Entry: 1 points to method 0x00401786 virtual char const * __thiscall std::exception::what(void)const
+OPTI[INFO ]: Member: Offset: 0x0004 Size: 0x0004
+OPTI[INFO ]:   Member used at: 40177B: mov       [eax+4], ecx in function 0x00401769 __thiscall std::exception::exception(char const * const &, int)
+OPTI[INFO ]:   Member used at: 4017B5: mov       [edi+4], eax in function 0x00401793 void __thiscall std::exception::_Copy_str(char const *)
+OPTI[INFO ]:   Member used at: 4017DE: push      [esi+4] in function 0x004017D3 void __thiscall std::exception::_Tidy(void)
+OPTI[INFO ]:   Member used at: 4017E7: and       [esi+4], 0 in function 0x004017D3 void __thiscall std::exception::_Tidy(void)
+OPTI[INFO ]:   Member used at: 4017FC: and       [esi+4], 0 in function 0x004017F1 __thiscall std::exception::exception(char const * const &)
+OPTI[INFO ]:   Member used at: 401842: mov       [edi+4], eax in function 0x00401818 class std::exception & __thiscall std::exception::operator=(class std::exception const &)
+OPTI[INFO ]:   Member used at: 40188A: and       [esi+4], 0 in function 0x0040187F __thiscall std::exception::exception(class std::exception const &)
+OPTI[INFO ]: Member: Offset: 0x0008 Size: 0x0001
+OPTI[INFO ]:   Member used at: 40177E: mov       [eax+8], 0 in function 0x00401769 __thiscall std::exception::exception(char const * const &, int)
+OPTI[INFO ]:   Member used at: 4017C9: mov       [edi+8], 1 in function 0x00401793 void __thiscall std::exception::_Copy_str(char const *)
+OPTI[INFO ]:   Member used at: 4017D8: cmp       [esi+8], 0 in function 0x004017D3 void __thiscall std::exception::_Tidy(void)
+OPTI[INFO ]:   Member used at: 4017EB: mov       [esi+8], 0 in function 0x004017D3 void __thiscall std::exception::_Tidy(void)
+OPTI[INFO ]:   Member used at: 401806: mov       [esi+8], 0 in function 0x004017F1 __thiscall std::exception::exception(char const * const &)
+OPTI[INFO ]:   Member used at: 401894: mov       [esi+8], 0 in function 0x0040187F __thiscall std::exception::exception(class std::exception const &)
+OPTI[INFO ]: Total object instance size: 0x9
+OPTI[INFO ]: Constructor: 0x00401769 __thiscall std::exception::exception(char const * const &, int)
+OPTI[INFO ]: Method: 0x00401793 void __thiscall std::exception::_Copy_str(char const *)
+OPTI[INFO ]: Method: 0x004017D3 void __thiscall std::exception::_Tidy(void)
+OPTI[INFO ]: Constructor: 0x004017F1 __thiscall std::exception::exception(char const * const &)
+OPTI[INFO ]: Constructor: 0x00401818 class std::exception & __thiscall std::exception::operator=(class std::exception const &)
+OPTI[INFO ]: Destructor: 0x00401858 virtual void * __thiscall std::exception::`scalar deleting destructor'(unsigned int)
+OPTI[INFO ]: Constructor: 0x0040187F __thiscall std::exception::exception(class std::exception const &)
+OPTI[INFO ]: ================================================================================
+OPTI[INFO ]: Constructor: bad_exception (0x00401FFF virtual void * __thiscall std::bad_exception::`vector deleting destructor'(unsigned int))
+OPTI[INFO ]: Member: Offset: 0x0000 Size: 0x0009 [parent class] [vftable at 0x004071F0 const std::bad_exception::`vftable']
+OPTI[INFO ]:   Passed to method at 0x0040187F __thiscall std::exception::exception(class std::exception const &)
+OPTI[INFO ]:   Member used at: 402BD4: call      40187F in function 0x00402BC9 __thiscall std::bad_exception::bad_exception(class std::bad_exception const &)
+OPTI[INFO ]:   Member used at: 402BD9: mov       [esi], 4071F0 in function 0x00402BC9 __thiscall std::bad_exception::bad_exception(class std::bad_exception const &)
+OPTI[INFO ]:   VTable Entry: 0 points to method 0x00401FFF virtual void * __thiscall std::bad_exception::`vector deleting destructor'(unsigned int)
+OPTI[INFO ]:   VTable Entry: 1 points to method 0x00401786 virtual char const * __thiscall std::exception::what(void)const
+OPTI[INFO ]: Total object instance size: 0x9
+OPTI[INFO ]: Constructor: 0x00402BC9 __thiscall std::bad_exception::bad_exception(class std::bad_exception const &)
+OPTI[INFO ]: ================================================================================
+OBJD[INFO ]: Exporting classes to JSON file: tests/ooex_vs2010/Lite/ooex1.json
+OPTI[INFO ]: Found 7 classes, 17 methods, 0 virtual calls, and 54 usage instructions.
+OPTI[INFO ]: Successfully exported to JSON file 'tests/ooex_vs2010/Lite/ooex1.json'.
+OPTI[INFO ]: Object digger analysis complete.

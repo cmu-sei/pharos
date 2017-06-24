@@ -1,0 +1,138 @@
+00401000	func	_main	None
+0040107c	func	@__security_check_cookie@4	__fastcall __security_check_cookie(x)
+00401086	func	failure	None
+0040108c	func	??3@YAXPAX@Z_0	void __cdecl operator delete(void *)
+00401092	func	??2@YAPAXI@Z_0	void * __cdecl operator new(unsigned int)
+00401098	func	pre_cpp_init	None
+004010e3	func	__tmainCRTStartup	None
+00401209	func	$LN35	None
+0040121c	func	$LN30	None
+0040121d	func	$LN21	None
+00401239	func	$LN36	None
+00401259	func	pre_c_init	None
+0040133a	func	_mainCRTStartup	None
+00401344	func	___report_gsfailure	None
+0040144a	func	?__CxxUnhandledExceptionFilter@@YGJPAU_EXCEPTION_POINTERS@@@Z	long __stdcall __CxxUnhandledExceptionFilter(struct _EXCEPTION_POINTERS *)
+00401486	func	$LN6	None
+0040148c	func	___CxxSetUnhandledExceptionFilter	None
+0040149a	thunk	__amsg_exit	None
+004014a0	func	__onexit	None
+00401533	func	$LN9	None
+0040153c	func	$LN6_0	None
+00401544	func	$LN7	None
+00401545	func	_atexit	None
+0040155c	func	__RTC_Initialize	None
+00401582	func	__RTC_Terminate	None
+004015a8	thunk	__XcptFilter	None
+004015b0	func	__ValidateImageBase	None
+004015f0	func	__FindPESection	None
+00401640	func	__IsNonwritableInCurrentImage	None
+004016cb	func	$LN7_0	None
+004016de	func	$LN11	None
+004016df	func	$LN8	None
+004016fe	thunk	__initterm	None
+00401704	thunk	__initterm_e	None
+0040170c	func	__SEH_prolog4	None
+00401751	func	__SEH_epilog4	None
+00401765	func	__except_handler4	None
+0040178a	func	__setdefaultprecision	None
+004017b5	func	__setargv	None
+004017b8	func	___security_init_cookie	None
+0040184e	thunk	__crt_debugger_hook	None
+00401854	func	?terminate@@YAXXZ_0	void __cdecl terminate(void)
+0040185a	thunk	__unlock	None
+00401860	thunk	___dllonexit	None
+00401866	thunk	__lock	None
+0040186c	thunk	__except_handler4_common	None
+00401872	thunk	__invoke_watson	None
+00401878	thunk	__controlfp_s	None
+00402000	name	__imp__GetCurrentProcessId@0	__declspec(dllimport) __stdcall GetCurrentProcessId()
+00402004	name	__imp__GetCurrentThreadId@0	__declspec(dllimport) __stdcall GetCurrentThreadId()
+00402008	name	__imp__GetTickCount@0	__declspec(dllimport) __stdcall GetTickCount()
+0040200c	name	__imp__QueryPerformanceCounter@4	__declspec(dllimport) __stdcall QueryPerformanceCounter(x)
+00402010	name	__imp__IsDebuggerPresent@0	__declspec(dllimport) __stdcall IsDebuggerPresent()
+00402014	name	__imp__SetUnhandledExceptionFilter@4	__declspec(dllimport) __stdcall SetUnhandledExceptionFilter(x)
+00402018	name	__imp__UnhandledExceptionFilter@4	__declspec(dllimport) __stdcall UnhandledExceptionFilter(x)
+0040201c	name	__imp__GetCurrentProcess@0	__declspec(dllimport) __stdcall GetCurrentProcess()
+00402020	name	__imp__TerminateProcess@8	__declspec(dllimport) __stdcall TerminateProcess(x, x)
+00402024	name	__imp__InterlockedCompareExchange@12	__declspec(dllimport) __stdcall InterlockedCompareExchange(x, x, x)
+00402028	name	__imp__Sleep@4	__declspec(dllimport) __stdcall Sleep(x)
+0040202c	name	__imp__InterlockedExchange@8	__declspec(dllimport) __stdcall InterlockedExchange(x, x)
+00402030	name	__imp__GetSystemTimeAsFileTime@4	__declspec(dllimport) __stdcall GetSystemTimeAsFileTime(x)
+00402034	name	_KERNEL32_NULL_THUNK_DATA	None
+00402038	name	__imp___adjust_fdiv	None
+0040203c	name	__imp____p__commode	None
+00402040	name	__imp____p__fmode	None
+00402044	name	__imp___encode_pointer	None
+00402048	name	__imp____set_app_type	None
+0040204c	name	__imp___crt_debugger_hook	None
+00402050	name	__imp____setusermatherr	None
+00402054	name	__imp___unlock	None
+00402058	name	__imp____dllonexit	None
+0040205c	name	__imp___lock	None
+00402060	name	__imp___onexit	None
+00402064	name	__imp___decode_pointer	None
+00402068	name	__imp___except_handler4_common	None
+0040206c	name	__imp___invoke_watson	None
+00402070	name	__imp___controlfp_s	None
+00402074	name	__imp___configthreadlocale	None
+00402078	name	__imp___initterm_e	None
+0040207c	name	__imp___initterm	None
+00402080	name	__imp____initenv	None
+00402084	name	__imp__exit	None
+00402088	name	__imp___XcptFilter	None
+0040208c	name	__imp___exit	None
+00402090	name	__imp___cexit	None
+00402094	name	__imp____getmainargs	None
+00402098	name	__imp___amsg_exit	None
+0040209c	name	__imp_??2@YAPAXI@Z	__declspec(dllimport) void * __cdecl operator new(unsigned int)
+004020a0	name	__imp_??3@YAXPAX@Z	__declspec(dllimport) void __cdecl operator delete(void *)
+004020a4	name	__imp_?terminate@@YAXXZ	__declspec(dllimport) void __cdecl terminate(void)
+004020a8	name	__imp__rand	None
+004020ac	name	_MSVCR90_NULL_THUNK_DATA	None
+004020b0	name	___xc_a	None
+004020b4	name	pcppinit	None
+004020b8	name	___xc_z	None
+004020bc	name	___xi_a	None
+004020c0	name	pcinit	None
+004020c4	name	pinit	None
+004020c8	name	___xi_z	None
+004020ec	name	GS_ExceptionPointers	None
+004020f8	name	__load_config_used	None
+00402190	name	___safe_se_handler_table	None
+00402194	name	___rtc_iaa	None
+00402198	name	___rtc_izz	None
+0040219c	name	___rtc_taa	None
+004021a0	name	___rtc_tzz	None
+00402204	name	__IMPORT_DESCRIPTOR_MSVCR90	None
+00402218	name	__IMPORT_DESCRIPTOR_KERNEL32	None
+0040222c	name	__NULL_IMPORT_DESCRIPTOR	None
+00402318	name	aMsvcr90_dll	None
+004025d0	name	aKernel32_dll	None
+00403000	name	___security_cookie	None
+00403004	name	___security_cookie_complement	None
+00403008	name	___native_dllmain_reason	None
+0040300c	name	___native_vcclrit_reason	None
+00403010	name	___globallocalestatus	None
+00403014	name	___defaultmatherr	None
+00403018	name	argc	None
+0040301c	name	envp	None
+00403020	name	argv	None
+00403024	name	managedapp	None
+00403028	name	argret	None
+0040302c	name	startinfo	None
+00403030	name	mainret	None
+00403034	name	has_cctor	None
+00403038	name	GS_ExceptionRecord	None
+00403088	name	DebuggerWasPresent	None
+00403090	name	GS_ContextRecord	None
+0040335c	name	__dowildcard	None
+00403360	name	__newmode	None
+00403364	name	__commode	None
+00403368	name	__fmode	None
+0040336c	name	__adjust_fdiv	None
+00403370	name	___native_startup_state	None
+00403374	name	___native_startup_lock	None
+00403378	name	___onexitend	None
+0040337c	name	___onexitbegin	None
+00403380	name	___dyn_tls_init_callback	None

@@ -1,12 +1,135 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+
+#include <boost/range/adaptor/map.hpp>
 
 #include "vftable.hpp"
 #include "descriptors.hpp"
 
+namespace pharos {
+
 // Global table for tracking unique virtual function tables.  This allow us to prevent
 // duplicated effort, by re-using earlier analysis of the same table.  Should perhaps be part
 // of the global descriptor set.
-VTableAddrMap global_vtables;
+VFTableAddrMap global_vftables;
+
+// Global tables of virtual base tables...
+VBTableAddrMap global_vbtables;
+
+TypeRTTICompleteObjectLocator *
+read_RTTI(rose_addr_t addr)
+{
+  // Try reading an RTTI complete object locatot at the specified address.
+  try {
+    rose_addr_t rptr = global_descriptor_set->read_addr(addr);
+    TypeRTTICompleteObjectLocator *rtti = new TypeRTTICompleteObjectLocator(rptr);
+    if (rtti != NULL) {
+      // essentially, the memory must look like RTTI structures - are both signatures 0?
+      if (rtti->signature.value == 0 && rtti->class_desc.signature.value == 0) {
+        return rtti;
+      }
+    }
+  }
+  catch (...) {
+    GDEBUG << "RTTI was bad at " << addr_str(addr) << LEND;
+    // not RTTI
+  }
+
+  return NULL;
+}
+
+void VirtualBaseTable::analyze() {
+  // Set the size to zero to indicate that we're not a valid virtual base table.
+  size = 0;
+
+  // If we don't have a vbtable address yet, there's nothing to analyze.
+  if (addr == 0) return;
+
+  size_t arch_bytes = global_descriptor_set->get_arch_bytes();
+
+  while (true) {
+    // Get the address of an entry in table.
+    rose_addr_t taddr = addr + (size * arch_bytes);
+
+    // If the table itself has passed into invalid memory, then this is our last entry.
+    if (!global_descriptor_set->memory_in_image(taddr)) {
+      GWARN << "Failed to read invalid virtual base table address " << addr_str(addr) << LEND;
+      break;
+    }
+
+    // Read the function pointer in that memory location.
+    rose_addr_t fptr = global_descriptor_set->read_addr(taddr);
+
+    // If the value point to a valid image addreses, then this entry is NOT a valid virtual
+    // base table entry.  Unless coincidentally the object is so large that progam image
+    // addresses are also valid object offsets, which is very unlikely.
+    if (global_descriptor_set->memory_in_image(fptr)) break;
+
+    // This is hackish and ugly, but it eliminates a lot of cases (including strings) by
+    // requiring that the high byte be FF or 00 (rather than an ASCII character for example).
+    int64_t signed_val = (int64_t)fptr;
+    if (signed_val < -16000000 || signed_val > 16000000) {
+      //GDEBUG << "Rejected possible virtual base pointer entry based on object size." << LEND;
+      break;
+    }
+
+    // Unlike virtual function tables which are very likely to run into a non-pointer, we could
+    // reads lots of non-pointers before failing, and virtual inheritance heirarchies are
+    // rarely this deep, so it probably makes more sense to just fail early.
+    if (size >= 9) break;
+
+    // Advance to the next entry.
+    size++;
+  }
+
+  GDEBUG << "Virtual base table " << addr_str(addr) << " has " << size << " valid entries." << LEND;
+}
+
+void VirtualBaseTable::analyze_overlaps() {
+  unsigned int limit;
+  size_t arch_bytes = global_descriptor_set->get_arch_bytes();
+  for (const VirtualFunctionTable* vft : boost::adaptors::values(global_vftables)) {
+    if (vft->addr > addr) {
+      // Don't bound ourselves by other vftables if we know that they are invalid.
+      if (vft->best_size < 1) continue;
+
+      if (vft->rtti != NULL) {
+        limit = ((vft->addr - 4) - addr) / arch_bytes;
+      }
+      else {
+        limit = (vft->addr - addr) / arch_bytes;
+      }
+
+      if (limit < size) {
+        //GDEBUG << "Reducing size of vbtable " << addr_str(addr) << " to " << limit
+        //       << " because it overlaps with vftable " << addr_str(vft->addr) << LEND;
+        size = limit;
+      }
+    }
+  }
+
+  for (const VirtualBaseTable* vbt : boost::adaptors::values(global_vbtables)) {
+    if (vbt->addr > addr) {
+      // Don't bound ourselves by other vbtables if we know that they are invalid.
+      if (vbt->size < 2) continue;
+
+      limit = (vbt->addr - addr) / arch_bytes;
+      if (limit < size) {
+        //GDEBUG << "Reducing size of vbtable " << addr_str(addr) << " to " << limit
+        //       << " because it overlaps with vbtable " << addr_str(vbt->addr) << LEND;
+        size = limit;
+      }
+    }
+  }
+}
+
+signed int VirtualBaseTable::read_entry(unsigned int entry) const {
+  // Get the address of an entry in table.
+  size_t arch_bytes = global_descriptor_set->get_arch_bytes();
+  rose_addr_t taddr = addr + (entry * arch_bytes);
+  // Read the function address value in that memory location...
+  rose_addr_t object_offset = global_descriptor_set->read_addr(taddr);
+  return (signed int)object_offset;
+}
 
 // This method updates the minimum size of the vtable based on new information (typically a
 // known virtual function call using the table).  This value always grows, because we're
@@ -65,9 +188,10 @@ void VirtualFunctionTable::update_size_guess() {
 // unused) interface:
 rose_addr_t VirtualFunctionTable::read_entry(unsigned int entry) const {
   // Get the address of an entry in table.
-  rose_addr_t taddr = addr + (entry * (get_arch_bits() / 8));
-  // Read the 32-bit value in that memory location (not handled by get_arch_bits()).
-  rose_addr_t fptr = global_descriptor_set->read32(taddr);
+  size_t arch_bytes = global_descriptor_set->get_arch_bytes();
+  rose_addr_t taddr = addr + (entry * arch_bytes);
+  // Read the function address value in that memory location...
+  rose_addr_t fptr = global_descriptor_set->read_addr(taddr);
   return fptr;
 }
 
@@ -80,30 +204,12 @@ FunctionDescriptor * VirtualFunctionTable::read_entry_fd(unsigned int entry) {
 
 // Look for RTTI structures, which should be situated directly above the vtable start
 void VirtualFunctionTable::analyze_rtti(const rose_addr_t address) {
-
-  rose_addr_t fptr = global_descriptor_set->read32(address);
-
-  // the memory is indeed in the image
-  GDEBUG << "Checking for RTTI at " << addr_str(address)
-         << ", points to " << addr_str(fptr) << LEND;
-
-  // Check for the presence of RTTI structures. Specifically, there are two
-  // signature fields that should always be 0: RTTICompleteObjectLocator and
-  // RTTIClassHierarchyDescriptor
-  try {
-    rtti = new TypeRTTICompleteObjectLocator(fptr);
-    if (rtti == NULL) return;
-
-    // essentially, the memory must look like RTTI structures - are both signatures 0?
-    if (rtti->signature.value == 0 && rtti->class_desc.signature.value == 0) {
-
-      GINFO << "RTTI was found at " << addr_str(address)
-            << " with a class name: " << rtti->type_desc.name.value << LEND;
-      // checking the signatures is not a proven method
-      rtti_confidence = ConfidenceGuess;
-    }
-  } catch (...) {
-    // not RTTI
+  rtti = read_RTTI(address);
+  if (rtti != NULL) {
+    GINFO << "RTTI was found at " << addr_str(address)
+          << " with a class name: " << rtti->type_desc.name.value << LEND;
+    // checking the signatures is not a proven method
+    rtti_confidence = ConfidenceGuess;
   }
 }
 
@@ -116,15 +222,18 @@ void VirtualFunctionTable::analyze() {
   // If we don't have a vtable address yet, there's nothing to analyze.
   if (addr == 0) return;
 
-  // before determining size, check to see if there is RTTI associated with this vtable
-  rtti_addr = addr-4;
+  // Before determining the size of the vftable, check to see if there is RTTI associated with
+  // it.  The RTTI pointer will be located immediately before the table, and because it's a
+  // pointer, its size varies with the architecture.
+  size_t arch_bytes = global_descriptor_set->get_arch_bytes();
+  rtti_addr = addr - arch_bytes;
   analyze_rtti(rtti_addr);
 
   while (true) {
     // Perhaps we should call read_entry() here, but we need taddr as well...
 
-    // Get the address of an entry in table.  32-bit specific address size.
-    rose_addr_t taddr = addr + (entry * 4);
+    // Get the address of an entry in table.
+    rose_addr_t taddr = addr + (entry * arch_bytes);
 
     // If the address is not legit, there's no way we're reading a valid function pointer
     // from it. (I think...  Is this dependent on faulty memory mapping logic?
@@ -136,17 +245,17 @@ void VirtualFunctionTable::analyze() {
       break;
     }
 
-    // Read the 32-bit value in that memory location.
-    rose_addr_t fptr = global_descriptor_set->read32(taddr);
+    // Read the function pointer in that memory location.
+    rose_addr_t fptr = global_descriptor_set->read_addr(taddr);
 
     // The first case is that we read a NULL pointer, although it could be a memory mapping
-    // error as mentioned above.  Perhaps we should change the API for read32 to make this
+    // error as mentioned above.  Perhaps we should change the API for read_addr to make this
     // clearer?
     if (fptr == 0) {
       // Reading a NULL value is expected, just so long as it's not the first entry.
       if (entry == 0) {
-        GWARN << "Read NULL function pointer in first entry of vftable at "
-              << addr_str(taddr) << LEND;
+        GTRACE << "Read NULL function pointer in first entry of vftable at "
+               << addr_str(taddr) << LEND;
       }
 
       // Regardless, we're at the end of the virtual function table.
@@ -159,10 +268,37 @@ void VirtualFunctionTable::analyze() {
       // Cory says: In our test programs, this dword is routinely 0x20646162 " @ab" or
       // 0x6e6b6e55 "nknU".  I had hoped this would lead to a useful heuristic, but Jeff
       // G. seems to think it's just coincidence.
-      GINFO << "Virtual function pointer is invalid at "
-            << addr_str(taddr) << ", points to " << addr_str(fptr) << LEND;
+      GTRACE << "Virtual function pointer is invalid at "
+             << addr_str(taddr) << ", points to " << addr_str(fptr) << LEND;
       // An invalid function pointer always marks the end of a vitrual function table
       // unless we're having serious memory mapping problems.
+
+      break;
+    }
+
+    // It's pretty common to find RTTI complete object locators in the
+    //OINFO << "Looking for RTTI at " << addr_str(taddr) << LEND;
+    TypeRTTICompleteObjectLocator *embedded_rtti = read_RTTI(taddr);
+    // If it is, then there's most likely a VFTable just pass that, and we should probably
+    // analyze that table (even though we haven't found any other references to it yet).
+    // This will prevent us from assigning functions found in the later VFTable to this
+    // VFTable incorrectly.
+    if (embedded_rtti) {
+      //OINFO << "Found an embedded RTTI at " << addr_str(taddr) << LEND;
+      // The address of the next VFTable is right after the RTTI pointer.
+      rose_addr_t next_taddr = taddr + arch_bytes;
+      // Have we already processsed this vftable?  If so, don't do it again.
+      VirtualFunctionTable* next_vftable = NULL;
+      if (global_vftables.find(next_taddr) == global_vftables.end()) {
+        // Create a new table, analyze it, and then add it to the global map.
+        next_vftable = new VirtualFunctionTable(taddr + arch_bytes);
+        // This call could be recursive, but it's not obvious that's a problem.
+        next_vftable->analyze();
+        //OINFO << "Found an new VFTable at " << addr_str(next_taddr)
+        //      << " with " << next_vftable->best_size << " entries." << LEND;
+        global_vftables[next_taddr] = next_vftable;
+      }
+      // An RTTI data structure is never a valid entry in a VFTable.
       break;
     }
 
@@ -170,27 +306,15 @@ void VirtualFunctionTable::analyze() {
     // failures becomes too great, and if it has, we want entry to already be incremented.
     entry++;
 
-    // A more-rigorous test is too ensure that the address found points to a known function.
-    // It's unclear if our disassembly is accurate enough currently to require this for every
-    // entry.  For right now, we're going to only going to break after several adjacent
-    // failures.
-    if (global_descriptor_set->get_func(fptr) == NULL) {
-      // Report every entry that we do not recognize as a function.
-      GWARN << "Virtual function table at " << addr_str(addr)
-            << " has a non-function pointer " << addr_str(fptr)
-            << " at address " << addr_str(taddr) << LEND;
-      // Record that we found a valid pointer, but that it was not recognized as a function.
-      non_function++;
-      // Also increase the "failure" count, which is a temporary version of non_function.
-      failures++;
-      // More than three failures in adjacent addresses probably means we should give up.
+    bool valid_entry = false;
 
-      if (failures >= 3) {
-        break;
-      }
-    }
+    // If the address found points to a known function, that's a valid entry.
+    if (global_descriptor_set->get_func(fptr) != NULL) valid_entry = true;
+    // If the address found points to an import, that's also a valid entry.
+    if (global_descriptor_set->get_import(fptr) != NULL) valid_entry = true;
+
     // The pointer is a pointer to a function that we recognize.
-    else {
+    if (valid_entry) {
       // A success resets the failure counter.  Cory's theory here is that we might
       // occasionally miss a function or two, but we're less likely to miss several in a row.
       // Further, a bad table pointer is going to point to way more than a few bad function
@@ -208,6 +332,26 @@ void VirtualFunctionTable::analyze() {
       if (entry == 0) {
         update_minimum_size(1);
       }
+
+    }
+    // It's unclear if our disassembly is accurate enough currently to require this for every
+    // entry.  For right now, we're going to only going to break after several adjacent
+    // failures.
+    else {
+      // Report every entry that we do not recognize as a function.
+      GWARN << "Virtual function table at " << addr_str(addr) << " entry " << entry
+            << ", has a non-function pointer " << addr_str(fptr)
+            << " at address " << addr_str(taddr) << LEND;
+
+      // Record that we found a valid pointer, but that it was not recognized as a function.
+      non_function++;
+      // Also increase the "failure" count, which is a temporary version of non_function.
+      failures++;
+      // More than three failures in adjacent addresses probably means we should give up.
+
+      if (failures >= 3) {
+        break;
+      }
     }
   }
 
@@ -220,8 +364,8 @@ void VirtualFunctionTable::analyze() {
   unsigned int msize = entry - failures;
 
   if (msize < 1) {
-    GWARN << "Virtual function table at " << addr_str(addr)
-          << " failed to validate at least one function pointer." << LEND;
+    GTRACE << "Virtual function table at " << addr_str(addr)
+           << " failed to validate at least one function pointer." << LEND;
   }
   else {
     GINFO << "Virtual function table at " << addr_str(addr) << " has at most "
@@ -239,6 +383,8 @@ void VirtualFunctionTable::analyze() {
     update_size_guess();
   }
 }
+
+} // namespace pharos
 
 /* Local Variables:   */
 /* mode: c++          */

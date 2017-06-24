@@ -1,0 +1,52 @@
+# Standard things to ignore
+
+*~
+*.a
+*.o
+*.orig
+*.rej
+*.yaml.i
+.dir-locals.el
+TAGS
+
+# Auto-generated files
+*.pyc
+*.xwam
+
+# generated files and binaries
+/libpharos/PHAROS_REVISION
+/libpharos/PHAROS_REVISION.ii
+/libpharos/config.yaml.ii
+/tools/apianalyzer/apianalyzer
+/tools/apianalyzer/apisigtest
+/tools/apianalyzer/apitests1
+/tools/apianalyzer/apitests2
+/tools/apianalyzer/apitests3
+/tools/fn2hash/fn2hash
+/tools/fn2yara/fn2yara
+/tools/objdigger/objdigger
+
+# test cruft
+/apitests.dot
+/tools/dumpmasm/tests/ApiAnalyzer/*
+/tools/dumpmasm/tests/**/*.part2
+/tools/objdigger/oorules/*.error
+/tools/objdigger/oorules/*.result
+/tools/objdigger/tests/**/*.diff
+/tools/objdigger/tests/**/*.json
+/tools/objdigger/tests/**/*.named
+/tools/objdigger/tests/**/*.output
+
+# to support (& ignore) build dirs in the repo dir:
+/build
+/build-release
+/build-debug
+
+# local build overrides:
+local.cmake
+
+# other misc stuff
+**/.nfs*
+**/.tramp_history
+**/.tramp_ignore
+**/.gdb_history

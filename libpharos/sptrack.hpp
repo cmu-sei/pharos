@@ -1,4 +1,4 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_SPTrack_Header
 #define Pharos_SPTrack_Header
@@ -15,6 +15,8 @@
 #include "descriptors.hpp"
 #include "delta.hpp"
 #include "riscops.hpp"
+
+namespace pharos {
 
 typedef std::vector<SgNode*> NodeVector;
 typedef std::map<SgAsmx86Instruction*, X86InsnSet> ParameterMap;
@@ -158,6 +160,8 @@ protected:
   void analyzeFunctions();
 
 };
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

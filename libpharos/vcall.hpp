@@ -1,4 +1,4 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Virtual_Function_Call_H
 #define Pharos_Virtual_Function_Call_H
@@ -6,6 +6,8 @@
 #include "util.hpp"
 #include "defuse.hpp"
 #include "calls.hpp"
+
+namespace pharos {
 
 // this is the call-specific information for virutal function calls.
 class VirtualFunctionCallInformation : public CallInformation {
@@ -60,6 +62,9 @@ public:
                       int64_t vtable_offset, CallInformationPtr &call_info);
 
 };
+
+} // namespace pharos
+
 #endif
 /* Local Variables:   */
 /* mode: c++          */

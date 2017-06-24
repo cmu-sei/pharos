@@ -1,4 +1,4 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Method_H
 #define Pharos_Method_H
@@ -11,6 +11,8 @@
 
 // Full declarations for members are required because methods allocate the members in a MemberMap.
 #include "member.hpp"
+
+namespace pharos {
 
 // Assuming Visual Studio
 #define THIS_PTR_STR "ecx"
@@ -140,6 +142,9 @@ public:
   // Mark the method as a constructor (or not) with a specified confidence.
   void set_constructor(bool b, GenericConfidence conf);
 
+  // Test whether the method has apparently uninitialized reads of the object.
+  bool test_for_uninit_reads() const;
+
   // Most analysis methods in ThisCallMethod are private, but this one has to be called after
   // the global this_call_methods map has been populated.  It updates the passed_func_offsets
   // map with the stack offsets of passed this-pointers.
@@ -194,6 +199,8 @@ extern ThisCallMethodMap this_call_methods;
 
 // This function seems most related to ThisCallMethods...
 ThisCallMethod* follow_oo_thunks(rose_addr_t addr);
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

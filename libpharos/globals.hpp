@@ -1,13 +1,15 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Globals_H
 #define Pharos_Globals_H
 
 #include <boost/format.hpp>
-
 #include <rose.h>
-
+#include "state.hpp"
+#include "semantics.hpp"
 #include "delta.hpp"
+
+namespace pharos {
 
 // duplicative...
 typedef std::set<SgAsmInstruction*> InsnSet;
@@ -88,6 +90,12 @@ class GlobalMemoryDescriptor {
   // The data type as an enumeration.
   DataType type;
 
+  // The abstract value associated with this global variable
+  SymbolicValuePtr value;
+
+  // The address of the global
+  SymbolicValuePtr memory_address;
+
   // The total size of contiguous data at this address.  Zero means we don't currently know.
   size_t size;
   // The initial access size (operand size of the intruction).  This will be zero if we don't
@@ -95,30 +103,19 @@ class GlobalMemoryDescriptor {
   int access_size;
 
   // Whether the address is known to be a data or code reference.
-  
+
   // The type of the global memory reference.  e.g. Virtual function table, compiler data
   // struct, jump table, etc.
 
 public:
 
-  GlobalMemoryDescriptor() {
-    address = 0;
-    initialized = false;
-    in_image = false;
-    confidence = ConfidenceNone;
-    type = DTypeNone;
-    size = 0;
-    access_size = 0;
-  }
-  
-  GlobalMemoryDescriptor(rose_addr_t addr) {
-    address = addr;
-    confidence = ConfidenceNone;
-    type = DTypeNone;
-    size = 0;
-    access_size = 0;
-    analyze(addr);
-  }
+  GlobalMemoryDescriptor();
+
+  GlobalMemoryDescriptor(rose_addr_t addr);
+
+  SymbolicValuePtr get_memory_address() { return memory_address; }
+
+  SymbolicValuePtr get_value() { return value; }
 
   rose_addr_t get_address() const { return address; }
 
@@ -157,7 +154,7 @@ public:
 class GlobalMemoryDescriptorMap: public std::map<rose_addr_t, GlobalMemoryDescriptor> {
 
 public:
-  
+
   GlobalMemoryDescriptor* get_global(rose_addr_t addr) {
     GlobalMemoryDescriptorMap::iterator it = this->find(addr);
     if (it != this->end())
@@ -166,6 +163,8 @@ public:
       return NULL;
   }
 };
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

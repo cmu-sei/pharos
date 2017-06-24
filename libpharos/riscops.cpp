@@ -1,38 +1,34 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "riscops.hpp"
 #include "masm.hpp"
 #include "descriptors.hpp"
 
-// This class was copied from Robb's code where it was private.  Minor changes were made to
-// eliminate warnings about shadowed variables, but it is otherwise unchanged.  Once the
-// location-based definers stuff is sorted out, this class can be removed.
-class PartialDisableUsedef {
-private:
-  bool saved_value;
-  SymRiscOperators *rops;
-public:
-  PartialDisableUsedef(SymRiscOperators *pops): saved_value(false), rops(pops) {
-    saved_value = rops->getset_omit_cur_insn(true);
-  }
-  ~PartialDisableUsedef() {
-    rops->getset_omit_cur_insn(saved_value);
-  }
-};
-
+namespace pharos {
 
 // This global variable gives us a way to read/write memory without having to carry around a
 // SymbolicRiscOperatorsPtr everywhere.  And it doesn't consume dozen of gigabytes of RAM. :-)
 SymbolicRiscOperatorsPtr global_rops;
 
-// A helper function to create a symbolic emulation environment.
-SymbolicRiscOperatorsPtr make_risc_ops() {
-  SymbolicValuePtr stupid_svalue = SymbolicValue::instance();
-  SymbolicMemoryStatePtr stupid_mem = SymbolicMemoryState::instance(stupid_svalue, stupid_svalue);
-  const RegisterDictionary* regdict = RegisterDictionary::dictionary_pentium4();
-  SymbolicRegisterStatePtr stupid_regs = SymbolicRegisterState::instance(stupid_svalue, regdict);
-  SymbolicStatePtr stupid_state = SymbolicState::instance(stupid_regs, stupid_mem);
-  return SymbolicRiscOperators::instance(stupid_state);
+SymbolicRiscOperators::SymbolicRiscOperators(const SymbolicValuePtr& aprotoval_, SMTSolver* asolver_):
+  SymRiscOperators(aprotoval_, asolver_) {
+  name("CERT");
+  computingDefiners(TRACK_LATEST_DEFINER);
+  computingRegisterWriters(TRACK_LATEST_WRITER);
+  computingMemoryWriters(TRACK_LATEST_WRITER);
+  // Must be deferred until the global descriptor set exists...
+  //EIP = global_descriptor_set->get_ip_reg();
+}
+
+// Standard ROSE constructor must take custom types to ensure promotion.
+SymbolicRiscOperators::SymbolicRiscOperators(const SymbolicStatePtr& state_, SMTSolver* asolver_):
+  SymRiscOperators(state_, asolver_) {
+  name("CERT");
+  computingDefiners(TRACK_LATEST_DEFINER);
+  computingRegisterWriters(TRACK_LATEST_WRITER);
+  computingMemoryWriters(TRACK_LATEST_WRITER);
+  // Must be deferred until the global descriptor set exists...
+  //EIP = global_descriptor_set->get_ip_reg();
 }
 
 //==============================================================================================
@@ -49,9 +45,7 @@ SymbolicValuePtr SymbolicRiscOperators::read_register(const RegisterDescriptor &
 // Starting instructions, reading & writing registers (official interface).
 //==============================================================================================
 
-// Overridden to force IP to correct value, and clear assorted vectors...
-// And this isn't even remotely in this class anymore.  It's in Disassembly!
-// Cory says these comments are old, and this should get cleaned up?
+// Overridden to clear our abstract access vectors.
 void SymbolicRiscOperators::startInstruction(SgAsmInstruction *insn) {
   STRACE << "============================================================================" << LEND;
   STRACE << "RiscOps::startInstruction(): " << debug_instruction(insn) << LEND;
@@ -61,96 +55,58 @@ void SymbolicRiscOperators::startInstruction(SgAsmInstruction *insn) {
   reads.clear();
   writes.clear();
 
-  // Force IP to a value that will not cause assertions...
-  //state->registers->ip = ValueType<32>(insn->get_address());
-
   // Do the standard parent behavior...
-  RiscOperators::startInstruction(insn);
+  SymRiscOperators::startInstruction(insn);
 }
 
 BaseSValuePtr SymbolicRiscOperators::readRegister(const RegisterDescriptor &reg) {
-  assert(state!=NULL);
-  PartialDisableUsedef disabled(this);
-  BaseSValuePtr bv = get_sstate()->readRegister(reg, this);
+  STRACE << "RiscOps::readRegister() reg=" << unparseX86Register(reg, NULL) << LEND;
 
-  SymbolicValuePtr sv = SymbolicValue::promote(bv);
-  if (!(reg == *EIP)) {
-    SymbolicValuePtr svc = sv->scopy();
-    reads.push_back(AbstractAccess(true, reg, svc, get_sstate()));
+  // Call the standard ROSE implementation of readRegister().
+  BaseSValuePtr bv = SymRiscOperators::readRegister(reg, undefined_(reg.get_nbits()));
+
+  // Create an abstract access recording this register write.  We exclude the EIP register to
+  // reduce memory usage, and make it easier to find the significant register reads and writes.
+  if (!(reg == EIP)) {
+
+    TreeNodePtr tnp = SymbolicValue::promote(bv)->get_expression();
+    if (tnp) {
+
+       TreeNode * t = &*tnp;
+       unique_treenodes.emplace(t, tnp);
+
+    }
+    // We make a copy because this value isn't supposed to change ever again?  Really needed?
+    SymbolicValuePtr svalue = SymbolicValue::promote(bv)->scopy();
+    reads.push_back(AbstractAccess(true, reg, svalue, get_sstate()));
     STRACE << "RiscOps::readRegister() reg=" << unparseX86Register(reg, NULL)
-           << " value=" << *sv << LEND;
+           << " value=" << *svalue << LEND;
   }
   return bv;
 }
 
-void SymbolicRiscOperators::writeRegister(const RegisterDescriptor &reg, const BaseSValuePtr &a) {
-  //STRACE << "RiscOps::writeRegister() reg=" << unparseX86Register(reg, NULL)
-  // << " value=" << *a << LEND;
-  assert(state!=NULL);
+void SymbolicRiscOperators::writeRegister(const RegisterDescriptor &reg, const BaseSValuePtr &v) {
+  STRACE << "RiscOps::writeRegister() reg=" << unparseX86Register(reg, NULL) << " value=" << *v << LEND;
 
-  // This bit width test is to avoid a problem where the ROSE code asserts when then sizes
-  // don't match.  ROSE should be doing something to automatically resize these operands so
-  // that they do match, but in the mean time, we shouldn't ever call upstream code with
-  // mismatched sizes.  Not knowing what else to do I'm just going to log the error and return.
-  if (a->get_width() != reg.get_nbits()) {
-    SWARN << "Mismatched register write sizes in: " << debug_instruction(cur_insn) << LEND;
-    return;
-  }
+  // Call the standard ROSE implementation of writeRegister().
+  SymRiscOperators::writeRegister(reg, v);
 
-  SymbolicValuePtr sva = SymbolicValue::promote(a)->scopy();
-  // Automatic downgrade of sva to Base?
-  get_sstate()->writeRegister(reg, sva, this);
+  // Create an abstract access recording this register write.  We exclude the EIP register to
+  // reduce memory usage, and make it easier to find the significant register reads and writes.
+  if (!(reg == EIP)) {
 
-  // Beginning of code copied inappropriately from RiscOperators::writeRegister().
-  // We've made a copy of this code because we need to comment out the call to
-  // PartialDisableUsedef() because it prevents registers moves from showing up in the
-  // definers list, which we appear to need for ObjDigger to function correctly.
+    TreeNodePtr tnp = SymbolicValue::promote(v)->get_expression();
 
-  // We ought to do this:
-  //SymRiscOperators::writeRegister(reg, a);
-
-  // Instead we do this:
-  BaseSValuePtr ra = BaseSValue::promote(a->copy());
-  // Here's the change from standard ROSE!!!!
-  //PartialDisableUsedef du(this);
-  BaseRiscOperators::writeRegister(reg, ra);
-
-  // Update register properties and writer info.
-  RegisterStateGenericPtr regs = RegisterStateGeneric::promote(get_state()->get_register_state());
-  SgAsmInstruction *insn = get_insn();
-  if (insn) {
-    switch (computingRegisterWriters()) {
-    case TRACK_NO_WRITERS:
-      break;
-    case TRACK_LATEST_WRITER:
-      regs->setWriters(reg, insn->get_address());
-      break;
-    case TRACK_ALL_WRITERS:
-      regs->insertWriters(reg, insn->get_address());
-      break;
+    if (tnp) {
+       TreeNode* t = &*tnp;
+       unique_treenodes.emplace(t, tnp);
     }
-    regs->updateWriteProperties(reg, (insn ? Semantics2::BaseSemantics::IO_WRITE : Semantics2::BaseSemantics::IO_INIT));
-  }
-  // End of code copied inappropriately from RiscOperators::writeRegister()
 
-  // rbv, srbv, etc. is needless sanity checking! Remove when done debugging.
-  BaseSValuePtr rbv = get_sstate()->readRegister(reg, this);
-  SymbolicValuePtr srbv = SymbolicValue::promote(rbv);
-  //STRACE << "RiscOps::writeRegister() srbv=" << *srbv << LEND;
-
-  // This is a hack related to the PartialDisableUseDef mentioned above, that is currently
-  // required to get correct output from ObjDigger.  As we develop a real solution for
-  // location-based definers, we shouldn't need this anymore.
-  srbv->defined_by(cur_insn);
-  // mwd: defined_by() no longer sets the modifiers
-  srbv->add_modifier(cur_insn);
-
-  // Slightly hackish, but something Cory thinks we should keep for simplicity.
-  if (!(reg == *EIP)) {
-    SymbolicValuePtr srbvc = srbv->scopy();
-    writes.push_back(AbstractAccess(false, reg, srbvc, get_sstate()));
+    // We make a copy because this value isn't supposed to change ever again? Really needed?
+    SymbolicValuePtr svalue = SymbolicValue::promote(v)->scopy();
+    writes.push_back(AbstractAccess(false, reg, svalue, get_sstate()));
     STRACE << "RiscOps::writeRegister() reg=" << unparseX86Register(reg, NULL)
-           << " value=" << *srbvc << LEND;
+           << " value=" << *svalue << LEND;
   }
 }
 
@@ -158,9 +114,18 @@ BaseSValuePtr SymbolicRiscOperators::readMemory(const RegisterDescriptor &segreg
                                                 const BaseSValuePtr &addr,
                                                 const BaseSValuePtr &dflt,
                                                 const BaseSValuePtr &cond) {
-  PartialDisableUsedef disabled(this);
+
+
+
   SymbolicValuePtr saddr = SymbolicValue::promote(addr)->scopy();
   SymbolicValuePtr retval;
+
+  TreeNodePtr addr_tnp = saddr->get_expression();
+  if (addr_tnp) {
+     TreeNode *at = &*addr_tnp;
+     memory_accesses.emplace(at, addr_tnp);
+     unique_treenodes.emplace(at, addr_tnp);
+  }
 
   SymbolicValuePtr sdflt = SymbolicValue::promote(dflt);
   // If the address is invalid, then the memory at that address is invald.  It's unclear how
@@ -188,7 +153,7 @@ BaseSValuePtr SymbolicRiscOperators::readMemory(const RegisterDescriptor &segreg
   // Check for reads to constant addresses.  We might want to kludge up several things here,
   // including reads of imports and reads of constant initialized data.  This has to be in
   // RiscOps and not the MemoryState because we want to handle full size (not byte size) reads.
-  BOOST_FOREACH(const TreeNodePtr& tn, saddr->get_possible_values()) {
+  for (const TreeNodePtr& tn : saddr->get_possible_values()) {
     if (tn->isNumber()) {
       rose_addr_t known_addr = tn->toInt();
       ImportDescriptor *id = global_descriptor_set->get_import(known_addr);
@@ -199,9 +164,11 @@ BaseSValuePtr SymbolicRiscOperators::readMemory(const RegisterDescriptor &segreg
       if (id != NULL) {
         SDEBUG << "Memory read of " << addr_str(known_addr)
                << " reads import " << id->get_long_name() << LEND;
-        if (cur_insn != NULL) {
-          SDEBUG << "The memory read ocurred in insn: " << debug_instruction(cur_insn) << LEND;
-          CallDescriptor* cd = global_descriptor_set->get_call(cur_insn->get_address());
+        if (currentInstruction() != NULL) {
+          SDEBUG << "The memory read ocurred in insn: "
+                 << debug_instruction(currentInstruction()) << LEND;
+          CallDescriptor* cd =
+            global_descriptor_set->get_call(currentInstruction()->get_address());
           if (cd != NULL) {
             SDEBUG << "Added target " << *id << " to " << *cd << LEND;
             cd->add_import_target(id);
@@ -214,148 +181,79 @@ BaseSValuePtr SymbolicRiscOperators::readMemory(const RegisterDescriptor &segreg
         SymbolicValuePtr sv = SymbolicValue::constant_instance(tn->nBits(), known_addr);
         initialize_memory(sv, id->get_loader_variable());
       }
-    }
-  }
+      GlobalMemoryDescriptor* gmd = global_descriptor_set->get_global(known_addr);
+      // this global address is not code (at least not a function)
+      if (gmd != NULL) {
+        SDEBUG << "Memory read of " << addr_str(known_addr)
+               << " reads global " << gmd->address_string() << LEND;
 
-  // Call the stock ROSE readMemory()!  Hooray!
-  retval = SymbolicValue::promote(RiscOperators::readMemory(segreg, addr, sdflt, cond));
-  // This is what's really still needed as a modification to the standard readMemory().
-  retval->add_defining_instructions(cur_insn);
-
-  STRACE << "RiscOps::readMemory() addr=" << *saddr << LEND;
-  STRACE << "RiscOps::readMemory() retval=" << *retval << LEND;
-  SymbolicValuePtr srv = retval->scopy();
-
-  // We have to do some serious naughtiness to get around the fact that ROSE declared this
-  // method as const, thus preventing us from updating our records of memory reads...  This
-  // should probably be loosened up in ROSE.
-  AbstractAccessVector *m_read = const_cast<AbstractAccessVector *> (&reads);
-  size_t nbits = sdflt->get_width();
-  (*m_read).push_back(AbstractAccess(true, saddr, nbits, srv, get_sstate()));
-
-  return retval;
-}
-
-typedef Semantics2::BaseSemantics::MemoryCellList MemoryCellList;
-typedef Semantics2::BaseSemantics::MemoryCellListPtr MemoryCellListPtr;
-
-// Beginning of code copied inappropriately from RiscOperators::writeMemory() We've made a copy
-// of this code because we need to comment out the call to PartialDisableUsedef() because it
-// prevents register moves from showing up in the definers list, which we appear to need for
-// ObjDigger to function correctly.  On January 22, 2016, this copy was functionally identical
-// to the stock ROSE implementation EXCEPT the PartialDisableUsedef)() call.
-void SymbolicRiscOperators::writeMemory_helper(UNUSED const RegisterDescriptor &segreg,
-                                               const BaseSValuePtr &address,
-                                               const BaseSValuePtr &value_,
-                                               const BaseSValuePtr &condition) {
-
-  // SEI observes that condition is used now!
-  ASSERT_require(1==condition->get_width()); // FIXME: condition is not used
-  if (condition->is_number() && !condition->get_number())
-    return;
-  if (address->isBottom())
-    return;
-  BaseSValuePtr value = BaseSValue::promote(value_->copy());
-
-  // There's SEI confusion/disagreement about whether this should be commented out or not.
-  // The Pharos code has historically required that it be commented out.
-  //PartialDisableUsedef du(this);
-
-  size_t nbits = value->get_width();
-  ASSERT_require(0 == nbits % 8);
-  size_t nbytes = nbits/8;
-  BaseMemoryStatePtr mem = get_state()->get_memory_state();
-  for (size_t bytenum=0; bytenum<nbytes; ++bytenum) {
-    size_t byteOffset = 0;
-    if (1 == nbytes) {
-      // void
-    } else if (ByteOrder::ORDER_MSB == mem->get_byteOrder()) {
-      byteOffset = nbytes - (bytenum+1);
-    } else if (ByteOrder::ORDER_LSB == mem->get_byteOrder()) {
-      byteOffset = bytenum;
-    } else {
-      // See BaseSemantics::MemoryState::set_byteOrder SEI modified to runtime_error
-      throw std::runtime_error("multi-byte write with memory having unspecified byte order");
-    }
-
-    BaseSValuePtr byte_value = extract(value, 8*byteOffset, 8*byteOffset+8);
-    BaseSValuePtr byte_addr = add(address, number_(address->get_width(), bytenum));
-    state->writeMemory(byte_addr, byte_value, this, this);
-
-    // Update the latest writer info if we have a current instruction and the memory state
-    // supports it.
-    if (computingMemoryWriters() != TRACK_NO_WRITERS) {
-      if (SgAsmInstruction *insn = get_insn()) {
-        if (MemoryCellListPtr cellList =
-            boost::dynamic_pointer_cast<MemoryCellList>(mem)) {
-          if (MemoryCellPtr cell = cellList->latestWrittenCell()) {
-            switch (computingMemoryWriters()) {
-            case TRACK_NO_WRITERS:
-              break;
-            case TRACK_LATEST_WRITER:
-              cell->setWriter(insn->get_address());
-              break;
-            case TRACK_ALL_WRITERS:
-              cell->insertWriter(insn->get_address());
-              break;
-            }
-          }
-        } else if (BaseMemoryCellMapPtr cellMap =
-                   boost::dynamic_pointer_cast<BaseMemoryCellMap>(mem)) {
-          if (MemoryCellPtr cell = cellMap->latestWrittenCell()) {
-            switch (computingMemoryWriters()) {
-            case TRACK_NO_WRITERS:
-              break;
-            case TRACK_LATEST_WRITER:
-              cell->setWriter(insn->get_address());
-              break;
-            case TRACK_ALL_WRITERS:
-              cell->insertWriter(insn->get_address());
-              break;
-            }
-          }
-        }
+        // Create a new variable for the global value. A new abstract variable is needed
+        // because the global can change throughout the program
+        SymbolicValuePtr sv = SymbolicValue::constant_instance(tn->nBits(), known_addr);
+        initialize_memory(sv, gmd->get_value());
       }
     }
   }
+
+  // Call the standard ROSE implementation of readRegister().
+  retval = SymbolicValue::promote(SymRiscOperators::readMemory(segreg, addr, sdflt, cond));
+
+  STRACE << "RiscOps::readMemory() addr=" << *saddr << LEND;
+  STRACE << "RiscOps::readMemory() retval=" << *retval << LEND;
+
+  // We make a copy because this value isn't supposed to change ever again?  Really needed?
+  SymbolicValuePtr srv = retval->scopy();
+  // Create an abstract access recording this memory read.
+  size_t nbits = sdflt->get_width();
+  reads.push_back(AbstractAccess(true, saddr, nbits, srv, get_sstate()));
+
+  return retval;
 }
 
 void SymbolicRiscOperators::writeMemory(UNUSED const RegisterDescriptor &segreg,
                                         const BaseSValuePtr &addr,
                                         const BaseSValuePtr &data,
                                         const BaseSValuePtr &cond) {
-  // Debugging
-  STRACE << "SRiscOp::writeMemory() addr=" << *addr << LEND;
-  STRACE << "SRiscOp::writeMemory() data=" << *data << LEND;
+
   SymbolicValuePtr saddr = SymbolicValue::promote(addr)->scopy();
   SymbolicValuePtr sdata = SymbolicValue::promote(data)->scopy();
+
+
+  TreeNodePtr addr_tnp = saddr->get_expression();
+
+  if (addr_tnp) {
+     TreeNode* at = &*addr_tnp;
+     unique_treenodes.emplace(at, addr_tnp);
+     memory_accesses.emplace(at, addr_tnp);
+  }
+
+  TreeNodePtr data_tnp = sdata->get_expression();
+  if (data_tnp) {
+     TreeNode *dt = &*data_tnp;
+    unique_treenodes.emplace(dt, data_tnp);
+  }
+
   STRACE << "SRiscOp::writeMemory() saddr=" << *saddr << LEND;
   STRACE << "SRiscOp::writeMemory() sdata=" << *sdata << LEND;
 
   // Tested lightly with the few cases that Cory knew of (which were really not import
   // overwrites).  This makes more sense here, but it might actually be cleaner back in defuse
   // where it was before Cory moved it here.
-  BOOST_FOREACH(const TreeNodePtr& tn, saddr->get_possible_values()) {
+  for (const TreeNodePtr& tn : saddr->get_possible_values()) {
     if (tn->isNumber()) {
       rose_addr_t known_addr = tn->toInt();
       ImportDescriptor *id = global_descriptor_set->get_import(known_addr);
       if (id != NULL) {
-        SWARN << "Instruction " << debug_instruction(cur_insn) << " overwrites import "
-              << id->get_long_name() << " at address " << addr_str(known_addr) << LEND;
+        SWARN << "Instruction " << debug_instruction(currentInstruction())
+              << " overwrites import " << id->get_long_name() << " at address "
+              << addr_str(known_addr) << LEND;
       }
     }
   }
 
-#if 1
-  // This is what currently works.
-  writeMemory_helper(segreg, addr, data, cond);
-#else
-  // This how we ought to do it.
-  RiscOperators::writeMemory(segreg, addr, data, cond);
-#endif
-
   // This one line is the call to RiscOperators::writeMemory that we ought to be using...
-  // RiscOperators::writeMemory(segreg, addr, data, cond);
+  SymRiscOperators::writeMemory(segreg, addr, data, cond);
+
   writes.push_back(AbstractAccess(false, saddr, data->get_width(), sdata, get_sstate()));
 }
 
@@ -375,10 +273,10 @@ void SymbolicRiscOperators::initialize_memory(const SymbolicValuePtr &addr,
   // the original value written rather than a concatenation of byte extractions.
 
   size_t nbits = data->get_width();
-  assert(8==nbits || 16==nbits || 32==nbits);
+  assert(8==nbits || 16==nbits || 32==nbits || 64==nbits);
   size_t nbytes = nbits/8;
-  SymbolicStatePtr sstate = SymbolicState::promote(get_state());
-  SymbolicMemoryStatePtr mem = SymbolicMemoryState::promote(sstate->get_memory_state());
+  SymbolicStatePtr sstate = SymbolicState::promote(currentState());
+  SymbolicMemoryStatePtr mem = SymbolicMemoryState::promote(sstate->memoryState());
   for (size_t bytenum=0; bytenum<nbits/8; ++bytenum) {
     size_t byteOffset = ByteOrder::ORDER_MSB==mem->get_byteOrder() ? nbytes-(bytenum+1) : bytenum;
     SymbolicValuePtr byte_dflt = SymbolicValue::promote(extract(data, 8*byteOffset, 8*byteOffset+8));
@@ -387,7 +285,7 @@ void SymbolicRiscOperators::initialize_memory(const SymbolicValuePtr &addr,
     STRACE << "SymbolicRiscOp::initialize_memory() byte_data=" << *byte_dflt << LEND;
     // Read (and possibly create), but discard return value.
     //SymbolicStatePtr sstate = SymbolicStatePtr::promote(state);
-    state->readMemory(byte_addr, byte_dflt, this, this);
+    currentState()->readMemory(byte_addr, byte_dflt, this, this);
   }
 }
 
@@ -400,8 +298,8 @@ void SymbolicRiscOperators::initialize_memory(const SymbolicValuePtr &addr,
 SymbolicValuePtr SymbolicRiscOperators::read_memory(const SymbolicMemoryState* mem,
                                                     const SymbolicValuePtr &address,
                                                     const size_t nbits) {
-  GDEBUG << "RiscOps::read_memory(address, " << nbits << "):" << LEND;
-  GDEBUG << "RiscOps::read_memory() address = " << *address << LEND;
+  STRACE << "RiscOps::read_memory(address, " << nbits << "):" << LEND;
+  STRACE << "RiscOps::read_memory() address = " << *address << LEND;
 
   assert(0 == nbits % 8);
 
@@ -439,17 +337,16 @@ SymbolicValuePtr SymbolicRiscOperators::read_memory(const SymbolicMemoryState* m
     const InsnSet &definers = byte_value->get_defining_instructions();
     defs.insert(definers.begin(), definers.end());
     //const InsnSet &modifiers = byte_value->get_modifiers(); // copying modifiers in read_memory()
-    //BOOST_FOREACH(const SgAsmInstruction* i, modifiers) {
+    //for (const SgAsmInstruction* i : modifiers) {
     //  STRACE << "Adding modifier: " << debug_instruction(i) << LEND;
     //}
     //mods.insert(modifiers.begin(), modifiers.end());  // in our read_memory implementation!
   }
 
   assert(retval!=NULL && retval->get_width()==nbits);
-  BOOST_FOREACH(SgAsmInstruction* i, defs) {
+  for (SgAsmInstruction* i : defs) {
     retval->add_defining_instructions(i);
   }
-  retval->set_modifiers(mods);
   GDEBUG << "RiscOps::read_memory() retval = " << *retval << LEND;
   return retval;
 }
@@ -465,38 +362,20 @@ void SymbolicRiscOperators::interrupt(int majr, int minr) {
 BaseSValuePtr SymbolicRiscOperators::or_(const BaseSValuePtr &a_, const BaseSValuePtr &b_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr b = SymbolicValue::promote(b_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::or_(a_, b_));
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::or_(a_, b_));
 
   // Any register OR'd with 0xFFFFFFFF is really just "mov reg, 0xFFFFFFFF"
   if (a_->is_number() && 0xFFFFFFFF == a_->get_number()) {
-    retval->set_modifiers(a->get_modifiers()); // maintainence RiscOps::or_();
+    retval->set_defining_instructions(a->get_defining_instructions());
   }
   else if (b_->is_number() && 0xFFFFFFFF == b_->get_number()) {
-    retval->set_modifiers(b->get_modifiers()); // maintainence RiscOps::or_();
+    retval->set_defining_instructions(b->get_defining_instructions());
   }
 
   if (STRACE) {
     STRACE << "RiscOps::or() a=" << *a << LEND;
     STRACE << "RiscOps::or() b=" << *b << LEND;
     STRACE << "RiscOps::or() r=" << *retval << LEND;
-  }
-  return retval;
-}
-
-BaseSValuePtr SymbolicRiscOperators::concat(const BaseSValuePtr &a_, const BaseSValuePtr &b_) {
-  SymbolicValuePtr a = SymbolicValue::promote(a_);
-  SymbolicValuePtr b = SymbolicValue::promote(b_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::concat(a_, b_));
-  // For the concatenation operator, it's not good enough to rely on the standard call to
-  // defined_by().  We need to merge the modifiers from both parameters.  When concat is used
-  // to join memory bytes (the most common case even if it's not the only one), failure to
-  // merge the modifiers results in writes and reads from memory losing those modifiers.
-  retval->set_modifiers(a->get_modifiers()); // maintainence RiscOps::concat();
-  retval->add_modifiers(b->get_modifiers()); // maintainence RiscOps::concat();
-  if (STRACE) {
-    STRACE << "RiscOps::concat() a=" << *a << LEND;
-    STRACE << "RiscOps::concat() b=" << *b << LEND;
-    STRACE << "RiscOps::concat() r=" << *retval << LEND;
   }
   return retval;
 }
@@ -511,25 +390,22 @@ BaseSValuePtr SymbolicRiscOperators::concat(const BaseSValuePtr &a_, const BaseS
 // method implementation, and emit the STRACE logging messages, so rather than removing the
 // code completely, I've simply ifdef'd it out.
 
-// mwd: Re-enabled to add "add_modifer" appropriately, as the default versions in rose no
-// longer use defined_by() which previously handled this.  This will disappear (and the #if
-// will go back to 0) once we ditch modifiers completely.
-
-#if 1
+#if 0
 BaseSValuePtr SymbolicRiscOperators::boolean_(bool b) {
-  BaseSValuePtr retval = RiscOperators::boolean_(b);
-  SymbolicValuePtr sretval = SymbolicValue::promote(retval);
-  if (!omit_cur_insn) {
-    sretval->add_modifier(get_insn());
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::boolean_(b));
+  if (STRACE) {
+    STRACE << "RiscOps::boolean_() b=" << b << LEND;
+    STRACE << "RiscOps::boolean_() r=" << *retval << LEND;
   }
   return retval;
 }
 
 BaseSValuePtr SymbolicRiscOperators::number_(size_t nbits, uint64_t value) {
-  BaseSValuePtr retval = RiscOperators::number_(nbits, value);
-  SymbolicValuePtr sretval = SymbolicValue::promote(retval);
-  if (!omit_cur_insn) {
-    sretval->add_modifier(get_insn());
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::number_(nbits, value));
+  if (STRACE) {
+    STRACE << "RiscOps::number_() n=" << nbits << LEND;
+    STRACE << "RiscOps::number_() v=" << value << LEND;
+    STRACE << "RiscOps::number_() r=" << *retval << LEND;
   }
   return retval;
 }
@@ -537,10 +413,7 @@ BaseSValuePtr SymbolicRiscOperators::number_(size_t nbits, uint64_t value) {
 BaseSValuePtr SymbolicRiscOperators::and_(const BaseSValuePtr &a_, const BaseSValuePtr &b_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr b = SymbolicValue::promote(b_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::and_(a_, b_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::and_(a_, b_));
   if (STRACE) {
     STRACE << "RiscOps::and() a=" << *a << LEND;
     STRACE << "RiscOps::and() b=" << *b << LEND;
@@ -552,10 +425,7 @@ BaseSValuePtr SymbolicRiscOperators::and_(const BaseSValuePtr &a_, const BaseSVa
 BaseSValuePtr SymbolicRiscOperators::xor_(const BaseSValuePtr &a_, const BaseSValuePtr &b_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr b = SymbolicValue::promote(b_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::xor_(a_, b_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::xor_(a_, b_));
   if (STRACE) {
     STRACE << "RiscOps::xor() a=" << *a << LEND;
     STRACE << "RiscOps::xor() b=" << *b << LEND;
@@ -566,10 +436,7 @@ BaseSValuePtr SymbolicRiscOperators::xor_(const BaseSValuePtr &a_, const BaseSVa
 
 BaseSValuePtr SymbolicRiscOperators::invert(const BaseSValuePtr &a_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::invert(a_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::invert(a_));
   if (STRACE) {
     STRACE << "RiscOps::invert() a=" << *a << LEND;
     STRACE << "RiscOps::invert() r=" << *retval << LEND;
@@ -577,25 +444,38 @@ BaseSValuePtr SymbolicRiscOperators::invert(const BaseSValuePtr &a_) {
   return retval;
 }
 
+BaseSValuePtr SymbolicRiscOperators::concat(const BaseSValuePtr &a_, const BaseSValuePtr &b_) {
+  SymbolicValuePtr a = SymbolicValue::promote(a_);
+  SymbolicValuePtr b = SymbolicValue::promote(b_);
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::concat(a_, b_));
+  if (STRACE) {
+    STRACE << "RiscOps::concat() a=" << *a << LEND;
+    STRACE << "RiscOps::concat() b=" << *b << LEND;
+    STRACE << "RiscOps::concat() r=" << *retval << LEND;
+  }
+  return retval;
+}
+#endif
 BaseSValuePtr SymbolicRiscOperators::extract(const BaseSValuePtr &a_, size_t begin_bit, size_t end_bit) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::extract(a_, begin_bit, end_bit));
-  if (!omit_cur_insn && retval->get_width() != a->get_width()) {
-    retval->add_modifier(cur_insn);
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::extract(a_, begin_bit, end_bit));
+
+  // mwd: A hack workaround a bug in ROSE that does not propagate the definers properly when
+  // the extracted value is the same size as the value being extracted from.  Remove this once ROSE gets the fix.
+  if (a->get_width() == retval->get_width()) {
+      retval->add_defining_instructions(a);
   }
+
   if (STRACE) {
     STRACE << "RiscOps::extract() b=" << begin_bit << " e=" << end_bit << " a=" << *a << LEND;
     STRACE << "RiscOps::extract() r=" << *retval << LEND;
   }
   return retval;
 }
-
+#if 0
 BaseSValuePtr SymbolicRiscOperators::leastSignificantSetBit(const BaseSValuePtr &a_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::leastSignificantSetBit(a_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::leastSignificantSetBit(a_));
   if (STRACE) {
     STRACE << "RiscOps::leastSignificantBit() a=" << *a << LEND;
     STRACE << "RiscOps::leastSignificantBit() r=" << *retval << LEND;
@@ -605,10 +485,7 @@ BaseSValuePtr SymbolicRiscOperators::leastSignificantSetBit(const BaseSValuePtr 
 
 BaseSValuePtr SymbolicRiscOperators::mostSignificantSetBit(const BaseSValuePtr &a_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::mostSignificantSetBit(a_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::mostSignificantSetBit(a_));
   if (STRACE) {
     STRACE << "RiscOps::mostSignificantBit() a=" << *a << LEND;
     STRACE << "RiscOps::mostSignificantBit() r=" << *retval << LEND;
@@ -619,10 +496,7 @@ BaseSValuePtr SymbolicRiscOperators::mostSignificantSetBit(const BaseSValuePtr &
 BaseSValuePtr SymbolicRiscOperators::rotateLeft(const BaseSValuePtr &a_, const BaseSValuePtr &sa_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr sa = SymbolicValue::promote(sa_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::rotateLeft(a_, sa_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::rotateLeft(a_, sa_));
   if (STRACE) {
     STRACE << "RiscOps::rotateLeft() a=" << *a << LEND;
     STRACE << "RiscOps::rotateLeft() sa=" << *sa << LEND;
@@ -634,10 +508,7 @@ BaseSValuePtr SymbolicRiscOperators::rotateLeft(const BaseSValuePtr &a_, const B
 BaseSValuePtr SymbolicRiscOperators::rotateRight(const BaseSValuePtr &a_, const BaseSValuePtr &sa_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr sa = SymbolicValue::promote(sa_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::rotateRight(a_, sa_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::rotateRight(a_, sa_));
   if (STRACE) {
     STRACE << "RiscOps::rotateRight() a=" << *a << LEND;
     STRACE << "RiscOps::rotateRight() sa=" << *sa << LEND;
@@ -649,10 +520,7 @@ BaseSValuePtr SymbolicRiscOperators::rotateRight(const BaseSValuePtr &a_, const 
 BaseSValuePtr SymbolicRiscOperators::shiftLeft(const BaseSValuePtr &a_, const BaseSValuePtr &sa_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr sa = SymbolicValue::promote(sa_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::shiftLeft(a_, sa_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::shiftLeft(a_, sa_));
   if (STRACE) {
     STRACE << "RiscOps::shiftLeft() a=" << *a << LEND;
     STRACE << "RiscOps::shiftLeft() sa=" << *sa << LEND;
@@ -664,10 +532,7 @@ BaseSValuePtr SymbolicRiscOperators::shiftLeft(const BaseSValuePtr &a_, const Ba
 BaseSValuePtr SymbolicRiscOperators::shiftRight(const BaseSValuePtr &a_, const BaseSValuePtr &sa_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr sa = SymbolicValue::promote(sa_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::shiftRight(a_, sa_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::shiftRight(a_, sa_));
   if (STRACE) {
     STRACE << "RiscOps::shiftRight() a=" << *a << LEND;
     STRACE << "RiscOps::shiftRight() sa=" << *sa << LEND;
@@ -679,10 +544,7 @@ BaseSValuePtr SymbolicRiscOperators::shiftRight(const BaseSValuePtr &a_, const B
 BaseSValuePtr SymbolicRiscOperators::shiftRightArithmetic(const BaseSValuePtr &a_, const BaseSValuePtr &sa_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr sa = SymbolicValue::promote(sa_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::shiftRightArithmetic(a_, sa_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::shiftRightArithmetic(a_, sa_));
   if (STRACE) {
     STRACE << "RiscOps::shiftRightArithmetic() a=" << *a << LEND;
     STRACE << "RiscOps::shiftRightArithmetic() sa=" << *sa << LEND;
@@ -693,10 +555,7 @@ BaseSValuePtr SymbolicRiscOperators::shiftRightArithmetic(const BaseSValuePtr &a
 
 BaseSValuePtr SymbolicRiscOperators::equalToZero(const BaseSValuePtr &a_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::equalToZero(a_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::equalToZero(a_));
   if (STRACE) {
     STRACE << "RiscOps::equalToZero() a=" << *a << LEND;
     STRACE << "RiscOps::equalToZero() r=" << *retval << LEND;
@@ -709,10 +568,7 @@ BaseSValuePtr SymbolicRiscOperators::ite(const BaseSValuePtr &sel_, const BaseSV
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr b = SymbolicValue::promote(b_);
   SymbolicValuePtr sel = SymbolicValue::promote(sel_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::ite(sel_, a_, b_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::ite(sel_, a_, b_));
   if (STRACE) {
     STRACE << "RiscOps::ite() sel=" << *sel << LEND;
     STRACE << "RiscOps::ite() a=" << *a << LEND;
@@ -724,10 +580,7 @@ BaseSValuePtr SymbolicRiscOperators::ite(const BaseSValuePtr &sel_, const BaseSV
 
 BaseSValuePtr SymbolicRiscOperators::unsignedExtend(const BaseSValuePtr &a_, size_t new_width) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::unsignedExtend(a_, new_width));
-  if (!omit_cur_insn && retval->get_width() != a->get_width()) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::unsignedExtend(a_, new_width));
   if (STRACE) {
     STRACE << "RiscOps::unsignedExtend() a=" << *a << LEND;
     STRACE << "RiscOps::unsignedExtend() r=" << *retval << LEND;
@@ -737,10 +590,7 @@ BaseSValuePtr SymbolicRiscOperators::unsignedExtend(const BaseSValuePtr &a_, siz
 
 BaseSValuePtr SymbolicRiscOperators::signExtend(const BaseSValuePtr &a_, size_t new_width) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::signExtend(a_, new_width));
-  if (!omit_cur_insn && retval->get_width() != a->get_width()) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::signExtend(a_, new_width));
   if (STRACE) {
     STRACE << "RiscOps::signExtend() a=" << *a << LEND;
     STRACE << "RiscOps::signExtend() r=" << *retval << LEND;
@@ -751,10 +601,7 @@ BaseSValuePtr SymbolicRiscOperators::signExtend(const BaseSValuePtr &a_, size_t 
 BaseSValuePtr SymbolicRiscOperators::add(const BaseSValuePtr &a_, const BaseSValuePtr &b_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr b = SymbolicValue::promote(b_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::add(a_, b_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::add(a_, b_));
   if (STRACE) {
     STRACE << "RiscOps::add() a=" << *a << LEND;
     STRACE << "RiscOps::add() b=" << *b << LEND;
@@ -770,10 +617,7 @@ BaseSValuePtr SymbolicRiscOperators::addWithCarries(
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr b = SymbolicValue::promote(b_);
   SymbolicValuePtr c = SymbolicValue::promote(c_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::addWithCarries(a_, b_, c_, carry_out));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::addWithCarries(a_, b_, c_, carry_out));
   if (STRACE) {
     STRACE << "RiscOps::addWithCarries() a=" << *a << LEND;
     STRACE << "RiscOps::addWithCarries() b=" << *b << LEND;
@@ -786,10 +630,7 @@ BaseSValuePtr SymbolicRiscOperators::addWithCarries(
 
 BaseSValuePtr SymbolicRiscOperators::negate(const BaseSValuePtr &a_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::negate(a_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::negate(a_));
   if (STRACE) {
     STRACE << "RiscOps::negate() a=" << *a << LEND;
     STRACE << "RiscOps::negate() r=" << *retval << LEND;
@@ -800,10 +641,7 @@ BaseSValuePtr SymbolicRiscOperators::negate(const BaseSValuePtr &a_) {
 BaseSValuePtr SymbolicRiscOperators::signedDivide(const BaseSValuePtr &a_, const BaseSValuePtr &b_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr b = SymbolicValue::promote(b_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::signedDivide(a_, b_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::signedDivide(a_, b_));
   if (STRACE) {
     STRACE << "RiscOps::signedDivide() a=" << *a << LEND;
     STRACE << "RiscOps::signedDivide() b=" << *b << LEND;
@@ -815,10 +653,7 @@ BaseSValuePtr SymbolicRiscOperators::signedDivide(const BaseSValuePtr &a_, const
 BaseSValuePtr SymbolicRiscOperators::signedModulo(const BaseSValuePtr &a_, const BaseSValuePtr &b_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr b = SymbolicValue::promote(b_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::signedModulo(a_, b_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::signedModulo(a_, b_));
   if (STRACE) {
     STRACE << "RiscOps::signedModulo() a=" << *a << LEND;
     STRACE << "RiscOps::signedModulo() b=" << *b << LEND;
@@ -830,10 +665,7 @@ BaseSValuePtr SymbolicRiscOperators::signedModulo(const BaseSValuePtr &a_, const
 BaseSValuePtr SymbolicRiscOperators::signedMultiply(const BaseSValuePtr &a_, const BaseSValuePtr &b_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr b = SymbolicValue::promote(b_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::signedMultiply(a_, b_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::signedMultiply(a_, b_));
   if (STRACE) {
     STRACE << "RiscOps::signedMultiply() a=" << *a << LEND;
     STRACE << "RiscOps::signedMultiply() b=" << *b << LEND;
@@ -845,10 +677,7 @@ BaseSValuePtr SymbolicRiscOperators::signedMultiply(const BaseSValuePtr &a_, con
 BaseSValuePtr SymbolicRiscOperators::unsignedDivide(const BaseSValuePtr &a_, const BaseSValuePtr &b_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr b = SymbolicValue::promote(b_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::unsignedDivide(a_, b_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::unsignedDivide(a_, b_));
   if (STRACE) {
     STRACE << "RiscOps::unsignedDivide() a=" << *a << LEND;
     STRACE << "RiscOps::unsignedDivide() b=" << *b << LEND;
@@ -860,10 +689,7 @@ BaseSValuePtr SymbolicRiscOperators::unsignedDivide(const BaseSValuePtr &a_, con
 BaseSValuePtr SymbolicRiscOperators::unsignedModulo(const BaseSValuePtr &a_, const BaseSValuePtr &b_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr b = SymbolicValue::promote(b_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::unsignedModulo(a_, b_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::unsignedModulo(a_, b_));
   if (STRACE) {
     STRACE << "RiscOps::unsignedModulo() a=" << *a << LEND;
     STRACE << "RiscOps::unsignedModulo() b=" << *b << LEND;
@@ -875,10 +701,7 @@ BaseSValuePtr SymbolicRiscOperators::unsignedModulo(const BaseSValuePtr &a_, con
 BaseSValuePtr SymbolicRiscOperators::unsignedMultiply(const BaseSValuePtr &a_, const BaseSValuePtr &b_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr b = SymbolicValue::promote(b_);
-  SymbolicValuePtr retval = SymbolicValue::promote(RiscOperators::unsignedMultiply(a_, b_));
-  if (!omit_cur_insn) {
-    retval->add_modifier(cur_insn);
-  }
+  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::unsignedMultiply(a_, b_));
   if (STRACE) {
     STRACE << "RiscOps::unsignedMultiply() a=" << *a << LEND;
     STRACE << "RiscOps::unsignedMultiply() b=" << *b << LEND;
@@ -887,6 +710,8 @@ BaseSValuePtr SymbolicRiscOperators::unsignedMultiply(const BaseSValuePtr &a_, c
   return retval;
 }
 #endif
+
+} // namespace pharos
 
 /* Local Variables:   */
 /* mode: c++          */

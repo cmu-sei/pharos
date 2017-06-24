@@ -1,4 +1,6 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+
+#include <boost/range/adaptor/map.hpp>
 
 #include "pdg.hpp"
 #include "descriptors.hpp"
@@ -7,8 +9,12 @@
 #include "method.hpp"
 #include "usage.hpp"
 #include "class.hpp"
+#include "defuse.hpp"
 #include "ooanalyzer.hpp"
 #include "vcall.hpp"
+#include "oosolver.hpp"
+
+namespace pharos {
 
 // Some of these should probably be methods on OOAnalyzer, and others might be best just local
 // to this file.  Since the original objdigger.cpp design didn't have a master class, we'll
@@ -31,6 +37,7 @@ void report_this_call_methods();
 void report_object_uses();
 void report_classes();
 void analyze_vtable_overlap();
+void analyze_vtable_overlap_new();
 void analyze_virtual_calls();
 void merge_classes_sharing_vftables();
 void remove_empty_classes();
@@ -41,18 +48,110 @@ void evaluate_possible_destructors();
 void deleting_destructors_must_be_virtual();
 void disallow_virtual_constructors();
 void analyze_class_names();
-void export_prolog_facts(ProgOptVarMap& vm_);
+void mangle_dominance();
+void analyze_vftables_in_all_fds();
 
 OOAnalyzer::OOAnalyzer(DescriptorSet* ds_, ProgOptVarMap& vm_, AddrSet& new_addrs_) :
   BottomUpAnalyzer(ds_, vm_) {
   new_methods_found = 0;
+  delete_methods_found = 0;
+  purecall_methods_found = 0;
   new_addrs = new_addrs_;
-  clock_gettime(CLOCK_REALTIME, &start_ts);
+  start_ts = clock::now();
 
-  // Initialize the new_hashes string set with the hashes of known new() methods.
-  initialize_new_hashes();
+  prolog_mode = false;
+  if (vm_.count("prolog-facts")) {
+    prolog_mode = true;
+  }
+
+  // Initialize the new_hashes string set with the hashes of known methods.
+  initialize_known_method_hashes();
   find_imported_new_methods();
   find_imported_delete_methods();
+  find_imported_purecall_methods();
+}
+
+bool OOAnalyzer::identify_new_method(FunctionDescriptor* fd) {
+  std::string sig = fd->get_pic_hash();
+  if (new_addrs.find(fd->get_address()) != new_addrs.end()) {
+    fd->set_new_method(true);
+    new_methods_found++;
+    return true;
+  }
+  else if (new_hashes.find(sig) != new_hashes.end()) {
+    GINFO << "Function at " << fd->address_string() << " matches hash "
+          << sig << " of known new() method." << LEND;
+    fd->set_new_method(true);
+    new_methods_found++;
+    return true;
+  }
+  return false;
+}
+
+bool OOAnalyzer::identify_delete_method(FunctionDescriptor* fd) {
+  std::string sig = fd->get_pic_hash();
+  if (delete_addrs.find(fd->get_address()) != delete_addrs.end()) {
+    fd->set_delete_method(true);
+    delete_methods_found++;
+    return true;
+  }
+  else if (delete_hashes.find(sig) != delete_hashes.end()) {
+    // Because the hash for a delete method is basically just a stub that jumps to _free,
+    // we need to do some additional analysis to avoid a bunch of false positives. :-(
+    //GINFO << "Function at " << fd->address_string() << " matches hash "
+    //      << sig << " of known delete() method (but has not been confirmed)." << LEND;
+
+    // Some of the delete hashes are actually short stubs that jump to other implementations of
+    // delete.  An example of this was the statically linked implementation of ??3@YAXPAXI@Z in
+    // our prtscrpp example at 0x406F9B.  It appears that we should except hashes that call to
+    // known delete methods as well.
+    for (const CallDescriptor* cd : fd->get_outgoing_calls()) {
+      for (rose_addr_t target : cd->get_targets()) {
+        FunctionDescriptor* call_fd = global_descriptor_set->get_func(target);
+        if (call_fd && call_fd->is_delete_method()) {
+          GINFO << "Function at " << fd->address_string() << " matches hash "
+                << sig << " of known delete() method." << LEND;
+          fd->set_delete_method(true);
+          delete_methods_found++;
+          return true;
+        }
+      }
+    }
+
+    // This was the original logic for delete hashes that call other stactically linked
+    // implementations of free().
+    for (SgAsmBlock *block : fd->get_return_blocks()) {
+      rose_addr_t target = block_get_jmp_target(block);
+      FunctionDescriptor* free_fd = global_descriptor_set->get_func(target);
+      if (!free_fd) continue;
+      std::string free_sig = free_fd->get_pic_hash();
+      if (free_hashes.find(free_sig) != free_hashes.end()) {
+        GINFO << "Function at " << fd->address_string() << " matches hash "
+              << sig << " of known delete() method." << LEND;
+        fd->set_delete_method(true);
+        delete_methods_found++;
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool OOAnalyzer::identify_purecall_method(FunctionDescriptor* fd) {
+  std::string sig = fd->get_pic_hash();
+  if (purecall_addrs.find(fd->get_address()) != purecall_addrs.end()) {
+    fd->set_purecall_method(true);
+    purecall_methods_found++;
+    return true;
+  }
+  else if (purecall_hashes.find(sig) != purecall_hashes.end()) {
+    GINFO << "Function at " << fd->address_string() << " matches hash "
+          << sig << " of known _purecall() method." << LEND;
+    fd->set_purecall_method(true);
+    purecall_methods_found++;
+    return true;
+  }
+  return false;
 }
 
 // Sadly, the whole objdigger output seems to mildly susceptible to changes in this loop.
@@ -66,33 +165,22 @@ OOAnalyzer::OOAnalyzer(DescriptorSet* ds_, ProgOptVarMap& vm_, AddrSet& new_addr
 void OOAnalyzer::visit(FunctionDescriptor* fd) {
   fd->get_pdg();
 
-  std::string sig = fd->get_pic_hash();
-  GDEBUG << "Hash for function " << fd->address_string() << " is " << sig << "." << LEND;
-
-  // New methods can be found through import names, so be sure to count those.
-  if (fd->is_new_method()) new_methods_found++;
-
-  if (new_addrs.find(fd->get_address()) != new_addrs.end()) {
-    // Report the hash to simplify growing the list of recognized hashes in the future.
-    GINFO << "Hash for new() method " << fd->address_string() << " is " << sig << LEND;
-    fd->set_new_method(true);
-    new_methods_found++;
-  }
-  else if (new_hashes.find(sig) != new_hashes.end()) {
-    GINFO << "Function at " << fd->address_string() << " matches signature "
-          << sig << " of known new() method." << LEND;
-    fd->set_new_method(true);
-    new_methods_found++;
-  }
+  identify_new_method(fd);
+  identify_delete_method(fd);
+  identify_purecall_method(fd);
 }
 
 void OOAnalyzer::finish() {
   if (new_methods_found == 0) {
     GERROR << "No new() methods were found.  Heap objects may not be detected." << LEND;
   }
-  timespec end_ts;
-  clock_gettime(CLOCK_REALTIME, &end_ts);
-  OINFO << "Function analysis took " << tdiff(start_ts, end_ts) << " seconds." << LEND;
+  if (delete_methods_found == 0) {
+    GERROR << "No delete() methods were found.  Object analysis may be impaired." << LEND;
+  }
+  time_point end_ts = clock::now();
+  duration secs = end_ts - start_ts;
+  OINFO << "Function analysis complete, analyzed " << processed_funcs
+        << " functions in " << secs.count() << " seconds." << LEND;
 
   // Now complete the OO analysis by running all of the class detection algorithms.
 
@@ -114,8 +202,18 @@ void OOAnalyzer::finish() {
   // Certain methods that look like destructors can be identified at this stage.
   evaluate_possible_destructors();
 
+  // Test virtual base tables and virtual function tables for overlaps.  This is the new Prolog
+  // compatible approach, and it may not actually modify function tables yet.
+  analyze_vtable_overlap_new();
+
   // Export our current knowledge in the form of Prolog facts (if requested).
-  export_prolog_facts(vm);
+  if (prolog_mode) {
+    analyze_vftables_in_all_fds();
+    OOSolver oosolver = OOSolver(vm);
+    oosolver.analyze();
+  }
+
+  mangle_dominance();
 
   // Make classes from the object uses that include allocation sites.  These are the cases
   // where we'll be able to identify (or make a good guess at) the constructor.
@@ -169,7 +267,7 @@ void OOAnalyzer::finish() {
   report_classes();
 
   // This is currently very late in the analysis because it uses classes.  It should
-  // use global_vtables, and then it could be much earlier (and probably more correct, unless
+  // use global_vftables, and then it could be much earlier (and probably more correct, unless
   // we've somehow magically excluded invalid vtables, which isn't likely).
   analyze_vtable_overlap();
 
@@ -195,8 +293,7 @@ void OOAnalyzer::finish() {
   // Constructors may not be virtual.
   disallow_virtual_constructors();
 
-  // Deleting destructors must be virtual.  This pass is has been disabled since the primary
-  // analysis was moved to before export_prolog_facts().
+  // Deleting destructors must be virtual.
   deleting_destructors_must_be_virtual();
 
   analyze_final_class_sizes();
@@ -227,16 +324,47 @@ void RecursiveMethodAnalyzer::finish() {
   GDEBUG << "Finished recursively analyzing methods." << LEND;
 }
 
-// Initialize the list of known new() methods with some well-known hashes.  It's unclear how
-// big this set will eventually be, but it'll probably be managable regardless.  We should
-// investigate the variation some more and expand the list for real use.
-void OOAnalyzer::initialize_new_hashes() {
+// Initialize the list of known methods with some well-known hashes.  It's unclear how big this
+// set will eventually be, but it'll probably be managable regardless.  We should investigate
+// the variation some more and expand the list for real use.
+void OOAnalyzer::initialize_known_method_hashes() {
+#if 0 // old hash function
   // OO cases 0-6
-  new_hashes.insert("A0DE1FEA2A6C8806CEEF453E2480677C");
+  new_hashes.insert("A0DE1FEA2A6C8806CEEF453E2480677C"); // uhh, no?
   // OO cases 7-9
   new_hashes.insert("7B8365EB6F754CB9714F8A99E1334171");
   // Unidentified msvc2010 debug test cases
   new_hashes.insert("443BABE6802D856C2EF32B80CD14B474");
+#else // new hash function:
+  //new_hashes.insert(""); // where was that one?
+  new_hashes.insert("9F377A6D9EDE41E4F1B43C475069EE28");
+  new_hashes.insert("443BABE6802D856C2EF32B80CD14B474");
+
+  // Notepad++5.6.8 ordinary new(), at 0x49FD6E
+  new_hashes.insert("356087289F58C87C27410EFEDA931E4D");
+  // Notepad++5.6.8 new_nothrow(), at 0x4A2C94
+  // void *__cdecl operator new(size_t Size, const struct std::nothrow_t *)
+  new_hashes.insert("CC883629B7DB64E925D711EC971B8FCA");
+
+#endif // 0
+
+  // PIC hashes for delete...
+  // This hash was taken from ooex2 and ooex8 test cases.
+  delete_hashes.insert("3D3F9E46688A1687E2AB372921A31394");
+  // This is an implementation of ??3@YAXPAXI@Z from prtscrpp at 406F9B.
+  delete_hashes.insert("3D01B1E1279476F6FFA9296C4E387579");
+
+  // PIC hashes for free (the more identifiable method that delete calls)
+  // This hash was taken from ooex2 and ooex8 test cases.
+  free_hashes.insert("3F4896D9B44BD7A745E0E5A23753934D");
+
+  // PIC hashes for _purecall
+  // This hash was taken from 2010/Lite/oo test case.
+  purecall_hashes.insert("0CF963B9B193252F2CDEC4159322921B");
+
+  // _purecall from notepad++5.6.8, at 0x4A0FAA
+  purecall_hashes.insert("3F464C9D7A17BBBB054583A48EE66661");
+
 }
 
 // Find new methods by examining imports.
@@ -247,23 +375,28 @@ void OOAnalyzer::find_imported_new_methods() {
   StringSet new_method_names;
   new_method_names.insert("??2@YAPAXI@Z");
   new_method_names.insert("??2@YAPAXIHPBDH@Z");
+  // From notepad++5.6.8:
+  // void *__cdecl operator new(size_t Size, const struct std::nothrow_t *)
+  new_method_names.insert("??2@YAPAXIABUnothrow_t@std@@@Z");
 
   // Get the import map out of the provided descriptor set.
   ImportDescriptorMap& im = global_descriptor_set->get_import_map();
 
   // For each new() name...
-  BOOST_FOREACH(std::string name, new_method_names) {
+  for (const std::string & name : new_method_names) {
     // Find all the import descriptors that match.
 
-    BOOST_FOREACH(ImportDescriptor* id, im.find_name(name)) {
+    for (ImportDescriptor* id : im.find_name(name)) {
       GINFO << "Imported new '" << name << "' found at address "
             << id->address_string() << "."<< LEND;
+      id->set_new_method(true);
+      id->get_rw_function_descriptor()->set_new_method(true);
+      new_methods_found++;
       // This part is kind-of icky.  Maybe we should make a nice set of backward links to all
       // the imports from all the thunks that jump to them...  For now Cory's going to brute
       // force it and move on.
       FunctionDescriptorMap& fdmap = global_descriptor_set->get_func_map();
-      BOOST_FOREACH(FunctionDescriptorMap::value_type& fdpair, fdmap) {
-        FunctionDescriptor& fd = fdpair.second;
+      for (FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
         // If it's not a thunk to the import, move on to the next function.
         if (fd.get_jmp_addr() != id->get_address()) continue;
         // If this function is a thunk to the import, it's a new method.
@@ -273,7 +406,7 @@ void OOAnalyzer::find_imported_new_methods() {
         // Also any functions that are thunks to this function are new methods.  This is
         // another example of why thunks are tricky.  In this case we want to access them
         // backwards.  We don't currently have an inverted version of follow_thunks().
-        BOOST_FOREACH(FunctionDescriptor* tfd, fd.get_thunks()) {
+        for (FunctionDescriptor* tfd : fd.get_thunks()) {
           GINFO << "Function at " << tfd->address_string()
                 << " is a thunk to a thunk to a new() method." << LEND;
           tfd->set_new_method(true);
@@ -289,36 +422,78 @@ void OOAnalyzer::find_imported_delete_methods() {
   GINFO << "Finding imported delete methods..." << LEND;
 
   StringSet del_method_names;
-  del_method_names.insert("??3@YAXPAX@Z"); // is there only one?
+  del_method_names.insert("??3@YAXPAX@Z");
+  del_method_names.insert("??3@YAXPAXI@Z");
 
   ImportDescriptorMap& im = global_descriptor_set->get_import_map();
 
-  // For each new() name...
-  BOOST_FOREACH(std::string name, del_method_names) {
+  // For each delete() name...
+  for (const std::string & name : del_method_names) {
     // Find all the import descriptors that match.
-
-    BOOST_FOREACH(ImportDescriptor* id, im.find_name(name)) {
-      GDEBUG << "Imported delete '" << name << "' found at address "
-             << id->address_string() << "."<< LEND;
+    for (ImportDescriptor* id : im.find_name(name)) {
+      GINFO << "Imported delete '" << name << "' found at address "
+            << id->address_string() << "."<< LEND;
+      id->set_delete_method(true);
+      delete_methods_found++;
       // This part is kind-of icky.  Maybe we should make a nice set of backward links to all
       // the imports from all the thunks that jump to them...  For now Cory's going to brute
       // force it and move on.
       FunctionDescriptorMap& fdmap = global_descriptor_set->get_func_map();
-      BOOST_FOREACH(FunctionDescriptorMap::value_type& fdpair, fdmap) {
-        FunctionDescriptor& fd = fdpair.second;
+      for (FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
         // If it's not a thunk to the import, move on to the next function.
         if (fd.get_jmp_addr() != id->get_address()) continue;
         // If this function is a thunk to the import, it's a delete method.
-        GDEBUG << "Function at " << fd.address_string()
-               << " is a thunk to a delete() method." << LEND;
+        GINFO << "Function at " << fd.address_string()
+              << " is a thunk to a delete() method." << LEND;
         fd.set_delete_method(true);
         // Also any functions that are thunks to this function are new methods.  This is
         // another example of why thunks are tricky.  In this case we want to access them
         // backwards.  We don't currently have an inverted version of follow_thunks().
-        BOOST_FOREACH(FunctionDescriptor* tfd, fd.get_thunks()) {
-          GDEBUG << "Function at " << tfd->address_string()
-                 << " is a thunk to a thunk to a delete() method." << LEND;
+        for (FunctionDescriptor* tfd : fd.get_thunks()) {
+          GINFO << "Function at " << tfd->address_string()
+                << " is a thunk to a thunk to a delete() method." << LEND;
           tfd->set_delete_method(true);
+        }
+      }
+    }
+  }
+}
+
+// Find purecall methods by examining imports.
+void OOAnalyzer::find_imported_purecall_methods() {
+  GINFO << "Finding imported purecall methods..." << LEND;
+
+  StringSet purecall_method_names;
+  purecall_method_names.insert("_purecall");
+
+  ImportDescriptorMap& im = global_descriptor_set->get_import_map();
+
+  // For each purecall() name...
+  for (const std::string & name : purecall_method_names) {
+    // Find all the import descriptors that match.
+    for (ImportDescriptor* id : im.find_name(name)) {
+      GINFO << "Imported purecall '" << name << "' found at address "
+            << id->address_string() << "."<< LEND;
+      id->set_purecall_method(true);
+      purecall_methods_found++;
+      // This part is kind-of icky.  Maybe we should make a nice set of backward links to all
+      // the imports from all the thunks that jump to them...  For now Cory's going to brute
+      // force it and move on.
+      FunctionDescriptorMap& fdmap = global_descriptor_set->get_func_map();
+      for (FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
+        // If it's not a thunk to the import, move on to the next function.
+        if (fd.get_jmp_addr() != id->get_address()) continue;
+        // If this function is a thunk to the import, it's a delete method.
+        GINFO << "Function at " << fd.address_string()
+              << " is a thunk to a purecall() method." << LEND;
+        fd.set_purecall_method(true);
+        // Also any functions that are thunks to this function are new methods.  This is
+        // another example of why thunks are tricky.  In this case we want to access them
+        // backwards.  We don't currently have an inverted version of follow_thunks().
+        for (FunctionDescriptor* tfd : fd.get_thunks()) {
+          GINFO << "Function at " << tfd->address_string()
+                << " is a thunk to a thunk to a purecall() method." << LEND;
+          tfd->set_purecall_method(true);
         }
       }
     }
@@ -328,9 +503,7 @@ void OOAnalyzer::find_imported_delete_methods() {
 // Find functions that have instructions that uses THIS_PTR without initialization
 void find_this_call_methods() {
   FunctionDescriptorMap& fdmap = global_descriptor_set->get_func_map();
-  BOOST_FOREACH(FunctionDescriptorMap::value_type& fdpair, fdmap) {
-    // Get a non-const handle to the function descriptor through get_func()
-    FunctionDescriptor& fd = fdpair.second;
+  for (FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
     // Speculatively construct a ThisCallMethods from the function.  The ThisCallMethod class
     // will tell us whether the function was really object oriented or not.
     ThisCallMethod tcm(&fd);
@@ -347,8 +520,8 @@ void find_this_call_methods() {
   // follow the loop above that builds this_call_methods, because it uses membership in that
   // map to decide which functions are __thiscall, and thus are receiving the current value of
   // ECX.
-  BOOST_FOREACH(ThisCallMethodMap::value_type& tcmpair, this_call_methods) {
-    tcmpair.second.find_passed_func_offsets();
+  for (ThisCallMethod& tcm : boost::adaptors::values(this_call_methods)) {
+    tcm.find_passed_func_offsets();
   }
 }
 
@@ -358,8 +531,7 @@ void find_this_call_methods() {
 // Cory moved it to a separate function for clarity, and experimentation.
 void force_class_entries() {
   // For every object oriented method in the program...
-  BOOST_FOREACH(ThisCallMethodMap::value_type &tcmpair, this_call_methods) {
-    ThisCallMethod& tcm = tcmpair.second;
+  for (ThisCallMethod& tcm : boost::adaptors::values(this_call_methods)) {
     rose_addr_t taddr = tcm.get_address();
 
     // The logic here used to be quite different.  Cory's made it two separate passes.  First
@@ -367,8 +539,7 @@ void force_class_entries() {
     // virtual fuction table pointers has an entry of it's own in classes.  This
     // probably should have been long before this point in the code, but for whatever reason it
     // was only eventually done here.
-    BOOST_FOREACH(const MemberMap::value_type &mpair, tcm.data_members) {
-      const Member& member = mpair.second;
+    for (const Member& member : boost::adaptors::values(tcm.data_members)) {
       if (member.is_virtual()) {
         if (classes.find(taddr) == classes.end()) {
           GDEBUG << "Last second addition of virtual constructor! " << addr_str(taddr) << LEND;
@@ -388,26 +559,23 @@ void force_class_entries() {
 // still some wrongness here in that the ordering of the loops is probably sub-optimal.
 void set_members_from_methods() {
   // For every object oriented method in the program...
-  BOOST_FOREACH(ThisCallMethodMap::value_type &tcmpair, this_call_methods) {
-    ThisCallMethod& tcm = tcmpair.second;
+  for (const ThisCallMethod& tcm : boost::adaptors::values(this_call_methods)) {
     rose_addr_t taddr = tcm.get_address();
 
     GDEBUG << "Setting data members in " << tcm.address_string() << LEND;
     // For each member this method accesses..
-    BOOST_FOREACH(const MemberMap::value_type &mpair, tcm.data_members) {
-      const Member& member = mpair.second;
-
+    for (const Member& member : boost::adaptors::values(tcm.data_members)) {
       // Make sure the member is on the class for this method.
       if (classes.find(taddr) != classes.end()) {
         classes[taddr].add_data_member(member);
       }
       // For each class...
-      BOOST_FOREACH(const ClassDescriptorMap::value_type& pair, classes) {
+      for (ClassDescriptor& cls : boost::adaptors::values(classes)) {
         // For each method called by the class...
-        BOOST_FOREACH(const ThisCallMethod* mtcm, pair.second.methods) {
+        for (const ThisCallMethod* mtcm : cls.methods) {
           // If it's the current method under consideration, add it to classes.
           if (mtcm->get_address() == taddr) {
-            classes[pair.first].add_data_member(member);
+            cls.add_data_member(member);
           }
         }
       }
@@ -423,14 +591,13 @@ void set_members_from_methods_in_classes() {
   GINFO << "Setting members from methods in classes..." << LEND;
 
   // For each class...
-  BOOST_FOREACH(const ClassDescriptorMap::value_type& cpair, classes) {
+  for (ClassDescriptor& cls : boost::adaptors::values(classes)) {
     // For each method called by the class...
-    BOOST_FOREACH(const ThisCallMethod* tcm, cpair.second.methods) {
+    for (const ThisCallMethod* tcm : cls.methods) {
       // For each member updated by the method.
-      BOOST_FOREACH(const MemberMap::value_type &mpair, tcm->data_members) {
-        const Member& member = mpair.second;
+      for (const Member& member :  boost::adaptors::values(tcm->data_members)) {
         // Add the member to the class.
-        classes[cpair.first].add_data_member(member);
+        cls.add_data_member(member);
       }
     }
   }
@@ -442,8 +609,7 @@ void set_members_from_methods_in_classes() {
 void reanalyze_members_from_methods() {
   GINFO << "Reanalyzing members from methods..." << LEND;
 
-  BOOST_FOREACH(ClassDescriptorMap::value_type& pair, classes) {
-    ClassDescriptor& cls = pair.second;
+  for (ClassDescriptor& cls : boost::adaptors::values(classes)) {
     cls.data_members.clear();
     cls.update_size();
   }
@@ -464,17 +630,18 @@ bool look_for_parent_constructor(ThisCallMethod& tcm) {
   FunctionDescriptor* srcfd = tcm.fd;
   PDG* p = srcfd->get_pdg();
   if (p == NULL) return false;
-  const AccessMap& writes = p->get_usedef().get_writes();
+
+  auto & ud = p->get_usedef();
 
   SymbolicValuePtr tptr = tcm.get_this_ptr();
 
   // Wes used to start at a specific block, and Cory was confused about why that could be
   // correct.  Turns out that apparently it wasn't since starting at block zero only resulted
   // in the correct detection of parent relationships in ooex8.
-  BOOST_FOREACH(SgAsmStatement* bs, srcfd->get_func()->get_statementList()) {
+  for (SgAsmStatement* bs : srcfd->get_func()->get_statementList()) {
     SgAsmBlock *bb = isSgAsmBlock(bs);
     if (!bb) continue;
-    BOOST_FOREACH(SgAsmStatement* is, bb->get_statementList()) {
+    for (SgAsmStatement* is : bb->get_statementList()) {
       SgAsmX86Instruction *insn = isSgAsmX86Instruction(is);
       if (!insn) continue;
 
@@ -483,14 +650,10 @@ bool look_for_parent_constructor(ThisCallMethod& tcm) {
       if (insn->get_kind() != x86_mov) continue;
 
       SgAsmExpressionPtrList &ops = insn->get_operandList()->get_operands();
-      if (ops.size() >= 2 && isSgAsmMemoryReferenceExpression(ops[0])
-          && writes.find(insn) != writes.end()) {
-
-        GDEBUG << "Candidate mov found " << debug_instruction(insn) << LEND;
-
-        BOOST_FOREACH(const AbstractAccess& aa, writes.at(insn)) {
+      if (ops.size() >= 2 && isSgAsmMemoryReferenceExpression(ops[0])) {
+        for (const AbstractAccess& aa : ud.get_mem_writes(insn)) {
           // Does the value in REG match the last defined value of ECX before
-          if (aa.is_mem() && tptr->can_be_equal(aa.memory_address)) {
+          if (tptr->can_be_equal(aa.memory_address)) {
             GDEBUG << "Parent constructor found " << debug_instruction(insn) << LEND;
             return true;
           }
@@ -503,12 +666,10 @@ bool look_for_parent_constructor(ThisCallMethod& tcm) {
 }
 
 void analyze_passed_func_offsets() {
-  BOOST_FOREACH(ThisCallMethodMap::value_type& tcmpair, this_call_methods) {
-    ThisCallMethod& tcm = tcmpair.second;
+  for (ThisCallMethod& tcm : boost::adaptors::values(this_call_methods)) {
     rose_addr_t taddr = tcm.get_address();
 
-    BOOST_FOREACH(FuncOffsetMap::value_type& fopair, tcm.passed_func_offsets) {
-      FuncOffset& fo = fopair.second;
+    for (FuncOffset& fo : boost::adaptors::values(tcm.passed_func_offsets)) {
       ThisCallMethod* fotcm = fo.tcm;
       rose_addr_t caddr = fotcm->get_address();
 
@@ -575,8 +736,8 @@ SgAsmX86Instruction* get_caller(const FunctionDescriptor *src, const FunctionDes
   // logged, so I'm still unsure whether he thinks this can happen or not.  Putting the code
   // here cleans up elsewhere some and reminds Cory to investigate.
 
-  BOOST_FOREACH(const CallDescriptor* scd, src->get_outgoing_calls()) {
-    BOOST_FOREACH(const rose_addr_t saddr, scd->get_targets()) {
+  for (const CallDescriptor* scd : src->get_outgoing_calls()) {
+    for (const rose_addr_t saddr : scd->get_targets()) {
 
       FunctionDescriptor* sfd = global_descriptor_set->get_func(saddr);
       if (sfd == NULL) continue;
@@ -643,17 +804,16 @@ void make_class(const ObjectUse& obj_use, ThisCallMethod* ctor, const ThisPtrUsa
   // Can we find any groups that have a this-pointer that depends on the return code of the
   // constructor?  Why we should need to do this is unclear to Cory, but it does still have an
   // effect.
-  BOOST_FOREACH(const ThisPtrUsageMap::value_type& rpair, obj_use.references) {
-    const ThisPtrUsage& otpu = rpair.second;
+  for (const ThisPtrUsage& otpu : boost::adaptors::values(obj_use.references)) {
     InsnSet defs = otpu.this_ptr->get_defining_instructions();
     GDEBUG << "  Looping OTPU: ";
     otpu.debug();
     GDEBUG << LEND;
-    BOOST_FOREACH(SgAsmInstruction* dinsn, defs) {
+    for (SgAsmInstruction* dinsn : defs) {
       GDEBUG << "    Defining instruction: " << debug_instruction(dinsn) << LEND;
       if (dinsn->get_address() != caller_addr) continue;
       GDEBUG << "    Filtered instruction: " << debug_instruction(dinsn) << LEND;
-      BOOST_FOREACH(ThisCallMethod* tcm, otpu.get_methods()) {
+      for (ThisCallMethod* tcm : otpu.get_methods()) {
         GDEBUG << "Checking TCM" << LEND;
         if (GDEBUG) tcm->debug();
         if (classes[caddr].methods.find(tcm) == classes[caddr].methods.end()) {
@@ -668,87 +828,112 @@ void make_class(const ObjectUse& obj_use, ThisCallMethod* ctor, const ThisPtrUsa
   }
 }
 
+void handle_heap_allocs(const rose_addr_t saddr) {
+  GDEBUG << "handle_heap_allocs inspecting addr " << addr_str(saddr) << LEND;
+  CallDescriptor* cd = global_descriptor_set->get_call(saddr);
+  if (cd == NULL) {
+    GINFO << "No call descriptor for call at " << addr_str(saddr) << LEND;
+    return;
+  }
+
+  SgAsmInstruction* insn = cd->get_insn();
+  FunctionDescriptor* cfd = global_descriptor_set->get_fd_from_insn(insn);
+  if (cfd == NULL) {
+    GINFO << "No function for call at " << addr_str(saddr) << LEND;
+    return;
+  }
+
+  rose_addr_t faddr = cfd->get_address();
+  ObjectUseMap::iterator oufinder = object_uses.find(faddr);
+  if (oufinder == object_uses.end()) {
+    GINFO << "No object use for " << cfd->address_string() << LEND;
+    return;
+  }
+
+  // Find the object use for the function the call is in.
+  ObjectUse& obj_use = object_uses.find(faddr)->second;
+
+  // For backwards compatibility.  This is very duplicative of effort right now, but Cory
+  // intends for this call to go away soon.
+  //find_heap_objects(obj_use);
+
+  // Get the return value from the call to new(), which should be our this-pointer.
+  SymbolicValuePtr rc = cd->get_return_value();
+  if (!rc) {
+    GERROR << "Missing return value from new() call at " << cd->address_string() << LEND;
+    return;
+  }
+  // Lookup the this-pointer in the references map.
+  ThisPtrUsageMap::iterator finder = obj_use.references.find(rc->get_hash());
+  if (finder == obj_use.references.end()) {
+    // In the cases Cory looked at this was caused by objects that were not used to call
+    // any methods in that class.  Typically the object would be passed as a parameter to
+    // another function or some method was inlined following the new() call.  This
+    // appears to happen primarily when the constructor is inlined or non-existent.
+    GWARN << "Missing this-pointer usage for new() call at "
+          << debug_instruction(insn) << LEND;
+    return;
+  }
+
+  // Record that we know which type of allocation the object has.
+  ThisPtrUsage& tpu = finder->second;
+  tpu.alloc_type = AllocHeap;
+  tpu.alloc_insn = insn;
+
+  // Get the parameters to the new() call.  Cory's had a few problems with the version of
+  // this logic that accepts only a single parameter to new().  For now we'll switch to a
+  // slightly less correct, but more defensive version that involves looking for the
+  // first STACK parameter.  The problem is that in some Lite builds, we're not handling
+  // the leave instruction correctly with respect to saved and restored register
+  // analysis, which adds extra bogus register parameters. :-(
+  const ParameterDefinition* pd = cd->get_parameters().get_stack_parameter(0);
+  if (pd != NULL) {
+    // And the parameter should usually be a constant value.
+    if (pd->value != NULL && pd->value->is_number()) {
+      unsigned int size = pd->value->get_number();
+      if (size > 0 and size < 0xFFFFFFF) {
+        tpu.alloc_size = size;
+        GDEBUG << "The size parameter to new() at " << cd->address_string()
+               << " was: " << tpu.alloc_size << LEND;
+      }
+      else {
+        GWARN << "Bad size parameter " << size
+              << " for new() call at " << cd->address_string() << LEND;
+      }
+    }
+  }
+  else {
+    GWARN << "Unable to find parameter for new() call at " << cd->address_string() << LEND;
+  }
+}
+
 void find_heap_allocs() {
   // Second pass - Having completed the object use analysis for all functions, make another
   // pass over the functions looking for the ones we've identified as new() methods.  For each
   // new() method, analyze all of it's callers and record that they are heap allocated objects.
   FunctionDescriptorMap& fdmap = global_descriptor_set->get_func_map();
-  BOOST_FOREACH(const FunctionDescriptorMap::value_type& fdpair, fdmap) {
-    const FunctionDescriptor& fd = fdpair.second;
-
+  for (FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
     if (fd.is_new_method()) {
       // This is a pretty horrible way to get the callers.  Wes used the function call graph,
       // and that had different problems, including skipping some calls to new, and adding some
       // jumps to new.  At least this way we're using our CallDescriptor infrastructure, and
       // if get_callers() was cleaned up some, then we'd be in pretty good shape.
-      BOOST_FOREACH(const rose_addr_t saddr, fd.get_callers()) {
-        CallDescriptor* cd = global_descriptor_set->get_call(saddr);
-        if (cd == NULL) {
-          GINFO << "No call descriptor for call at " << addr_str(saddr) << LEND;
-          continue;
-        }
-
-        SgAsmInstruction* insn = cd->get_insn();
-        FunctionDescriptor* cfd = global_descriptor_set->get_fd_from_insn(insn);
-        if (cfd == NULL) {
-          GINFO << "No function for call at " << addr_str(saddr) << LEND;
-          continue;
-        }
-
-        rose_addr_t faddr = cfd->get_address();
-        ObjectUseMap::iterator oufinder = object_uses.find(faddr);
-        if (oufinder == object_uses.end()) {
-          GINFO << "No object use for " << cfd->address_string() << LEND;
-          continue;
-        }
-
-        // Find the object use for the function the call is in.
-        ObjectUse& obj_use = object_uses.find(faddr)->second;
-
-        // For backwards compatibility.  This is very duplicative of effort right now, but Cory
-        // intends for this call to go away soon.
-        //find_heap_objects(obj_use);
-
-        // Get the return value from the call to new(), which should be our this-pointer.
-        SymbolicValuePtr rc = cd->get_return_value();
-        if (rc->is_invalid()) {
-          GERROR << "Missing return value from new() call at " << cd->address_string() << LEND;
-        }
-        // Lookup the this-pointer in the references map.
-        ThisPtrUsageMap::iterator finder = obj_use.references.find(rc->get_hash());
-        if (finder == obj_use.references.end()) {
-          // In the cases Cory looked at this was caused by objects that were not used to call
-          // any methods in that class.  Typically the object would be passed as a parameter to
-          // another function or some method was inlined following the new() call.  This
-          // appears to happen primarily when the constructor is inlined or non-existent.
-          GWARN << "Missing this-pointer usage for new() call at "
-                << debug_instruction(insn) << LEND;
-          continue;
-        }
-
-        // Record that we know which type of allocation the object has.
-        ThisPtrUsage& tpu = finder->second;
-        tpu.alloc_type = AllocHeap;
-        tpu.alloc_insn = insn;
-
-        // Get the parameters to the new() call.  Cory's had a few problems with the version of
-        // this logic that accepts only a single parameter to new().  For now we'll switch to a
-        // slightly less correct, but more defensive version that involves looking for the
-        // first STACK parameter.  The problem is that in some Lite builds, we're not handling
-        // the leave instruction correctly with respect to saved and restored register
-        // analysis, which adds extra bogus register parameters. :-(
-        const ParameterDefinition* pd = cd->get_parameters().get_stack_parameter(0);
-        if (pd != NULL) {
-          // And the parameter should usually be a constant value.
-          if (pd->value != NULL && pd->value->is_number()) {
-            tpu.alloc_size = pd->value->get_number();
-            GDEBUG << "The size parameter to new() at " << cd->address_string()
-                   << " was: " << tpu.alloc_size << LEND;
-          }
-        }
-        else {
-          GWARN << "Unable to find parameter for new() call at " << cd->address_string() << LEND;
-        }
+      for (const rose_addr_t saddr : fd.get_callers()) {
+        handle_heap_allocs(saddr);
+      }
+    }
+  }
+  // now have to iterate over import descriptors, because the func desc contained within them
+  // are not in the global descriptor set func map...
+  ImportDescriptorMap& idmap = global_descriptor_set->get_import_map();
+  for (ImportDescriptor& id : boost::adaptors::values(idmap)) {
+    if (id.get_function_descriptor()->is_new_method()) {
+      // This is a pretty horrible way to get the callers.  Wes used the function call graph,
+      // and that had different problems, including skipping some calls to new, and adding some
+      // jumps to new.  At least this way we're using our CallDescriptor infrastructure, and
+      // if get_callers() was cleaned up some, then we'd be in pretty good shape.
+      for (const rose_addr_t saddr : id.get_callers()) {
+        handle_heap_allocs(saddr);
       }
     }
   }
@@ -765,8 +950,7 @@ void find_heap_allocs() {
 void analyze_functions_for_object_uses() {
   // First pass - Find all object uses in all functions in program.
   FunctionDescriptorMap& fdmap = global_descriptor_set->get_func_map();
-  BOOST_FOREACH(FunctionDescriptorMap::value_type& fdpair, fdmap) {
-    FunctionDescriptor& fd = fdpair.second;
+  for (FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
     rose_addr_t faddr = fd.get_address();
 
     // Find all uses of objects in the function and record them as a list of this-pointers and
@@ -779,17 +963,23 @@ void analyze_functions_for_object_uses() {
   find_heap_allocs();
 }
 
+// This method is called mangle dominance because it applies _incorrect_ dominance logic to
+// determining which methods might be constructors.  It needs to be performed _after_ the
+// Prolog fact exporting in order for both to work correctly at the same time.
+void mangle_dominance() {
+  for (ObjectUse& obj_use : boost::adaptors::values(object_uses)) {
+    obj_use.apply_constructor_dominance_rule();
+  }
+}
+
 // Make classes from the object uses that have allocation sites.  Essentially, in cases where
 // the object is a local stack variable or allocated by new() we know that a constructor has to
 // be in the method list, so pick the best available method as the constructor, and begin
 // accumulating information about that class.
 void make_classes_from_allocations() {
-  BOOST_FOREACH(ObjectUseMap::value_type& oupair, object_uses) {
-    ObjectUse& obj_use = oupair.second;
-
+  for (ObjectUse& obj_use : boost::adaptors::values(object_uses)) {
     // This is a little hackish, and should perhaps be someplace else.
-    BOOST_FOREACH(ThisPtrUsageMap::value_type& rpair, obj_use.references) {
-      ThisPtrUsage& tpu = rpair.second;
+    for (ThisPtrUsage& tpu : boost::adaptors::values(obj_use.references)) {
       tpu.pick_ctor();
       // If the allocation type was a recognized one...
       if (tpu.alloc_type == AllocLocalStack || tpu.alloc_type == AllocHeap) {
@@ -838,16 +1028,15 @@ bool DemangleCppName(std::string &mangled_name, std::string &demangled_name) {
 
 void analyze_class_names()  {
 
-  BOOST_FOREACH(ClassDescriptorMap::value_type& cpair, classes) {
+  //for (ClassDescriptor& cls : boost::adaptors::values(classes)) {
+  for (ClassDescriptorMap::value_type& cpair : classes) {
 
     ClassDescriptor &obj = cpair.second;
     rose_addr_t obj_key = cpair.first;
 
     bool use_default = true;
 
-    BOOST_FOREACH(const MemberMap::value_type &mpair, obj.data_members) {
-
-      const Member& member = mpair.second;
+    for (const Member& member : boost::adaptors::values(obj.data_members)) {
       if (!(member.is_virtual())) continue;
 
       VirtualFunctionTable *vtab = member.get_vftable();
@@ -872,13 +1061,10 @@ void analyze_class_names()  {
     }
 
     if (use_default) {
-
       GDEBUG << "Using default name" << LEND;
-
       std::ostringstream clsNameStream;
       clsNameStream << "Cls_" << std::hex << obj_key << std::dec;
       obj.set_name(clsNameStream.str());
-
     }
   }
 }
@@ -888,8 +1074,7 @@ void analyze_class_names()  {
 void analyze_final_class_sizes() {
   GINFO << "Analyzing final class sizes..." << LEND;
 
-  BOOST_FOREACH(ClassDescriptorMap::value_type& pair, classes) {
-    ClassDescriptor& cls = pair.second;
+  for (ClassDescriptor& cls : boost::adaptors::values(classes)) {
     cls.update_size();
   }
 }
@@ -898,12 +1083,11 @@ void analyze_final_class_sizes() {
 // ClassDescriptor that contains a method (virtual or otherwise)
 ClassDescriptor *find_class_by_method(const rose_addr_t method_addr) {
 
-  BOOST_FOREACH(ClassDescriptorMap::value_type& clspair, classes) {
-    ClassDescriptor cls = clspair.second;
+  for (ClassDescriptor& cls : boost::adaptors::values(classes)) {
 
-    BOOST_FOREACH(ThisCallMethodSet::value_type method, cls.methods) {
+    for (ThisCallMethodSet::value_type method : cls.methods) {
       if (method_addr == method->get_address()){
-        return &(clspair.second);
+        return &cls;
       }
     }
 
@@ -914,18 +1098,17 @@ ClassDescriptor *find_class_by_method(const rose_addr_t method_addr) {
     // the rule about a method only belonging to one class.  This should still be true _after_
     // we've done proper movement of methods to their parents.  Why exactly did you need this
     // behavior again?
-    BOOST_FOREACH(MemberMap::value_type &mpair, cls.data_members) {
-      Member &mbr = mpair.second;
-      if (mbr.is_virtual() == false) continue;
+    for (const Member& member : boost::adaptors::values(cls.data_members)) {
+      if (member.is_virtual() == false) continue;
 
       // this is a vfptr
-      VirtualFunctionTable *vtable = mbr.get_vftable();
+      VirtualFunctionTable *vtable = member.get_vftable();
       if (vtable != NULL) {
         // Perhaps we should print the whole vtable here via vftable->print(o)...
         for (unsigned int e = 0; e < vtable->max_size; e++) {
           rose_addr_t vf_addr = vtable->read_entry(e);
           if (method_addr == vf_addr) {
-            return &(clspair.second);
+            return &cls;
           }
         }
       }
@@ -949,10 +1132,7 @@ void evaluate_possible_destructors() {
 
   GDEBUG << "Evaluating possible destructors..." << LEND;
 
-
-  BOOST_FOREACH(ThisCallMethodMap::value_type& tcmpair, this_call_methods) {
-    ThisCallMethod &possible_dtor_tcm = tcmpair.second;
-
+  for (ThisCallMethod& possible_dtor_tcm : boost::adaptors::values(this_call_methods)) {
     rose_addr_t real_dtor_addr;
 
     // can't find function descriptor for possible deleting destructor - skip it.
@@ -972,14 +1152,14 @@ void evaluate_possible_destructors() {
 
     bool found_delete=false, found_real_dtor=false; // deleting destructors have exactly 2 requirements
 
-    BOOST_FOREACH(CallDescriptor *cd, calls) {
+    for (const CallDescriptor *cd : calls) {
       const CallTargetSet &call_targets = cd->get_targets();
 
       // assuming one target for now
       rose_addr_t target = *(call_targets.begin());
 
       GDEBUG << " Checking call:  " << addr_str(cd->get_address()) << " to "
-            << addr_str(target) << LEND;
+             << addr_str(target) << LEND;
 
       FunctionDescriptor *target_func = global_descriptor_set->get_func(target);
 
@@ -1040,98 +1220,96 @@ void deleting_destructors_must_be_virtual() {
   rose_addr_t real_dtor_addr=0, deleting_dtor_addr=0;
   bool real_dtor_found=false, deleting_dtor_found=false;
 
-  BOOST_FOREACH(const VTableAddrMap::value_type& vtpair, global_vtables) {
-     VirtualFunctionTable* vtab = vtpair.second;
+  for (const VirtualFunctionTable* vtab : boost::adaptors::values(global_vftables)) {
+    for (unsigned int i=0; i<vtab->max_size; i++) {
 
-     for (unsigned int i=0; i<vtab->max_size; i++) {
+      rose_addr_t possible_deldtor_addr = vtab->read_entry(i);
+      FunctionDescriptor *fd = global_descriptor_set->get_func(possible_deldtor_addr);
 
-       rose_addr_t possible_deldtor_addr = vtab->read_entry(i);
-       FunctionDescriptor *fd = global_descriptor_set->get_func(possible_deldtor_addr);
+      // can't find function descriptor for possible deleting destructor - skip it.
+      if (!fd) {
+        GDEBUG << "Cannot find FunctionDescriptor for address "
+               << addr_str(possible_deldtor_addr) << LEND;
+        continue;
+      }
 
-       // can't find function descriptor for possible deleting destructor - skip it.
-       if (!fd) {
-         GDEBUG << "Cannot find FunctionDescriptor for address "
-                << addr_str(possible_deldtor_addr) << LEND;
-         continue;
-       }
+      const CallDescriptorSet& calls = fd->get_outgoing_calls();
+      if (calls.size() != 2) {
+        // deleting destructors have exactly 2 calls - destructor and delete
+        // this is boilerplate code so it's probably reliable
+        continue;
+      }
 
-       const CallDescriptorSet& calls = fd->get_outgoing_calls();
-       if (calls.size() != 2) {
-         // deleting destructors have exactly 2 calls - destructor and delete
-         // this is boilerplate code so it's probably reliable
-         continue;
-       }
+      for (const CallDescriptor *cd : calls) {
+        const CallTargetSet &call_targets = cd->get_targets();
 
-       BOOST_FOREACH(CallDescriptor *cd, calls) {
-         const CallTargetSet &call_targets = cd->get_targets();
+        // assuming one target for now
+        rose_addr_t target = *(call_targets.begin());
 
-         // assuming one target for now
-         rose_addr_t target = *(call_targets.begin());
-
-         GDEBUG << "Checking possible delete target call:  " << addr_str(cd->get_address()) << " to "
+        GDEBUG << "Checking possible delete target call:  " << addr_str(cd->get_address()) << " to "
                << addr_str(target) << LEND;
 
-         FunctionDescriptor *target_func = global_descriptor_set->get_func(target);
+        FunctionDescriptor *target_func = global_descriptor_set->get_func(target);
 
-         if (target_func == NULL) {
-           continue; // can't determine what this is so just skip it
-         }
+        if (target_func == NULL) {
+          continue; // can't determine what this is so just skip it
+        }
 
-         // is the target function a thiscall method?
-         rose_addr_t target_addr = target_func->get_address();
+        // is the target function a thiscall method?
+        rose_addr_t target_addr = target_func->get_address();
 
-         if (this_call_methods.find(target_addr) != this_call_methods.end()) {
-           ThisCallMethod& tcm = this_call_methods.at(target_addr);
-           if (tcm.is_constructor()) {
+        if (this_call_methods.find(target_addr) != this_call_methods.end()) {
+          ThisCallMethod& tcm = this_call_methods.at(target_addr);
+          if (tcm.is_constructor()) {
 
-             // this call is the destructor
-             GDEBUG << "Found programmer-defined destructor: " << tcm.address_string() << LEND;
+            // this call is the destructor
+            GDEBUG << "Found programmer-defined destructor: " << tcm.address_string() << LEND;
 
-             tcm.set_constructor(false, ConfidenceGuess);
-             tcm.set_destructor(true, ConfidenceGuess);
+            tcm.set_constructor(false, ConfidenceGuess);
+            tcm.set_destructor(true, ConfidenceGuess);
 
-             real_dtor_addr = tcm.get_address();
-             real_dtor_found = true;
-           }
-         }
-         else if (target_func->is_delete_method()) {
-           if (this_call_methods.find(possible_deldtor_addr) != this_call_methods.end()) {
-             ThisCallMethod &del_tcm = this_call_methods.at(possible_deldtor_addr);
-             del_tcm.set_destructor(true, ConfidenceGuess);
+            real_dtor_addr = tcm.get_address();
+            real_dtor_found = true;
+          }
+        }
+        else if (target_func->is_delete_method()) {
+          if (this_call_methods.find(possible_deldtor_addr) != this_call_methods.end()) {
+            ThisCallMethod &del_tcm = this_call_methods.at(possible_deldtor_addr);
+            del_tcm.set_destructor(true, ConfidenceGuess);
 
-             deleting_dtor_addr = possible_deldtor_addr;
-             deleting_dtor_found = true;
+            deleting_dtor_addr = possible_deldtor_addr;
+            deleting_dtor_found = true;
 
-             GDEBUG << "Found deleting destructor " << addr_str(deleting_dtor_addr) << LEND;
-             // ideally here would be where analysis of whether the this pointer is deleted
-             // would come in to play for this analysis
-           }
-         }
-       }
-     }
+            GDEBUG << "Found deleting destructor " << addr_str(deleting_dtor_addr) << LEND;
+            // ideally here would be where analysis of whether the this pointer is deleted
+            // would come in to play for this analysis
+          }
+        }
+      }
+    }
 
-     // set the two identified destructors in the ClassDescriptorSet
+    // set the two identified destructors in the ClassDescriptorSet
 
-     if (real_dtor_found) {
-       ClassDescriptor *real_dtor_cls = find_class_by_method(real_dtor_addr);
-       if (real_dtor_cls != NULL) {
-         ThisCallMethod *real_dtor = real_dtor_cls->get_method(real_dtor_addr);
-         if (real_dtor) {
-           real_dtor_cls->set_real_dtor(real_dtor);
-         }
-       }
-     }
+    if (real_dtor_found) {
+      ClassDescriptor *real_dtor_cls = find_class_by_method(real_dtor_addr);
+      if (real_dtor_cls != NULL) {
+        ThisCallMethod *real_dtor = real_dtor_cls->get_method(real_dtor_addr);
+        if (real_dtor) {
+          real_dtor_cls->set_real_dtor(real_dtor);
+        }
+      }
+    }
 
-     if (deleting_dtor_found) {
-       ClassDescriptor *del_dtor_cls = find_class_by_method(deleting_dtor_addr);
-       if (del_dtor_cls != NULL) {
+    if (deleting_dtor_found) {
+      ClassDescriptor *del_dtor_cls = find_class_by_method(deleting_dtor_addr);
+      if (del_dtor_cls != NULL) {
 
-         ThisCallMethod *del_dtor = del_dtor_cls->get_method(deleting_dtor_addr);
-         if (del_dtor != NULL) {
-           del_dtor_cls->set_deleting_dtor(del_dtor);
-         }
-       }
-     }
+        ThisCallMethod *del_dtor = del_dtor_cls->get_method(deleting_dtor_addr);
+        if (del_dtor != NULL) {
+          del_dtor_cls->set_deleting_dtor(del_dtor);
+        }
+      }
+    }
   }
 }
 
@@ -1146,9 +1324,7 @@ void disallow_virtual_constructors() {
   GINFO << "Disallowing virtual constructors..." << LEND;
 
   // For each virtual function table...
-  BOOST_FOREACH(const VTableAddrMap::value_type& vtpair, global_vtables) {
-    VirtualFunctionTable* vtab = vtpair.second;
-
+  for (const VirtualFunctionTable* vtab : boost::adaptors::values(global_vftables)) {
     // For each entry in the virtual function table...
     for (unsigned int i=0; i < vtab->max_size; i++) {
       rose_addr_t vfunc_addr = vtab->read_entry(i);
@@ -1197,15 +1373,12 @@ void analyze_embedded_objects() {
 
   // phase 1: cycle through the members for each object and determine if they are embedded
   // objects. If they are, then identify them as members.
-  BOOST_FOREACH(ClassDescriptorMap::value_type& ucpair, classes) {
-    ClassDescriptor& obj = ucpair.second;
-
-    BOOST_FOREACH(MemberMap::value_type &mpair, obj.data_members) {
-      Member &mbr = mpair.second;
+  for (ClassDescriptor& obj : boost::adaptors::values(classes)) {
+    for (Member& member : boost::adaptors::values(obj.data_members)) {
       // if this member is an embedded object, correct it's size and type
-      if (mbr.is_embedded_object() == true) {
+      if (member.is_embedded_object() == true) {
 
-        BOOST_FOREACH(rose_addr_t ector, mbr.embedded_ctors) {
+        for (rose_addr_t ector : member.embedded_ctors) {
 
           GDEBUG << "Looking for embedded constructor: " << addr_str(ector) << LEND;
 
@@ -1214,43 +1387,37 @@ void analyze_embedded_objects() {
             // members cannot be their own parents
             if (embedded_cls->get_address() == obj.get_address()) continue;
 
-            mbr.object = embedded_cls;
-            mbr.size = mbr.object->get_size();
+            member.object = embedded_cls;
+            member.size = member.object->get_size();
 
             GDEBUG << "Correcting embedded object " << addr_str(ector)
-                       << " size to " << mbr.object->get_size() << LEND;
-            }
-            else {
-              GDEBUG << "Could not find embedded ctor in master list" << LEND;
-            }
+                   << " size to " << member.object->get_size() << LEND;
+          }
+          else {
+            GDEBUG << "Could not find embedded ctor in master list" << LEND;
           }
         }
       }
     }
+  }
   // Phase 2: identify and removing overlapping members. This is not working
 
 #if 0
 
-  BOOST_FOREACH(ClassDescriptorMap::value_type& ucpair, classes) {
-    ClassDescriptor& obj = ucpair.second;
-
-    BOOST_FOREACH(const MemberMap::value_type &mpair, obj.data_members) {
-      Member obj_mbr = mpair.second;
+  for (ClassDescriptor& obj : boost::adaptors::values(classes)) {
+    for (const MemberMap& obj_mbr : boost::adaptors::values(obj.data_members)) {
       if (obj_mbr.object != NULL) {
 
         // this member is an object
         ClassDescriptor *embedded_obj = obj_mbr.object;
 
         // start searching for overlap
-        BOOST_FOREACH(const MemberMap::value_type &mpair2, obj.data_members) {
-          Member other_mbr = mpair2.second;
-
+        for (const MemberMap& other_mbr : boost::adaptors::values(obj.data_members)) {
           if (obj_mbr != other_mbr ) {
             if ((obj_mbr.offset+obj_mbr.size ) >= other_mbr.offset) {
 
               // overlap has occurred. if the
-              BOOST_FOREACH(MemberMap::value_type &empair, embedded_obj->data_members) {
-                Member& m = empair.second;
+              for (const MemberMap& m : boost::adaptors::values(embedded_obj->data_members)) {
                 if (m == other_mbr) {
                   // the other_mbr is not in the embedded object, add it and remove it from the
                   // containing object
@@ -1272,9 +1439,21 @@ void analyze_embedded_objects() {
 // For virtual function table overlap analysis.
 typedef std::map<rose_addr_t, rose_addr_t> Addr2AddrMap;
 
+void analyze_vtable_overlap_new() {
+  // For every virtual base table...
+  for (VirtualBaseTable* vbt : boost::adaptors::values(global_vbtables)) {
+    // Ask the virtual base table to compare itself with all other tables, and update its size.
+    vbt->analyze_overlaps();
+  }
+  // In the new way of doing things we should probably be doing this too...
+  //for (const VirtualFunctionTable* vft : boost::adaptors::values(global_vftables)) {
+  //  vft->analyze_overlaps();
+  //}
+}
+
 // this function checks for overlaps in the detected vtables by analyzing each table's starting
 // address and size
-void analyze_vtable_overlap(void) {
+void analyze_vtable_overlap() {
   GINFO << "Analyzing vtable overlap..." << LEND;
 
   // key is start address, value is the end address
@@ -1282,8 +1461,7 @@ void analyze_vtable_overlap(void) {
 
   // for each class, if that constructor has a vtable then use the
   // best size to determine how -- Cory thinks GlobalVTableMap would be better here.
-  BOOST_FOREACH(const VTableAddrMap::value_type& vtpair, global_vtables) {
-    VirtualFunctionTable* vtab = vtpair.second;
+  for (const VirtualFunctionTable* vtab : boost::adaptors::values(global_vftables)) {
     if (vtab->addr > 0 && vtab->best_size > 0) {
       vt_map[vtab->addr] = vtab->addr + (vtab->best_size*4);
     }
@@ -1293,7 +1471,7 @@ void analyze_vtable_overlap(void) {
   // checking if the start of the vtable plus the number of functions is greater than the
   std::map<rose_addr_t,unsigned int> adjust_list;
   Addr2AddrMap::iterator next = vt_map.begin();
-  BOOST_FOREACH(Addr2AddrMap::value_type& vpair, vt_map) {
+  for (Addr2AddrMap::value_type& vpair : vt_map) {
     rose_addr_t vt_start = vpair.first;
     rose_addr_t vt_end = vpair.second;
     next++;
@@ -1315,8 +1493,7 @@ void analyze_vtable_overlap(void) {
     }
   }
   // the adjusted size of the vtable is now known, update the global vtable list
-  BOOST_FOREACH(const VTableAddrMap::value_type& vtpair, global_vtables) {
-    VirtualFunctionTable *vtab = vtpair.second;
+  for (VirtualFunctionTable* vtab : boost::adaptors::values(global_vftables)) {
     if (adjust_list.find(vtab->addr) != adjust_list.end()) {
       // update max and recompute the size guess
       vtab->update_maximum_size(adjust_list[vtab->addr]);
@@ -1328,15 +1505,12 @@ void analyze_vtable_overlap(void) {
   // where there
 
   // adjust size based on rtti data
-  BOOST_FOREACH(const VTableAddrMap::value_type& vtpair, global_vtables) {
-    VirtualFunctionTable* target_vtab = vtpair.second;
-
+  for (const VirtualFunctionTable* target_vtab : boost::adaptors::values(global_vftables)) {
     // this vtable has rtti information
     if (target_vtab->rtti != NULL) {
 
       // check to see if other vtables count this vtable's rtti as a virtual function method
-      BOOST_FOREACH(const VTableAddrMap::value_type& other_vtpair, global_vtables) {
-        VirtualFunctionTable* other_vtab = other_vtpair.second;
+      for (VirtualFunctionTable* other_vtab : boost::adaptors::values(global_vftables)) {
 
         if (target_vtab->addr != other_vtab->addr) {
           // the address of the last entry
@@ -1440,8 +1614,7 @@ void analyze_virtual_calls() {
   GINFO << "Analyzing virtual function calls..." << LEND;
 
   // For every call...
-  BOOST_FOREACH(CallDescriptorMap::value_type& cpair, global_descriptor_set->get_call_map()) {
-    CallDescriptor& vfcd = cpair.second;
+  for (CallDescriptor& vfcd : boost::adaptors::values(global_descriptor_set->get_call_map())) {
     // We're only interested in virtual calls.
     if (vfcd.get_call_type() != CallVirtualFunction) continue;
 
@@ -1510,10 +1683,9 @@ void analyze_virtual_calls() {
     // This is now the primary virtual function call resolution mechanism.
     // =====================================================================================
 
-    BOOST_FOREACH(const ThisPtrUsageMap::value_type& rpair, obj_use.references) {
-      const ThisPtrUsage& tpu = rpair.second;
+    for (const ThisPtrUsage& tpu : boost::adaptors::values(obj_use.references)) {
       // Post NEWWAY, it might be sufficient to replace this with pick_this_ptr().
-      BOOST_FOREACH(const TreeNodePtr& leaf, tpu.this_ptr->get_possible_values()) {
+      for (const TreeNodePtr& leaf : tpu.this_ptr->get_possible_values()) {
         GDEBUG << "Considering leaf this-ptr=" << *leaf << LEND;
         // If they don't match, examine the next reference.
         if (!(leaf->mustEqual(thisptr, NULL))) continue;
@@ -1550,7 +1722,7 @@ void analyze_virtual_calls() {
       assert (rc_cd != NULL);
       rose_addr_t last_target = 0;
       bool oo_target_found = false;
-      BOOST_FOREACH(const rose_addr_t target, rc_cd->get_targets()) {
+      for (const rose_addr_t target : rc_cd->get_targets()) {
         // Just keep the last target in the list (there's usually only one) to improve our
         // debugging message.
         last_target = target;
@@ -1610,8 +1782,7 @@ void analyze_virtual_calls() {
         // classes looking for ones that call this method.  And worse, none of the
         // existing cases of this actually work because we're missing the required data in
         // classes :-(
-        BOOST_FOREACH(const ClassDescriptorMap::value_type& ucpair, classes) {
-          const ClassDescriptor& obj = ucpair.second;
+        for (const ClassDescriptor& obj : boost::adaptors::values(classes)) {
           GDEBUG << "Considering ClassDescriptor at " << obj.address_string() << LEND;
           // Does this object instance call this method?
           if (obj.methods.find(&tcm) != obj.methods.end()) {
@@ -1664,8 +1835,7 @@ void update_class_with_ptr_groups() {
   do {
     changed = false;
     // For each existing class...
-    BOOST_FOREACH(ClassDescriptorMap::value_type& ucpair, classes) {
-      ClassDescriptor& obj = ucpair.second;
+    for (ClassDescriptor& obj : boost::adaptors::values(classes)) {
       // Make a copy of our method set so that we can walk the old version while updating it.
       ThisCallMethodSet methods_copy = obj.methods;
       // The constructor for this class.
@@ -1674,17 +1844,15 @@ void update_class_with_ptr_groups() {
       if (ctcm == NULL) continue;
 
       // Now for each this-pointer usage, look to see if we can improve our list of methods.
-      BOOST_FOREACH(ObjectUseMap::value_type& oupair, object_uses) {
-        ObjectUse& obj_use = oupair.second;
+      for (ObjectUse& obj_use : boost::adaptors::values(object_uses)) {
         // This is a little hackish, and should perhaps be someplace else.
-        BOOST_FOREACH(ThisPtrUsageMap::value_type& rpair, obj_use.references) {
-          ThisPtrUsage& tpu = rpair.second;
+        for (ThisPtrUsage& tpu : boost::adaptors::values(obj_use.references)) {
           // If our constructor is a member of the tpu methods, then all of the tpu methods are
           // part of our class.
           obj.merge_shared_methods(tpu, ctcm);
           // If any of our methods are the in the tpu methods group, then all of the tpu methods
           // methods are part of our class.
-          BOOST_FOREACH(ThisCallMethod *mtcm, methods_copy) {
+          for (ThisCallMethod *mtcm : methods_copy) {
             obj.merge_shared_methods(tpu, mtcm);
           }
         }
@@ -1706,9 +1874,9 @@ void update_class_with_ptr_groups() {
 void update_calling_classes() {
   // If we end up calling this routine repeatedly, we'll need to add code to clear the existing
   // answers before generating new ones, but for now we just know that it's empty.
-  BOOST_FOREACH(ClassDescriptorMap::value_type& ucpair, classes) {
-    BOOST_FOREACH(ThisCallMethod *tcm, ucpair.second.methods) {
-      tcm->add_class(&(ucpair.second));
+  for (ClassDescriptor& cls : boost::adaptors::values(classes)) {
+    for (ThisCallMethod *tcm : cls.methods) {
+      tcm->add_class(&cls);
     }
   }
 }
@@ -1722,8 +1890,7 @@ void update_calling_classes() {
 // with a work list.
 bool ThisCallMethod::update_recursive_methods() {
   // For each function invoked from the this method...
-  BOOST_FOREACH(FuncOffsetMap::value_type& fopair, passed_func_offsets) {
-    FuncOffset& fo = fopair.second;
+  for (FuncOffset& fo : boost::adaptors::values(passed_func_offsets)) {
     // We're only interested in methods that are invoked on offset zero.  This is presumed
     // (slightly incorrectly) to mean it's eitehr the same class or a parent class.
     if (fo.offset == 0) {
@@ -1741,7 +1908,7 @@ bool ThisCallMethod::update_recursive_methods() {
 
   if (GDEBUG) {
     GDEBUG << "Recursive methods for " << address_string() << " are: " << LEND;
-    BOOST_FOREACH(ThisCallMethod *rtcm, recursive_methods) {
+    for (ThisCallMethod *rtcm : recursive_methods) {
       GDEBUG << "  " << rtcm->address_string() << LEND;
     }
   }
@@ -1773,13 +1940,12 @@ void recursively_find_methods() {
   // once, using the ThisCallMethod's recursive methods set.
 
   // For each existing class...
-  BOOST_FOREACH(ClassDescriptorMap::value_type& ucpair, classes) {
+  for (ClassDescriptor& cls : boost::adaptors::values(classes)) {
     // Make a copy of our method set so that we're not updating while walking over it.
-    ClassDescriptor& cls = ucpair.second;
     ThisCallMethodSet methods = cls.methods;
 
     // For each of our existing methods...
-    BOOST_FOREACH(const ThisCallMethod *tcm, cls.methods) {
+    for (const ThisCallMethod *tcm : cls.methods) {
       // All of the methods in the recursive methods set are either our methods or one of
       // our ancestors.   Add them to our class' method set, and we'll remove the ones that
       // really belong to our parents in a later analysis phase.
@@ -1789,7 +1955,7 @@ void recursively_find_methods() {
     // Some debugging to see if we did it correctly...
     if (GDEBUG) {
       GDEBUG << "Class " << cls.address_string() << " has methods (including ancestors): " << LEND;
-      BOOST_FOREACH(const ThisCallMethod *ctcm, methods) {
+      for (const ThisCallMethod *ctcm : methods) {
         GDEBUG << "  " << ctcm->address_string() << LEND;
       }
     }
@@ -1803,15 +1969,14 @@ void remove_ancestor_methods() {
   GINFO << "Removing ancestor methods..." << LEND;
 
   // For each existing constructor...
-  BOOST_FOREACH(ClassDescriptorMap::value_type& ucpair, classes) {
-    ClassDescriptor& obj = ucpair.second;
+  for (ClassDescriptor& obj : boost::adaptors::values(classes)) {
     GDEBUG << "Removing ancestors for " << obj.address_string() << LEND;
     // Find all of our ancestors
     obj.find_ancestors();
     GDEBUG << "Ancestors found for " << obj.address_string() << LEND;
 
     // For each of our ancestors...
-    BOOST_FOREACH(rose_addr_t addr, obj.ancestor_ctors) {
+    for (rose_addr_t addr : obj.ancestor_ctors) {
       // Get the class for that ancestor if it exists.
       ClassDescriptorMap::iterator finder = classes.find(addr);
       // If it wasn't found, just skip it.  This shouldn't really happen.  Generate a warning?
@@ -1820,7 +1985,7 @@ void remove_ancestor_methods() {
       ClassDescriptor& ancestor = finder->second;
 
       // For each of the methods in the ancestor...
-      BOOST_FOREACH(ThisCallMethod* ameth, ancestor.methods) {
+      for (ThisCallMethod* ameth : ancestor.methods) {
         GDEBUG << "Removing ancestor method " << ameth->address_string() << " from class "
                << obj.address_string() << LEND;
         obj.methods.erase(ameth);
@@ -1838,8 +2003,7 @@ void remove_ancestor_methods() {
 // better job of this by only allowing mergers that meet additional requirements.
 void merge_classes_sharing_methods() {
   // For every method in the program...
-  BOOST_FOREACH(const ThisCallMethodMap::value_type& tcmpair, this_call_methods) {
-    const ThisCallMethod& tcm = tcmpair.second;
+  for (ThisCallMethod& tcm : boost::adaptors::values(this_call_methods)) {
     // Get the classes that think they "own" that method...
     const ClassDescriptorSet& tcm_classes = tcm.get_classes();
     // And if there's more than one, we need to "fix" that.
@@ -1847,7 +2011,7 @@ void merge_classes_sharing_methods() {
       // This will point to the class that the others get merged into.
       ClassDescriptor* master = NULL;
       // For each class that "owns" the method...
-      BOOST_FOREACH(ClassDescriptor* cls, tcm_classes) {
+      for (ClassDescriptor* cls : tcm_classes) {
         // Classes with no methods have already been merged somewhere else, skip them.
         if (cls->methods.size() == 0) {
           continue;
@@ -1914,14 +2078,13 @@ void merge_classes_sharing_vftables() {
   ClassDescriptorMap new_classes;
 
   // For each class in the program...
-  BOOST_FOREACH(ClassDescriptorMap::value_type& ucpair, classes) {
+  for (ClassDescriptorMap::value_type& ucpair : classes) {
     ClassDescriptor& cls = ucpair.second;
 
     // The new key for this class in the map.
     rose_addr_t new_class_key = 0;
     // Find the virtual function table at offset zero for this class if there is one.
-    BOOST_FOREACH(const MemberMap::value_type &mpair, cls.data_members) {
-      Member member = mpair.second;
+    for (const Member& member : boost::adaptors::values(cls.data_members)) {
       // We're only interested in virtual function tables in the member at offset zero.  To
       // look at more members is incorrect in the case of embedded classes within inlined
       // constructors.  In the case of classes with multiple inheritance, there might be
@@ -1957,165 +2120,139 @@ void merge_classes_sharing_vftables() {
 }
 
 void report_this_call_methods() {
-  BOOST_FOREACH(const ThisCallMethodMap::value_type& tcmpair, this_call_methods) {
-    const ThisCallMethod& tcm = tcmpair.second;
+  for (const ThisCallMethod& tcm : boost::adaptors::values(this_call_methods)) {
     tcm.debug();
   }
 }
 
 void report_object_uses() {
-  BOOST_FOREACH(const ObjectUseMap::value_type& oupair, object_uses) {
-    const ObjectUse& obj_use = oupair.second;
+  for (const ObjectUse& obj_use : boost::adaptors::values(object_uses)) {
     obj_use.debug();
   }
 }
 
 void report_classes() {
-  BOOST_FOREACH(const ClassDescriptorMap::value_type& ucpair, classes) {
-    const ClassDescriptor& obj = ucpair.second;
-    obj.debug();
+  for (const ClassDescriptor& cls : boost::adaptors::values(classes)) {
+    cls.debug();
   }
 }
 
-void export_prolog_facts(ProgOptVarMap& vm) {
-  // Only generate Prolog facts if the user specifically requested it.
-  if (vm.count("prolog") == 0) return;
+// This function is basically a clone of ThisCallMethod::analyze_vftables().  As we expand into
+// better support for inlined methods, we'll need to merge these two routines into a single one
+// that takes external knowledge about the value of the this-pointer (without the thiscall
+// presumptions).  Ultimately, we'll probably still want to keep this routine as a backup
+// catch-all for cases where the better algorithms failed.  Unfortunately, because we don't
+// know the value of this-pointer here, we won't be able to say which object the table was
+// written into.  I also had to eliminate Virtual Base Tables from this logic because the
+// heuristics were too weak and introduced many false positives.
+void analyze_vftables_in_all_fds() {
 
-  BOOST_FOREACH(const ThisCallMethodMap::value_type& tcmpair, this_call_methods) {
-    const ThisCallMethod& tcm = tcmpair.second;
+  FunctionDescriptorMap& fdmap = global_descriptor_set->get_func_map();
+  for (FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
 
-    if (tcm.is_constructor()) {
-      OINFO << "possibleConstructor(method(" << tcm.address_string() << "))." << LEND;
-    }
+    // Analyze the function if we haven't already.
+    PDG* p = fd.get_pdg();
+    if (p == NULL) return;
 
-    if (tcm.is_deleting_destructor()) {
-      OINFO << "possibleDeletingDestructor(method(" << tcm.address_string() << "))." << LEND;
-    }
+    GDEBUG << "Analyzing vftables for " << fd.address_string() << LEND;
 
-    if (tcm.is_destructor()) {
-      OINFO << "possibleRealDestructor(method(" << tcm.address_string() << "))." << LEND;
-    }
+    // For every write in the function...
+    for (const AccessMap::value_type& access : p->get_usedef().get_accesses()) {
+      // The second entry of the pair is the vector of abstract accesses.
+      for (const AbstractAccess& aa : access.second) {
+        // We only want writes
+        if (aa.isRead) continue;
 
-    BOOST_FOREACH(const FuncOffsetMap::value_type& fopair, tcm.passed_func_offsets) {
-      const FuncOffset& fo = fopair.second;
-      OINFO << "funcOffset(insn(" << addr_str(fo.insn->get_address())
-            << "), method(" << tcm.address_string()
-            << "), method(" << fo.tcm->address_string()
-            << "), " << fo.offset << ")." << LEND;
-    }
+        // We're only interested in writes that write a constant value to the target.
+        // This is a reasonably safe presumption for compiler generated code.
+        if (!aa.value->is_number()) continue;
 
-    BOOST_FOREACH(const MemberMap::value_type &mpair, tcm.data_members) {
-      const Member& member = mpair.second;
-      BOOST_FOREACH(const SgAsmx86Instruction* insn, member.using_instructions) {
-        OINFO << "methodMemberAccess(insn(" << addr_str(insn->get_address())
-              << "), method(" << tcm.address_string()
-              << "), " << member.offset
-              << ", " << member.size << ")." << LEND;
-      }
+        // I was doubtful about the requirement that the write must be to memory, but after
+        // further consideration, I'm fairly certain that even if we moved the constant value
+        // into a register, and the register into the object's memory (which is literally
+        // required), then we'd detect the memory write on the second instruction.
+        if (!aa.is_mem()) continue;
 
-      BOOST_FOREACH(const VFTEvidence& vfte, member.get_vftable_evidence()) {
-        rose_addr_t eaddr = vfte.insn->get_address();
-        VirtualFunctionTable* vtab = vfte.vftable;
-        OINFO << "possibleVTableWrite(insn(" << addr_str(eaddr)
-              << "), method(" << tcm.address_string()
-              << "), " << member.offset
-              << ", vftable(" << addr_str(vtab->addr) << "))." << LEND;
-      }
-    }
-  }
+        // In the immortal words of JSG "this is a hack to prevent a core dump in ROSE"
+        if (aa.value->get_expression()->nBits() > 64) continue;
 
-  BOOST_FOREACH(const VTableAddrMap::value_type& vtpair, global_vtables) {
-     VirtualFunctionTable* vtab = vtpair.second;
+        // We're only interested in constant addresses that are in the memory image.  In some
+        // unusual corner cases this might fail, but it should work for compiler generated code.
+        rose_addr_t constaddr = aa.value->get_number();
+        if (!global_descriptor_set->memory_in_image(constaddr)) continue;
 
-     size_t e = 0;
-     while (true) {
-       rose_addr_t eaddr = vtab->read_entry(e);
-       if (!(global_descriptor_set->memory_in_image(eaddr))) {
-         break;
-       }
+        // We're not interested in writes to fixed memory addresses.  This used to exclude stack
+        // addresses, but now it's purpose is a little unclear.  It might prevent vtable updates
+        // to global objects while providing no benefit, or it might correctly eliminate many
+        // write to fixed memory addresses correctly.  Cory doesn't really know.
+        if (aa.memory_address->is_number()) continue;
 
-       OINFO << "possibleVTableEntry(vftable(" << addr_str(vtab->addr)
-             << "), " << e << ", address(" << addr_str(eaddr) << "))." << LEND;
-       e++;
-     }
+        // This is the instruction we're talking about.
+        SgAsmInstruction* insn = access.first;
+        SgAsmX86Instruction* x86insn = isSgAsmX86Instruction(insn);
 
-     if (vtab->rtti != NULL) {
-       if (vtab->rtti_confidence == ConfidenceNone) continue;
-       if (vtab->rtti->signature.value != 0) continue;
-       if (vtab->rtti->class_desc.signature.value != 0) continue;
+        // We're not interested in call instructions, which write constant return addresses to
+        // the stack.  This is largely duplicative of the test above, but will be needed when
+        // the stack memory representation gets fixed to include esp properly.
+        if (insn_is_call(x86insn)) continue;
 
-       std::string rtti_classname = vtab->rtti->type_desc.name.value;
-       OINFO << "rTTIInformation(rtti(" << addr_str(vtab->rtti_addr)
-             << "), " << rtti_classname << ")." << LEND;
-     }
-  }
+        GDEBUG << "Analyzing vtable access instruction: " << debug_instruction(insn) << LEND;
 
-  BOOST_FOREACH(const ObjectUseMap::value_type& oupair, object_uses) {
-    const ObjectUse& obj_use = oupair.second;
+        // This is where should have checked whether the write was to an object-pointer or not.
 
-    PDG *pdg = obj_use.fd->get_pdg();
-
-    BOOST_FOREACH(const ThisPtrUsageMap::value_type& rpair, obj_use.references) {
-      const ThisPtrUsage& tpu = rpair.second;
-
-      // Report where this object was allocated.
-      if (tpu.alloc_insn != NULL) {
-        OINFO << "thisPtrAllocation(insn(" << addr_str(tpu.alloc_insn->get_address())
-              << "), func(" << obj_use.fd->address_string()
-              << "), alloctype(" << Enum2Str(tpu.alloc_type)
-              << "), " << tpu.alloc_size << ")." << LEND;
-      }
-
-      BOOST_FOREACH(const MethodEvidenceMap::value_type& mepair, tpu.get_method_evidence()) {
-        SgAsmInstruction* meinsn = mepair.first;
-        SgAsmX86Instruction *meinsn_x86 = isSgAsmX86Instruction(meinsn);
-        // Each instruction references multiple methods, since the call have multiple targets.
-        BOOST_FOREACH(const ThisCallMethod* called, mepair.second) {
-          OINFO << "thisPtrUsage(insn(" << addr_str(meinsn->get_address())
-                << "), func(" << obj_use.fd->address_string()
-                << "), thisptr_" << tpu.this_ptr->get_hash()
-                << ", method(" << called->address_string() << "))." << LEND;
+        // What's left is starting to look a lot like the initialization of a virtual function
+        // table pointer.  Let's check to see if we've already analyzed this address.  If so,
+        // there's no need to analyze it again, just use the previous results.
+        VirtualFunctionTable* vftable = NULL;
+        if (global_vftables.find(constaddr) != global_vftables.end()) {
+          // We've already found the VFtable, so we're done!
         }
+        else {
+          // It's important that the table go into one of the two global lists here so that we
+          // don't have to keep processing it over and over again.
 
-        BOOST_FOREACH(const MethodEvidenceMap::value_type& inner_pair, tpu.get_method_evidence()) {
-          SgAsmInstruction* inner_insn = inner_pair.first;
-          SgAsmX86Instruction *inner_insn_x86 = isSgAsmX86Instruction(inner_insn);
-          if (meinsn == inner_insn) continue;
-          //OINFO << "Asking Dominates(" << addr_str(meinsn_x86->get_address())
-          //     << ", " << addr_str(inner_insn_x86->get_address()) << ")" << LEND;
-          //pdg->get_cdg().dump_dominance_maps();
-          if (pdg->get_cdg().dominates(meinsn_x86, inner_insn_x86)) {
-            OINFO << "dominates(insn(" << addr_str(meinsn->get_address())
-                  << "), insn(" << addr_str(inner_insn->get_address()) << "))." << LEND;
+          // This memory is not currently freed anywhere. :-( Sorry 'bout that. -- Cory
+
+          //GDEBUG << "Found possible virtual function table at: " << addr_str(constaddr) << LEND;
+          // Now try creating a virtual function table at the same address.
+          vftable = new VirtualFunctionTable(constaddr);
+          vftable->analyze();
+          global_vftables[constaddr] = vftable;
+
+          // The address can only truly be a virtual function table if it passes some basic tests,
+          // such as having at least one function pointer.
+          if (vftable->max_size < 1) {
+            // If there were no pointer at all, just reject the table outright.
+            if (vftable->non_function == 0) {
+              GDEBUG << "Possible extra virtual function table at " << addr_str(constaddr)
+                     << " rejected because no valid pointers were found." << LEND;
+              // Don't add the table to the list of tables for the object.
+              continue;
+            }
+            // But if there were valid non-function pointers, let's continue to assume that we've
+            // had a disassembly failure, and add the table to the list of tables even though it's
+            // obviously broken.
+            else {
+              GDEBUG << "Possible extra virtual function table at " << addr_str(constaddr)
+                     << " is highly suspicious because no function pointers were found." << LEND;
+            }
           }
-          if (pdg->get_cdg().post_dominates(meinsn_x86, inner_insn_x86)) {
-            OINFO << "postDominates(insn(" << addr_str(meinsn->get_address())
-                  << "), insn(" << addr_str(inner_insn->get_address()) << "))." << LEND;
+          else {
+            GINFO << "Possible extra virtual function table found at"
+                  << addr_str(constaddr) << " installed by " << addr_str(insn->get_address()) << LEND;
           }
         }
-      }
-    }
-  }
 
-  BOOST_FOREACH(CallDescriptorMap::value_type& cpair, global_descriptor_set->get_call_map()) {
-    CallDescriptor& vfcd = cpair.second;
-    // We're only interested in virtual calls.
-    if (vfcd.get_call_type() != CallVirtualFunction) continue;
+        // In all cases, this loop should continue to the next instruction, since there can be
+        // multiple virtual function tables per constructor, and any failures we encountered
+        // won't prevent later tables from validating correctly.
 
-    CallInformationPtr ci = vfcd.get_call_info();
-    VirtualFunctionCallInformationPtr vci =
-      boost::dynamic_pointer_cast<VirtualFunctionCallInformation>(ci);
-
-    FunctionDescriptor* inside = vfcd.get_containing_function();
-
-    OINFO << "possibleVirtualFunctionCall(insn(" << vfcd.address_string()
-          << "), func(" << inside->address_string()
-          << "), thisptr_" << vci->obj_ptr->get_hash()
-          << ", " << vci->vtable_offset
-          << ", " << vci->vfunc_offset
-          << ")." << LEND;
-  }
+      } // For each access
+    } // For all accesses
+  } // For all functions
 }
+
+} // namespace pharos
 
 /* Local Variables:   */
 /* mode: c++          */

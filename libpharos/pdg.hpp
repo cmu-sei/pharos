@@ -1,20 +1,19 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef _PDG_H
 #define _PDG_H
 #include <sstream>
-#define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
-#include <cryptopp/md5.h>
-#include <cryptopp/cryptlib.h>
-#include <cryptopp/hex.h>
-#include <boost/foreach.hpp>
 
 // Forward declaration for circular include problems.
+namespace pharos {
 class PDG;
+} // namespace pharos
 
 #include "defuse.hpp"
 #include "sptrack.hpp"
 #include "cdg.hpp"
+
+namespace pharos {
 
 // PDG node
 struct PDGNode {
@@ -43,7 +42,7 @@ typedef uint16_t MnemonicCode;
 typedef uint32_t FunctionID;
 
 class PDG {
-  
+
 protected:
   // The function descriptor that we're analyzing.
   FunctionDescriptor* fd;
@@ -53,14 +52,14 @@ protected:
   CDG cdg;
 
   Insn2InsnSetMap control_deps;
-  
-  std::string getInstructionString(SgAsmx86Instruction *insn, AddrVector &constants);    
+
+  std::string getInstructionString(SgAsmx86Instruction *insn, AddrVector &constants);
   StringVector getInstructionString(SgAsmx86Instruction *insn);
   std::string makeVariableStr(SgAsmx86Instruction *cur_insn);
   void buildDotNode(SgAsmx86Instruction *cur_insn, std::stringstream &sout, X86InsnSet& processed);
   void toDot(std::string dotOutputFile);
-  void hashSubPaths(SgAsmx86Instruction *cur_insn, std::string path, X86InsnSet processed, 
-                    StringVector& hashedPaths, size_t maxSubPathLen, size_t curLen, 
+  void hashSubPaths(SgAsmx86Instruction *cur_insn, std::string path, X86InsnSet processed,
+                    StringVector& hashedPaths, size_t maxSubPathLen, size_t curLen,
                     StringVector* ss_dump = NULL, AddrSet filter_addresses = AddrSet(),
                     Addr2StringSetMap filter_constants = Addr2StringSetMap(),
                     bool includeSubPath = true);
@@ -70,7 +69,6 @@ protected:
   std::string dumpOperands(SgAsmx86Instruction *insn, AddrVector& constants);
   size_t hashSlice(SgAsmx86Instruction *insn, size_t nHashFunc, std::vector<unsigned int> & hashes);
   size_t getNumInstr();
-  void getWeightedMaxHash(size_t nHashFunc, unsigned char *digest);    
 
   // Get a chop? Not really a chop?
   X86InsnSet chop_insns(SgAsmx86Instruction *insn);
@@ -90,7 +88,7 @@ public:
 
   // Must be public for buildKeys() in indexer.cpp.
   Insn2InsnSetMap getControlDeps() { return control_deps; }
-  
+
   // Get a slice for specified instruction.
   // This has a peculiar API -- returning a string and updating the passed reference.
   // Perhaps there should be two methods here.
@@ -101,6 +99,8 @@ public:
   std::string getWeightedMaxHash(size_t nHashFunc);
 
 };
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

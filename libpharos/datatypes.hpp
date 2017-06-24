@@ -1,4 +1,4 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_DataTypes_H
 #define Pharos_DataTypes_H
@@ -8,6 +8,8 @@
 #include <rose.h>
 
 #include "globals.hpp"
+
+namespace pharos {
 
 class TypeBase {
 public:
@@ -20,7 +22,7 @@ public:
   virtual void read(void *b);
   // Exposes arbitrary read capability
   void read(rose_addr_t a, void *b, size_t s);
-  virtual DataType type() { return DTypeNone; }
+  virtual DataType type() const { return DTypeNone; }
 };
 
 class TypeByte: public TypeBase {
@@ -30,8 +32,8 @@ public:
   TypeByte(rose_addr_t a): TypeBase(a, 1) { read(); }
   inline uint8_t read() { TypeBase::read(&value); return value; }
   inline uint8_t read(rose_addr_t a) { address = a; return read(); }
-  inline std::string str() { return boost::str(boost::format("0x%02X") % value); }
-  inline DataType type() { return DTypeByte; }
+  inline std::string str() const { return boost::str(boost::format("0x%02X") % value); }
+  inline DataType type() const { return DTypeByte; }
 };
 
 class TypeWord: public TypeBase {
@@ -41,24 +43,24 @@ public:
   TypeWord(rose_addr_t a): TypeBase(a, 2) { read(); }
   inline uint16_t read() { TypeBase::read(&value); return value; }
   inline uint16_t read(rose_addr_t a) { address = a; return read(); }
-  inline std::string str() { return boost::str(boost::format("0x%04X") % value); }
-  inline DataType type() { return DTypeWord; }
+  inline std::string str() const { return boost::str(boost::format("0x%04X") % value); }
+  inline DataType type() const { return DTypeWord; }
 };
 
 class TypeWordInt: public TypeWord {
 public:
   TypeWordInt(): TypeWord() { }
   TypeWordInt(rose_addr_t a): TypeWord(a) { }
-  inline std::string str() { return boost::str(boost::format("%d") % value); }
-  inline DataType type() { return DTypeWordInt; }
+  inline std::string str() const { return boost::str(boost::format("%d") % value); }
+  inline DataType type() const { return DTypeWordInt; }
 };
 
 class TypeWordSignedInt: public TypeWord {
 public:
   TypeWordSignedInt(): TypeWord() { }
   TypeWordSignedInt(rose_addr_t a): TypeWord(a) { }
-  inline std::string str() { return boost::str(boost::format("%d") % (int16_t)value); }
-  inline DataType type() { return DTypeWordSignedInt; }
+  inline std::string str() const { return boost::str(boost::format("%d") % (int16_t)value); }
+  inline DataType type() const { return DTypeWordSignedInt; }
 };
 
 class TypeDword: public TypeBase {
@@ -68,31 +70,32 @@ public:
   TypeDword(rose_addr_t a): TypeBase(a, 4) { read(); }
   inline uint32_t read() { TypeBase::read(&value); return value; }
   inline uint32_t read(rose_addr_t a) { address = a; return read(); }
-  inline std::string str() { return boost::str(boost::format("0x%08X") % value); }
-  inline DataType type() { return DTypeDword; }
+  inline std::string str() const { return boost::str(boost::format("0x%08X") % value); }
+  inline DataType type() const { return DTypeDword; }
 };
 
 class TypeDwordInt: public TypeDword {
 public:
   TypeDwordInt(): TypeDword() { }
   TypeDwordInt(rose_addr_t a): TypeDword(a) { read(); }
-  inline std::string str() { return boost::str(boost::format("%d") % value); }
-  inline DataType type() { return DTypeDwordInt; }
+  inline std::string str() const { return boost::str(boost::format("%d") % value); }
+  inline DataType type() const { return DTypeDwordInt; }
 };
 
 class TypeDwordSignedInt: public TypeDword {
 public:
   TypeDwordSignedInt(): TypeDword() { }
   TypeDwordSignedInt(rose_addr_t a): TypeDword(a) { read(); }
-  inline std::string str() { return boost::str(boost::format("%d") % (int32_t)value); }
-  inline DataType type() { return DTypeDwordSignedInt; }
+  inline std::string str() const { return boost::str(boost::format("%d") % (int32_t)value); }
+  inline DataType type() const { return DTypeDwordSignedInt; }
 };
 
+// TypeDwordAddr implies a 32-bit analysis architecture. :-(
 class TypeDwordAddr: public TypeDword {
 public:
   TypeDwordAddr(): TypeDword() { }
   TypeDwordAddr(rose_addr_t a): TypeDword(a) { read(); }
-  inline DataType type() { return DTypeDwordAddr; }
+  inline DataType type() const { return DTypeDwordAddr; }
 };
 
 class TypeQword: public TypeBase {
@@ -101,8 +104,8 @@ public:
   TypeQword(): TypeBase(0, 8) { }
   TypeQword(rose_addr_t a): TypeBase(a, 8) { TypeBase::read(&value); }
   inline uint64_t read() { TypeBase::read(&value); return value; }
-  inline std::string str() { return boost::str(boost::format("0x%16X") % value); }
-  inline DataType type() { return DTypeQword; }
+  inline std::string str() const { return boost::str(boost::format("0x%16X") % value); }
+  inline DataType type() const { return DTypeQword; }
 };
 
 class TypeChar: public TypeByte {
@@ -111,8 +114,8 @@ public:
   TypeChar(rose_addr_t a): TypeByte(a) { read(); }
   inline char read() { TypeByte::read(); return value; }
   inline char read(rose_addr_t a) { address = a; return read(); }
-  inline std::string str() { return boost::str(boost::format("'%c'") % value); }
-  inline DataType type() { return DTypeChar; }
+  inline std::string str() const { return boost::str(boost::format("'%c'") % value); }
+  inline DataType type() const { return DTypeChar; }
 };
 
 class TypeWideChar: public TypeWord {
@@ -121,8 +124,8 @@ public:
   TypeWideChar(rose_addr_t a): TypeWord(a) { read(); }
   inline wchar_t read() { TypeWord::read(); return value; }
   inline wchar_t read(rose_addr_t a) { address = a; return read(); }
-  inline std::string str() { return boost::str(boost::format("'%c'") % value); }
-  inline DataType type() { return DTypeWideChar; }
+  inline std::string str() const { return boost::str(boost::format("'%c'") % value); }
+  inline DataType type() const { return DTypeWideChar; }
 };
 
 class TypeString: public TypeBase {
@@ -131,34 +134,34 @@ public:
   TypeString(): TypeBase(0, 0) { }
   TypeString(rose_addr_t a) { read(a); }
   void read(rose_addr_t a);
-  inline std::string str() { return value; }
-  inline DataType type() { return DTypeString; }
+  inline std::string str() const { return value; }
+  inline DataType type() const { return DTypeString; }
 };
 
 class TypeUnicodeString: public TypeBase {
 public:
   std::wstring value;
   TypeUnicodeString(rose_addr_t a);
-  inline std::wstring str() { return value; }
-  inline DataType type() { return DTypeUnicodeString; }
+  inline std::wstring str() const { return value; }
+  inline DataType type() const { return DTypeUnicodeString; }
 };
 
 class TypeLen8String: public TypeString {
 public:
   TypeLen8String(rose_addr_t a);
-  inline DataType type() { return DTypeLen8String; }
+  inline DataType type() const { return DTypeLen8String; }
 };
 
 class TypeLen16String: public TypeString {
 public:
   TypeLen16String(rose_addr_t a);
-  inline DataType type() { return DTypeLen16String; }
+  inline DataType type() const { return DTypeLen16String; }
 };
 
 class TypeLen32String: public TypeString {
 public:
   TypeLen32String(rose_addr_t a);
-  inline DataType type() { return DTypeLen32String; }
+  inline DataType type() const { return DTypeLen32String; }
 };
 
 // _EH4_SCOPETABLE_RECORD
@@ -166,12 +169,12 @@ class TypeSEH4ScopeTableRecord: public TypeBase {
 public:
   TypeDwordSignedInt EnclosingLevel;
   TypeDwordAddr FilterFunc;
-  TypeDwordAddr HandleFunc;  
+  TypeDwordAddr HandleFunc;
   TypeSEH4ScopeTableRecord(): TypeBase() { }
   TypeSEH4ScopeTableRecord(rose_addr_t a) { read(a); }
   void read(rose_addr_t a);
-  std::string str();
-  inline DataType type() { return DTypeSEH4ScopeTableRecord; }
+  std::string str() const;
+  inline DataType type() const { return DTypeSEH4ScopeTableRecord; }
 };
 
 // _EH4_SCOPETABLE
@@ -185,21 +188,21 @@ public:
   TypeSEH4ScopeTable(): TypeBase() { }
   TypeSEH4ScopeTable(rose_addr_t a) { read(a); }
   void read(rose_addr_t a);
-  std::string str();
-  inline DataType type() { return DTypeSEH4ScopeTable; }
+  std::string str() const;
+  inline DataType type() const { return DTypeSEH4ScopeTable; }
 };
 
 class TypeSEH3ExceptionRegistration: public TypeBase {
 public:
-  TypeDwordAddr Next; 
+  TypeDwordAddr Next;
   TypeDwordAddr ExceptionHandler;
-  TypeSEH4ScopeTable ScopeTable;  
+  TypeSEH4ScopeTable ScopeTable;
   TypeDwordSignedInt TryLevel;
   TypeSEH3ExceptionRegistration(): TypeBase() { }
   TypeSEH3ExceptionRegistration(rose_addr_t a) { read(a); }
   void read(rose_addr_t a);
-  std::string str();
-  inline DataType type() { return DTypeSEH3ExceptionRegistration; }
+  std::string str() const;
+  inline DataType type() const { return DTypeSEH3ExceptionRegistration; }
 };
 
 // _s_HandlerType
@@ -209,11 +212,11 @@ public:
   TypeDwordAddr pType;
   TypeDwordInt dispatchObj;
   TypeDwordAddr addressOfHandler;
-  TypeSEH4HandlerType(): TypeBase() { }
+  TypeSEH4HandlerType() : TypeBase() { }
   TypeSEH4HandlerType(rose_addr_t a) { read(a); }
   void read(rose_addr_t a);
-  std::string str();
-  inline DataType type() { return DTypeSEH4HandlerType; }
+  std::string str() const;
+  inline DataType type() const { return DTypeSEH4HandlerType; }
 };
 
 // _s_TryBlockMapEntry
@@ -228,8 +231,8 @@ public:
   TypeSEH4TryBlockMapEntry(): TypeBase() { }
   TypeSEH4TryBlockMapEntry(rose_addr_t a) { read(a); }
   void read(rose_addr_t a);
-  std::string str();
-  inline DataType type() { return DTypeSEH4TryBlockMapEntry; }
+  std::string str() const;
+  inline DataType type() const { return DTypeSEH4TryBlockMapEntry; }
 };
 
 // _s_UnwindMapEntry
@@ -240,8 +243,8 @@ public:
   TypeSEH4UnwindMapEntry(): TypeBase() { }
   TypeSEH4UnwindMapEntry(rose_addr_t a) { read(a); }
   void read(rose_addr_t a);
-  std::string str();
-  inline DataType type() { return DTypeSEH4UnwindMapEntry; }
+  std::string str() const;
+  inline DataType type() const { return DTypeSEH4UnwindMapEntry; }
 };
 
 // _s_FuncInfo
@@ -261,9 +264,9 @@ public:
   TypeSEH4FuncInfo(): TypeBase() { }
   TypeSEH4FuncInfo(rose_addr_t a) { read(a); }
   void read(rose_addr_t a);
-  std::string str();
+  std::string str() const;
   void dump();
-  inline DataType type() { return DTypeSEH4FuncInfo; }
+  inline DataType type() const { return DTypeSEH4FuncInfo; }
 };
 
 // _RTC_vardesc
@@ -276,22 +279,22 @@ public:
   TypeRTCVarDesc(): TypeBase() { }
   TypeRTCVarDesc(rose_addr_t a) { read(a); }
   void read(rose_addr_t a);
-  std::string str();
-  inline DataType type() { return DTypeRTCVarDesc; }
+  std::string str() const;
+  inline DataType type() const { return DTypeRTCVarDesc; }
 };
 
 // _RTC_framedesc
 class TypeRTCFrameDesc: public TypeBase {
 public:
   TypeDwordInt varCount;
-  TypeDwordAddr variables;  
+  TypeDwordAddr variables;
   std::vector<TypeRTCVarDesc> vars;
   TypeRTCFrameDesc(): TypeBase() { }
   TypeRTCFrameDesc(rose_addr_t a) { read(a); }
   void read(rose_addr_t a);
-  std::string str();
+  std::string str() const;
   void dump();
-  inline DataType type() { return DTypeRTCFrameDesc; }
+  inline DataType type() const { return DTypeRTCFrameDesc; }
 };
 
 // 'RTTI Type Descriptor'
@@ -304,8 +307,8 @@ public:
   TypeRTTITypeDescriptor(rose_addr_t a) { read(a); }
   virtual ~TypeRTTITypeDescriptor() {};
   void read(rose_addr_t a);
-  std::string str();
-  inline DataType type() { return DTypeRTTITypeDescriptor; }
+  std::string str() const;
+  inline DataType type() const { return DTypeRTTITypeDescriptor; }
 };
 
 // 'RTTI Base Class Array'
@@ -314,8 +317,8 @@ public:
   TypeRTTIBaseClassArray(): TypeBase() { }
   TypeRTTIBaseClassArray(rose_addr_t a) { read(a); }
   void read(rose_addr_t a);
-  std::string str();
-  inline DataType type() { return DTypeRTTIBaseClassArray; }
+  std::string str() const;
+  inline DataType type() const { return DTypeRTTIBaseClassArray; }
 };
 
 // 'RTTI Base Class Descriptor'
@@ -328,26 +331,29 @@ public:
   TypeDwordSignedInt where_pdisp;
   TypeDwordSignedInt where_vdisp;
   TypeDword attributes;
+  TypeDwordAddr pClassDescriptor;
+
+  TypeRTTITypeDescriptor type_desc;
   TypeRTTIBaseClassDescriptor(): TypeBase() { }
   TypeRTTIBaseClassDescriptor(rose_addr_t a) { read(a); }
   void read(rose_addr_t a);
-  std::string str();
-  inline DataType type() { return DTypeRTTIBaseClassDescriptor; }
+  std::string str() const;
+  inline DataType type() const { return DTypeRTTIBaseClassDescriptor; }
 };
 
 // 'RTTI Class Hierarchy Descriptor'
 class TypeRTTIClassHierarchyDescriptor: public TypeBase {
 public:
-  TypeDwordAddr signature;
+  TypeDword signature;
   TypeDword attributes;
   TypeDwordInt numBaseClasses;
   TypeDwordAddr pBaseClassArray;
-  std::vector<TypeRTTIBaseClassDescriptor> base_classes; 
+  std::vector<TypeRTTIBaseClassDescriptor> base_classes;
   TypeRTTIClassHierarchyDescriptor(): TypeBase() { }
   TypeRTTIClassHierarchyDescriptor(rose_addr_t a) { read(a); }
   void read(rose_addr_t a);
-  std::string str();
-  inline DataType type() { return DTypeRTTIClassHierarchyDescriptor; }
+  std::string str() const;
+  inline DataType type() const { return DTypeRTTIClassHierarchyDescriptor; }
 };
 
 // 'RTTI Complete Object Locator'
@@ -366,10 +372,12 @@ public:
   TypeRTTICompleteObjectLocator(rose_addr_t a) { read(a); }
   virtual ~TypeRTTICompleteObjectLocator() {};
   void read(rose_addr_t a);
-  std::string str();
+  std::string str() const;
   void dump();
-  inline DataType type() { return DTypeRTTICompleteObjectLocator; }
+  inline DataType type() const { return DTypeRTTICompleteObjectLocator; }
 };
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

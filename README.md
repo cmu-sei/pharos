@@ -1,3 +1,7 @@
+---
+# Pharos Static Analysis Framework
+---
+
 The Pharos static analysis framework is a project of the Software
 Engineering Institute at Carnegie Mellon University.  The framework is
 designed to facilitate the automated analysis of binary programs.  It
@@ -5,44 +9,75 @@ uses the ROSE compiler infrastructure developed by Lawrence Livermore
 National Laboratory for disassembly, control flow analysis,
 instruction semantics, and more.
 
-Objdigger is a tool built using the Pharos framework for the analysis
-and recovery of object oriented constructs.  This tool was the subject
-of a paper titled "Recovering C++ Objects From Binaries Using
-Inter-Procedural Data-Flow Analysis" which was published at the ACM
-SIGPLAN on Program Protection and Reverse Engineering Workshop in
-2014.  The tool identifies object members and methods by tracking
-object pointers between functions in the program.
-
-FN2YARA is a tool built using the Pharos framework to generate YARA
-signatures for matching functions in an executable program.  Programs
-that share significant numbers of functions are are likely to have
-behavior in common.
+The current distribution in is a substantial update to the previous
+version, and is part of an ongoing process to release more of the
+framework and tools publicly.  This release has a more generous BSD
+[license](LICENSE.md) than the previous release.  Carnegie Mellon
+University retains the [copyright](COPYRIGHT.md).
 
 The Pharos framework is a research project, and the code is undergoing
 active development.  No warranties of fitness for any purpose are
-provided.  The current distribution in particular is part of an
-ongoing process of releasing more of the framework and tools publicly.
-Several libraries are required to build the tools, including
-ROSE.  There is currently no documentation in the distribution.
-
-This distribution includes the code required to build Objdigger and
-FN2YARA, but it has not been extensively tested for build portability
-or reliability.  This distribution has been successfully built with
-the following development version of ROSE from 
-
-  https://github.com/rose-compiler/rose-develop/commit/76ca4b8db9570b517f73e544f4b85de8469ad19d
-
-You are likely to have difficuly building against other versions of
-ROSE since their binary API is also evolving steadily.  We plan to
-release updates to this distribution to support a more recent version
-of ROSE soon.  In the meantime, you may find it more convenient to
-download a binary distribution of the tools from:
-
-  https://portal.cert.org/web/mc-portal/pharos-static-analysis-tools
+provided. While this release provides build instructions, unit tests,
+and some documentation, much work remains to be done.  We've tested a
+few select build configurations, but have not actively tested the
+portability of the source code. See the [installation
+instructions](INSTALL.md) for more details.
 
 Since the primary objective for releasing this code is to provide
 transparency into our research and stimulate conversation with other
 binary static analysis researchers, please feel free to contact Cory
 Cohen <cfc@cert.org> with questions you may have about this work.  I
 may be unable to respond in a timely manner, but I will do my best.
+
+---
+# Pharos Static Analysis Tools
+---
+
+## APIAnalyzer
+
+ApAnalyzer is a tool for finding sequences of API calls with the
+specified data and control relationships.  This capability is intended
+to be used to detect common operating system interaction parasigms
+like opening a file, writing to it, and the closing it.
+
+## OOAnalyzer
+
+OOAnalyzer is a tool for the analysis and recovery of object oriented
+constructs.  This tool was the subject of a paper titled "Recovering
+C++ Objects From Binaries Using Inter-Procedural Data-Flow Analysis"
+which was published at the ACM SIGPLAN on Program Protection and
+Reverse Engineering Workshop in 2014.  The tool identifies object
+members and methods by tracking object pointers between functions in
+the program.  This tool was previously named "Objdigger" and is the
+process of being renamed OOAnalyzer as part of a substantial redesign
+using Prolog rules to recover the object attributes.
+
+## CallAnalyzer
+
+Callanalyzer is a tool for reporting the static parameters to API
+calls in a binary program.  It is largely a demonstration of our
+current calling convention, parameter analysis, and type detection
+capabilities, although it also provides useful analysis of the code in
+a program.
+
+## FN2Yara
+
+FN2Yara is a tool to generate YARA signatures for matching functions
+in an executable program.  Programs that share significant numbers of
+functions are are likely to have behavior in common.
+
+## FN2Hash
+
+FN2Hash is tool for generating a variety of hashes and other
+descriptive properties for functions in an executable program.  Like
+FN2Yara it can be used to support binary similarity analysis, or
+provide features for machine learning algorithm.
+
+## DumpMASM
+
+DumpMASM is a tool for dumping diassembly listings from an executable
+using the Pharos framework in the same style as the other tools.  It
+has not been actively maintained, and you should consider using ROSE's
+standard recursiveDisassemble instead.
+
 

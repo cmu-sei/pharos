@@ -1,4 +1,4 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 // boost/property_tree/json_parser includes sys/stat.h which rose doesn't like. :-(
 #include <rose.h>
@@ -14,6 +14,8 @@
 #include "usage.hpp"
 #include "class.hpp"
 #include "vcall.hpp"
+
+namespace pharos {
 
 // this is a simple utility function to convert a rose address to a hex string
 std::string addr2str(rose_addr_t addr) {
@@ -51,7 +53,7 @@ ObjdiggerJsonExporter::ObjdiggerJsonExporter(ProgOptVarMap& vm) {
    else {
       std::string ext(".json");
       std::string input_path = vm["file"].as<std::string>();
-      json_filename =  (std::string(basename(input_path.c_str())) + ext);
+      json_filename =  (std::string(boost::filesystem::basename(input_path.c_str())) + ext);
    }
 
    GINFO << "Exporting classes to JSON file: " << json_filename << LEND;
@@ -98,34 +100,34 @@ void ObjdiggerJsonExporter::export_json(void) {
 }
 
 void ObjdiggerJsonExporter::generate_object_instances() {
-   // For every object use in every function
-   BOOST_FOREACH(const ObjectUseMap::value_type& oupair, object_uses) {
-      const ObjectUse& obj_use = oupair.second;
-      // Not all functions have object uses.   Just skip those.
-      if (obj_use.references.size() == 0) continue;
+  // For every object use in every function
+  for (const ObjectUseMap::value_type& oupair : object_uses) {
+    const ObjectUse& obj_use = oupair.second;
+    // Not all functions have object uses.   Just skip those.
+    if (obj_use.references.size() == 0) continue;
 
-      // Each ThisPtrUsage in references is a new object instance.
-      BOOST_FOREACH(const ThisPtrUsageMap::value_type& rpair, obj_use.references) {
-         const ThisPtrUsage& tpu = rpair.second;
-         boost::property_tree::ptree use_tree;
+    // Each ThisPtrUsage in references is a new object instance.
+    for (const ThisPtrUsageMap::value_type& rpair : obj_use.references) {
+      const ThisPtrUsage& tpu = rpair.second;
+      boost::property_tree::ptree use_tree;
 
-         // Report the function that the object instance is in.
-         use_tree.put("function", obj_use.fd->address_string());
-         // Now record all the methods invoked on that object.
-         boost::property_tree::ptree methods_tree;
-         BOOST_FOREACH(const ThisCallMethod* tcm, tpu.get_methods()) {
-            // Making the method address the key is a little stupid, but the property_tree API
-            // appears to limit our ability to make lists of values, which is what I really wanted.
-            methods_tree.put(tcm->address_string(), "");
-         }
-         use_tree.push_back(std::make_pair("methods", methods_tree));
-         // The object instances are keyed by the hash of the this-pointer, which should be a
-         // globally unique identifier for the object instance.
-         SVHash hash = tpu.this_ptr->get_expression()->hash();
-         std::string hash_str = boost::str(boost::format("%016x") % hash);
-         object_instances.push_back(std::make_pair(hash_str, use_tree));
+      // Report the function that the object instance is in.
+      use_tree.put("function", obj_use.fd->address_string());
+      // Now record all the methods invoked on that object.
+      boost::property_tree::ptree methods_tree;
+      for (const ThisCallMethod* tcm : tpu.get_methods()) {
+        // Making the method address the key is a little stupid, but the property_tree API
+        // appears to limit our ability to make lists of values, which is what I really wanted.
+        methods_tree.put(tcm->address_string(), "");
       }
-   }
+      use_tree.push_back(std::make_pair("methods", methods_tree));
+      // The object instances are keyed by the hash of the this-pointer, which should be a
+      // globally unique identifier for the object instance.
+      SVHash hash = tpu.this_ptr->get_expression()->hash();
+      std::string hash_str = boost::str(boost::format("%016x") % hash);
+      object_instances.push_back(std::make_pair(hash_str, use_tree));
+    }
+  }
 }
 
 // Generate the appropriate JSON data structure from the set of objects and
@@ -137,7 +139,7 @@ void ObjdiggerJsonExporter::generate_json(const ClassDescriptorMap &objects) {
    usages_found = 0;
    methods_associated.clear();
 
-   BOOST_FOREACH(const ClassDescriptorMap::value_type& ucpair, objects) {
+   for (const ClassDescriptorMap::value_type& ucpair : objects) {
       ClassDescriptor obj = ucpair.second;
 
       // property trees for the current class
@@ -155,7 +157,7 @@ void ObjdiggerJsonExporter::generate_json(const ClassDescriptorMap &objects) {
       cls.put("Size", intcat("",obj.get_size(),10));
 
       AddrSet vcall_set;
-      BOOST_FOREACH(const MemberMap::value_type &mpair, obj.data_members) {
+      for (const MemberMap::value_type &mpair : obj.data_members) {
 
          const Member& member = mpair.second;
          if (!(member.is_virtual())) continue;
@@ -212,7 +214,7 @@ void ObjdiggerJsonExporter::generate_json(const ClassDescriptorMap &objects) {
       GTRACE << "Vftable added" << LEND;
 
       GTRACE << "Adding Members ... "<< LEND;
-      BOOST_FOREACH(const MemberMap::value_type &m, obj.data_members) {
+      for (const MemberMap::value_type &m : obj.data_members) {
 
          boost::property_tree::ptree mbr;
 
@@ -274,7 +276,7 @@ void ObjdiggerJsonExporter::generate_json(const ClassDescriptorMap &objects) {
 
          members.push_back(std::make_pair("", mbr));
 
-         BOOST_FOREACH (const SgAsmx86Instruction* usage_insn, member.using_instructions) {
+         for (const SgAsmx86Instruction* usage_insn : member.using_instructions) {
             boost::property_tree::ptree mu;
 
             mu.put("class",cls_name);
@@ -289,7 +291,7 @@ void ObjdiggerJsonExporter::generate_json(const ClassDescriptorMap &objects) {
       GTRACE << "Adding Methods ... "<< LEND;
 
       unsigned int mtd_index = 0;
-      BOOST_FOREACH(ThisCallMethod* tcm, obj.methods) {
+      for (const ThisCallMethod* tcm : obj.methods) {
 
          boost::property_tree::ptree mtd;
 
@@ -332,7 +334,7 @@ void ObjdiggerJsonExporter::generate_json(const ClassDescriptorMap &objects) {
       //      GTRACE << "Adding Inherited Methods ... "<< LEND;
       //
       //      unsigned int inmtd_index = 0;
-      //      BOOST_FOREACH(const InheritedMethodMap::value_type &m, obj.inherited_methods) {
+      //      for (const InheritedMethodMap::value_type &m : obj.inherited_methods) {
       //
       //        boost::property_tree::ptree imtd;
       //        imtd.push_back(make_ptree("ea", addr2str(m.first->get_address())));
@@ -394,7 +396,7 @@ void ObjdiggerJsonExporter::generate_json(const ClassDescriptorMap &objects) {
             vc_tree.put("call",addr2str(vfcd.get_address()));
 
             boost::property_tree::ptree call_targets, tgt;
-            BOOST_FOREACH(rose_addr_t t, targets) {
+            for (rose_addr_t t : targets) {
                tgt.put("ea",addr2str(t));
                vcalls_resolved++;
                call_targets.push_back(std::make_pair("",tgt));
@@ -429,6 +431,8 @@ void ObjdiggerJsonExporter::generate_json(const ClassDescriptorMap &objects) {
 
 
 }
+
+} // namespace pharos
 
 /* Local Variables:   */
 /* mode: c++          */

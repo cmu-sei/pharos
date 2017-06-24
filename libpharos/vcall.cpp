@@ -1,9 +1,9 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
-
-#include <boost/foreach.hpp>
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "vcall.hpp"
 #include "pdg.hpp"
+
+namespace pharos {
 
 VirtualFunctionCallAnalyzer::VirtualFunctionCallAnalyzer(SgAsmx86Instruction *i, PDG *p) :
     call_insn(i) {
@@ -11,8 +11,6 @@ VirtualFunctionCallAnalyzer::VirtualFunctionCallAnalyzer(SgAsmx86Instruction *i,
 }
 
 VirtualFunctionCallAnalyzer::~VirtualFunctionCallAnalyzer() { /* Nothing to do here */ }
-
-#define VT_UNDEFINED 0xFFFFFFFF
 
 bool VirtualFunctionCallAnalyzer::resolve_object(const TreeNodePtr& object_expr,
                                                  const TreeNodePtr& vtable_ptr,
@@ -24,7 +22,7 @@ bool VirtualFunctionCallAnalyzer::resolve_object(const TreeNodePtr& object_expr,
   AddConstantExtractor ooace = AddConstantExtractor(object_expr);
 
   // There must be a variable portion for this to be a virtual function call.
-  TreeNodePtr object_ptr = ooace.variable_portion;
+  const TreeNodePtr & object_ptr = ooace.variable_portion();
   if (object_ptr == NULL) {
     GDEBUG << "Non virtual: " << debug_instruction(call_insn)
            << " - no variable portion in object_expr=" << *object_expr << LEND;
@@ -32,7 +30,7 @@ bool VirtualFunctionCallAnalyzer::resolve_object(const TreeNodePtr& object_expr,
   }
 
   // Object offsets are not allowed to be negative.
-  int64_t object_offset = ooace.constant_portion;
+  int64_t object_offset = ooace.constant_portion();
   if (object_offset < 0) {
     GDEBUG << "Non virtual: " << debug_instruction(call_insn)
            << " - negative object offset in object_expr=" << *object_expr << LEND;
@@ -41,7 +39,7 @@ bool VirtualFunctionCallAnalyzer::resolve_object(const TreeNodePtr& object_expr,
 
   // We're arbitrarily enforcing a requirement that object pointers be leaf nodes.  This
   // probably isn't correct, but we'll need to think about it more.
-  LeafNodePtr lobj_ptr = object_ptr->isLeafNode();
+  const LeafNodePtr & lobj_ptr = object_ptr->isLeafNode();
   if (!lobj_ptr) {
     GDEBUG << "Non virtual: " << debug_instruction(call_insn)
            << " - rejected non-leaf ptr=" << *object_ptr << LEND;
@@ -68,11 +66,7 @@ bool VirtualFunctionCallAnalyzer::resolve_object(const TreeNodePtr& object_expr,
 const AbstractAccess* find_memory_access(SgAsmX86Instruction* insn,
                                          const DUAnalysis& du, const TreeNodePtr value) {
   // We're looking for a read in insn.
-  const AbstractAccessVector* reads = du.get_reads(insn);
-  // If there are none, return an invalid abstract access.  This probably shouldn't happen
-  // because we ought to know that this instruction wrote a symbolic value that obviously came
-  // from somewhere.  Return an invalid access if this occurs.
-  if (reads == NULL) return NULL;
+  auto reads = du.get_reads(insn);
 
   // Because we've not handled ITE expressions in value (or aa.value for that matter) very
   // gracefully, we're going to at last permit anything remotely matching by using the
@@ -82,7 +76,7 @@ const AbstractAccess* find_memory_access(SgAsmX86Instruction* insn,
   SymbolicValuePtr sv = SymbolicValue::treenode_instance(value);
 
   // Go through each read looking for the right one.
-  BOOST_FOREACH(const AbstractAccess& aa, *reads) {
+  for (const AbstractAccess& aa : reads) {
     // The right one is the one that matches the requested value.  Or kindof-sortof matches.
     if (sv->can_be_equal(aa.value)) return &aa;
   }
@@ -118,9 +112,9 @@ bool VirtualFunctionCallAnalyzer::analyze(CallInformationPtr &call_info) {
   const DUAnalysis& du = pdg->get_usedef();
 
   // We're looking for the register or address that was read in the call insn
-  const AbstractAccessVector* reads = du.get_reads(call_insn);
+  auto reads = du.get_reads(call_insn);
   // If there were no reads in the call, something's really wrong.
-  if (reads == NULL) {
+  if (std::begin(reads) == std::end(reads)) {
     GDEBUG << "Non virtual: " << debug_instruction(call_insn) << " - no read of target." << LEND;
     return false;
   }
@@ -128,16 +122,16 @@ bool VirtualFunctionCallAnalyzer::analyze(CallInformationPtr &call_info) {
   // Step 1. Find the abstract access that obtained the virtual function pointer.  This is the
   // read that that was not the stack pointer register.
   const AbstractAccess* vfunc_aa = NULL;
-  BOOST_FOREACH(const AbstractAccess& aa, *reads) {
-     if (aa.is_mem()) {
-        vfunc_aa = &aa;
-     }
-     else {
-        // ESP should really be obtained from the architecture depdenent layer (e.g. RSP).
-        // EIP and RIP are never in the reads/writes array (because they always are).
-        if (aa.reg_name() == "esp") continue;
-        vfunc_aa = &aa;
-     }
+  for (const AbstractAccess& aa : reads) {
+    if (aa.is_mem()) {
+      vfunc_aa = &aa;
+    }
+    else {
+      // ESP should really be obtained from the architecture depdenent layer (e.g. RSP).
+      // EIP and RIP are never in the reads/writes array (because they always are).
+      if (aa.reg_name() == "esp") continue;
+      vfunc_aa = &aa;
+    }
   }
 
   if (vfunc_aa == NULL) {
@@ -197,7 +191,7 @@ bool VirtualFunctionCallAnalyzer::analyze(CallInformationPtr &call_info) {
   AddConstantExtractor foace = AddConstantExtractor(vtable_expr);
 
   // There must be a variable portion for this to be a virtual function call.
-  TreeNodePtr vtable_ptr = foace.variable_portion;
+  const TreeNodePtr & vtable_ptr = foace.variable_portion();
   if (vtable_ptr == NULL) {
     GDEBUG << "Non virtual: " << debug_instruction(call_insn)
            << " - no variable portion in vtable_expr=" << *vtable_expr << LEND;
@@ -205,7 +199,7 @@ bool VirtualFunctionCallAnalyzer::analyze(CallInformationPtr &call_info) {
   }
 
   // Virtual function table offsets are not allowed to be negative, but they can be zero.
-  int64_t vtable_offset = foace.constant_portion;
+  int64_t vtable_offset = foace.constant_portion();
   if (vtable_offset < 0) {
     GDEBUG << "Non virtual: " << debug_instruction(call_insn)
            << " - negative vtable offset in vtable_expr=" << *vtable_expr << LEND;
@@ -278,7 +272,7 @@ bool VirtualFunctionCallAnalyzer::analyze(CallInformationPtr &call_info) {
   if (object_sv->contains_ite()) {
     GDEBUG << "VCall ITE: " << *object_sv << LEND;
     bool matched = false;
-    BOOST_FOREACH(const TreeNodePtr& tn, object_sv->get_possible_values()) {
+    for (const TreeNodePtr& tn : object_sv->get_possible_values()) {
       GDEBUG << "VCall ITE this-ptr: " << *tn << LEND;
       // The most common non OO condition is the NULL pointer.
       if (tn->isNumber() && tn->toInt() == 0) {
@@ -299,6 +293,9 @@ bool VirtualFunctionCallAnalyzer::analyze(CallInformationPtr &call_info) {
          << " - couldn't find offsets in general." << LEND;
   return false;
 }
+
+} // namespace pharos
+
 /* Local Variables:   */
 /* mode: c++          */
 /* fill-column:    95 */

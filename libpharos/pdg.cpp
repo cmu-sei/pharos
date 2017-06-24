@@ -1,7 +1,9 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
-#include <boost/foreach.hpp>
 #include "pdg.hpp"
+#include "md5.hpp"
+
+namespace pharos {
 
 PDG::PDG(FunctionDescriptor* f, spTracker *spt) : du(f, spt), cdg(f) {
   // We always have a function descriptor, and it always has a real function, or we won't
@@ -21,25 +23,18 @@ PDG::PDG(FunctionDescriptor* f, spTracker *spt) : du(f, spt), cdg(f) {
 // no memory reads for the instruction, or there are multiple memory reads for teh instruction,
 // this function returns an invalid abstract access.  Not currently called from anywhere.
 AbstractAccess PDG::get_single_mem_read(SgAsmX86Instruction* insn) {
-  AbstractAccess retval;
-  const AccessMap& reads = du.get_reads();
-  // If there's no reads at all, return an invalid abstract access.
-  if (reads.find(insn) == reads.end()) return retval;
-  bool found = false;
-  BOOST_FOREACH(const AbstractAccess &aa, reads.at(insn)) {
-    if (!aa.is_mem()) continue;
-    if (!found) {
-      // This is where we set the one correct read when we encouter it.
-      retval = aa;
-    }
-    else {
-      // More than one memory read, return and invalid abstract access.
-      return AbstractAccess();
-    }
-    found = true;
+  auto mem_reads = du.get_mem_reads(insn);
+  auto i = std::begin(mem_reads);
+  if (i == std::end(mem_reads)) {
+    // More memory reads, return an invalid abstract access.
+    return AbstractAccess();
   }
-  // Either the one read, or an invalid read depending on whether we set retval.
-  return retval;
+  const AbstractAccess & aa = *i;
+  if (++i != std::end(mem_reads)) {
+    // More than one memory read, return and invalid abstract access.
+    return AbstractAccess();
+  }
+  return aa;
 }
 
 // This is kind stupid, and performs poorly, but Cory's goal was to cleanup the API a bit, and
@@ -49,7 +44,7 @@ X86InsnSet PDG::chop_insns(SgAsmX86Instruction *insn) {
   STRACE << "Chopping intruction: " << debug_instruction(insn) << LEND;
   X86InsnSet insns;
   AccessMap tainted = chop_full(insn);
-  BOOST_FOREACH(AccessMap::value_type &p, tainted) {
+  for (const AccessMap::value_type &p : tainted) {
     insns.insert(p.first);
     STRACE << "  Chopped: " << debug_instruction(p.first) << LEND;
   }
@@ -69,8 +64,6 @@ AccessMap PDG::chop_full(SgAsmX86Instruction *insn) {
   workQueue.push_back(insn);
 
   LeafNodePtrSet ids2track;
-  //const AccessMap& reads = du.get_reads();
-  //const AccessMap& writes = du.get_writes();
 
   while (workQueue.size() > 0) {
     SgAsmX86Instruction *cur = workQueue[0];
@@ -90,32 +83,26 @@ AccessMap PDG::chop_full(SgAsmX86Instruction *insn) {
     if (cur == insn) {
       // if (insn_is_call(cur)) SDEBUG << "We're chopping a call " << debug_instruction(cur) << LEND;
       // SDEBUG << "Starting chop from " << debug_instruction(insn) << LEND;
-      const AbstractAccessVector* cwrites = du.get_writes(cur);
-      if (cwrites != NULL) {
-        BOOST_FOREACH(const AbstractAccess& aa, *cwrites) {
-          if (aa.is_reg() && insn_is_callNF(cur) &&
-              unparseX86Register(aa.register_descriptor, NULL) == "esp") continue;
+      for (const AbstractAccess& aa : du.get_writes(cur)) {
+        if (aa.is_reg() && insn_is_callNF(cur) &&
+            unparseX86Register(aa.register_descriptor, NULL) == "esp") continue;
 
-          LeafNodePtrSet vars = aa.value->get_expression()->getVariables();
-          ids2track.insert(vars.begin(),vars.end());
-        }
+        LeafNodePtrSet vars = aa.value->get_expression()->getVariables();
+        ids2track.insert(vars.begin(),vars.end());
       }
     }
     else {
       // SDEBUG << "**" << debug_instruction(cur) << " ";
-      const AbstractAccessVector* creads = du.get_reads(cur);
-      if (creads != NULL) {
-        BOOST_FOREACH(const AbstractAccess& aa, *creads) {
-          LeafNodePtrSet vars = aa.value->get_expression()->getVariables();
+      for (const AbstractAccess& aa : du.get_reads(cur)) {
+        LeafNodePtrSet vars = aa.value->get_expression()->getVariables();
 
-          for (LeafNodePtrSet::iterator it = vars.begin(); it != vars.end(); it++) {
-            for (LeafNodePtrSet::iterator xit = ids2track.begin(); xit != ids2track.end(); xit++) {
-              // SDEBUG << "Reg comparison Comparing id2track " << *(*xit)
-              //        << " with seen GPR value " << *(*it) << LEND;
-              if ((*xit)->isEquivalentTo(*it)) {
-                accesses.push_back(aa);
-                break;
-              }
+        for (LeafNodePtrSet::iterator it = vars.begin(); it != vars.end(); it++) {
+          for (LeafNodePtrSet::iterator xit = ids2track.begin(); xit != ids2track.end(); xit++) {
+            // SDEBUG << "Reg comparison Comparing id2track " << *(*xit)
+            //        << " with seen GPR value " << *(*it) << LEND;
+            if ((*xit)->isEquivalentTo(*it)) {
+              accesses.push_back(aa);
+              break;
             }
           }
         }
@@ -128,7 +115,7 @@ AccessMap PDG::chop_full(SgAsmX86Instruction *insn) {
 
     const DUChain* curdeps = du.get_dependents(cur);
     if (curdeps != NULL) {
-      BOOST_FOREACH(const Definition& def, *curdeps) {
+      for (const Definition& def : *curdeps) {
         if (def.definer != cur) {
           workQueue.push_back(def.definer);
           // SDEBUG << "Adding " << debug_instruction(duit->definer) << LEND;
@@ -205,7 +192,7 @@ void PDG::buildDotNode(SgAsmX86Instruction *cur_insn, std::stringstream &sout, X
 
   // Create the data flow edges
   if (data_deps.find(cur_insn) != data_deps.end()) {
-    BOOST_FOREACH(const Definition& def, data_deps.at(cur_insn)) {
+    for (const Definition& def : data_deps.at(cur_insn)) {
       SgAsmX86Instruction* definer = def.definer;
       if (definer == NULL) continue;
       sout << curvar << " -> " << makeVariableStr(definer) << " [label=\"d\"];\n";
@@ -215,7 +202,7 @@ void PDG::buildDotNode(SgAsmX86Instruction *cur_insn, std::stringstream &sout, X
 
   // Create the control flow edges
   if (control_deps.find(cur_insn) != control_deps.end()) {
-    BOOST_FOREACH(SgAsmInstruction* ginsn, control_deps[cur_insn]) {
+    for (SgAsmInstruction* ginsn : control_deps[cur_insn]) {
       SgAsmX86Instruction *cinsn = isSgAsmX86Instruction(ginsn);
       assert(cinsn);
       sout << curvar << " -> " << makeVariableStr(cinsn) << " [label=\"c\"];\n";
@@ -233,10 +220,10 @@ void PDG::toDot(std::string dotOutputFile) {
   sout << "digraph PDG {\nnode [ shape = box ];\n";
 
   // Create a node for each instruction
-  BOOST_FOREACH(SgAsmStatement* bs, fd->get_func()->get_statementList()) {
+  for (SgAsmStatement* bs : fd->get_func()->get_statementList()) {
     SgAsmBlock *bb = isSgAsmBlock(bs);
     assert(bb);
-    BOOST_FOREACH(SgAsmStatement* is, bb->get_statementList()) {
+    for (SgAsmStatement* is : bb->get_statementList()) {
       SgAsmX86Instruction *insn = isSgAsmX86Instruction(is);
       buildDotNode(insn,sout,processed);
     }
@@ -260,10 +247,6 @@ void PDG::hashSubPaths(SgAsmX86Instruction *cur_insn, std::string path, X86InsnS
     return;
 
   processed.insert(cur_insn);
-  // This should be replaced with md5_hash() from util, by Cory's trying to leave PDG.cpp alone.
-  CryptoPP::Weak::MD5 hash;
-  byte digest[ CryptoPP::Weak::MD5::DIGESTSIZE ];
-
   if (ss_dump && includeSubPath) {
     if (filter_addresses.size() > 0 && filter_addresses.find(cur_insn->get_address()) == filter_addresses.end())
       includeSubPath = false;
@@ -301,7 +284,6 @@ void PDG::hashSubPaths(SgAsmX86Instruction *cur_insn, std::string path, X86InsnS
       }
     }
 
-
     if (ss_dump && includeSubPath) {
       // If this path extends an old one, remove the old one
       if (filter_addresses.size() > 0 && curLen > 1) {
@@ -314,20 +296,12 @@ void PDG::hashSubPaths(SgAsmX86Instruction *cur_insn, std::string path, X86InsnS
       (*ss_dump).push_back(new_path);
     }
 
-    // Calculate the MD5 over the sub path
-    hash.CalculateDigest(digest, (byte *)new_path.c_str(), new_path.length());
-    CryptoPP::HexEncoder encoder;
-    std::string output;
-    encoder.Attach( new CryptoPP::StringSink( output ) );
-    encoder.Put( digest, sizeof(digest) );
-    encoder.MessageEnd();
-    //      hashedPaths.push_back(output);
     hashedPaths.push_back(new_path);
 
     // Hash the data flow edges
     // getSlice uses uppercase C and D, while here uses lowercase, why?
     if (curLen < maxSubPathLen && data_deps.find(cur_insn) != data_deps.end()) {
-      BOOST_FOREACH(const Definition& def, data_deps.at(cur_insn)) {
+      for (const Definition& def : data_deps.at(cur_insn)) {
         SgAsmX86Instruction* definer = def.definer;
         if (definer == NULL) continue;
         hashSubPaths(definer, new_path + "-d->", processed, hashedPaths, maxSubPathLen,
@@ -351,10 +325,10 @@ void PDG::hashSubPaths(SgAsmX86Instruction *cur_insn, std::string path, X86InsnS
 StringVector PDG::getPaths(size_t maxSubPathLen) {
   StringVector hashes;
 
-  BOOST_FOREACH(SgAsmStatement* bs, fd->get_func()->get_statementList()) {
+  for (SgAsmStatement* bs : fd->get_func()->get_statementList()) {
     SgAsmBlock *bb = isSgAsmBlock(bs);
     assert(bb);
-    BOOST_FOREACH(SgAsmStatement* is, bb->get_statementList()) {
+    for (SgAsmStatement* is : bb->get_statementList()) {
       SgAsmX86Instruction *insn = isSgAsmX86Instruction(is);
       X86InsnSet processed;
       hashSubPaths(insn, "", processed, hashes, maxSubPathLen, 1);
@@ -403,21 +377,21 @@ std::string PDG::getSlice(SgAsmX86Instruction *insn, Slice &s) {
 
   // Insert the data-dependencies of this instruction
   if (data_deps.find(insn) != data_deps.end()) {
-    BOOST_FOREACH(const Definition& def, data_deps.at(insn)) {
+    for (const Definition& def : data_deps.at(insn)) {
       if (def.definer) dependencies.insert(InsnBoolPair(def.definer, true));
     }
   }
 
   // Insert the control dependencies of this block
   if (control_deps.find(insn) != control_deps.end()) {
-    BOOST_FOREACH(SgAsmInstruction* i, control_deps.at(insn)) {
+    for (SgAsmInstruction* i : control_deps.at(insn)) {
       if (isSgAsmX86Instruction(i))
         dependencies.insert(InsnBoolPair(isSgAsmX86Instruction(i), false));
     }
   }
 
   // Build the dependency string and visit the instructions in address order
-  BOOST_FOREACH(const InsnBoolPair &b, dependencies) {
+  for (const InsnBoolPair &b : dependencies) {
     // Represent a data-dependency edge
     AddrVector constants2;
     if (b.second && b.first != NULL) {
@@ -491,11 +465,21 @@ size_t PDG::hashSlice(SgAsmX86Instruction *insn, size_t nHashFunc, std::vector<u
     std::ostringstream convert;
     convert << x;
     std::string temp = slice_str + convert.str();
-    CryptoPP::Weak::MD5 md5hash;
-    byte digest [CryptoPP::Weak::MD5::DIGESTSIZE];
-    unsigned int* recast = (unsigned int *)digest;
-    md5hash.CalculateDigest(digest, (const byte *)temp.c_str(), temp.length());
-    hashes.push_back(recast[0]);
+    MD5 md5(temp);
+    std::vector<uint8_t> bytes = md5.finalize().bytes();
+
+    // Really?  Just the first four bytes of the hash?  Ick.  If we need to convert it to an
+    // int, we could have used a lighter weight hash than MD5 and the results migth have even
+    // been better.  To make matter even worse, the previous implementation was hardware
+    // architecture size and byte order dependent until we hardcoded the order of the bytes.
+
+    uint32_t b0 = (uint32_t)bytes[0];
+    uint32_t b1 = (uint32_t)bytes[1] << 8;
+    uint32_t b2 = (uint32_t)bytes[2] << 16;
+    uint32_t b3 = (uint32_t)bytes[3] << 24;
+
+    unsigned int first_dword = b0 + b1 + b2 + b3;
+    hashes.push_back(first_dword);
   }
 
   return count;
@@ -505,7 +489,7 @@ size_t PDG::hashSlice(SgAsmX86Instruction *insn, size_t nHashFunc, std::vector<u
 // Private.  Called only from getWeightedMaxHash().
 size_t PDG::getNumInstr() {
   size_t c = 0;
-  BOOST_FOREACH(SgAsmStatement* bs, fd->get_func()->get_statementList()) {
+  for (SgAsmStatement* bs : fd->get_func()->get_statementList()) {
     SgAsmBlock *bb = isSgAsmBlock(bs);
     assert(bb);
     SgAsmStatementPtrList & insns = bb->get_statementList();
@@ -514,20 +498,21 @@ size_t PDG::getNumInstr() {
   return c;
 }
 
-// Computed the weighted max hash (PDG hash) given a place to put the digest.  Private. This is
-// only called from the getWeightedMaxHash() without the extra paramter.
-void PDG::getWeightedMaxHash(size_t nHashFunc, unsigned char *digest) {
+// Computed the weighted max hash (PDG hash) for a function.  Public because it's called from
+// FunctionDescriptor::get_pdg_hash().
+std::string PDG::getWeightedMaxHash(size_t nHashFunc) {
   typedef std::vector<unsigned int> UIntVector;
   std::vector<UIntVector> slice_hashes;
   size_t ninstr = getNumInstr();
   size_t slice_num = 0;
-  if (ninstr == 0) return;
+  // Hash of the empty string.
+  if (ninstr == 0) return std::string("D41D8CD98F00B204E9800998ECF8427E");
 
-  BOOST_FOREACH(SgAsmStatement* bs, fd->get_func()->get_statementList()) {
+  for (SgAsmStatement* bs : fd->get_func()->get_statementList()) {
     SgAsmBlock *bb = isSgAsmBlock(bs);
     assert(bb);
 
-    BOOST_FOREACH(SgAsmStatement* is, bb->get_statementList()) {
+    for (SgAsmStatement* is : bb->get_statementList()) {
       SgAsmX86Instruction *insn = isSgAsmX86Instruction(is);
       UIntVector hashes;
 
@@ -576,28 +561,7 @@ void PDG::getWeightedMaxHash(size_t nHashFunc, unsigned char *digest) {
   }
 
   // Return the MD5 of the concatenated hash functions
-  CryptoPP::Weak::MD5 md5hash;
-  md5hash.CalculateDigest(digest, (const byte *)convert.str().c_str(), convert.str().length());
-}
-
-// Public because it's called from FunctionDescriptor::get_pdg_hash().
-std::string PDG::getWeightedMaxHash(size_t nHashFunc) {
-  unsigned char digest[CryptoPP::Weak::MD5::DIGESTSIZE];
-  char* buf_str = (char*) malloc (2*CryptoPP::Weak::MD5::DIGESTSIZE + 1);
-  char* buf_ptr = buf_str;
-
-  getWeightedMaxHash(nHashFunc,digest);
-
-  for (int i = 0; i < CryptoPP::Weak::MD5::DIGESTSIZE; i++) {
-    buf_ptr += sprintf(buf_ptr, "%02X", digest[i]);
-  }
-
-  assert(buf_ptr == &buf_str[2*CryptoPP::Weak::MD5::DIGESTSIZE]);
-  buf_str[2*CryptoPP::Weak::MD5::DIGESTSIZE] = '\0';
-
-  std::string out(buf_str);
-  free(buf_str);
-  return out;
+  return MD5(convert.str()).finalize().str();
 }
 
 // Cory's summary of Wes' backward slice algorithm...  Passed an instruction (insn) and an
@@ -620,6 +584,8 @@ std::string PDG::getWeightedMaxHash(size_t nHashFunc) {
 // then recurse.  The final case handles scenario 1 (locally defined value) by simply
 // recursing.  Find pushParam appeared to use the logic that ESP was initialized to zero to
 // determine whether a memory access looked like a parameter.
+
+} // namespace pharos
 
 /* Local Variables:   */
 /* mode: c++          */

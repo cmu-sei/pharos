@@ -1,0 +1,238 @@
+00401000	func	??1bad_alloc@std@@UAE@XZ	public: virtual __thiscall std::bad_alloc::~bad_alloc(void)
+00401010	func	??_Ebad_alloc@std@@UAEPAXI@Z	public: virtual void * __thiscall std::bad_alloc::`vector deleting destructor'(unsigned int)
+00401040	func	?print@ObjectTest@@QAEXV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z	public: void __thiscall ObjectTest::print(class std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>>)
+004010d0	func	_main	None
+00401140	func	??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ	public: __thiscall std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>>::~basic_string<char, struct std::char_traits<char>, class std::allocator<char>>(void)
+00401170	func	??1sentry@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAE@XZ	public: __thiscall std::basic_ostream<char, struct std::char_traits<char>>::sentry::~sentry(void)
+004011e0	func	?assign@?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAEAAV12@PBDI@Z	public: class std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>> & __thiscall std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>>::assign(char const *, unsigned int)
+0040123f	func	$LN89	None
+004012a3	name	$LN86	None
+004012b0	func	??1_Sentry_base@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAE@XZ	public: __thiscall std::basic_ostream<char, struct std::char_traits<char>>::_Sentry_base::~_Sentry_base(void)
+004012d0	func	?assign@?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAEAAV12@ABV12@II@Z	public: class std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>> & __thiscall std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>>::assign(class std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>> const &, unsigned int, unsigned int)
+004012ec	func	$LN83	None
+00401324	func	$LN84	None
+004013aa	name	$LN80	None
+004013b0	func	?erase@?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAEAAV12@II@Z	public: class std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>> & __thiscall std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>>::erase(unsigned int, unsigned int)
+004013c5	func	$LN28	None
+00401422	name	$LN27	None
+00401430	func	?_Copy@?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAEXII@Z	public: void __thiscall std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>>::_Copy(unsigned int, unsigned int)
+004014e3	func	$LN112	None
+00401501	func	$LN107	None
+00401567	func	__catch$?_Copy@?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAEXII@Z$1	None
+00401596	func	$LN113	None
+004015a0	func	?allocate@?$allocator@D@std@@QAEPADI@Z	public: char * __thiscall std::allocator<char>::allocate(unsigned int)
+004015e8	func	$LN13	None
+004015ec	name	$LN12	None
+004015f0	func	??$?6DU?$char_traits@D@std@@V?$allocator@D@1@@std@@YAAAV?$basic_ostream@DU?$char_traits@D@std@@@0@AAV10@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@0@@Z	class std::basic_ostream<char, struct std::char_traits<char>> & __cdecl std::operator<<<char, struct std::char_traits<char>, class std::allocator<char>>(class std::basic_ostream<char, struct std::char_traits<char>> &, class std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>> const &)
+004017f5	func	__catch$??$?6DU?$char_traits@D@std@@V?$allocator@D@1@@std@@YAAAV?$basic_ostream@DU?$char_traits@D@std@@@0@AAV10@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@0@@Z$0	None
+00401816	func	$LN23	None
+00401820	func	??0bad_alloc@std@@QAE@ABV01@@Z	public: __thiscall std::bad_alloc::bad_alloc(class std::bad_alloc const &)
+0040183d	func	@__security_check_cookie@4	__fastcall __security_check_cookie(x)
+00401847	func	failure	None
+0040184c	func	?what@exception@std@@UBEPBDXZ_0	public: virtual char const * __thiscall std::exception::what(void)const
+00401852	func	??0exception@std@@QAE@ABV01@@Z_0	public: __thiscall std::exception::exception(class std::exception const &)
+00401858	func	??3@YAXPAX@Z_0	void __cdecl operator delete(void *)
+0040185e	func	??_Etype_info@@UAEPAXI@Z	public: virtual void * __thiscall type_info::`vector deleting destructor'(unsigned int)
+004018aa	func	pre_cpp_init	None
+004018f5	func	__tmainCRTStartup	None
+00401a2e	func	$LN36	None
+00401a41	func	$LN32	None
+00401a42	func	$LN22	None
+00401a5e	func	$LN37	None
+00401a7e	func	pre_c_init	None
+00401b38	func	_mainCRTStartup	None
+00401b42	func	___report_gsfailure	None
+00401c48	func	?__ArrayUnwind@@YGXPAXIHP6EX0@Z@Z	void __stdcall __ArrayUnwind(void *, unsigned int, int, void (__thiscall *)(void *))
+00401c6b	func	$LN7	None
+00401c8e	func	$LN9	None
+00401c94	func	$LN23_0	None
+00401ca6	func	??_M@YGXPAXIHP6EX0@Z@Z	void __stdcall `eh vector destructor iterator'(void *, unsigned int, int, void (__thiscall *)(void *))
+00401ce9	func	$LN14	None
+00401cf1	func	$LN11	None
+00401d08	func	$LN12_0	None
+00401d09	func	?__CxxUnhandledExceptionFilter@@YGJPAU_EXCEPTION_POINTERS@@@Z	long __stdcall __CxxUnhandledExceptionFilter(struct _EXCEPTION_POINTERS *)
+00401d45	func	$LN6	None
+00401d4b	func	___CxxSetUnhandledExceptionFilter	None
+00401d5a	thunk	__amsg_exit	None
+00401d60	func	__onexit	None
+00401def	func	$LN9_0	None
+00401df8	func	$LN6_0	None
+00401e00	func	$LN7_0	None
+00401e01	func	_atexit	None
+00401e18	func	__RTC_Initialize	None
+00401e3e	func	__RTC_Terminate	None
+00401e64	thunk	__XcptFilter	None
+00401e70	func	__ValidateImageBase	None
+00401eb0	func	__FindPESection	None
+00401f00	func	__IsNonwritableInCurrentImage	None
+00401f8b	func	$LN7_1	None
+00401f9d	func	$LN11_0	None
+00401f9e	func	$LN8	None
+00401fbc	thunk	__initterm	None
+00401fc2	thunk	__initterm_e	None
+00401fd0	func	__SEH_prolog4	None
+00402015	func	__SEH_epilog4	None
+00402029	func	__except_handler4	None
+0040204e	func	__setdefaultprecision	None
+00402074	func	$LN8_0	None
+00402076	func	__setargv	None
+00402079	func	___security_init_cookie	None
+00402114	thunk	__crt_debugger_hook	None
+0040211a	func	?terminate@@YAXXZ_0	void __cdecl terminate(void)
+00402120	func	??1type_info@@UAE@XZ	public: virtual __thiscall type_info::~type_info(void)
+00402126	thunk	__unlock	None
+0040212c	thunk	___dllonexit	None
+00402132	thunk	__lock	None
+00402138	thunk	__except_handler4_common	None
+0040213e	thunk	__invoke_watson	None
+00402144	thunk	__controlfp_s	None
+0040214a	thunk	___CxxFrameHandler3	None
+00402150	thunk	_memcpy	None
+00402156	thunk	__CxxThrowException@8	__stdcall _CxxThrowException(x, x)
+00402160	func	__unwindfunclet$??1sentry@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAE@XZ$0	None
+00402168	func	__ehhandler$??1sentry@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAE@XZ	None
+00402190	func	__unwindfunclet$??$?6DU?$char_traits@D@std@@V?$allocator@D@1@@std@@YAAAV?$basic_ostream@DU?$char_traits@D@std@@@0@AAV10@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@0@@Z$3	None
+00402198	func	__unwindfunclet$??$?6DU?$char_traits@D@std@@V?$allocator@D@1@@std@@YAAAV?$basic_ostream@DU?$char_traits@D@std@@@0@AAV10@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@0@@Z$2	None
+004021a2	func	__unwindfunclet$??$?6DU?$char_traits@D@std@@V?$allocator@D@1@@std@@YAAAV?$basic_ostream@DU?$char_traits@D@std@@@0@AAV10@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@0@@Z$4	None
+004021aa	func	__ehhandler$??$?6DU?$char_traits@D@std@@V?$allocator@D@1@@std@@YAAAV?$basic_ostream@DU?$char_traits@D@std@@@0@AAV10@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@0@@Z	None
+004021d0	func	__unwindfunclet$?print@ObjectTest@@QAEXV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z$0	None
+004021d8	func	__ehhandler$?print@ObjectTest@@QAEXV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z	None
+00402200	func	__ehhandler$?_Copy@?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAEXII@Z	None
+00403000	name	__imp__Sleep@4	__declspec(dllimport) __stdcall Sleep(x)
+00403004	name	__imp__InterlockedCompareExchange@12	__declspec(dllimport) __stdcall InterlockedCompareExchange(x, x, x)
+00403008	name	__imp__HeapSetInformation@16	__declspec(dllimport) __stdcall HeapSetInformation(x, x, x, x)
+0040300c	name	__imp__EncodePointer@4	__declspec(dllimport) __stdcall EncodePointer(x)
+00403010	name	__imp__TerminateProcess@8	__declspec(dllimport) __stdcall TerminateProcess(x, x)
+00403014	name	__imp__GetCurrentProcess@0	__declspec(dllimport) __stdcall GetCurrentProcess()
+00403018	name	__imp__UnhandledExceptionFilter@4	__declspec(dllimport) __stdcall UnhandledExceptionFilter(x)
+0040301c	name	__imp__SetUnhandledExceptionFilter@4	__declspec(dllimport) __stdcall SetUnhandledExceptionFilter(x)
+00403020	name	__imp__IsDebuggerPresent@0	__declspec(dllimport) __stdcall IsDebuggerPresent()
+00403024	name	__imp__DecodePointer@4	__declspec(dllimport) __stdcall DecodePointer(x)
+00403028	name	__imp__QueryPerformanceCounter@4	__declspec(dllimport) __stdcall QueryPerformanceCounter(x)
+0040302c	name	__imp__GetTickCount@0	__declspec(dllimport) __stdcall GetTickCount()
+00403030	name	__imp__GetCurrentThreadId@0	__declspec(dllimport) __stdcall GetCurrentThreadId()
+00403034	name	__imp__GetCurrentProcessId@0	__declspec(dllimport) __stdcall GetCurrentProcessId()
+00403038	name	__imp__GetSystemTimeAsFileTime@4	__declspec(dllimport) __stdcall GetSystemTimeAsFileTime(x)
+0040303c	name	__imp__InterlockedExchange@8	__declspec(dllimport) __stdcall InterlockedExchange(x, x)
+00403040	name	_KERNEL32_NULL_THUNK_DATA	None
+00403044	name	__imp_?endl@std@@YAAAV?$basic_ostream@DU?$char_traits@D@std@@@1@AAV21@@Z	__declspec(dllimport) class std::basic_ostream<char, struct std::char_traits<char>> & __cdecl std::endl(class std::basic_ostream<char, struct std::char_traits<char>> &)
+00403048	name	__imp_?setstate@?$basic_ios@DU?$char_traits@D@std@@@std@@QAEXH_N@Z	__declspec(dllimport) public: void __thiscall std::basic_ios<char, struct std::char_traits<char>>::setstate(int, bool)
+0040304c	name	__imp_??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@P6AAAV01@AAV01@@Z@Z	__declspec(dllimport) public: class std::basic_ostream<char, struct std::char_traits<char>> & __thiscall std::basic_ostream<char, struct std::char_traits<char>>::operator<<(class std::basic_ostream<char, struct std::char_traits<char>> & (__cdecl *)(class std::basic_ostream<char, struct std::char_traits<char>> &))
+00403050	name	__imp_??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@H@Z	__declspec(dllimport) public: class std::basic_ostream<char, struct std::char_traits<char>> & __thiscall std::basic_ostream<char, struct std::char_traits<char>>::operator<<(int)
+00403054	name	__imp_?flush@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV12@XZ	__declspec(dllimport) public: class std::basic_ostream<char, struct std::char_traits<char>> & __thiscall std::basic_ostream<char, struct std::char_traits<char>>::flush(void)
+00403058	name	__imp_?sputc@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAEHD@Z	__declspec(dllimport) public: int __thiscall std::basic_streambuf<char, struct std::char_traits<char>>::sputc(char)
+0040305c	name	__imp_?_Osfx@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEXXZ	__declspec(dllimport) public: void __thiscall std::basic_ostream<char, struct std::char_traits<char>>::_Osfx(void)
+00403060	name	__imp_?sputn@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAE_JPBD_J@Z	__declspec(dllimport) public: __int64 __thiscall std::basic_streambuf<char, struct std::char_traits<char>>::sputn(char const *, __int64)
+00403064	name	__imp_?uncaught_exception@std@@YA_NXZ	__declspec(dllimport) bool __cdecl std::uncaught_exception(void)
+00403068	name	__imp_?_Xlength_error@std@@YAXPBD@Z	__declspec(dllimport) void __cdecl std::_Xlength_error(char const *)
+0040306c	name	__imp_?cout@std@@3V?$basic_ostream@DU?$char_traits@D@std@@@1@A	__declspec(dllimport) class std::basic_ostream<char, struct std::char_traits<char>> std::cout
+00403070	name	__imp_?_Xout_of_range@std@@YAXPBD@Z	__declspec(dllimport) void __cdecl std::_Xout_of_range(char const *)
+00403074	name	_MSVCP100_NULL_THUNK_DATA	None
+00403078	name	__imp____setusermatherr	None
+0040307c	name	__imp___commode	None
+00403080	name	__imp___fmode	None
+00403084	name	__imp____set_app_type	None
+00403088	name	__imp___crt_debugger_hook	None
+0040308c	name	__imp_?terminate@@YAXXZ	__declspec(dllimport) void __cdecl terminate(void)
+00403090	name	__imp_?_type_info_dtor_internal_method@type_info@@QAEXXZ	__declspec(dllimport) public: void __thiscall type_info::_type_info_dtor_internal_method(void)
+00403094	name	__imp___unlock	None
+00403098	name	__imp____dllonexit	None
+0040309c	name	__imp___lock	None
+004030a0	name	__imp___onexit	None
+004030a4	name	__imp___except_handler4_common	None
+004030a8	name	__imp___invoke_watson	None
+004030ac	name	__imp___controlfp_s	None
+004030b0	name	__imp___configthreadlocale	None
+004030b4	name	__imp___initterm_e	None
+004030b8	name	__imp____initenv	None
+004030bc	name	__imp__exit	None
+004030c0	name	__imp___XcptFilter	None
+004030c4	name	__imp___exit	None
+004030c8	name	__imp___cexit	None
+004030cc	name	__imp____getmainargs	None
+004030d0	name	__imp___amsg_exit	None
+004030d4	name	__imp_??2@YAPAXI@Z	__declspec(dllimport) void * __cdecl operator new(unsigned int)
+004030d8	name	__imp_??3@YAXPAX@Z	__declspec(dllimport) void __cdecl operator delete(void *)
+004030dc	name	__imp__memmove	None
+004030e0	name	__imp_??0exception@std@@QAE@ABV01@@Z	__declspec(dllimport) public: __thiscall std::exception::exception(class std::exception const &)
+004030e4	name	__imp_??0exception@std@@QAE@ABQBD@Z	__declspec(dllimport) public: __thiscall std::exception::exception(char const * const &)
+004030e8	name	__imp_??1exception@std@@UAE@XZ	__declspec(dllimport) public: virtual __thiscall std::exception::~exception(void)
+004030ec	name	__imp_?what@exception@std@@UBEPBDXZ	__declspec(dllimport) public: virtual char const * __thiscall std::exception::what(void)const
+004030f0	name	__imp___initterm	None
+004030f4	name	__imp____CxxFrameHandler3	None
+004030f8	name	__imp__memcpy	None
+004030fc	name	__imp___CxxThrowException@8	__declspec(dllimport) __stdcall _CxxThrowException(x, x)
+00403100	name	_MSVCR100_NULL_THUNK_DATA	None
+00403104	name	___xc_a	None
+00403108	name	pcppinit	None
+0040310c	name	___xc_z	None
+00403110	name	___xi_a	None
+00403114	name	pcinit	None
+00403118	name	pinit	None
+0040311c	name	___xi_z	None
+00403140	name	??_7type_info@@6B@	const type_info::`vftable'
+00403144	name	GS_ExceptionPointers	None
+0040314c	name	aBar	None
+00403150	name	aInvalidStringP	None
+00403168	name	aStringTooLong	None
+0040317c	name	??_7bad_alloc@std@@6B@	const std::bad_alloc::`vftable'
+00403188	name	__load_config_used	None
+0040321c	name	??_R4type_info@@6B@	const type_info::`RTTI Complete Object Locator'
+00403230	name	??_R3type_info@@8	type_info::`RTTI Class Hierarchy Descriptor'
+00403240	name	??_R2type_info@@8	type_info::`RTTI Base Class Array'
+00403248	name	??_R1A@?0A@EA@type_info@@8	type_info::`RTTI Base Class Descriptor at (0, -1, 0, 64)'
+00403264	name	??_R4bad_alloc@std@@6B@	const std::bad_alloc::`RTTI Complete Object Locator'
+00403278	name	??_R3bad_alloc@std@@8	std::bad_alloc::`RTTI Class Hierarchy Descriptor'
+00403288	name	??_R2bad_alloc@std@@8	std::bad_alloc::`RTTI Base Class Array'
+00403294	name	??_R1A@?0A@EA@exception@std@@8	std::exception::`RTTI Base Class Descriptor at (0, -1, 0, 64)'
+004032b0	name	??_R3exception@std@@8	std::exception::`RTTI Class Hierarchy Descriptor'
+004032c0	name	??_R2exception@std@@8	std::exception::`RTTI Base Class Array'
+004032c8	name	??_R1A@?0A@EA@bad_alloc@std@@8	std::bad_alloc::`RTTI Base Class Descriptor at (0, -1, 0, 64)'
+004032f0	name	___safe_se_handler_table	None
+00403304	name	___rtc_iaa	None
+00403308	name	___rtc_izz	None
+0040330c	name	___rtc_taa	None
+00403310	name	___rtc_tzz	None
+004033b4	name	__CT??_R0?AVexception@std@@@8??0exception@std@@QAE@ABV01@@Z12	None
+004033d0	name	__CT??_R0?AVbad_alloc@std@@@8??0bad_alloc@std@@QAE@ABV01@@Z12	None
+004033ec	name	__CTA2?AVbad_alloc@std@@	None
+004033f8	name	__TI2?AVbad_alloc@std@@	None
+0040355c	name	__IMPORT_DESCRIPTOR_MSVCP100	None
+00403570	name	__IMPORT_DESCRIPTOR_MSVCR100	None
+00403584	name	__IMPORT_DESCRIPTOR_KERNEL32	None
+00403598	name	__NULL_IMPORT_DESCRIPTOR	None
+0040396a	name	aMsvcp100_dll	None
+00403a20	name	aMsvcr100_dll	None
+00403d0a	name	aKernel32_dll	None
+00404000	name	??_R0?AVtype_info@@@8	class type_info `RTTI Type Descriptor'
+00404008	name	a_?avtype_info@	None
+00404018	name	___security_cookie	None
+0040401c	name	___security_cookie_complement	None
+00404020	name	___native_dllmain_reason	None
+00404024	name	___native_vcclrit_reason	None
+00404030	name	___globallocalestatus	None
+00404034	name	___defaultmatherr	None
+00404038	name	??_R0?AVexception@std@@@8	class std::exception `RTTI Type Descriptor'
+00404040	name	a_?avexception@	None
+00404054	name	??_R0?AVbad_alloc@std@@@8	class std::bad_alloc `RTTI Type Descriptor'
+00404070	name	argc	None
+00404074	name	envp	None
+00404078	name	argv	None
+0040407c	name	managedapp	None
+00404080	name	argret	None
+00404084	name	startinfo	None
+00404088	name	mainret	None
+0040408c	name	has_cctor	None
+00404090	name	GS_ExceptionRecord	None
+004040e0	name	DebuggerWasPresent	None
+004040e8	name	GS_ContextRecord	None
+004043b4	name	__dowildcard	None
+004043b8	name	__newmode	None
+004043bc	name	__commode	None
+004043c0	name	__fmode	None
+004043c4	name	___native_startup_state	None
+004043c8	name	___native_startup_lock	None
+004043cc	name	___onexitend	None
+004043d0	name	___onexitbegin	None
+004043d4	name	__NoHeapEnableTerminationOnCorruption	None
+004043d8	name	___dyn_tls_init_callback	None

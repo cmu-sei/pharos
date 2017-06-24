@@ -1,4 +1,4 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016, 2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Imports_H
 #define Pharos_Imports_H
@@ -8,6 +8,8 @@
 
 #include <rose.h>
 
+namespace pharos {
+
 // Forward declaration of mport descriptor for recursive includes.
 class ImportDescriptor;
 // Import name map (names to import descriptors).
@@ -16,11 +18,15 @@ typedef std::map<std::string, ImportDescriptor*> ImportNameMap;
 // A set of import descriptors.
 typedef std::set<ImportDescriptor*> ImportDescriptorSet;
 
+} // namespace pharos
+
 #include "util.hpp"
 #include "masm.hpp"
 #include "funcs.hpp"
 #include "delta.hpp"
 #include "semantics.hpp"
+
+namespace pharos {
 
 class ImportDescriptor {
   // The address of the import descriptor.  This can be NULL or invalid if the import
@@ -57,24 +63,34 @@ class ImportDescriptor {
   // the loader when the import is resolved at load time.
   SymbolicValuePtr loader_variable;
 
+  // Our whole approach to marking methods as new, delete and purecall is getting messier and
+  // messier.   It's probably getting to be time for a new strategy involving the API database.
+  bool new_method;
+  bool delete_method;
+  bool purecall_method;
+
  public:
 
-  // Unused?  Used only accidentally in map operations?
   ImportDescriptor() {
     address = 0;
     item = NULL;
     name = "INVALID";
     dll = "INVALID";
     ordinal = 0;
-    loader_variable = SymbolicValue::loader_defined(get_arch_bits());
+    new_method = false;
+    delete_method = false;
+    purecall_method = false;
+    loader_variable = SymbolicValue::loader_defined();
   }
+
+  ImportDescriptor(const APIDefinition &func);
 
   ImportDescriptor(std::string d, SgAsmPEImportItem *i);
 
   CallTargetSet get_callers() const { return callers; }
-  std::string get_name() const { return name; }
+  const std::string & get_name() const { return name; }
   size_t get_ordinal() const { return ordinal; }
-  std::string get_dll_name() const { return dll; }
+  const std::string & get_dll_name() const { return dll; }
   std::string get_long_name() const { return dll + ":" + name; }
   std::string get_normalized_name() const;
   std::string get_best_name() const;
@@ -91,6 +107,9 @@ class ImportDescriptor {
   void set_names_hack(std::string compund_name);
 
   StackDelta get_stack_delta() const { return function_descriptor.get_stack_delta(); }
+  const LeafNodePtr & get_stack_delta_variable() const {
+    return function_descriptor.get_stack_delta_variable();
+  }
   StackDelta get_stack_parameters() const { return function_descriptor.get_stack_parameters(); }
 
   // Validate the function description, complaining about any unusual.
@@ -99,6 +118,20 @@ class ImportDescriptor {
   // Read and write from property tree config files.
   void read_config(const boost::property_tree::ptree& tree);
   void write_config(boost::property_tree::ptree* tree);
+
+  // Return whether we think we're a new() method.
+  bool is_new_method() const { return new_method; }
+  // Record whether we think we're a new() method.  Presumably called with true.
+  void set_new_method(bool n) { new_method = n; }
+
+  // If we're going to keep the new operator knowledge on the function descriptor, we might as
+  // well keep knowledge of the delete operator
+  bool is_delete_method() const { return delete_method; }
+  void set_delete_method(bool d) { delete_method = d; }
+
+  // This is getting repetive... :-(
+  bool is_purecall_method() const { return purecall_method; }
+  void set_purecall_method(bool p) { purecall_method = p; }
 
   // Merge a DLL export descriptor with ourself.
   void merge_export_descriptor(ImportDescriptor* did);
@@ -127,6 +160,9 @@ class ImportDescriptorMap: public std::map<rose_addr_t, ImportDescriptor> {
   // Find all descriptors with a given name.
   ImportDescriptorSet find_name(std::string name);
 };
+
+} // namespace pharos
+
 #endif
 /* Local Variables:   */
 /* mode: c++          */

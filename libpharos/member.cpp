@@ -1,9 +1,11 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "member.hpp"
 #include "descriptors.hpp"
 #include "masm.hpp"
-#include "method.cpp"
+#include "method.hpp"
+
+namespace pharos {
 
 Member::Member(unsigned int o, unsigned int s, rose_addr_t ec,
                SgAsmx86Instruction* i, const VFTEvidence* v) {
@@ -49,10 +51,10 @@ Member::Member(unsigned int o, unsigned int s, rose_addr_t ec,
 void Member::pick_best_vftable() {
   best_vftable = NULL;
   rose_addr_t baddr = 0;
-  BOOST_FOREACH(const VFTEvidence& e, vftables) {
+  for (const VFTEvidence& e : vftables) {
     rose_addr_t eaddr = e.insn->get_address();
     if (eaddr > baddr) {
-      best_vftable = e.vftable;
+      if (e.vftable) best_vftable = e.vftable;
     }
   }
 }
@@ -62,14 +64,14 @@ void Member::pick_best_vftable() {
 void Member::merge(Member& m, rose_addr_t loc) {
   if (size != m.size) {
 
-    // There might be a better place to do this conceptually, but this is where it's
-    // currently the easiest.  If our current member is a virtual function table
-    // (size=get_arch_bytes()), and the new member is an embedded object, that conclusively
-    // makes the embedded object our parent.  Report that now, but at the present time, we're
-    // not going to do much more with that information.  Part of the goal here is to avoid
-    // generating the error massage about overwriting the object size, since this behavior is
-    // expected.
-    if (is_virtual() && size == get_arch_bytes() && m.size == 0 && m.is_embedded_object()) {
+    // There might be a better place to do this conceptually, but this is where it's currently
+    // the easiest.  If our current member is a virtual function table has the correct size,
+    // and the new member is an embedded object, that conclusively makes the embedded object
+    // our parent.  Report that now, but at the present time, we're not going to do much more
+    // with that information.  Part of the goal here is to avoid generating the error massage
+    // about overwriting the object size, since this behavior is expected.
+    size_t arch_bytes = global_descriptor_set->get_arch_bytes();
+    if (is_virtual() && size == arch_bytes && m.size == 0 && m.is_embedded_object()) {
       // Don't try to identify the constructor right now, just mention the inheritance
       // relationship.  We'll figure it out from the passed methods later.
       GINFO << "Member at offset " << m.offset << " in function " << addr_str(loc)
@@ -136,12 +138,12 @@ void Member::debug() const {
   OINFO << LEND;
 
   // If we're an embedded object, say where we were constructed from.
-  BOOST_FOREACH(rose_addr_t ec, embedded_ctors) {
+  for (rose_addr_t ec : embedded_ctors) {
     OINFO << boost::str(boost::format("  Passed to method at 0x%08X") % ec) << LEND;
   }
 
   // List the instructions that use this member.
-  BOOST_FOREACH(SgAsmx86Instruction* i, using_instructions) {
+  for (SgAsmx86Instruction* i : using_instructions) {
     // It's help when debugging to see which function the instruction was in.
     FunctionDescriptor* ifd = global_descriptor_set->get_fd_from_insn(i);
     OINFO << "  Member used at: " << debug_instruction(i)
@@ -166,6 +168,8 @@ void Member::debug() const {
     }
   }
 }
+
+} // namespace pharos
 
 /* Local Variables:   */
 /* mode: c++          */

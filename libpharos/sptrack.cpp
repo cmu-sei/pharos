@@ -1,6 +1,5 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
-#include <boost/foreach.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/visitors.hpp>
 #include <boost/graph/breadth_first_search.hpp>
@@ -12,10 +11,10 @@
 
 #include "sptrack.hpp"
 
-#define Int32Expr(x) (LeafNode::create_integer(32, x))
+namespace pharos {
 
-typedef rose::BinaryAnalysis::ControlFlow::Graph CFG;
-typedef rose::BinaryAnalysis::FunctionCall::Graph FCG;
+typedef Rose::BinaryAnalysis::ControlFlow::Graph CFG;
+typedef Rose::BinaryAnalysis::FunctionCall::Graph FCG;
 typedef boost::graph_traits<CFG>::vertex_iterator CFGIter;
 typedef boost::graph_traits<CFG>::vertex_descriptor CFGVertex;
 
@@ -33,7 +32,7 @@ std::string neghex(int x) {
 
 void spTracker::update_delta(rose_addr_t addr, StackDelta sd) {
   StackDelta current = get_delta(addr);
-  
+
   // This status reporting is substantially more verbose than we will need after we've
   // debugged this throughly.  In the mean time, I'd like to log every questionable update.
   if (sd.confidence < current.confidence) {
@@ -45,6 +44,22 @@ void spTracker::update_delta(rose_addr_t addr, StackDelta sd) {
     if (sd.delta == current.delta) return;
     // We also don't want to report replacing "non" values.
     if (current.confidence == ConfidenceNone) return;
+
+    // If we are merging a missing stack delta with a better-than-missing stack delta, use the
+    // better value.  This is because the missing stack delta is represented by a variable,
+    // which we can say takes on the value of the better delta.  If we had done stack call
+    // analysis in a separate pass, we could have already resolved this.  We should probably do
+    // that in the near future.
+    if (sd.confidence == ConfidenceMissing && current.confidence >= ConfidenceMissing) {
+      return;
+    }
+    if (current.confidence == ConfidenceMissing && sd.confidence >= ConfidenceMissing) {
+      current.confidence = sd.confidence;
+      current.delta = sd.delta;
+      deltas[addr] = current;
+      return;
+    }
+
     // If we reached here, something is definitely wrong.  This message should be be "error"
     // level, but it's still spewing frequently enough that for the time being Cory reduced it
     // back to debug so as not to annoy general users of the tool.  Instead, we ticking
@@ -83,14 +98,14 @@ StackDelta spTracker::get_call_delta(rose_addr_t addr) {
     return StackDelta(0, ConfidenceWrong);
   }
   else {
-    
+
     StackDelta delta = cd->get_stack_delta();
     // If our call descriptor returned no delta, upgrade the answer to a guess on account of
     // how guessing zero isn't all that horrible, and we want to reserve some space for other
     // kinds of failures.  In a proper bottom up configuration, this is probably where we
     // invoke the solver, or at least issue an error.
     if (delta.confidence == ConfidenceNone)
-      delta.confidence = ConfidenceGuess;
+      delta.confidence = ConfidenceMissing;
     SDEBUG << "Call descriptor for address: " << addr_str(addr)
            << " returned stack delta: " << delta << LEND;
     return delta;
@@ -120,20 +135,23 @@ std::vector<int> getParameterCombinations(SgAsmBlock *block, InsnIntPairVector &
 
       SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::instance();
       rops->get_state()->set_operators(rops);
-      CustomDispatcherPtr dispatcher = CustomDispatcher::instance(entry_rops);
-      entry_rops->writeRegister(dispatcher->findRegister("esp", 32), entry_rops->number_(32, 0));
-      entry_rops->writeRegister(dispatcher->findRegister("eip", 32), entry_rops->number_(32, ins->get_address()));
+      size_t arch_bits = global_descriptor_set->get_arch_bits();
+      DispatcherPtr dispatcher = RoseDispatcherX86::instance(entry_rops, arch_bits, NULL);
+      const RegisterDescriptor& esp_rd = global_descriptor_set->get_stack_reg();
+      const RegisterDescriptor& eip_rd = global_descriptor_set->get_ip_reg();
+      entry_rops->writeRegister(esp_rd, entry_rops->number_(arch_bits, 0));
+      entry_rops->writeRegister(eip_rd, entry_rops->number_(arch_bits, ins->get_address()));
       dispatcher->processInstruction(ins);
-      
+
       SymbolicState<SymbolicValue> state = rops.get_state();
       if (state.DU_REG_ESP.is_known() && ((int)state.DU_REG_ESP.known_value()) > 0) {
         SDEBUG << "Fail " << debug_instruction(ins) << LEND;
         SDEBUG << state.DU_REG_ESP << LEND;
         assert(state.DU_REG_ESP.is_known() && ((int)state.DU_REG_ESP.known_value()) < 0);
       }
-      
+
       bytesPushed += -1*(int)state.DU_REG_ESP.known_value();
-      push_ins.push_back(InsnIntPair(ins,-1*(int)state.DU_REG_ESP.known_value()));     
+      push_ins.push_back(InsnIntPair(ins,-1*(int)state.DU_REG_ESP.known_value()));
     }
   }
 
@@ -167,7 +185,7 @@ ParameterMap getParameterPushers(Block2IntPairMap &spBeforeAfterBlock,
     SgAsmx86Instruction * callins = NULL;
     int c = bbf_ins.size()-1;
     int parambytes = 0;
-    
+
     do {
       callins = isSgAsmx86Instruction(bbf_ins[c]);
       c--;
@@ -185,20 +203,21 @@ ParameterMap getParameterPushers(Block2IntPairMap &spBeforeAfterBlock,
         //       << "bytes or caller cleanup bytes " << addr_str(it->first->get_address()) << LEND;
         continue;
       }
-      it->second.hasKnownParamBytes ? parambytes = it->second.knownParamBytes : parambytes = it->second.callerCleanupBytes;      
+      it->second.hasKnownParamBytes ? parambytes = it->second.knownParamBytes : parambytes = it->second.callerCleanupBytes;
     } else if (spBeforeAfterBlock.find(it->first) != spBeforeAfterBlock.end() &&
                block_deltas.find(it->first) != block_deltas.end()) {
-      // SP After Call - SP @ basic block start = Change in SP due to all instructions in block - 
+      // SP After Call - SP @ basic block start = Change in SP due to all instructions in block -
       // # bytes popped off in call (params and return address)
       int lhs = spBeforeAfterBlock[it->first].second - spBeforeAfterBlock[it->first].first;
-      parambytes = -1*block_deltas[it->first] - lhs - 4;
-    } 
+      size_t arch_bytes = global_descriptor_set->get_arch_bytes();
+      parambytes = -1*block_deltas[it->first] - lhs - arch_bytes;
+    }
 
     if (parambytes <= 0) continue;
-         
+
     int sz = 0;
     X86InsnSet pushers;
-    
+
     for (size_t t = 0; t < it->second.push_params.size() && sz != parambytes; t++) {
       sz += it->second.push_params[t].second;
       pushers.insert(it->second.push_params[t].first);
@@ -245,7 +264,7 @@ int getCleanupSize(BlockSet &ret_blocks) {
 class Z3StackSolver {
 
 private:
-  
+
   z3::expr build_literal(int term1, int term2, std::string desc, std::string oper) {
     std::stringstream convert;
     convert << std::dec << desc << " " << term1 << " " << oper << " " << term2;
@@ -254,7 +273,7 @@ private:
     z3::expr q = c.bool_const(convert.str().c_str());
     return q;
   }
-  
+
 public:
 
   z3::context c;
@@ -262,7 +281,7 @@ public:
   z3::expr_vector variables;
   z3::expr_vector literals;
   std::vector<std::string> vnames;
-  
+
   Z3StackSolver(): s(c), variables(c), literals(c) {
     // Everything's already initialized?
   }
@@ -276,7 +295,7 @@ public:
 
   void add_delta_constraint(int bid, std::string oper, int term, std::string desc) {
     z3::expr e(c);
-    
+
     // If I can learn to extract the operator from the expression, we won't need this sillyness.
     // Also, variables[bid+1] - variables[bid] basically means "out - in".
     if (oper == "==")
@@ -285,7 +304,7 @@ public:
       e = variables[bid+1] - variables[bid] <= term;
     else if (oper == ">=")
       e = variables[bid+1] - variables[bid] >= term;
-    
+
     s.add(e);
 
     std::string lit = str(boost::format("Adding constraint for block %s %s - %s %s %d") \
@@ -295,21 +314,21 @@ public:
     s.add(implies(q, e));
     literals.push_back(q);
   }
-  
+
   void make_vars(SgAsmBlock *bb) {
     // Stack depth before the first instruction of the block
     std::string name = str(boost::format("%x_in") % bb->get_address());
     z3::expr stack_in = c.int_const(name.c_str());
     variables.push_back(stack_in);
     vnames.push_back(name);
-    
+
     // Stack depth after the last instruction of the block (i.e., after a call has returned)
     name = str(boost::format("%x_out") % bb->get_address());
     z3::expr stack_out = c.int_const(name.c_str());
     variables.push_back(stack_out);
     vnames.push_back(name);
   }
-  
+
 };
 
 Insn2IntMap solveConstraintProblem(FunctionDescriptor *fd,
@@ -318,7 +337,7 @@ Insn2IntMap solveConstraintProblem(FunctionDescriptor *fd,
                                    CallBlockMap endsWithCall,
                                    size_t dimension,
                                    Block2IntPairMap &spBeforeAfterBlock) {
-  
+
   // Our return value
   Insn2IntMap ret;
 
@@ -329,27 +348,28 @@ Insn2IntMap solveConstraintProblem(FunctionDescriptor *fd,
   // the depths of the stack into and coming out of the stack respectively.
   // The constraint is that the stack depth coming out of any two blocks
   // must be equal if they flow into the same block.
-  // We assume an initial stack depth of 4 (for the return address), 
-  // unless we can find a callee clean up return (i.e., retn XX, 
-  // in which case XX+4 was the initial depth)
+  // We assume an initial stack depth of architecture size (for the return address),
+  // unless we can find a callee clean up return (i.e., retn XX,
+  // in which case XX+arch_bytes was the initial depth)
 
   bool solutionFound = false;
-  int initial_stack_depth = 4;
-  
+  size_t arch_bytes = global_descriptor_set->get_arch_bytes();
+  int initial_stack_depth = arch_bytes;
+
   // Make a list of the return blocks.
   //BinaryAnalysis::ControlFlow cfg_analyzer;
   //CFG cfg = cfg_analyzer.build_block_cfg_from_ast<CFG>(func);
   CFG& cfg = fd->get_cfg();
   BlockSet& ret_blocks = fd->get_return_blocks();
-  initial_stack_depth += getCleanupSize(ret_blocks);   
-  
+  initial_stack_depth += getCleanupSize(ret_blocks);
+
   // Create variables representing the depth of the stack at the beginning and end of each basic block
   SgAsmStatementPtrList & bb_list = func->get_statementList();
-  
+
   Z3StackSolver z3sd;
 
   try{
-    for (size_t x = 0; x < dimension; x++) {   
+    for (size_t x = 0; x < dimension; x++) {
       SgAsmBlock *bb = isSgAsmBlock(bb_list[x]);
       if (!bb) continue;
       z3sd.make_vars(bb);
@@ -360,7 +380,7 @@ Insn2IntMap solveConstraintProblem(FunctionDescriptor *fd,
 
     // Set the lower bounds for each of the inner variables (i.e. the stack depths of all basic blocks EXCEPT)
     // for the entry block and return blocks
-    for (size_t x = 1; x < dimension; x++) {   
+    for (size_t x = 1; x < dimension; x++) {
       SgAsmBlock *bb = isSgAsmBlock(bb_list[x]);
       if (!bb) continue;
       if (ret_blocks.find(bb) == ret_blocks.end()) {
@@ -371,7 +391,7 @@ Insn2IntMap solveConstraintProblem(FunctionDescriptor *fd,
       z3::expr e = z3sd.variables[2*x] >= 0;
       //z3sd.add_constraint(e, 2*x, 0, "Adding lower bounds for id", ">=");
     }
-   
+
     std::pair<CFGIter, CFGIter> vp;
     // Set the constraints based on the control flow edges for all blocks except ones that end with a call
     for (vp = vertices(cfg); vp.first != vp.second; ++vp.first) {
@@ -385,23 +405,23 @@ Insn2IntMap solveConstraintProblem(FunctionDescriptor *fd,
           // Assume the depth at the start of the function is 0
           z3::expr e = z3sd.variables[0] == 0;
           z3sd.add_constraint(e, 0, 0, "Adding lower bounds for id", "==");
-        } 
+        }
 
         int bid = 2*block_ids[block];
-      
+
         // Are we a return block
         if (ret_blocks.find(block) != ret_blocks.end()) {
           z3::expr e = z3sd.variables[bid + 1] == -initial_stack_depth;
-          z3sd.add_constraint(e, bid + 1, -initial_stack_depth, 
+          z3sd.add_constraint(e, bid + 1, -initial_stack_depth,
                          "Setting return block stack depth out for id", "==");
         }
-     
+
         // Insert the constraint for the delta within the block
         if (endsWithCall.find(block) == endsWithCall.end()) {
           z3sd.add_delta_constraint(bid, "==", -block_deltas[block], "without call:");
-        } 
+        }
         else {
-          int normaldelta = -1*block_deltas[block] - 4;
+          int normaldelta = -1*block_deltas[block] - arch_bytes;
           if (endsWithCall[block].callerCleanupBytes == 0) {
             if (endsWithCall[block].hasKnownParamBytes) {
               int term = normaldelta - endsWithCall[block].knownParamBytes;
@@ -422,33 +442,33 @@ Insn2IntMap solveConstraintProblem(FunctionDescriptor *fd,
             z3sd.add_delta_constraint(bid, "==", normaldelta, "with call (with CallerCleanup):");
           }
         }
-        
+
         // Add constraints based upon the in-edges of the block
         boost::graph_traits<CFG>::in_edge_iterator ei, ei_end;
         for (boost::tie(ei, ei_end)=in_edges(*vp.first, cfg); ei!=ei_end; ++ei) {
           CFGVertex predecessor = source(*ei, cfg);
           SgAsmBlock *pblock = get(boost::vertex_name, cfg, predecessor);
           assert(pblock);
-          
+
           //s.add(z3sd.variables[2*block_ids[pblock]+1] == z3sd.variables[bid]);
-          
+
           SDEBUG << "Setting constraint for in edge between " << addr_str(pblock->get_address())
-                 << " " << addr_str(block->get_address()) << " to 0 " 
+                 << " " << addr_str(block->get_address()) << " to 0 "
                  << " IDS: " << 2*block_ids[pblock]+1 << " " << bid << LEND;
-          
+
           std::stringstream convert;
           convert.str("");
           convert << "Assertion: Setting constraint for in edge between "
-                  << std::hex << pblock->get_address() 
-                  << " " << block->get_address() << " to 0 " << " IDS: " 
+                  << std::hex << pblock->get_address()
+                  << " " << block->get_address() << " to 0 " << " IDS: "
                   << 2*block_ids[pblock]+1 << " " << 2*block_ids[block];
           z3::expr qe = z3sd.c.bool_const(convert.str().c_str());
           z3sd.s.add(implies(qe, z3sd.variables[2*block_ids[pblock]+1] == z3sd.variables[bid]));
-          z3sd.literals.push_back(qe);  
-        } 
+          z3sd.literals.push_back(qe);
+        }
       }
     }
-    
+
     // Make possible solutions from parameter combinations
     // BlockDeltas curSolution;
     // BlockDeltasVector possibleDeltas;
@@ -457,7 +477,7 @@ Insn2IntMap solveConstraintProblem(FunctionDescriptor *fd,
 
     SDEBUG << "Model before solving:" << LEND;
     SDEBUG << z3sd.s << LEND;
-    
+
     Block2IntPairMap minsol;
     // Something related to our return value
     Insn2IntMap minret;
@@ -477,25 +497,25 @@ Insn2IntMap solveConstraintProblem(FunctionDescriptor *fd,
 
       assert(bb_list.size() > 0);
       z3::expr delta_constraint = z3sd.variables[2*block_ids[isSgAsmBlock(bb_list[0])]+1];
-    
+
       for (size_t w = 0; w < m.size(); w++) {
         std::string varname = m[w].name().str();
         //SDEBUG << "Varname: " << varname << LEND;
-      
+
         if (varname.find("_out") == std::string::npos && varname.find("_in") == std::string::npos)
           continue;
-      
+
         int delta = 0;
         Z3_get_numeral_int(z3sd.c, m.get_const_interp(m[w]),&delta);
-      
-        for (size_t x = 0; x < dimension; x++) {   
+
+        for (size_t x = 0; x < dimension; x++) {
           SgAsmBlock *bb = isSgAsmBlock(bb_list[x]);
           if (!bb) continue;
 
           if (varname == z3sd.vnames[2*x]) {
             if (spBeforeAfterBlock.find(bb) == spBeforeAfterBlock.end())
               spBeforeAfterBlock[bb] = IntPair(delta,-1);
-            else spBeforeAfterBlock[bb].first = delta;       
+            else spBeforeAfterBlock[bb].first = delta;
           }
           else if (varname == z3sd.vnames[2*x+1]) {
             sp_sum += delta;
@@ -503,43 +523,43 @@ Insn2IntMap solveConstraintProblem(FunctionDescriptor *fd,
             if (spBeforeAfterBlock.find(bb) == spBeforeAfterBlock.end())
               spBeforeAfterBlock[bb] = IntPair(-1,delta);
             else spBeforeAfterBlock[bb].second = delta;
-          
+
             if (endsWithCall.find(bb) != endsWithCall.end()) {
               SgAsmStatementPtrList & bbf_ins = bb->get_statementList();
-              
+
               assert(bbf_ins.size() > 0 && isSgAsmx86Instruction(bbf_ins[bbf_ins.size()-1])->get_kind() == x86_call);
               SgAsmx86Instruction *call = isSgAsmx86Instruction(bbf_ins[bbf_ins.size()-1]);
               ret[call] = delta;
             }
           }
-        
+
           if (x > 0) delta_constraint = delta_constraint + z3sd.variables[2*block_ids[isSgAsmBlock(bb_list[x])]+1];
         }
       }
-    
+
       z3sd.s.add(delta_constraint < sp_sum);
       minsol = spBeforeAfterBlock;
       minret = ret;
       spBeforeAfterBlock.clear();
-      ret.clear();      
+      ret.clear();
       tries++;
     }
 
     if (unsatisfied == z3::unsat) {
       z3::expr_vector core = z3sd.s.unsat_core();
-      
+
       SDEBUG << "Core size " << core.size() << " Total number of literals " << z3sd.literals.size() << LEND;
       SDEBUG << "Unsat core:" << LEND;
       for (size_t f = 0; f < core.size(); f++)
         SDEBUG << core[f] << LEND;
     }
-      
+
     if (tries >= max_it)
       SWARN << "Gave up looking for a better stack delta solution for function "
                  << fd->address_string() << " after " << tries << " iterations." << LEND;
 
     spBeforeAfterBlock = minsol;
-    ret = minret;  
+    ret = minret;
   } catch(z3::exception e) {
     SERROR << "caught z3 exception: " << e << LEND;
   }
@@ -563,18 +583,18 @@ bool getCallerCleanupSize(SgAsmBlock *blockAfterCall, int *cleanupsize) {
         if (ops.size() >= 2 && isSgAsmRegisterReferenceExpression(ops[0]) &&
             unparseX86Register(isSgAsmRegisterReferenceExpression(ops[0])->get_descriptor(), NULL) == "esp" &&
             isSgAsmIntegerValueExpression(ops[1])) {
-          
+
           if (q+1 < next_ins.size() &&
               isSgAsmx86Instruction(next_ins[q+1])->get_kind() == x86_ret)
             return false;
-          
+
           *cleanupsize = isSgAsmIntegerValueExpression(ops[1])->get_absolute_value();
           SDEBUG << "Caller cleanup bytes " << *cleanupsize << LEND;
           return true;
         }
-      }     
+      }
     }
-  } 
+  }
 
   return false;
 }
@@ -585,16 +605,16 @@ Insn2IntMap spTracker::getStackDepthAfterCalls(FunctionDescriptor* fd) {
   BlockDeltas block_deltas;
   Insn2IntMap call_deltas;
   BlockDeltas block_ids;
-  CallBlockMap endsWithCall; 
+  CallBlockMap endsWithCall;
   int dimension = 0;
 
   SgAsmFunction* func = fd->get_func();
 
   SgAsmStatementPtrList & bb_list = func->get_statementList();
-  
+
   // Evaluate each basic block and get the value in ESP (the stack delta after each basic block)
   // If there
-  for (size_t x = 0; x < bb_list.size(); x++) {   
+  for (size_t x = 0; x < bb_list.size(); x++) {
     SgAsmBlock *block = isSgAsmBlock(bb_list[x]);
     if (!block) continue;
     SgAsmStatementPtrList & bbf_ins = block->get_statementList();
@@ -602,14 +622,15 @@ Insn2IntMap spTracker::getStackDepthAfterCalls(FunctionDescriptor* fd) {
     bool hasValidInstructions = false;
 
     SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::instance();
-    CustomDispatcherPtr dispatcher = CustomDispatcher::instance(rops);
-    rops.writeRegister("esp",SymbolicValue<32>(0));
- 
+    size_t arch_bits = global_descriptor_set->get_arch_bits();
+    DispatcherPtr dispatcher = RoseDispatcherX86::instance(rops, arch_bits, NULL);
+    rops.writeRegister("esp",SymbolicValue<arch_bits>(0));
+
     for (size_t y = 0; y < bbf_ins.size(); y++) {
       try {
         SgAsmx86Instruction *ins = isSgAsmx86Instruction(bbf_ins[y]);
         if (!ins) break;
-        
+
         hasValidInstructions = true;
 
         if (ins->get_kind() == x86_mov) {
@@ -620,11 +641,11 @@ Insn2IntMap spTracker::getStackDepthAfterCalls(FunctionDescriptor* fd) {
           }
         }
 
-        rops.writeRegister("eip",SymbolicValue<32>(ins->get_address()));
+        rops.writeRegister("eip",SymbolicValue<arch_bits>(ins->get_address()));
         dispatcher.processInstruction(ins);
 
         SDEBUG << "Insn: " << debug_instruction(ins) << LEND;
-        
+
         if (ins->get_kind() == x86_call) {
           SDEBUG << "Block " << addr_str(block->get_address()) << " ends with a call" << LEND;
           callBlock cb;
@@ -647,7 +668,7 @@ Insn2IntMap spTracker::getStackDepthAfterCalls(FunctionDescriptor* fd) {
           } else if (isSgAsmRegisterReferenceExpression(callops[0])) {
             RegisterDescriptor cdesc = isSgAsmRegisterReferenceExpression(callops[0])->get_descriptor();
             SymbolicState<SymbolicValue> state = ops.get_state();
-            BOOST_FOREACH(AbstractAccess& aa, ops.reads) {
+            for (const AbstractAccess& aa : ops.reads) {
               if (!aa.is_reg(cdesc)) continue;
               if (aa.value.is_known()) target = aa.value.known_value();
             }
@@ -675,7 +696,7 @@ Insn2IntMap spTracker::getStackDepthAfterCalls(FunctionDescriptor* fd) {
               }
             }
           }
-          
+
           // Check for caller cleanup
           if (x+1 < bb_list.size()) {
             SgAsmBlock *nextblock = isSgAsmBlock(bb_list[x+1]);
@@ -689,7 +710,7 @@ Insn2IntMap spTracker::getStackDepthAfterCalls(FunctionDescriptor* fd) {
                   if (ops.size() >= 2 && isSgAsmRegisterReferenceExpression(ops[0]) &&
                       unparseX86Register(isSgAsmRegisterReferenceExpression(ops[0])->get_descriptor(), NULL) == "esp" &&
                       isSgAsmIntegerValueExpression(ops[1])) {
-                    
+
                     if (q+1 < next_ins.size() &&
                         isSgAsmx86Instruction(next_ins[q+1])->get_kind() == x86_ret)
                       continue;
@@ -715,19 +736,18 @@ Insn2IntMap spTracker::getStackDepthAfterCalls(FunctionDescriptor* fd) {
 
     SymbolicState<SymbolicValue> state = rops.get_state();
     if (!state.DU_REG_ESP.is_known()) {
-      SWARN << "Lost track of stack pointer within basic block " << x 
-            << " in function " << std::hex << func->get_address() << std::dec << LEND;
+      SWARN << "Lost track of stack pointer within basic block " << x
+            << " in function " << fd->address_string() << LEND;
       SDEBUG << state.DU_REG_ESP << LEND;
       return call_deltas;
     }
     block_deltas[block] = state.DU_REG_ESP.known_value();
     block_ids[block] = x;
-    SDEBUG << "Setting block delta for block (id=" << x << ") at 0x" << std::hex 
+    SDEBUG << "Setting block delta for block (id=" << x << ") at 0x" << std::hex
            << block->get_address() << std::dec << " to " << block_deltas[block] << LEND;
   }
 
-  SDEBUG << "Creating constraint problem for " << std::hex 
-         << func->get_address() << std::dec << LEND;
+  SDEBUG << "Creating constraint problem for " << fd->address_string() << LEND;
 
   call_deltas = solveConstraintProblem(fd,block_deltas,block_ids,endsWithCall,dimension,spBeforeAfterBlock);
   //pushParams = getParameterPushers(spBeforeAfterBlock, endsWithCall, block_deltas);
@@ -735,10 +755,10 @@ Insn2IntMap spTracker::getStackDepthAfterCalls(FunctionDescriptor* fd) {
   return call_deltas;
 
   // end of getStackDepthAfterCalls
-}  
+}
 
 // Note bDeltas contain SP deltas which are relative to the functions that they belong.
-// In order to use the information in other function, this offset must be added to the value of 
+// In order to use the information in other function, this offset must be added to the value of
 // the stack pointer at the call destination from the other function
 bool spTracker::getBlockDeltas(FunctionDescriptor* fd,  SymbolicRiscOperators *ropsFromCall) {
   SgAsmFunction *func = fd->get_func();
@@ -747,16 +767,16 @@ bool spTracker::getBlockDeltas(FunctionDescriptor* fd,  SymbolicRiscOperators *r
   else if (processed.find(func) != processed.end()) return false;
   processed.insert(func);
 
-  SDEBUG << "Starting symbolic SP analysis for @" << std::hex 
-         << func->get_address() << std::dec << LEND;
-  
+  SDEBUG << "Starting symbolic SP analysis for @" << fd->address_string() << LEND;
+
   SymbolicRiscOperatorsPtr rops;
-  CustomDispatcherPtr dispatcher = CustomDispatcher::instance(rops);
+  size_t arch_bits = global_descriptor_set->get_arch_bits();
+  DispatcherPtr dispatcher = RoseDispatcherX86::instance(rops, arch_bits, NULL);
   if (ropsFromCall == NULL) {
-    
     rops = SymbolicRiscOperators::instance();
-    rops->writeRegister(rops->findRegister("esp", 32), rops->number<32>(0));
-    rops->writeRegister(rops->findRegister("ebp", 32), rops->number<32>(0));
+    rops->writeRegister(rops->findRegister("esp", arch_bits), rops->number<arch_bits>(0));
+    rops->writeRegister(rops->findRegister("ebp", arch_bits), rops->number<arch_bits>(0));
+    // The segment registers are always 16 bits...
     rops->writeRegister(rops->findRegister("es", 16), rops->number<16>(0));
     rops->writeRegister(rops->findRegister("cs", 16), rops->number<16>(0));
     rops->writeRegister(rops->findRegister("ss", 16), rops->number<16>(0));
@@ -766,15 +786,15 @@ bool spTracker::getBlockDeltas(FunctionDescriptor* fd,  SymbolicRiscOperators *r
   } else rops = ropsFromCall;
 
   if (!rops->get_state().DU_REG_ESP.is_known()) {
-    SWARN << "Lost track of stack pointer at the beginning of function @" 
-          << addr_str(func->get_address()) << LEND;
-    return false;                 
+    SWARN << "Lost track of stack pointer at the beginning of function @"
+          << func->address_string() << LEND;
+    return false;
   }
 
   int initial_sp = (int)rops->get_state().DU_REG_ESP.known_value();
 
   SDEBUG << "Initial SP " << initial_sp << LEND;
-  
+
   SgAsmStatementPtrList & bb_list = func->get_statementList();
   if (bb_list.size() == 0) return false;
 
@@ -805,12 +825,12 @@ bool spTracker::getBlockDeltas(FunctionDescriptor* fd,  SymbolicRiscOperators *r
       SWARN << "Warning: Empty basic block found" << LEND;
       continue;
     }
-    
+
     SymbolicRiscOperatorsPtr p = SymbolicRiscOperators::instance();
     if (z == 0) p = *rops;
     else {
       boost::graph_traits<CFG>::in_edge_iterator ei, ei_end;
-      
+
       bool found = false;
       for (boost::tie(ei, ei_end)=in_edges(vertex, cfg); ei!=ei_end; ++ei) {
         CFGVertex predecessor = source(*ei, cfg);
@@ -825,8 +845,13 @@ bool spTracker::getBlockDeltas(FunctionDescriptor* fd,  SymbolicRiscOperators *r
       assert(found);
     }
 
-    CustomDispatcherPtr dispatcher = CustomDispatcher::instance(p);
-    
+    size_t arch_bits = global_descriptor_set->get_arch_bits();
+    size_t arch_bytes = global_descriptor_set->get_arch_bytes();
+    DispatcherPtr dispatcher = RoseDispatcherX86::instance(p, arch_bits, NULL);
+
+    // This code is old, messy, and might be broken post 64-bit update.
+    uint64_t known_esp_value = state.DU_REG_ESP.known_value();
+
     SgAsmStatementPtrList & ins_list = bb->get_statementList();
     SgAsmx86Instruction *insn = NULL;
     for (size_t q = 0; q < ins_list.size(); q++) {
@@ -835,7 +860,7 @@ bool spTracker::getBlockDeltas(FunctionDescriptor* fd,  SymbolicRiscOperators *r
         if (insn == NULL) continue;
 
         // Evaluate the instruction
-        p.writeRegister("eip",SymbolicValue<32>(insn->get_address()));
+        p.writeRegister("eip",SymbolicValue<arch_bits>(insn->get_address()));
         dispatcher.processInstruction(insn);
 
         if (insn->get_kind() == x86_ret) hasRet = true;
@@ -844,23 +869,23 @@ bool spTracker::getBlockDeltas(FunctionDescriptor* fd,  SymbolicRiscOperators *r
         // Sub in the results from IDA if we have them
         if (insn->get_kind() == x86_call || insn->get_kind() == x86_jmp) {
 
-          
+
           // Get the call destination
           //      bool complete = false;
           rose_addr_t branch_target = 0;
           //      AddrSet callTargets = insn->get_successors(&complete);
           //      complete = false;
 
-          
+
           SymbolicState<SymbolicValue> & state = p.get_state();
           if (!state.DU_REG_ESP.is_known()) {
             SWARN << "Lost track of stack pointer while processing block "
                        << addr_str(bb->get_address()) << LEND;
-            return false;                 
+            return false;
           }
-          
 
-          
+
+
           if (insn->get_kind() == x86_jmp) {
             if (fd->is_thunk()) {
               SDEBUG << "Sptracker following thunk " << debug_instruction(insn) << LEND;
@@ -869,25 +894,25 @@ bool spTracker::getBlockDeltas(FunctionDescriptor* fd,  SymbolicRiscOperators *r
             }
             else continue;
             // Check to see if the jump target is an address before the first instruction
-            // or after the last instruction of the function       
+            // or after the last instruction of the function
             /*
             rose_addr_t dest = branch_target > 0 ? branch_target : *(callTargets.begin());
 
             FunctionDescriptor* dfd = descriptor_set->get_func(dest);
             if (dfd == NULL) {
-             
+
               SDEBUG << "Jmp to " << std::hex << dest << std::dec << LEND;
 
               rose_addr_t lastBBAddr = isSgAsmBlock(bb_list[bb_list.size()-1])->get_address();
               if (dest == 0) {
                 SWARN << "Warning jmp destination is 0" << LEND;
                 return false;
-              } else if (dest >= func->get_address() && dest <= lastBBAddr) {
+              } else if (dest >= func->get_entry_va() && dest <= lastBBAddr) {
                 // should be debug?
-                SDEBUG << "jmp destination is to a local address" << LEND;              
+                SDEBUG << "jmp destination is to a local address" << LEND;
               } else {
                 // debug, warning, error, or info?
-                SDEBUG << "Found jump to a function that wasn't in funcList: " 
+                SDEBUG << "Found jump to a function that wasn't in funcList: "
                             << std::hex << dest << std::dec << LEND;
                 return false;
               }
@@ -896,16 +921,16 @@ bool spTracker::getBlockDeltas(FunctionDescriptor* fd,  SymbolicRiscOperators *r
             else SDEBUG << "Found jmp to other function " << addr_str(dest) << LEND;
             */
           } else {
-          
+
             CallDescriptor* cd = global_descriptor_set->get_call(insn->get_address());
             if (!cd) {
               SDEBUG << "Couldn't find the call descriptor" << LEND;
               return false;
             }
-            
+
             FunctionDescriptor *srcFd = cd->get_function_descriptor();
             if (srcFd == NULL || srcFd->get_func() == NULL) {
-              
+
               // Last chance... check for caller cleanup
               bool cleanupFound = false;
               for (boost::tie(oi, oi_end)=out_edges(vertex, cfg); oi!=oi_end; ++oi) {
@@ -917,19 +942,20 @@ bool spTracker::getBlockDeltas(FunctionDescriptor* fd,  SymbolicRiscOperators *r
                   break;
                 }
               }
-              
+
               if (cleanupFound) {
                 // Cleanup found, we just need to correct for the pushed return address
-                state.DU_REG_ESP.set_expression(Int32Expr(state.DU_REG_ESP.known_value() + 4));           
+                LeafNodePtr new_val =  LeafNode::create_integer(arch_bits, known_esp_value + arch_bytes);
+                state.DU_REG_ESP.set_expression(new_val);
                 continue;
-              } 
-              
-              SDEBUG << "Unknown branch " << debug_instruction(insn) 
+              }
+
+              SDEBUG << "Unknown branch " << debug_instruction(insn)
                           << " No known successors..." << LEND;
               return false;
             }
 
-            branch_target = srcFd->get_func()->get_address();
+            branch_target = srcFd->get_func()->get_entry_va();
           }
 
 
@@ -940,17 +966,17 @@ bool spTracker::getBlockDeltas(FunctionDescriptor* fd,  SymbolicRiscOperators *r
           } else {
             // debugging?
             SDEBUG << "Branch target = " << addr_str(branch_target) << LEND;
-          }        
+          }
 
           // Call to known API, check for caller cleanup
-          ImportDescriptor* id = descriptor_set->get_import(branch_target);          
+          ImportDescriptor* id = descriptor_set->get_import(branch_target);
           if (id) {
             StackDelta sd = id->get_stack_delta();
-            SDEBUG << "Found call to API " << debug_instruction(insn) 
+            SDEBUG << "Found call to API " << debug_instruction(insn)
                         << " " << addr_str(branch_target) << LEND
                         << "Param bytes " << sd.delta << LEND;
             int cleanupSize = 0;
-            
+
             bool cleanupFound = false;
             for (boost::tie(oi, oi_end)=out_edges(vertex, cfg); oi!=oi_end; ++oi) {
               CFGVertex successor = target(*oi, cfg);
@@ -963,44 +989,48 @@ bool spTracker::getBlockDeltas(FunctionDescriptor* fd,  SymbolicRiscOperators *r
 
             if (cleanupFound) {
               // Cleanup found, we just need to correct for the pushed return address
-              state.DU_REG_ESP.set_expression(Int32Expr(state.DU_REG_ESP.known_value() + 4));
+              LeafNodePtr new_val =  LeafNode::create_integer(arch_bits, known_esp_value + arch_bytes);
+              state.DU_REG_ESP.set_expression(new_val);
             } else {
+              LeafNodePtr new_val =  LeafNode::create_integer(arch_bits,
+                                                              known_esp_value + arch_bytes + sd.delta);
               // Assume callee cleanup
-              state.DU_REG_ESP.set_expression(Int32Expr(state.DU_REG_ESP.known_value() + 4 + sd.delta));
-            } 
-            
-            //      complete = true;            
+              state.DU_REG_ESP.set_expression(new_val);
+            }
+
+            //      complete = true;
           }
           else {
             FunctionDescriptor* bfd = descriptor_set->get_func(branch_target);
-            if (bfd != NULL) { 
+            if (bfd != NULL) {
               SgAsmFunction* bfunc = bfd->get_func();
-              //else if (funcList.find(branch_target) != funcList.end()) { 
+              //else if (funcList.find(branch_target) != funcList.end()) {
               if (functionDeltas.find(bfunc) == functionDeltas.end()) {
                 bool complete = getBlockDeltas(bfd, &p);
 
-                // error? warning? debug?                
-                if (!complete) SDEBUG << "Symbolic analysis stopped while processing call to " 
-                                           << addr_str(bfunc->get_address()) << LEND; 
+                // error? warning? debug?
+                if (!complete) SDEBUG << "Symbolic analysis stopped while processing call to "
+                                      << addr_str(bfunc->get_entry_va()) << LEND;
               } else {
-                SDEBUG << "Using cached function delta for destination " 
-                            << addr_str(branch_target) << " Delta = " 
+                SDEBUG << "Using cached function delta for destination "
+                            << addr_str(branch_target) << " Delta = "
                             << functionDeltas[bfunc] << LEND;
-                state.DU_REG_ESP.set_expression(Int32Expr((int)state.DU_REG_ESP.known_value() 
-                                                          + functionDeltas[bfunc]));        
+                LeafNodePtr new_val =  LeafNode::create_integer(arch_bits,
+                                                                known_esp_value + functionDeltas[bfunc]);
+                state.DU_REG_ESP.set_expression(new_val);
                 //                complete = true;
               }
-            } 
+            }
             else {
               // debug, error, warn?
               SDEBUG << "Branch destination not found" << addr_str(branch_target) << LEND;
             }
           }
-          
+
         }
-      } catch(...) { 
+      } catch(...) {
         if (insn != NULL) {
-          SERROR << "ROSE Exception while processing " << debug_instruction(insn) << LEND; 
+          SERROR << "ROSE Exception while processing " << debug_instruction(insn) << LEND;
         }
         SERROR << std::dec << "Instruction " << q << " of " << ins_list.size() << LEND;
       }
@@ -1010,33 +1040,33 @@ bool spTracker::getBlockDeltas(FunctionDescriptor* fd,  SymbolicRiscOperators *r
 
     if (!state.DU_REG_ESP.is_known()) {
       // error? warning? debug?
-      SDEBUG << "Lost track of stack pointer after processing block " 
+      SDEBUG << "Lost track of stack pointer after processing block "
                   << addr_str(bb->get_address()) << LEND;
-      return false;               
+      return false;
     }
-    
-    bDeltas[bb] = (int)state.DU_REG_ESP.known_value() - (int)initial_sp;                
-    
+
+    bDeltas[bb] = (int)state.DU_REG_ESP.known_value() - (int)initial_sp;
+
     SDEBUG << "Delta after basic block (non-z3) " << addr_str(bb->get_address()) << " "
                 << (int)bDeltas[bb] << LEND;
-    
+
     blockPolicies[vertex] = p;
     if (hasRet) {
-      if (ropsFromCall != NULL) *ropsFromCall = p;      
+      if (ropsFromCall != NULL) *ropsFromCall = p;
       functionDeltas[func] = (int)state.DU_REG_ESP.known_value()-initial_sp;
       retFound = true;
-    } 
+    }
   }
-  
-  if (!retFound && flowlist.size() > 0 && 
+
+  if (!retFound && flowlist.size() > 0 &&
       blockPolicies.find(flowlist[flowlist.size()-1]) != blockPolicies.end()) {
     if (ropsFromCall != NULL) *ropsFromCall = blockPolicies[flowlist[flowlist.size()-1]];
     functionDeltas[func] = (int)blockPolicies[flowlist[flowlist.size()-1]].get_state().DU_REG_ESP.known_value()-initial_sp;
-  } 
+  }
 
-  SDEBUG << "Function delta " << addr_str(func->get_address()) << " " 
-              << (int)functionDeltas[func] << LEND;
-  
+  SDEBUG << "Function delta " << addr_str(func->get_entry_va()) << " "
+         << (int)functionDeltas[func] << LEND;
+
   return true;
   // End of GetBlockDeltas
 }
@@ -1049,10 +1079,10 @@ spTracker::spTracker(DescriptorSet* ds) {
 
 void spTracker::dump_deltas(std::string filename) {
   FILE *csv = fopen(filename.c_str(), "w");
-  BOOST_FOREACH(const FunctionDescriptorMap::value_type& pair, descriptor_set->get_func_map()) {
+  for (const FunctionDescriptorMap::value_type& pair : descriptor_set->get_func_map()) {
     rose_addr_t faddr = pair.first;
     const FunctionDescriptor& fd = pair.second;
-    BOOST_FOREACH(SgAsmx86Instruction* insn, fd.get_insns_addr_order()) {
+    for (SgAsmx86Instruction* insn : fd.get_insns_addr_order()) {
       rose_addr_t iaddr = insn->get_address();
       StackDelta current = get_delta(iaddr);
       fprintf(csv, "%08x,%08x,%d\n", (unsigned int)faddr, (unsigned int)iaddr, -current.delta);
@@ -1066,7 +1096,7 @@ bool spTracker::validate_func_delta(FunctionDescriptor *fd) {
   bool first = true;
   int delta = 0;
   BlockSet& ret_blocks = fd->get_return_blocks();
-  BOOST_FOREACH(SgAsmBlock *bb, ret_blocks) {
+  for (SgAsmBlock *bb : ret_blocks) {
     SDEBUG << "Return block for func " << fd->address_string()
                 << std::hex << " at " << bb->get_address() << std::dec;
 
@@ -1075,7 +1105,7 @@ bool spTracker::validate_func_delta(FunctionDescriptor *fd) {
       IntPair ip = pit->second;
       SDEBUG << " has in stack of " << ip.first;
       SDEBUG << " and out stack of " << ip.second;
-      if (!first && delta != ip.second) SDEBUG << " DOES NOT MATCH!"; 
+      if (!first && delta != ip.second) SDEBUG << " DOES NOT MATCH!";
       delta = ip.second;
       first = false;
     }
@@ -1084,7 +1114,7 @@ bool spTracker::validate_func_delta(FunctionDescriptor *fd) {
 
   // If we there were no return blocks, we failed.
   if (first) return false;
-  
+
   // Now we just need to store the function delta for future reference.
   SgAsmFunction* func = fd->get_func();
   if (func == NULL) return false;
@@ -1096,31 +1126,31 @@ bool spTracker::validate_func_delta(FunctionDescriptor *fd) {
 
 #if 0
 void spTracker::analyzeFunc(SgAsmFunction *func) {
-  FunctionDescriptor *fd = descriptor_set->get_func(func->get_address());
-  
-  SDEBUG << "Starting stack depth analysis for: " << addr_str(func->get_address()) << LEND;
-  
+  FunctionDescriptor *fd = descriptor_set->get_func(func->get_entry_va());
+
+  SDEBUG << "Starting stack depth analysis for: " << fd->address_string() << LEND;
+
   // This is the only non-debug line in analyzeFunc!
   spAfterCalls = getStackDepthAfterCalls(fd);
   //validate_func_delta(fd);
- 
+
   if (SDEBUG) {
     SDEBUG << std::hex;
-    SDEBUG << "Stack analysis summary: " << func->get_address() << LEND;
-    BOOST_FOREACH(Block2IntPairMap::value_type &pair, spBeforeAfterBlock) {
-      SDEBUG << "  BeforeAfterBlock: block=0x" << pair.first->get_id() 
-             << std::dec << " before=" << pair.second.first 
+    SDEBUG << "Stack analysis summary: " << func->get_entry_va() << LEND;
+    for (const Block2IntPairMap::value_type &pair : spBeforeAfterBlock) {
+      SDEBUG << "  BeforeAfterBlock: block=0x" << pair.first->get_id()
+             << std::dec << " before=" << pair.second.first
              << " after=" << pair.second.second << std::hex << LEND;
     }
-    
-    BOOST_FOREACH(Insn2IntMap::value_type &pair, spAfterCalls) {
+
+    for (const Insn2IntMap::value_type &pair : spAfterCalls) {
       SgAsmx86Instruction* insn = pair.first;
-      SDEBUG << "  Stack depth after " << debug_instruction(insn) << ": " 
+      SDEBUG << "  Stack depth after " << debug_instruction(insn) << ": "
              << std::dec << pair.second << LEND;
-            
+
       if (pushParams.find(insn) != pushParams.end()) {
         SDEBUG << "  Possible parameter pushers:" << LEND;
-        BOOST_FOREACH(SgAsmx86Instruction* p, pushParams[insn]) {
+        for (const SgAsmx86Instruction* p : pushParams[insn]) {
           SDEBUG << "    " << debug_instruction(p) << LEND;
         }
       }
@@ -1131,10 +1161,10 @@ void spTracker::analyzeFunc(SgAsmFunction *func) {
 
 void spTracker::analyzeFunctions() {
   size_t size = 0;
-  BOOST_FOREACH(const FunctionDescriptorMap::value_type &pair, descriptor_set->get_func_map()) {
+  for (const FunctionDescriptorMap::value_type &pair : descriptor_set->get_func_map()) {
     // Get the function from the function descriptor (second half the pair), icky. :-(
-    FunctionDescriptor fd = pair.second;
-   
+    const FunctionDescriptor & fd = pair.second;
+
     SgAsmFunction* func = fd.get_func();
     // If we've already processed the entry continue.
     if (processed.find(func) != processed.end()) continue;
@@ -1143,28 +1173,32 @@ void spTracker::analyzeFunctions() {
     if (!getBlockDeltas(&fd, NULL)) {
       // warnding, error, debug?
       SDEBUG << "Symbolic static analysis was unable to resolve deltas for all functions "
-                  << "in call chains starting " << addr_str(func->get_address()) << LEND;
+                  << "in call chains starting " << fd->address_string() << LEND;
       if (functionDeltas.size() > size) {
         SDEBUG << "Calculated deltas for " << functionDeltas.size() - size << " functions" << LEND ;
         size = functionDeltas.size();
       }
-      
+
       // Symbolic analysis failed. Try using Ilfak's method
       //Insn2IntMap spAfterCalls;
       //Block2IntPairMap spBeforeAfterBlock;
       //ParameterMap pushParams;
-      
+
       analyzeFunc(func);
-      
-      for (Block2IntPairMap::iterator it = spBeforeAfterBlock.begin(); it != spBeforeAfterBlock.end(); it++) {
+
+      for (auto it = spBeforeAfterBlock.begin(); it != spBeforeAfterBlock.end(); ++it) {
         bDeltas[it->first] = it->second.second;
-        SDEBUG << "Block Delta after " << addr_str(it->first->get_address()) << " " 
+        SDEBUG << "Block Delta after " << addr_str(it->first->get_entry_va()) << " "
                     << it->second.second << LEND;
       }
     }
   }
 }
-#endif
+
+#endif  // #if 0
+
+} // namespace pharos
+
 /* Local Variables:   */
 /* mode: c++          */
 /* fill-column:    95 */

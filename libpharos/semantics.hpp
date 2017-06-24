@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Semantics_H
 #define Pharos_Semantics_H
@@ -8,7 +8,6 @@
 // file if possible, since it is widely included, and would seriously aggravate include loops.
 
 #include <cstdio>
-#include <boost/foreach.hpp>
 #include <vector>
 #include <map>
 #include <sstream>
@@ -17,14 +16,18 @@
 #include <SymbolicSemantics2.h>
 #include <DispatcherX86.h>
 
-#define OUR_MODIFIERS
+#include <boost/range/adaptor/filtered.hpp>
+#include <boost/range/adaptor/type_erased.hpp>
 
 #include "misc.hpp"
 
-typedef rose::BinaryAnalysis::SMTSolver SMTSolver;
+namespace pharos {
+
+typedef Rose::BinaryAnalysis::SMTSolver SMTSolver;
 // Import specific names from the external ROSE namepaces
 typedef Semantics2::BaseSemantics::Formatter RoseFormatter;
 typedef Semantics2::DispatcherX86 RoseDispatcherX86;
+typedef Semantics2::DispatcherX86Ptr DispatcherPtr;
 typedef Semantics2::BaseSemantics::SValuePtr BaseSValuePtr;
 typedef Semantics2::SymbolicSemantics::SValue ParentSValue;
 typedef Semantics2::SymbolicSemantics::SValuePtr ParentSValuePtr;
@@ -50,7 +53,7 @@ enum MemoryType {
 };
 
 // For reporting unexpected conditions in get_stack_const().
-#define CONFUSED 0x7FFFFFE
+constexpr uint32_t CONFUSED = UINT32_C(0x7FFFFFE);
 
 // Our hash is now the 64-bit integer provided by ROSE on the TreeNode.
 typedef uint64_t SVHash;
@@ -66,8 +69,9 @@ typedef std::set<SymbolicValuePtr> ValueSet;
 // for which we've lost the expression condition, will have conditions that are simply an
 // unknown variable (marked incomplete).  See also TreeNode::UNSPECIFIED and
 // TreeNode::INDETERMINATE.
-#define INCOMPLETE     (0x00010000)
-#define LOADER_DEFINED (0x00040000)
+constexpr uint32_t INCOMPLETE          = UINT32_C(0x00010000);
+constexpr uint32_t UNKNOWN_STACK_DELTA = UINT32_C(0x00020000);
+constexpr uint32_t LOADER_DEFINED      = UINT32_C(0x00040000);
 
 class SymbolicValue: public ParentSValue {
 
@@ -85,15 +89,17 @@ private:
     this->set_comment(com);
   }
 
-  // Copy constructor.
+  // Copy constructor.  Not needed now that OUR_MODIFIERS is gone?
   SymbolicValue(const SymbolicValue &other): ParentSValue(other) {
-#ifdef OUR_MODIFIERS
-    set_modifiers(other.modifiers);
-#endif
     this->set_comment(other.get_comment());
   }
 
 public:
+
+  // Conversion to TreeNodePtr
+  operator TreeNodePtr() const {
+    return get_expression();
+  }
 
   bool is_valid() const { return (get_width() != 0); }
   bool is_invalid() const { return (get_width() == 0); }
@@ -128,8 +134,8 @@ public:
 
   // A new constructor added by the SEI for creating incomplete values.
   static SymbolicValuePtr incomplete(size_t nbits);
-  // Anotehr SEI defined constructor for creating variables defined by the loader.
-  static SymbolicValuePtr loader_defined(size_t nbits);
+  // Another SEI defined constructor for creating variables defined by the loader.
+  static SymbolicValuePtr loader_defined();
 
   virtual BaseSValuePtr number_(size_t nbits, uint64_t value) const ROSE_OVERRIDE {
     //STRACE << "SymbolicValue::number_() nbits="
@@ -206,39 +212,9 @@ public:
   bool has_definers() const { return (get_defining_instructions().size() > 0); }
 
   // Used to be  in a couple of places, no longer needed?
-  void set_expression(const TreeNodePtr& new_expr) {
+  void set_expression(const TreeNodePtr& new_expr) override {
     expr = new_expr;
   }
-
-  // This is our "modifier" versions of the defining instruction methods.  The definition of a
-  // modifier includes only the most recent instructions that actually modify the value.  This
-  // means that we do not wish to track definers of the latest definer, nor do we want to track
-  // the simple movement of values between memory locations and registers.
-#ifdef OUR_MODIFIERS
-private:
-  InsnSet modifiers;
-
-public:
-  const InsnSet& get_modifiers() const; // declaration
-  void set_modifiers(const InsnSet &new_modifiers) { modifiers = new_modifiers; }
-  void set_modifier(SgAsmInstruction *insn) {
-    InsnSet tmp;
-    if (insn) tmp.insert(insn);
-    set_modifiers(tmp);
-  }
-
-  // The SymbolicSemantics versions of add_defining_instructions() returns the number of added
-  // instructions.  This part of the interface has not been used anywhere for modifiers, and
-  // doesn't really seem all that useful, so I'm removing it.
-  void add_modifiers(const InsnSet &to_add) {
-    for (InsnSet::const_iterator i=to_add.begin(); i!=to_add.end(); ++i) modifiers.insert(*i);
-  }
-  void add_modifier(SgAsmInstruction *insn) {
-    InsnSet tmp;
-    if (insn) tmp.insert(insn);
-    add_modifiers(tmp);
-  }
-#endif
 
   // Retrieve the hash from the TreeNode.
   inline SVHash get_hash() const { return get_expression()->hash(); }
@@ -251,8 +227,9 @@ public:
   }
 
   // Print the symbolic value to a stream.
+  // We should revisit why these overrides are needed now that OUR_MODIFIERS is gone.
   void print(std::ostream &stream) const { RoseFormatter fmt; print(stream, fmt); }
-  virtual void print(std::ostream &o, RoseFormatter& fmt) const;
+  virtual void print(std::ostream &o, RoseFormatter& fmt) const override;
 
   friend std::ostream& operator<<(std::ostream &o, const SymbolicValue &sv) {
     sv.print(o);
@@ -269,8 +246,20 @@ public:
   // This is our custom extension, and the old way to handling merges.  We should be moving
   // away from this approach, but it's called in multiple places, including memory cell merges.
   void merge(const SymbolicValuePtr& elt, const SymbolicValuePtr& condition);
-
 };
+
+inline SymbolicValuePtr & operator+=(SymbolicValuePtr & a, int64_t i) {
+  a->set_expression(a->get_expression() + i);
+  return a;
+}
+inline SymbolicValuePtr operator+(const SymbolicValuePtr & a, int64_t i) {
+  auto copy = a->scopy();
+  return copy += i;
+}
+inline SymbolicValuePtr operator+(int64_t i, const SymbolicValuePtr & a) {
+  return a + i;
+}
+
 
 // Forward declaration for AbstractAccess constructor.
 class SymbolicState;
@@ -378,8 +367,134 @@ public:
 };
 
 typedef std::vector<AbstractAccess> AbstractAccessVector;
+typedef std::map<SgAsmx86Instruction *, AbstractAccessVector> AccessMap;
+
+namespace access_filters {
+
+using boost::adaptors::filtered;
+
+inline bool read_pred(const AbstractAccess &aa) {
+  return aa.isRead;
+}
+
+inline bool write_pred(const AbstractAccess &aa) {
+  return !aa.isRead;
+}
+
+inline bool reg_pred(const AbstractAccess &aa) {
+  return aa.is_reg();
+}
+
+inline bool mem_pred(const AbstractAccess &aa) {
+  return aa.is_mem();
+}
+
+template <typename T>
+struct reg_pred_match {
+  T match;
+  reg_pred_match(const T arg) : match(arg) {}
+  bool operator()(const AbstractAccess &aa) const { return aa.is_reg(match); }
+};
+
+inline auto read(const AbstractAccessVector & c) -> decltype(c | filtered(read_pred))
+{
+  return c | filtered(read_pred);
+}
+
+inline auto write(const AbstractAccessVector & c) -> decltype(c | filtered(write_pred))
+{
+  return c | filtered(write_pred);
+}
+
+inline auto reg(const AbstractAccessVector & c) -> decltype(c | filtered(reg_pred))
+{
+  return c | filtered(reg_pred);
+}
+
+inline auto mem(const AbstractAccessVector & c) -> decltype(c | filtered(mem_pred))
+{
+  return c | filtered(mem_pred);
+}
+
+inline auto read_reg(const AbstractAccessVector & c)
+  -> decltype(c | filtered(read_pred) | filtered(reg_pred))
+{
+  return c | filtered(read_pred) | filtered(reg_pred);
+}
+
+inline auto write_reg(const AbstractAccessVector & c)
+  -> decltype(c | filtered(write_pred) | filtered(reg_pred))
+{
+  return c | filtered(write_pred) | filtered(reg_pred);
+}
+
+inline auto read_mem(const AbstractAccessVector & c)
+  -> decltype(c | filtered(read_pred) | filtered(mem_pred))
+{
+  return c | filtered(read_pred) | filtered(mem_pred);
+}
+
+inline auto write_mem(const AbstractAccessVector & c)
+  -> decltype(c | filtered(write_pred) | filtered(mem_pred))
+{
+  return c | filtered(write_pred) | filtered(mem_pred);
+}
+
+using aa_range = boost::any_range<const AbstractAccess, boost::forward_traversal_tag,
+                                  const AbstractAccess &, std::ptrdiff_t>;
+
+namespace {
+template <typename F>
+aa_range mapped(const F & filt, const AccessMap & map, SgAsmx86Instruction *insn) {
+  using erased = boost::adaptors::type_erased<
+    const AbstractAccess, boost::forward_traversal_tag,
+    const AbstractAccess &, std::ptrdiff_t>;
+  auto i = map.find(insn);
+  if (i == map.end()) {
+    return boost::iterator_range<AbstractAccess *>(nullptr, nullptr) | erased();
+  }
+  return filt(i->second) | erased();
+}
+} // unnamed namespace
+
+inline aa_range read(const AccessMap & map, SgAsmx86Instruction *insn) {
+  return mapped([](const AbstractAccessVector &a) {return read(a);}, map, insn);
+}
+
+inline aa_range write(const AccessMap & map, SgAsmx86Instruction *insn) {
+  return mapped([](const AbstractAccessVector &a) {return write(a);}, map, insn);
+}
+
+inline aa_range reg(const AccessMap & map, SgAsmx86Instruction *insn) {
+  return mapped([](const AbstractAccessVector &a) {return reg(a);}, map, insn);
+}
+
+inline aa_range mem(const AccessMap & map, SgAsmx86Instruction *insn) {
+  return mapped([](const AbstractAccessVector &a) {return mem(a);}, map, insn);
+}
+
+inline aa_range read_reg(const AccessMap & map, SgAsmx86Instruction *insn) {
+  return mapped([](const AbstractAccessVector &a) {return read_reg(a);}, map, insn);
+}
+
+inline aa_range read_mem(const AccessMap & map, SgAsmx86Instruction *insn) {
+  return mapped([](const AbstractAccessVector &a) {return read_mem(a);}, map, insn);
+}
+
+inline aa_range write_reg(const AccessMap & map, SgAsmx86Instruction *insn) {
+  return mapped([](const AbstractAccessVector &a) {return write_reg(a);}, map, insn);
+}
+
+inline aa_range write_mem(const AccessMap & map, SgAsmx86Instruction *insn) {
+  return mapped([](const AbstractAccessVector &a) {return write_mem(a);}, map, insn);
+}
+
+
+} // namespace access_filters
 
 void extract_possible_values(const TreeNodePtr& tn, TreeNodePtrSet& s);
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

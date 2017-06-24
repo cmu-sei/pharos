@@ -1,0 +1,6766 @@
+{
+  "config": {
+    "exports": {
+      "KERNEL32.dll:ActivateActCtx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "1"
+      },
+      "KERNEL32.dll:AddAtomA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "2"
+      },
+      "KERNEL32.dll:AddAtomW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "3"
+      },
+      "KERNEL32.dll:AddConsoleAliasA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "4"
+      },
+      "KERNEL32.dll:AddConsoleAliasW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "5"
+      },
+      "KERNEL32.dll:AddLocalAlternateComputerNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "6"
+      },
+      "KERNEL32.dll:AddLocalAlternateComputerNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "7"
+      },
+      "KERNEL32.dll:AddRefActCtx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "8"
+      },
+      "KERNEL32.dll:AddVectoredContinueHandler": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "9"
+      },
+      "KERNEL32.dll:AddVectoredExceptionHandler": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "10"
+      },
+      "KERNEL32.dll:AllocConsole": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "11"
+      },
+      "KERNEL32.dll:AllocateUserPhysicalPages": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "12"
+      },
+      "KERNEL32.dll:AreFileApisANSI": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "13"
+      },
+      "KERNEL32.dll:AssignProcessToJobObject": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "14"
+      },
+      "KERNEL32.dll:AttachConsole": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "15"
+      },
+      "KERNEL32.dll:BackupRead": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "28"
+        },
+        "ordinal": "16"
+      },
+      "KERNEL32.dll:BackupSeek": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "17"
+      },
+      "KERNEL32.dll:BackupWrite": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "28"
+        },
+        "ordinal": "18"
+      },
+      "KERNEL32.dll:BaseCheckAppcompatCache": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "19"
+      },
+      "KERNEL32.dll:BaseCheckRunApp": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "40"
+        },
+        "ordinal": "20"
+      },
+      "KERNEL32.dll:BaseCleanupAppcompatCacheSupport": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "21"
+      },
+      "KERNEL32.dll:BaseDumpAppcompatCache": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "22"
+      },
+      "KERNEL32.dll:BaseFlushAppcompatCache": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "23"
+      },
+      "KERNEL32.dll:BaseInitAppcompatCacheSupport": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "24"
+      },
+      "KERNEL32.dll:BaseIsAppcompatInfrastructureDisabled": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "25"
+      },
+      "KERNEL32.dll:BaseProcessInitPostImport": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "26"
+      },
+      "KERNEL32.dll:BaseProcessStartThunk": {
+        "function": {
+          "convention": "Unknown"
+        },
+        "ordinal": "27"
+      },
+      "KERNEL32.dll:BaseQueryModuleData": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "28"
+      },
+      "KERNEL32.dll:BaseThreadStartThunk": {
+        "function": {
+          "convention": "Unknown"
+        },
+        "ordinal": "29"
+      },
+      "KERNEL32.dll:BaseUpdateAppcompatCache": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "30"
+      },
+      "KERNEL32.dll:BasepCheckBadapp": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "36"
+        },
+        "ordinal": "31"
+      },
+      "KERNEL32.dll:BasepCheckWinSaferRestrictions": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "32"
+      },
+      "KERNEL32.dll:BasepFreeAppCompatData": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "33"
+      },
+      "KERNEL32.dll:Beep": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "34"
+      },
+      "KERNEL32.dll:BeginUpdateResourceA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "35"
+      },
+      "KERNEL32.dll:BeginUpdateResourceW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "36"
+      },
+      "KERNEL32.dll:BindIoCompletionCallback": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "37"
+      },
+      "KERNEL32.dll:BuildCommDCBA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "38"
+      },
+      "KERNEL32.dll:BuildCommDCBAndTimeoutsA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "39"
+      },
+      "KERNEL32.dll:BuildCommDCBAndTimeoutsW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "40"
+      },
+      "KERNEL32.dll:BuildCommDCBW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "41"
+      },
+      "KERNEL32.dll:CallNamedPipeA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "28"
+        },
+        "ordinal": "42"
+      },
+      "KERNEL32.dll:CallNamedPipeW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "28"
+        },
+        "ordinal": "43"
+      },
+      "KERNEL32.dll:CancelDeviceWakeupRequest": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "44"
+      },
+      "KERNEL32.dll:CancelIo": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "45"
+      },
+      "KERNEL32.dll:CancelTimerQueueTimer": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "46"
+      },
+      "KERNEL32.dll:CancelWaitableTimer": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "47"
+      },
+      "KERNEL32.dll:ChangeTimerQueueTimer": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "48"
+      },
+      "KERNEL32.dll:CheckNameLegalDOS8Dot3A": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "49"
+      },
+      "KERNEL32.dll:CheckNameLegalDOS8Dot3W": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "50"
+      },
+      "KERNEL32.dll:CheckRemoteDebuggerPresent": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "51"
+      },
+      "KERNEL32.dll:ClearCommBreak": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "52"
+      },
+      "KERNEL32.dll:ClearCommError": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "53"
+      },
+      "KERNEL32.dll:CloseConsoleHandle": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "54"
+      },
+      "KERNEL32.dll:CloseHandle": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "55"
+      },
+      "KERNEL32.dll:CloseProfileUserMapping": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "56"
+      },
+      "KERNEL32.dll:CommConfigDialogA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "58"
+      },
+      "KERNEL32.dll:CommConfigDialogW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "59"
+      },
+      "KERNEL32.dll:CompareFileTime": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "60"
+      },
+      "KERNEL32.dll:CompareStringA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "61"
+      },
+      "KERNEL32.dll:CompareStringW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "62"
+      },
+      "KERNEL32.dll:ConnectNamedPipe": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "63"
+      },
+      "KERNEL32.dll:ConsoleIMERoutine": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "64"
+      },
+      "KERNEL32.dll:ConsoleMenuControl": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "65"
+      },
+      "KERNEL32.dll:ContinueDebugEvent": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "66"
+      },
+      "KERNEL32.dll:ConvertDefaultLocale": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "67"
+      },
+      "KERNEL32.dll:ConvertFiberToThread": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "68"
+      },
+      "KERNEL32.dll:ConvertThreadToFiber": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "69"
+      },
+      "KERNEL32.dll:ConvertThreadToFiberEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "70"
+      },
+      "KERNEL32.dll:CopyFileA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "71"
+      },
+      "KERNEL32.dll:CopyFileExA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "72"
+      },
+      "KERNEL32.dll:CopyFileExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "73"
+      },
+      "KERNEL32.dll:CopyFileW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "74"
+      },
+      "KERNEL32.dll:CopyLZFile": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "75"
+      },
+      "KERNEL32.dll:CreateActCtxA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "76"
+      },
+      "KERNEL32.dll:CreateActCtxW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "77"
+      },
+      "KERNEL32.dll:CreateConsoleScreenBuffer": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "78"
+      },
+      "KERNEL32.dll:CreateDirectoryA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "79"
+      },
+      "KERNEL32.dll:CreateDirectoryExA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "80"
+      },
+      "KERNEL32.dll:CreateDirectoryExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "81"
+      },
+      "KERNEL32.dll:CreateDirectoryW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "82"
+      },
+      "KERNEL32.dll:CreateEventA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "83"
+      },
+      "KERNEL32.dll:CreateEventW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "84"
+      },
+      "KERNEL32.dll:CreateFiber": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "85"
+      },
+      "KERNEL32.dll:CreateFiberEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "86"
+      },
+      "KERNEL32.dll:CreateFileA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "28"
+        },
+        "ordinal": "87"
+      },
+      "KERNEL32.dll:CreateFileMappingA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "88"
+      },
+      "KERNEL32.dll:CreateFileMappingW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "89"
+      },
+      "KERNEL32.dll:CreateFileW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "28"
+        },
+        "ordinal": "90"
+      },
+      "KERNEL32.dll:CreateHardLinkA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "91"
+      },
+      "KERNEL32.dll:CreateHardLinkW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "92"
+      },
+      "KERNEL32.dll:CreateIoCompletionPort": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "93"
+      },
+      "KERNEL32.dll:CreateJobObjectA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "94"
+      },
+      "KERNEL32.dll:CreateJobObjectW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "95"
+      },
+      "KERNEL32.dll:CreateJobSet": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "96"
+      },
+      "KERNEL32.dll:CreateMailslotA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "97"
+      },
+      "KERNEL32.dll:CreateMailslotW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "98"
+      },
+      "KERNEL32.dll:CreateMemoryResourceNotification": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "99"
+      },
+      "KERNEL32.dll:CreateMutexA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "100"
+      },
+      "KERNEL32.dll:CreateMutexW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "101"
+      },
+      "KERNEL32.dll:CreateNamedPipeA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "32"
+        },
+        "ordinal": "102"
+      },
+      "KERNEL32.dll:CreateNamedPipeW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "32"
+        },
+        "ordinal": "103"
+      },
+      "KERNEL32.dll:CreateNlsSecurityDescriptor": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "104"
+      },
+      "KERNEL32.dll:CreatePipe": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "105"
+      },
+      "KERNEL32.dll:CreateProcessA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "40"
+        },
+        "ordinal": "106"
+      },
+      "KERNEL32.dll:CreateProcessInternalA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "48"
+        },
+        "ordinal": "107"
+      },
+      "KERNEL32.dll:CreateProcessInternalW": {
+        "function": {
+          "convention": "Unknown"
+        },
+        "ordinal": "108"
+      },
+      "KERNEL32.dll:CreateProcessW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "40"
+        },
+        "ordinal": "109"
+      },
+      "KERNEL32.dll:CreateRemoteThread": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "28"
+        },
+        "ordinal": "110"
+      },
+      "KERNEL32.dll:CreateSemaphoreA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "111"
+      },
+      "KERNEL32.dll:CreateSemaphoreW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "112"
+      },
+      "KERNEL32.dll:CreateSocketHandle": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "113"
+      },
+      "KERNEL32.dll:CreateTapePartition": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "114"
+      },
+      "KERNEL32.dll:CreateThread": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "115"
+      },
+      "KERNEL32.dll:CreateTimerQueue": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "116"
+      },
+      "KERNEL32.dll:CreateTimerQueueTimer": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "28"
+        },
+        "ordinal": "117"
+      },
+      "KERNEL32.dll:CreateToolhelp32Snapshot": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "118"
+      },
+      "KERNEL32.dll:CreateWaitableTimerA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "119"
+      },
+      "KERNEL32.dll:CreateWaitableTimerW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "120"
+      },
+      "KERNEL32.dll:CtrlRoutine": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "121"
+      },
+      "KERNEL32.dll:DeactivateActCtx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "122"
+      },
+      "KERNEL32.dll:DebugActiveProcess": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "123"
+      },
+      "KERNEL32.dll:DebugActiveProcessStop": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "124"
+      },
+      "KERNEL32.dll:DebugBreak": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "125"
+      },
+      "KERNEL32.dll:DebugBreakProcess": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "126"
+      },
+      "KERNEL32.dll:DebugSetProcessKillOnExit": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "127"
+      },
+      "KERNEL32.dll:DecodePointer": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "128"
+      },
+      "KERNEL32.dll:DecodeSystemPointer": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "129"
+      },
+      "KERNEL32.dll:DefineDosDeviceA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "130"
+      },
+      "KERNEL32.dll:DefineDosDeviceW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "131"
+      },
+      "KERNEL32.dll:DelayLoadFailureHook": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "132"
+      },
+      "KERNEL32.dll:DeleteAtom": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "133"
+      },
+      "KERNEL32.dll:DeleteCriticalSection": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "134"
+      },
+      "KERNEL32.dll:DeleteFiber": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "135"
+      },
+      "KERNEL32.dll:DeleteFileA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "136"
+      },
+      "KERNEL32.dll:DeleteFileW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "137"
+      },
+      "KERNEL32.dll:DeleteTimerQueue": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "138"
+      },
+      "KERNEL32.dll:DeleteTimerQueueEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "139"
+      },
+      "KERNEL32.dll:DeleteTimerQueueTimer": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "140"
+      },
+      "KERNEL32.dll:DeleteVolumeMountPointA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "141"
+      },
+      "KERNEL32.dll:DeleteVolumeMountPointW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "142"
+      },
+      "KERNEL32.dll:DeviceIoControl": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "32"
+        },
+        "ordinal": "143"
+      },
+      "KERNEL32.dll:DisableThreadLibraryCalls": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "144"
+      },
+      "KERNEL32.dll:DisconnectNamedPipe": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "145"
+      },
+      "KERNEL32.dll:DnsHostnameToComputerNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "146"
+      },
+      "KERNEL32.dll:DnsHostnameToComputerNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "147"
+      },
+      "KERNEL32.dll:DosDateTimeToFileTime": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "148"
+      },
+      "KERNEL32.dll:DosPathToSessionPathA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "149"
+      },
+      "KERNEL32.dll:DosPathToSessionPathW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "150"
+      },
+      "KERNEL32.dll:DuplicateConsoleHandle": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "151"
+      },
+      "KERNEL32.dll:DuplicateHandle": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "28"
+        },
+        "ordinal": "152"
+      },
+      "KERNEL32.dll:EncodePointer": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "153"
+      },
+      "KERNEL32.dll:EncodeSystemPointer": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "154"
+      },
+      "KERNEL32.dll:EndUpdateResourceA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "155"
+      },
+      "KERNEL32.dll:EndUpdateResourceW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "156"
+      },
+      "KERNEL32.dll:EnterCriticalSection": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "157"
+      },
+      "KERNEL32.dll:EnumCalendarInfoA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "158"
+      },
+      "KERNEL32.dll:EnumCalendarInfoExA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "159"
+      },
+      "KERNEL32.dll:EnumCalendarInfoExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "160"
+      },
+      "KERNEL32.dll:EnumCalendarInfoW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "161"
+      },
+      "KERNEL32.dll:EnumDateFormatsA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "162"
+      },
+      "KERNEL32.dll:EnumDateFormatsExA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "163"
+      },
+      "KERNEL32.dll:EnumDateFormatsExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "164"
+      },
+      "KERNEL32.dll:EnumDateFormatsW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "165"
+      },
+      "KERNEL32.dll:EnumLanguageGroupLocalesA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "166"
+      },
+      "KERNEL32.dll:EnumLanguageGroupLocalesW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "167"
+      },
+      "KERNEL32.dll:EnumResourceLanguagesA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "168"
+      },
+      "KERNEL32.dll:EnumResourceLanguagesW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "169"
+      },
+      "KERNEL32.dll:EnumResourceNamesA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "170"
+      },
+      "KERNEL32.dll:EnumResourceNamesW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "171"
+      },
+      "KERNEL32.dll:EnumResourceTypesA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "172"
+      },
+      "KERNEL32.dll:EnumResourceTypesW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "173"
+      },
+      "KERNEL32.dll:EnumSystemCodePagesA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "174"
+      },
+      "KERNEL32.dll:EnumSystemCodePagesW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "175"
+      },
+      "KERNEL32.dll:EnumSystemFirmwareTables": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "176"
+      },
+      "KERNEL32.dll:EnumSystemGeoID": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "177"
+      },
+      "KERNEL32.dll:EnumSystemLanguageGroupsA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "178"
+      },
+      "KERNEL32.dll:EnumSystemLanguageGroupsW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "179"
+      },
+      "KERNEL32.dll:EnumSystemLocalesA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "180"
+      },
+      "KERNEL32.dll:EnumSystemLocalesW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "181"
+      },
+      "KERNEL32.dll:EnumTimeFormatsA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "182"
+      },
+      "KERNEL32.dll:EnumTimeFormatsW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "183"
+      },
+      "KERNEL32.dll:EnumUILanguagesA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "184"
+      },
+      "KERNEL32.dll:EnumUILanguagesW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "185"
+      },
+      "KERNEL32.dll:EnumerateLocalComputerNamesA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "186"
+      },
+      "KERNEL32.dll:EnumerateLocalComputerNamesW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "187"
+      },
+      "KERNEL32.dll:EraseTape": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "188"
+      },
+      "KERNEL32.dll:EscapeCommFunction": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "189"
+      },
+      "KERNEL32.dll:ExitProcess": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "190"
+      },
+      "KERNEL32.dll:ExitThread": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "191"
+      },
+      "KERNEL32.dll:ExitVDM": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "192"
+      },
+      "KERNEL32.dll:ExpandEnvironmentStringsA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "193"
+      },
+      "KERNEL32.dll:ExpandEnvironmentStringsW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "194"
+      },
+      "KERNEL32.dll:ExpungeConsoleCommandHistoryA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "195"
+      },
+      "KERNEL32.dll:ExpungeConsoleCommandHistoryW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "196"
+      },
+      "KERNEL32.dll:FatalAppExitA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "197"
+      },
+      "KERNEL32.dll:FatalAppExitW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "198"
+      },
+      "KERNEL32.dll:FatalExit": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "199"
+      },
+      "KERNEL32.dll:FileTimeToDosDateTime": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "200"
+      },
+      "KERNEL32.dll:FileTimeToLocalFileTime": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "201"
+      },
+      "KERNEL32.dll:FileTimeToSystemTime": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "202"
+      },
+      "KERNEL32.dll:FillConsoleOutputAttribute": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "203"
+      },
+      "KERNEL32.dll:FillConsoleOutputCharacterA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "204"
+      },
+      "KERNEL32.dll:FillConsoleOutputCharacterW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "205"
+      },
+      "KERNEL32.dll:FindActCtxSectionGuid": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "206"
+      },
+      "KERNEL32.dll:FindActCtxSectionStringA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "207"
+      },
+      "KERNEL32.dll:FindActCtxSectionStringW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "208"
+      },
+      "KERNEL32.dll:FindAtomA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "209"
+      },
+      "KERNEL32.dll:FindAtomW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "210"
+      },
+      "KERNEL32.dll:FindClose": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "211"
+      },
+      "KERNEL32.dll:FindFirstChangeNotificationA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "213"
+      },
+      "KERNEL32.dll:FindFirstChangeNotificationW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "214"
+      },
+      "KERNEL32.dll:FindFirstFileA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "215"
+      },
+      "KERNEL32.dll:FindFirstFileExA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "216"
+      },
+      "KERNEL32.dll:FindFirstFileExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "217"
+      },
+      "KERNEL32.dll:FindFirstFileW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "218"
+      },
+      "KERNEL32.dll:FindFirstStreamW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "219"
+      },
+      "KERNEL32.dll:FindFirstVolumeA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "220"
+      },
+      "KERNEL32.dll:FindFirstVolumeMountPointA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "221"
+      },
+      "KERNEL32.dll:FindFirstVolumeMountPointW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "222"
+      },
+      "KERNEL32.dll:FindFirstVolumeW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "223"
+      },
+      "KERNEL32.dll:FindNextChangeNotification": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "224"
+      },
+      "KERNEL32.dll:FindNextFileA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "225"
+      },
+      "KERNEL32.dll:FindNextFileW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "226"
+      },
+      "KERNEL32.dll:FindNextStreamW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "227"
+      },
+      "KERNEL32.dll:FindNextVolumeA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "228"
+      },
+      "KERNEL32.dll:FindNextVolumeMountPointA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "229"
+      },
+      "KERNEL32.dll:FindNextVolumeMountPointW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "230"
+      },
+      "KERNEL32.dll:FindNextVolumeW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "231"
+      },
+      "KERNEL32.dll:FindResourceA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "232"
+      },
+      "KERNEL32.dll:FindResourceExA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "233"
+      },
+      "KERNEL32.dll:FindResourceExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "234"
+      },
+      "KERNEL32.dll:FindResourceW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "235"
+      },
+      "KERNEL32.dll:FindVolumeClose": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "236"
+      },
+      "KERNEL32.dll:FindVolumeMountPointClose": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "237"
+      },
+      "KERNEL32.dll:FlsAlloc": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "238"
+      },
+      "KERNEL32.dll:FlsFree": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "239"
+      },
+      "KERNEL32.dll:FlsGetValue": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "240"
+      },
+      "KERNEL32.dll:FlsSetValue": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "241"
+      },
+      "KERNEL32.dll:FlushConsoleInputBuffer": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "242"
+      },
+      "KERNEL32.dll:FlushFileBuffers": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "243"
+      },
+      "KERNEL32.dll:FlushInstructionCache": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "244"
+      },
+      "KERNEL32.dll:FlushViewOfFile": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "245"
+      },
+      "KERNEL32.dll:FoldStringA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "246"
+      },
+      "KERNEL32.dll:FoldStringW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "247"
+      },
+      "KERNEL32.dll:FormatMessageA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "28"
+        },
+        "ordinal": "248"
+      },
+      "KERNEL32.dll:FormatMessageW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "28"
+        },
+        "ordinal": "249"
+      },
+      "KERNEL32.dll:FreeConsole": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "250"
+      },
+      "KERNEL32.dll:FreeEnvironmentStringsW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "252"
+      },
+      "KERNEL32.dll:FreeLibrary": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "253"
+      },
+      "KERNEL32.dll:FreeLibraryAndExitThread": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "254"
+      },
+      "KERNEL32.dll:FreeResource": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "255"
+      },
+      "KERNEL32.dll:FreeUserPhysicalPages": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "256"
+      },
+      "KERNEL32.dll:GenerateConsoleCtrlEvent": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "257"
+      },
+      "KERNEL32.dll:GetACP": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "258"
+      },
+      "KERNEL32.dll:GetAtomNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "259"
+      },
+      "KERNEL32.dll:GetAtomNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "260"
+      },
+      "KERNEL32.dll:GetBinaryTypeA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "262"
+      },
+      "KERNEL32.dll:GetBinaryTypeW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "263"
+      },
+      "KERNEL32.dll:GetCPFileNameFromRegistry": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "264"
+      },
+      "KERNEL32.dll:GetCPInfo": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "265"
+      },
+      "KERNEL32.dll:GetCPInfoExA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "266"
+      },
+      "KERNEL32.dll:GetCPInfoExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "267"
+      },
+      "KERNEL32.dll:GetCalendarInfoA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "268"
+      },
+      "KERNEL32.dll:GetCalendarInfoW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "269"
+      },
+      "KERNEL32.dll:GetComPlusPackageInstallStatus": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "270"
+      },
+      "KERNEL32.dll:GetCommConfig": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "271"
+      },
+      "KERNEL32.dll:GetCommMask": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "272"
+      },
+      "KERNEL32.dll:GetCommModemStatus": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "273"
+      },
+      "KERNEL32.dll:GetCommProperties": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "274"
+      },
+      "KERNEL32.dll:GetCommState": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "275"
+      },
+      "KERNEL32.dll:GetCommTimeouts": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "276"
+      },
+      "KERNEL32.dll:GetCommandLineA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "277"
+      },
+      "KERNEL32.dll:GetCommandLineW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "278"
+      },
+      "KERNEL32.dll:GetCompressedFileSizeA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "279"
+      },
+      "KERNEL32.dll:GetCompressedFileSizeW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "280"
+      },
+      "KERNEL32.dll:GetComputerNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "281"
+      },
+      "KERNEL32.dll:GetComputerNameExA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "282"
+      },
+      "KERNEL32.dll:GetComputerNameExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "283"
+      },
+      "KERNEL32.dll:GetComputerNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "284"
+      },
+      "KERNEL32.dll:GetConsoleAliasA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "285"
+      },
+      "KERNEL32.dll:GetConsoleAliasExesA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "286"
+      },
+      "KERNEL32.dll:GetConsoleAliasExesLengthA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "287"
+      },
+      "KERNEL32.dll:GetConsoleAliasExesLengthW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "288"
+      },
+      "KERNEL32.dll:GetConsoleAliasExesW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "289"
+      },
+      "KERNEL32.dll:GetConsoleAliasW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "290"
+      },
+      "KERNEL32.dll:GetConsoleAliasesA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "291"
+      },
+      "KERNEL32.dll:GetConsoleAliasesLengthA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "292"
+      },
+      "KERNEL32.dll:GetConsoleAliasesLengthW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "293"
+      },
+      "KERNEL32.dll:GetConsoleAliasesW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "294"
+      },
+      "KERNEL32.dll:GetConsoleCP": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "295"
+      },
+      "KERNEL32.dll:GetConsoleCharType": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "296"
+      },
+      "KERNEL32.dll:GetConsoleCommandHistoryA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "297"
+      },
+      "KERNEL32.dll:GetConsoleCommandHistoryLengthA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "298"
+      },
+      "KERNEL32.dll:GetConsoleCommandHistoryLengthW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "299"
+      },
+      "KERNEL32.dll:GetConsoleCommandHistoryW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "300"
+      },
+      "KERNEL32.dll:GetConsoleCursorInfo": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "301"
+      },
+      "KERNEL32.dll:GetConsoleCursorMode": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "302"
+      },
+      "KERNEL32.dll:GetConsoleDisplayMode": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "303"
+      },
+      "KERNEL32.dll:GetConsoleFontInfo": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "304"
+      },
+      "KERNEL32.dll:GetConsoleFontSize": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "305"
+      },
+      "KERNEL32.dll:GetConsoleHardwareState": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "306"
+      },
+      "KERNEL32.dll:GetConsoleInputExeNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "307"
+      },
+      "KERNEL32.dll:GetConsoleInputExeNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "308"
+      },
+      "KERNEL32.dll:GetConsoleInputWaitHandle": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "309"
+      },
+      "KERNEL32.dll:GetConsoleKeyboardLayoutNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "310"
+      },
+      "KERNEL32.dll:GetConsoleKeyboardLayoutNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "311"
+      },
+      "KERNEL32.dll:GetConsoleMode": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "312"
+      },
+      "KERNEL32.dll:GetConsoleNlsMode": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "313"
+      },
+      "KERNEL32.dll:GetConsoleOutputCP": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "314"
+      },
+      "KERNEL32.dll:GetConsoleProcessList": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "315"
+      },
+      "KERNEL32.dll:GetConsoleScreenBufferInfo": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "316"
+      },
+      "KERNEL32.dll:GetConsoleSelectionInfo": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "317"
+      },
+      "KERNEL32.dll:GetConsoleTitleA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "318"
+      },
+      "KERNEL32.dll:GetConsoleTitleW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "319"
+      },
+      "KERNEL32.dll:GetConsoleWindow": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "320"
+      },
+      "KERNEL32.dll:GetCurrencyFormatA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "321"
+      },
+      "KERNEL32.dll:GetCurrencyFormatW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "322"
+      },
+      "KERNEL32.dll:GetCurrentActCtx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "323"
+      },
+      "KERNEL32.dll:GetCurrentConsoleFont": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "324"
+      },
+      "KERNEL32.dll:GetCurrentDirectoryA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "325"
+      },
+      "KERNEL32.dll:GetCurrentDirectoryW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "326"
+      },
+      "KERNEL32.dll:GetCurrentProcess": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "327"
+      },
+      "KERNEL32.dll:GetCurrentProcessId": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "328"
+      },
+      "KERNEL32.dll:GetCurrentProcessorNumber": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "329"
+      },
+      "KERNEL32.dll:GetCurrentThread": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "330"
+      },
+      "KERNEL32.dll:GetCurrentThreadId": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "331"
+      },
+      "KERNEL32.dll:GetDateFormatA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "332"
+      },
+      "KERNEL32.dll:GetDateFormatW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "333"
+      },
+      "KERNEL32.dll:GetDefaultCommConfigA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "334"
+      },
+      "KERNEL32.dll:GetDefaultCommConfigW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "335"
+      },
+      "KERNEL32.dll:GetDefaultSortkeySize": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "336"
+      },
+      "KERNEL32.dll:GetDevicePowerState": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "337"
+      },
+      "KERNEL32.dll:GetDiskFreeSpaceA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "338"
+      },
+      "KERNEL32.dll:GetDiskFreeSpaceExA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "339"
+      },
+      "KERNEL32.dll:GetDiskFreeSpaceExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "340"
+      },
+      "KERNEL32.dll:GetDiskFreeSpaceW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "341"
+      },
+      "KERNEL32.dll:GetDllDirectoryA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "342"
+      },
+      "KERNEL32.dll:GetDllDirectoryW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "343"
+      },
+      "KERNEL32.dll:GetDriveTypeA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "344"
+      },
+      "KERNEL32.dll:GetDriveTypeW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "345"
+      },
+      "KERNEL32.dll:GetEnvironmentStringsA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "347"
+      },
+      "KERNEL32.dll:GetEnvironmentStringsW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "348"
+      },
+      "KERNEL32.dll:GetEnvironmentVariableA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "349"
+      },
+      "KERNEL32.dll:GetEnvironmentVariableW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "350"
+      },
+      "KERNEL32.dll:GetExitCodeProcess": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "351"
+      },
+      "KERNEL32.dll:GetExitCodeThread": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "352"
+      },
+      "KERNEL32.dll:GetExpandedNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "353"
+      },
+      "KERNEL32.dll:GetExpandedNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "354"
+      },
+      "KERNEL32.dll:GetFileAttributesA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "355"
+      },
+      "KERNEL32.dll:GetFileAttributesExA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "356"
+      },
+      "KERNEL32.dll:GetFileAttributesExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "357"
+      },
+      "KERNEL32.dll:GetFileAttributesW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "358"
+      },
+      "KERNEL32.dll:GetFileInformationByHandle": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "359"
+      },
+      "KERNEL32.dll:GetFileSize": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "360"
+      },
+      "KERNEL32.dll:GetFileSizeEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "361"
+      },
+      "KERNEL32.dll:GetFileTime": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "362"
+      },
+      "KERNEL32.dll:GetFileType": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "363"
+      },
+      "KERNEL32.dll:GetFirmwareEnvironmentVariableA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "364"
+      },
+      "KERNEL32.dll:GetFirmwareEnvironmentVariableW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "365"
+      },
+      "KERNEL32.dll:GetFullPathNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "366"
+      },
+      "KERNEL32.dll:GetFullPathNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "367"
+      },
+      "KERNEL32.dll:GetGeoInfoA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "368"
+      },
+      "KERNEL32.dll:GetGeoInfoW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "369"
+      },
+      "KERNEL32.dll:GetHandleContext": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "370"
+      },
+      "KERNEL32.dll:GetHandleInformation": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "371"
+      },
+      "KERNEL32.dll:GetLargePageMinimum": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "372"
+      },
+      "KERNEL32.dll:GetLargestConsoleWindowSize": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "373"
+      },
+      "KERNEL32.dll:GetLastError": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "374"
+      },
+      "KERNEL32.dll:GetLinguistLangSize": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "375"
+      },
+      "KERNEL32.dll:GetLocalTime": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "376"
+      },
+      "KERNEL32.dll:GetLocaleInfoA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "377"
+      },
+      "KERNEL32.dll:GetLocaleInfoW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "378"
+      },
+      "KERNEL32.dll:GetLogicalDriveStringsA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "379"
+      },
+      "KERNEL32.dll:GetLogicalDriveStringsW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "380"
+      },
+      "KERNEL32.dll:GetLogicalDrives": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "381"
+      },
+      "KERNEL32.dll:GetLogicalProcessorInformation": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "382"
+      },
+      "KERNEL32.dll:GetLongPathNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "383"
+      },
+      "KERNEL32.dll:GetLongPathNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "384"
+      },
+      "KERNEL32.dll:GetMailslotInfo": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "385"
+      },
+      "KERNEL32.dll:GetModuleFileNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "386"
+      },
+      "KERNEL32.dll:GetModuleFileNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "387"
+      },
+      "KERNEL32.dll:GetModuleHandleA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "388"
+      },
+      "KERNEL32.dll:GetModuleHandleExA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "389"
+      },
+      "KERNEL32.dll:GetModuleHandleExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "390"
+      },
+      "KERNEL32.dll:GetModuleHandleW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "391"
+      },
+      "KERNEL32.dll:GetNLSVersion": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "392"
+      },
+      "KERNEL32.dll:GetNamedPipeHandleStateA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "28"
+        },
+        "ordinal": "393"
+      },
+      "KERNEL32.dll:GetNamedPipeHandleStateW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "28"
+        },
+        "ordinal": "394"
+      },
+      "KERNEL32.dll:GetNamedPipeInfo": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "395"
+      },
+      "KERNEL32.dll:GetNativeSystemInfo": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "396"
+      },
+      "KERNEL32.dll:GetNextVDMCommand": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "397"
+      },
+      "KERNEL32.dll:GetNlsSectionName": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "398"
+      },
+      "KERNEL32.dll:GetNumaAvailableMemoryNode": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "399"
+      },
+      "KERNEL32.dll:GetNumaHighestNodeNumber": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "400"
+      },
+      "KERNEL32.dll:GetNumaNodeProcessorMask": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "401"
+      },
+      "KERNEL32.dll:GetNumaProcessorNode": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "402"
+      },
+      "KERNEL32.dll:GetNumberFormatA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "403"
+      },
+      "KERNEL32.dll:GetNumberFormatW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "404"
+      },
+      "KERNEL32.dll:GetNumberOfConsoleFonts": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "405"
+      },
+      "KERNEL32.dll:GetNumberOfConsoleInputEvents": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "406"
+      },
+      "KERNEL32.dll:GetNumberOfConsoleMouseButtons": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "407"
+      },
+      "KERNEL32.dll:GetOEMCP": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "408"
+      },
+      "KERNEL32.dll:GetOverlappedResult": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "409"
+      },
+      "KERNEL32.dll:GetPriorityClass": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "410"
+      },
+      "KERNEL32.dll:GetPrivateProfileIntA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "411"
+      },
+      "KERNEL32.dll:GetPrivateProfileIntW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "412"
+      },
+      "KERNEL32.dll:GetPrivateProfileSectionA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "413"
+      },
+      "KERNEL32.dll:GetPrivateProfileSectionNamesA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "414"
+      },
+      "KERNEL32.dll:GetPrivateProfileSectionNamesW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "415"
+      },
+      "KERNEL32.dll:GetPrivateProfileSectionW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "416"
+      },
+      "KERNEL32.dll:GetPrivateProfileStringA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "417"
+      },
+      "KERNEL32.dll:GetPrivateProfileStringW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "418"
+      },
+      "KERNEL32.dll:GetPrivateProfileStructA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "419"
+      },
+      "KERNEL32.dll:GetPrivateProfileStructW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "420"
+      },
+      "KERNEL32.dll:GetProcAddress": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "421"
+      },
+      "KERNEL32.dll:GetProcessAffinityMask": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "422"
+      },
+      "KERNEL32.dll:GetProcessHandleCount": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "423"
+      },
+      "KERNEL32.dll:GetProcessHeap": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "424"
+      },
+      "KERNEL32.dll:GetProcessHeaps": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "425"
+      },
+      "KERNEL32.dll:GetProcessId": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "426"
+      },
+      "KERNEL32.dll:GetProcessIdOfThread": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "427"
+      },
+      "KERNEL32.dll:GetProcessIoCounters": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "428"
+      },
+      "KERNEL32.dll:GetProcessPriorityBoost": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "429"
+      },
+      "KERNEL32.dll:GetProcessShutdownParameters": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "430"
+      },
+      "KERNEL32.dll:GetProcessTimes": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "431"
+      },
+      "KERNEL32.dll:GetProcessVersion": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "432"
+      },
+      "KERNEL32.dll:GetProcessWorkingSetSize": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "433"
+      },
+      "KERNEL32.dll:GetProcessWorkingSetSizeEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "434"
+      },
+      "KERNEL32.dll:GetProfileIntA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "435"
+      },
+      "KERNEL32.dll:GetProfileIntW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "436"
+      },
+      "KERNEL32.dll:GetProfileSectionA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "437"
+      },
+      "KERNEL32.dll:GetProfileSectionW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "438"
+      },
+      "KERNEL32.dll:GetProfileStringA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "439"
+      },
+      "KERNEL32.dll:GetProfileStringW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "440"
+      },
+      "KERNEL32.dll:GetQueuedCompletionStatus": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "441"
+      },
+      "KERNEL32.dll:GetShortPathNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "442"
+      },
+      "KERNEL32.dll:GetShortPathNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "443"
+      },
+      "KERNEL32.dll:GetStartupInfoA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "444"
+      },
+      "KERNEL32.dll:GetStartupInfoW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "445"
+      },
+      "KERNEL32.dll:GetStdHandle": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "446"
+      },
+      "KERNEL32.dll:GetStringTypeA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "447"
+      },
+      "KERNEL32.dll:GetStringTypeExA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "448"
+      },
+      "KERNEL32.dll:GetStringTypeExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "449"
+      },
+      "KERNEL32.dll:GetStringTypeW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "450"
+      },
+      "KERNEL32.dll:GetSystemDefaultLCID": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "451"
+      },
+      "KERNEL32.dll:GetSystemDefaultLangID": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "452"
+      },
+      "KERNEL32.dll:GetSystemDefaultUILanguage": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "453"
+      },
+      "KERNEL32.dll:GetSystemDirectoryA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "454"
+      },
+      "KERNEL32.dll:GetSystemDirectoryW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "455"
+      },
+      "KERNEL32.dll:GetSystemFileCacheSize": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "456"
+      },
+      "KERNEL32.dll:GetSystemFirmwareTable": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "457"
+      },
+      "KERNEL32.dll:GetSystemInfo": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "458"
+      },
+      "KERNEL32.dll:GetSystemPowerStatus": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "459"
+      },
+      "KERNEL32.dll:GetSystemRegistryQuota": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "460"
+      },
+      "KERNEL32.dll:GetSystemTime": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "461"
+      },
+      "KERNEL32.dll:GetSystemTimeAdjustment": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "462"
+      },
+      "KERNEL32.dll:GetSystemTimeAsFileTime": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "463"
+      },
+      "KERNEL32.dll:GetSystemTimes": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "464"
+      },
+      "KERNEL32.dll:GetSystemWindowsDirectoryA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "465"
+      },
+      "KERNEL32.dll:GetSystemWindowsDirectoryW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "466"
+      },
+      "KERNEL32.dll:GetSystemWow64DirectoryA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "467"
+      },
+      "KERNEL32.dll:GetSystemWow64DirectoryW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "468"
+      },
+      "KERNEL32.dll:GetTapeParameters": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "469"
+      },
+      "KERNEL32.dll:GetTapePosition": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "470"
+      },
+      "KERNEL32.dll:GetTapeStatus": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "471"
+      },
+      "KERNEL32.dll:GetTempFileNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "472"
+      },
+      "KERNEL32.dll:GetTempFileNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "473"
+      },
+      "KERNEL32.dll:GetTempPathA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "474"
+      },
+      "KERNEL32.dll:GetTempPathW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "475"
+      },
+      "KERNEL32.dll:GetThreadContext": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "476"
+      },
+      "KERNEL32.dll:GetThreadIOPendingFlag": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "477"
+      },
+      "KERNEL32.dll:GetThreadId": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "478"
+      },
+      "KERNEL32.dll:GetThreadLocale": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "479"
+      },
+      "KERNEL32.dll:GetThreadPriority": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "480"
+      },
+      "KERNEL32.dll:GetThreadPriorityBoost": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "481"
+      },
+      "KERNEL32.dll:GetThreadSelectorEntry": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "482"
+      },
+      "KERNEL32.dll:GetThreadTimes": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "483"
+      },
+      "KERNEL32.dll:GetTickCount": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "484"
+      },
+      "KERNEL32.dll:GetTimeFormatA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "485"
+      },
+      "KERNEL32.dll:GetTimeFormatW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "486"
+      },
+      "KERNEL32.dll:GetTimeZoneInformation": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "487"
+      },
+      "KERNEL32.dll:GetUserDefaultLCID": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "488"
+      },
+      "KERNEL32.dll:GetUserDefaultLangID": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "489"
+      },
+      "KERNEL32.dll:GetUserDefaultUILanguage": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "490"
+      },
+      "KERNEL32.dll:GetUserGeoID": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "491"
+      },
+      "KERNEL32.dll:GetVDMCurrentDirectories": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "492"
+      },
+      "KERNEL32.dll:GetVersion": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "493"
+      },
+      "KERNEL32.dll:GetVersionExA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "494"
+      },
+      "KERNEL32.dll:GetVersionExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "495"
+      },
+      "KERNEL32.dll:GetVolumeInformationA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "32"
+        },
+        "ordinal": "496"
+      },
+      "KERNEL32.dll:GetVolumeInformationW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "32"
+        },
+        "ordinal": "497"
+      },
+      "KERNEL32.dll:GetVolumeNameForVolumeMountPointA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "498"
+      },
+      "KERNEL32.dll:GetVolumeNameForVolumeMountPointW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "499"
+      },
+      "KERNEL32.dll:GetVolumePathNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "500"
+      },
+      "KERNEL32.dll:GetVolumePathNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "501"
+      },
+      "KERNEL32.dll:GetVolumePathNamesForVolumeNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "502"
+      },
+      "KERNEL32.dll:GetVolumePathNamesForVolumeNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "503"
+      },
+      "KERNEL32.dll:GetWindowsDirectoryA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "504"
+      },
+      "KERNEL32.dll:GetWindowsDirectoryW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "505"
+      },
+      "KERNEL32.dll:GetWriteWatch": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "506"
+      },
+      "KERNEL32.dll:GlobalAddAtomA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "507"
+      },
+      "KERNEL32.dll:GlobalAddAtomW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "508"
+      },
+      "KERNEL32.dll:GlobalAlloc": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "509"
+      },
+      "KERNEL32.dll:GlobalDeleteAtom": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "511"
+      },
+      "KERNEL32.dll:GlobalFindAtomA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "512"
+      },
+      "KERNEL32.dll:GlobalFindAtomW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "513"
+      },
+      "KERNEL32.dll:GlobalFix": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "514"
+      },
+      "KERNEL32.dll:GlobalFlags": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "515"
+      },
+      "KERNEL32.dll:GlobalFree": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "516"
+      },
+      "KERNEL32.dll:GlobalGetAtomNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "517"
+      },
+      "KERNEL32.dll:GlobalGetAtomNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "518"
+      },
+      "KERNEL32.dll:GlobalHandle": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "519"
+      },
+      "KERNEL32.dll:GlobalLock": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "520"
+      },
+      "KERNEL32.dll:GlobalMemoryStatus": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "521"
+      },
+      "KERNEL32.dll:GlobalMemoryStatusEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "522"
+      },
+      "KERNEL32.dll:GlobalReAlloc": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "523"
+      },
+      "KERNEL32.dll:GlobalSize": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "524"
+      },
+      "KERNEL32.dll:GlobalUnWire": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "525"
+      },
+      "KERNEL32.dll:GlobalUnfix": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "526"
+      },
+      "KERNEL32.dll:GlobalUnlock": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "527"
+      },
+      "KERNEL32.dll:GlobalWire": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "528"
+      },
+      "KERNEL32.dll:Heap32First": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "529"
+      },
+      "KERNEL32.dll:Heap32ListFirst": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "530"
+      },
+      "KERNEL32.dll:Heap32ListNext": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "531"
+      },
+      "KERNEL32.dll:Heap32Next": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "532"
+      },
+      "KERNEL32.dll:HeapAlloc": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "533"
+      },
+      "KERNEL32.dll:HeapCompact": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "534"
+      },
+      "KERNEL32.dll:HeapCreate": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "535"
+      },
+      "KERNEL32.dll:HeapCreateTagsW": {
+        "function": {
+          "convention": "Unknown"
+        },
+        "ordinal": "536"
+      },
+      "KERNEL32.dll:HeapDestroy": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "537"
+      },
+      "KERNEL32.dll:HeapExtend": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "538"
+      },
+      "KERNEL32.dll:HeapFree": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "539"
+      },
+      "KERNEL32.dll:HeapLock": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "540"
+      },
+      "KERNEL32.dll:HeapQueryInformation": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "541"
+      },
+      "KERNEL32.dll:HeapQueryTagW": {
+        "function": {
+          "convention": "Unknown"
+        },
+        "ordinal": "542"
+      },
+      "KERNEL32.dll:HeapReAlloc": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "543"
+      },
+      "KERNEL32.dll:HeapSetInformation": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "544"
+      },
+      "KERNEL32.dll:HeapSize": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "545"
+      },
+      "KERNEL32.dll:HeapSummary": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "546"
+      },
+      "KERNEL32.dll:HeapUnlock": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "547"
+      },
+      "KERNEL32.dll:HeapUsage": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "548"
+      },
+      "KERNEL32.dll:HeapValidate": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "549"
+      },
+      "KERNEL32.dll:HeapWalk": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "550"
+      },
+      "KERNEL32.dll:InitAtomTable": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "551"
+      },
+      "KERNEL32.dll:InitializeCriticalSection": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "552"
+      },
+      "KERNEL32.dll:InitializeCriticalSectionAndSpinCount": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "553"
+      },
+      "KERNEL32.dll:InitializeSListHead": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "554"
+      },
+      "KERNEL32.dll:InterlockedCompareExchange": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "556"
+      },
+      "KERNEL32.dll:InterlockedCompareExchange64": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "555"
+      },
+      "KERNEL32.dll:InterlockedDecrement": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "557"
+      },
+      "KERNEL32.dll:InterlockedExchange": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "558"
+      },
+      "KERNEL32.dll:InterlockedExchangeAdd": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "559"
+      },
+      "KERNEL32.dll:InterlockedFlushSList": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "560"
+      },
+      "KERNEL32.dll:InterlockedIncrement": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "561"
+      },
+      "KERNEL32.dll:InterlockedPopEntrySList": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "562"
+      },
+      "KERNEL32.dll:InterlockedPushEntrySList": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "563"
+      },
+      "KERNEL32.dll:InvalidateConsoleDIBits": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "564"
+      },
+      "KERNEL32.dll:IsBadCodePtr": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "565"
+      },
+      "KERNEL32.dll:IsBadHugeReadPtr": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "566"
+      },
+      "KERNEL32.dll:IsBadHugeWritePtr": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "567"
+      },
+      "KERNEL32.dll:IsBadReadPtr": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "568"
+      },
+      "KERNEL32.dll:IsBadStringPtrA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "569"
+      },
+      "KERNEL32.dll:IsBadStringPtrW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "570"
+      },
+      "KERNEL32.dll:IsBadWritePtr": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "571"
+      },
+      "KERNEL32.dll:IsDBCSLeadByte": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "572"
+      },
+      "KERNEL32.dll:IsDBCSLeadByteEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "573"
+      },
+      "KERNEL32.dll:IsDebuggerPresent": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "574"
+      },
+      "KERNEL32.dll:IsNLSDefinedString": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "575"
+      },
+      "KERNEL32.dll:IsProcessInJob": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "576"
+      },
+      "KERNEL32.dll:IsProcessorFeaturePresent": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "577"
+      },
+      "KERNEL32.dll:IsSystemResumeAutomatic": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "578"
+      },
+      "KERNEL32.dll:IsTimeZoneRedirectionEnabled": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "579"
+      },
+      "KERNEL32.dll:IsValidCodePage": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "580"
+      },
+      "KERNEL32.dll:IsValidLanguageGroup": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "581"
+      },
+      "KERNEL32.dll:IsValidLocale": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "582"
+      },
+      "KERNEL32.dll:IsValidUILanguage": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "583"
+      },
+      "KERNEL32.dll:IsWow64Process": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "584"
+      },
+      "KERNEL32.dll:LCMapStringA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "585"
+      },
+      "KERNEL32.dll:LCMapStringW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "586"
+      },
+      "KERNEL32.dll:LZClose": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "587"
+      },
+      "KERNEL32.dll:LZCloseFile": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "588"
+      },
+      "KERNEL32.dll:LZCopy": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "589"
+      },
+      "KERNEL32.dll:LZCreateFileW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "590"
+      },
+      "KERNEL32.dll:LZDone": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "591"
+      },
+      "KERNEL32.dll:LZInit": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "592"
+      },
+      "KERNEL32.dll:LZOpenFileA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "593"
+      },
+      "KERNEL32.dll:LZOpenFileW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "594"
+      },
+      "KERNEL32.dll:LZRead": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "595"
+      },
+      "KERNEL32.dll:LZSeek": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "596"
+      },
+      "KERNEL32.dll:LZStart": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "597"
+      },
+      "KERNEL32.dll:LeaveCriticalSection": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "598"
+      },
+      "KERNEL32.dll:LoadLibraryA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "599"
+      },
+      "KERNEL32.dll:LoadLibraryExA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "600"
+      },
+      "KERNEL32.dll:LoadLibraryExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "601"
+      },
+      "KERNEL32.dll:LoadLibraryW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "602"
+      },
+      "KERNEL32.dll:LoadModule": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "603"
+      },
+      "KERNEL32.dll:LoadResource": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "604"
+      },
+      "KERNEL32.dll:LocalAlloc": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "605"
+      },
+      "KERNEL32.dll:LocalCompact": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "606"
+      },
+      "KERNEL32.dll:LocalFileTimeToFileTime": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "607"
+      },
+      "KERNEL32.dll:LocalFlags": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "608"
+      },
+      "KERNEL32.dll:LocalFree": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "609"
+      },
+      "KERNEL32.dll:LocalHandle": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "610"
+      },
+      "KERNEL32.dll:LocalLock": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "611"
+      },
+      "KERNEL32.dll:LocalReAlloc": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "612"
+      },
+      "KERNEL32.dll:LocalShrink": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "613"
+      },
+      "KERNEL32.dll:LocalSize": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "614"
+      },
+      "KERNEL32.dll:LocalUnlock": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "615"
+      },
+      "KERNEL32.dll:LockFile": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "616"
+      },
+      "KERNEL32.dll:LockFileEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "617"
+      },
+      "KERNEL32.dll:MapUserPhysicalPages": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "619"
+      },
+      "KERNEL32.dll:MapUserPhysicalPagesScatter": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "620"
+      },
+      "KERNEL32.dll:MapViewOfFile": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "621"
+      },
+      "KERNEL32.dll:MapViewOfFileEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "622"
+      },
+      "KERNEL32.dll:Module32First": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "623"
+      },
+      "KERNEL32.dll:Module32FirstW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "624"
+      },
+      "KERNEL32.dll:Module32Next": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "625"
+      },
+      "KERNEL32.dll:Module32NextW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "626"
+      },
+      "KERNEL32.dll:MoveFileA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "627"
+      },
+      "KERNEL32.dll:MoveFileExA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "628"
+      },
+      "KERNEL32.dll:MoveFileExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "629"
+      },
+      "KERNEL32.dll:MoveFileW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "630"
+      },
+      "KERNEL32.dll:MoveFileWithProgressA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "631"
+      },
+      "KERNEL32.dll:MoveFileWithProgressW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "632"
+      },
+      "KERNEL32.dll:MulDiv": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "633"
+      },
+      "KERNEL32.dll:MultiByteToWideChar": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "634"
+      },
+      "KERNEL32.dll:NeedCurrentDirectoryForExePathA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "635"
+      },
+      "KERNEL32.dll:NeedCurrentDirectoryForExePathW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "636"
+      },
+      "KERNEL32.dll:NlsConvertIntegerToString": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "637"
+      },
+      "KERNEL32.dll:NlsGetCacheUpdateCount": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "638"
+      },
+      "KERNEL32.dll:NlsResetProcessLocale": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "639"
+      },
+      "KERNEL32.dll:OpenConsoleW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "640"
+      },
+      "KERNEL32.dll:OpenDataFile": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "641"
+      },
+      "KERNEL32.dll:OpenEventA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "642"
+      },
+      "KERNEL32.dll:OpenEventW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "643"
+      },
+      "KERNEL32.dll:OpenFile": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "644"
+      },
+      "KERNEL32.dll:OpenFileMappingA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "645"
+      },
+      "KERNEL32.dll:OpenFileMappingW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "646"
+      },
+      "KERNEL32.dll:OpenJobObjectA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "647"
+      },
+      "KERNEL32.dll:OpenJobObjectW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "648"
+      },
+      "KERNEL32.dll:OpenMutexA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "649"
+      },
+      "KERNEL32.dll:OpenMutexW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "650"
+      },
+      "KERNEL32.dll:OpenProcess": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "651"
+      },
+      "KERNEL32.dll:OpenProfileUserMapping": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "652"
+      },
+      "KERNEL32.dll:OpenSemaphoreA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "653"
+      },
+      "KERNEL32.dll:OpenSemaphoreW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "654"
+      },
+      "KERNEL32.dll:OpenThread": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "655"
+      },
+      "KERNEL32.dll:OpenWaitableTimerA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "656"
+      },
+      "KERNEL32.dll:OpenWaitableTimerW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "657"
+      },
+      "KERNEL32.dll:OutputDebugStringA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "658"
+      },
+      "KERNEL32.dll:OutputDebugStringW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "659"
+      },
+      "KERNEL32.dll:PeekConsoleInputA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "660"
+      },
+      "KERNEL32.dll:PeekConsoleInputW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "661"
+      },
+      "KERNEL32.dll:PeekNamedPipe": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "662"
+      },
+      "KERNEL32.dll:PostQueuedCompletionStatus": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "663"
+      },
+      "KERNEL32.dll:PrepareTape": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "664"
+      },
+      "KERNEL32.dll:PrivCopyFileExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "665"
+      },
+      "KERNEL32.dll:PrivMoveFileIdentityW": {
+        "function": {
+          "convention": "Unknown"
+        },
+        "ordinal": "666"
+      },
+      "KERNEL32.dll:Process32First": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "667"
+      },
+      "KERNEL32.dll:Process32FirstW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "668"
+      },
+      "KERNEL32.dll:Process32Next": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "669"
+      },
+      "KERNEL32.dll:Process32NextW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "670"
+      },
+      "KERNEL32.dll:ProcessIdToSessionId": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "671"
+      },
+      "KERNEL32.dll:PulseEvent": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "672"
+      },
+      "KERNEL32.dll:PurgeComm": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "673"
+      },
+      "KERNEL32.dll:QueryActCtxW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "28"
+        },
+        "ordinal": "674"
+      },
+      "KERNEL32.dll:QueryDepthSList": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "675"
+      },
+      "KERNEL32.dll:QueryDosDeviceA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "676"
+      },
+      "KERNEL32.dll:QueryDosDeviceW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "677"
+      },
+      "KERNEL32.dll:QueryInformationJobObject": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "678"
+      },
+      "KERNEL32.dll:QueryMemoryResourceNotification": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "679"
+      },
+      "KERNEL32.dll:QueryPerformanceCounter": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "680"
+      },
+      "KERNEL32.dll:QueryPerformanceFrequency": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "681"
+      },
+      "KERNEL32.dll:QueueUserAPC": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "682"
+      },
+      "KERNEL32.dll:QueueUserWorkItem": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "683"
+      },
+      "KERNEL32.dll:RaiseException": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "684"
+      },
+      "KERNEL32.dll:ReOpenFile": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "685"
+      },
+      "KERNEL32.dll:ReadConsoleA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "686"
+      },
+      "KERNEL32.dll:ReadConsoleInputA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "687"
+      },
+      "KERNEL32.dll:ReadConsoleInputExA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "688"
+      },
+      "KERNEL32.dll:ReadConsoleInputExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "689"
+      },
+      "KERNEL32.dll:ReadConsoleInputW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "690"
+      },
+      "KERNEL32.dll:ReadConsoleOutputA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "691"
+      },
+      "KERNEL32.dll:ReadConsoleOutputAttribute": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "692"
+      },
+      "KERNEL32.dll:ReadConsoleOutputCharacterA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "693"
+      },
+      "KERNEL32.dll:ReadConsoleOutputCharacterW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "694"
+      },
+      "KERNEL32.dll:ReadConsoleOutputW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "695"
+      },
+      "KERNEL32.dll:ReadConsoleW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "696"
+      },
+      "KERNEL32.dll:ReadDirectoryChangesW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "32"
+        },
+        "ordinal": "697"
+      },
+      "KERNEL32.dll:ReadFile": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "698"
+      },
+      "KERNEL32.dll:ReadFileEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "699"
+      },
+      "KERNEL32.dll:ReadFileScatter": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "700"
+      },
+      "KERNEL32.dll:ReadProcessMemory": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "701"
+      },
+      "KERNEL32.dll:RegisterConsoleIME": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "702"
+      },
+      "KERNEL32.dll:RegisterConsoleOS2": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "703"
+      },
+      "KERNEL32.dll:RegisterConsoleVDM": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "44"
+        },
+        "ordinal": "704"
+      },
+      "KERNEL32.dll:RegisterWaitForInputIdle": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "705"
+      },
+      "KERNEL32.dll:RegisterWaitForSingleObject": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "706"
+      },
+      "KERNEL32.dll:RegisterWaitForSingleObjectEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "707"
+      },
+      "KERNEL32.dll:RegisterWowBaseHandlers": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "708"
+      },
+      "KERNEL32.dll:RegisterWowExec": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "709"
+      },
+      "KERNEL32.dll:ReleaseActCtx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "710"
+      },
+      "KERNEL32.dll:ReleaseMutex": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "711"
+      },
+      "KERNEL32.dll:ReleaseSemaphore": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "712"
+      },
+      "KERNEL32.dll:RemoveDirectoryA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "713"
+      },
+      "KERNEL32.dll:RemoveDirectoryW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "714"
+      },
+      "KERNEL32.dll:RemoveLocalAlternateComputerNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "715"
+      },
+      "KERNEL32.dll:RemoveLocalAlternateComputerNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "716"
+      },
+      "KERNEL32.dll:RemoveVectoredContinueHandler": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "717"
+      },
+      "KERNEL32.dll:RemoveVectoredExceptionHandler": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "718"
+      },
+      "KERNEL32.dll:ReplaceFileA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "720"
+      },
+      "KERNEL32.dll:ReplaceFileW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "721"
+      },
+      "KERNEL32.dll:RequestDeviceWakeup": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "722"
+      },
+      "KERNEL32.dll:RequestWakeupLatency": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "723"
+      },
+      "KERNEL32.dll:ResetEvent": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "724"
+      },
+      "KERNEL32.dll:ResetWriteWatch": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "725"
+      },
+      "KERNEL32.dll:RestoreLastError": {
+        "function": {
+          "convention": "Unknown"
+        },
+        "ordinal": "726"
+      },
+      "KERNEL32.dll:ResumeThread": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "727"
+      },
+      "KERNEL32.dll:RtlCaptureContext": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "728"
+      },
+      "KERNEL32.dll:RtlCaptureStackBackTrace": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "729"
+      },
+      "KERNEL32.dll:RtlFillMemory": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "730"
+      },
+      "KERNEL32.dll:RtlMoveMemory": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "731"
+      },
+      "KERNEL32.dll:RtlUnwind": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "732"
+      },
+      "KERNEL32.dll:RtlZeroMemory": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "733"
+      },
+      "KERNEL32.dll:ScrollConsoleScreenBufferA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "734"
+      },
+      "KERNEL32.dll:ScrollConsoleScreenBufferW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "735"
+      },
+      "KERNEL32.dll:SearchPathA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "736"
+      },
+      "KERNEL32.dll:SearchPathW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "737"
+      },
+      "KERNEL32.dll:SetCPGlobal": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "738"
+      },
+      "KERNEL32.dll:SetCalendarInfoA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "739"
+      },
+      "KERNEL32.dll:SetCalendarInfoW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "740"
+      },
+      "KERNEL32.dll:SetClientTimeZoneInformation": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "741"
+      },
+      "KERNEL32.dll:SetComPlusPackageInstallStatus": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "742"
+      },
+      "KERNEL32.dll:SetCommBreak": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "743"
+      },
+      "KERNEL32.dll:SetCommConfig": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "744"
+      },
+      "KERNEL32.dll:SetCommMask": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "745"
+      },
+      "KERNEL32.dll:SetCommState": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "746"
+      },
+      "KERNEL32.dll:SetCommTimeouts": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "747"
+      },
+      "KERNEL32.dll:SetComputerNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "748"
+      },
+      "KERNEL32.dll:SetComputerNameExA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "749"
+      },
+      "KERNEL32.dll:SetComputerNameExW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "750"
+      },
+      "KERNEL32.dll:SetComputerNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "751"
+      },
+      "KERNEL32.dll:SetConsoleActiveScreenBuffer": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "752"
+      },
+      "KERNEL32.dll:SetConsoleCP": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "753"
+      },
+      "KERNEL32.dll:SetConsoleCommandHistoryMode": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "754"
+      },
+      "KERNEL32.dll:SetConsoleCtrlHandler": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "755"
+      },
+      "KERNEL32.dll:SetConsoleCursor": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "756"
+      },
+      "KERNEL32.dll:SetConsoleCursorInfo": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "757"
+      },
+      "KERNEL32.dll:SetConsoleCursorMode": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "758"
+      },
+      "KERNEL32.dll:SetConsoleCursorPosition": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "759"
+      },
+      "KERNEL32.dll:SetConsoleDisplayMode": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "760"
+      },
+      "KERNEL32.dll:SetConsoleFont": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "761"
+      },
+      "KERNEL32.dll:SetConsoleHardwareState": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "762"
+      },
+      "KERNEL32.dll:SetConsoleIcon": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "763"
+      },
+      "KERNEL32.dll:SetConsoleInputExeNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "764"
+      },
+      "KERNEL32.dll:SetConsoleInputExeNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "765"
+      },
+      "KERNEL32.dll:SetConsoleKeyShortcuts": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "766"
+      },
+      "KERNEL32.dll:SetConsoleLocalEUDC": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "767"
+      },
+      "KERNEL32.dll:SetConsoleMaximumWindowSize": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "768"
+      },
+      "KERNEL32.dll:SetConsoleMenuClose": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "769"
+      },
+      "KERNEL32.dll:SetConsoleMode": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "770"
+      },
+      "KERNEL32.dll:SetConsoleNlsMode": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "771"
+      },
+      "KERNEL32.dll:SetConsoleNumberOfCommandsA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "772"
+      },
+      "KERNEL32.dll:SetConsoleNumberOfCommandsW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "773"
+      },
+      "KERNEL32.dll:SetConsoleOS2OemFormat": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "774"
+      },
+      "KERNEL32.dll:SetConsoleOutputCP": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "775"
+      },
+      "KERNEL32.dll:SetConsolePalette": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "776"
+      },
+      "KERNEL32.dll:SetConsoleScreenBufferSize": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "777"
+      },
+      "KERNEL32.dll:SetConsoleTextAttribute": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "778"
+      },
+      "KERNEL32.dll:SetConsoleTitleA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "779"
+      },
+      "KERNEL32.dll:SetConsoleTitleW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "780"
+      },
+      "KERNEL32.dll:SetConsoleWindowInfo": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "781"
+      },
+      "KERNEL32.dll:SetCriticalSectionSpinCount": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "782"
+      },
+      "KERNEL32.dll:SetCurrentDirectoryA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "783"
+      },
+      "KERNEL32.dll:SetCurrentDirectoryW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "784"
+      },
+      "KERNEL32.dll:SetDefaultCommConfigA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "785"
+      },
+      "KERNEL32.dll:SetDefaultCommConfigW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "786"
+      },
+      "KERNEL32.dll:SetDllDirectoryA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "787"
+      },
+      "KERNEL32.dll:SetDllDirectoryW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "788"
+      },
+      "KERNEL32.dll:SetEndOfFile": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "789"
+      },
+      "KERNEL32.dll:SetEnvironmentStringsA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "790"
+      },
+      "KERNEL32.dll:SetEnvironmentStringsW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "791"
+      },
+      "KERNEL32.dll:SetEnvironmentVariableA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "792"
+      },
+      "KERNEL32.dll:SetEnvironmentVariableW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "793"
+      },
+      "KERNEL32.dll:SetErrorMode": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "794"
+      },
+      "KERNEL32.dll:SetEvent": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "795"
+      },
+      "KERNEL32.dll:SetFileApisToANSI": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "796"
+      },
+      "KERNEL32.dll:SetFileApisToOEM": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "797"
+      },
+      "KERNEL32.dll:SetFileAttributesA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "798"
+      },
+      "KERNEL32.dll:SetFileAttributesW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "799"
+      },
+      "KERNEL32.dll:SetFilePointer": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "800"
+      },
+      "KERNEL32.dll:SetFilePointerEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "801"
+      },
+      "KERNEL32.dll:SetFileShortNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "802"
+      },
+      "KERNEL32.dll:SetFileShortNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "803"
+      },
+      "KERNEL32.dll:SetFileTime": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "804"
+      },
+      "KERNEL32.dll:SetFileValidData": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "805"
+      },
+      "KERNEL32.dll:SetFirmwareEnvironmentVariableA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "806"
+      },
+      "KERNEL32.dll:SetFirmwareEnvironmentVariableW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "807"
+      },
+      "KERNEL32.dll:SetHandleContext": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "808"
+      },
+      "KERNEL32.dll:SetHandleCount": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "809"
+      },
+      "KERNEL32.dll:SetHandleInformation": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "810"
+      },
+      "KERNEL32.dll:SetInformationJobObject": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "811"
+      },
+      "KERNEL32.dll:SetLastConsoleEventActive": {
+        "function": {
+          "convention": "Unknown"
+        },
+        "ordinal": "812"
+      },
+      "KERNEL32.dll:SetLastError": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "813"
+      },
+      "KERNEL32.dll:SetLocalPrimaryComputerNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "814"
+      },
+      "KERNEL32.dll:SetLocalPrimaryComputerNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "815"
+      },
+      "KERNEL32.dll:SetLocalTime": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "816"
+      },
+      "KERNEL32.dll:SetLocaleInfoA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "817"
+      },
+      "KERNEL32.dll:SetLocaleInfoW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "818"
+      },
+      "KERNEL32.dll:SetMailslotInfo": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "819"
+      },
+      "KERNEL32.dll:SetMessageWaitingIndicator": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "820"
+      },
+      "KERNEL32.dll:SetNamedPipeHandleState": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "821"
+      },
+      "KERNEL32.dll:SetPriorityClass": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "822"
+      },
+      "KERNEL32.dll:SetProcessAffinityMask": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "823"
+      },
+      "KERNEL32.dll:SetProcessPriorityBoost": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "824"
+      },
+      "KERNEL32.dll:SetProcessShutdownParameters": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "825"
+      },
+      "KERNEL32.dll:SetProcessWorkingSetSize": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "826"
+      },
+      "KERNEL32.dll:SetProcessWorkingSetSizeEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "827"
+      },
+      "KERNEL32.dll:SetStdHandle": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "828"
+      },
+      "KERNEL32.dll:SetSystemFileCacheSize": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "829"
+      },
+      "KERNEL32.dll:SetSystemPowerState": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "830"
+      },
+      "KERNEL32.dll:SetSystemTime": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "831"
+      },
+      "KERNEL32.dll:SetSystemTimeAdjustment": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "832"
+      },
+      "KERNEL32.dll:SetTapeParameters": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "833"
+      },
+      "KERNEL32.dll:SetTapePosition": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "834"
+      },
+      "KERNEL32.dll:SetTermsrvAppInstallMode": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "835"
+      },
+      "KERNEL32.dll:SetThreadAffinityMask": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "836"
+      },
+      "KERNEL32.dll:SetThreadContext": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "837"
+      },
+      "KERNEL32.dll:SetThreadExecutionState": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "838"
+      },
+      "KERNEL32.dll:SetThreadIdealProcessor": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "839"
+      },
+      "KERNEL32.dll:SetThreadLocale": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "840"
+      },
+      "KERNEL32.dll:SetThreadPriority": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "841"
+      },
+      "KERNEL32.dll:SetThreadPriorityBoost": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "842"
+      },
+      "KERNEL32.dll:SetThreadStackGuarantee": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "843"
+      },
+      "KERNEL32.dll:SetThreadUILanguage": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "844"
+      },
+      "KERNEL32.dll:SetTimeZoneInformation": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "845"
+      },
+      "KERNEL32.dll:SetTimerQueueTimer": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "846"
+      },
+      "KERNEL32.dll:SetUnhandledExceptionFilter": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "847"
+      },
+      "KERNEL32.dll:SetUserGeoID": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "848"
+      },
+      "KERNEL32.dll:SetVDMCurrentDirectories": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "849"
+      },
+      "KERNEL32.dll:SetVolumeLabelA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "850"
+      },
+      "KERNEL32.dll:SetVolumeLabelW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "851"
+      },
+      "KERNEL32.dll:SetVolumeMountPointA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "852"
+      },
+      "KERNEL32.dll:SetVolumeMountPointW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "853"
+      },
+      "KERNEL32.dll:SetWaitableTimer": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "854"
+      },
+      "KERNEL32.dll:SetupComm": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "855"
+      },
+      "KERNEL32.dll:ShowConsoleCursor": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "856"
+      },
+      "KERNEL32.dll:SignalObjectAndWait": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "857"
+      },
+      "KERNEL32.dll:SizeofResource": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "858"
+      },
+      "KERNEL32.dll:Sleep": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "859"
+      },
+      "KERNEL32.dll:SleepEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "860"
+      },
+      "KERNEL32.dll:SuspendThread": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "861"
+      },
+      "KERNEL32.dll:SwitchToFiber": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "862"
+      },
+      "KERNEL32.dll:SwitchToThread": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "863"
+      },
+      "KERNEL32.dll:SystemTimeToFileTime": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "864"
+      },
+      "KERNEL32.dll:SystemTimeToTzSpecificLocalTime": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "865"
+      },
+      "KERNEL32.dll:TerminateJobObject": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "866"
+      },
+      "KERNEL32.dll:TerminateProcess": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "867"
+      },
+      "KERNEL32.dll:TerminateThread": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "868"
+      },
+      "KERNEL32.dll:TermsrvAppInstallMode": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "869"
+      },
+      "KERNEL32.dll:Thread32First": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "870"
+      },
+      "KERNEL32.dll:Thread32Next": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "871"
+      },
+      "KERNEL32.dll:TlsAlloc": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "872"
+      },
+      "KERNEL32.dll:TlsFree": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "873"
+      },
+      "KERNEL32.dll:TlsGetValue": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "874"
+      },
+      "KERNEL32.dll:TlsSetValue": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "875"
+      },
+      "KERNEL32.dll:Toolhelp32ReadProcessMemory": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "876"
+      },
+      "KERNEL32.dll:TransactNamedPipe": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "28"
+        },
+        "ordinal": "877"
+      },
+      "KERNEL32.dll:TransmitCommChar": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "878"
+      },
+      "KERNEL32.dll:TryEnterCriticalSection": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "879"
+      },
+      "KERNEL32.dll:TzSpecificLocalTimeToSystemTime": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "880"
+      },
+      "KERNEL32.dll:UTRegister": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "28"
+        },
+        "ordinal": "881"
+      },
+      "KERNEL32.dll:UTUnRegister": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "882"
+      },
+      "KERNEL32.dll:UnhandledExceptionFilter": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "883"
+      },
+      "KERNEL32.dll:UnlockFile": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "884"
+      },
+      "KERNEL32.dll:UnlockFileEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "885"
+      },
+      "KERNEL32.dll:UnmapViewOfFile": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "886"
+      },
+      "KERNEL32.dll:UnregisterConsoleIME": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "887"
+      },
+      "KERNEL32.dll:UnregisterWait": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "888"
+      },
+      "KERNEL32.dll:UnregisterWaitEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "889"
+      },
+      "KERNEL32.dll:UpdateResourceA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "890"
+      },
+      "KERNEL32.dll:UpdateResourceW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "24"
+        },
+        "ordinal": "891"
+      },
+      "KERNEL32.dll:VDMConsoleOperation": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "892"
+      },
+      "KERNEL32.dll:VDMOperationStarted": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "893"
+      },
+      "KERNEL32.dll:ValidateLCType": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "894"
+      },
+      "KERNEL32.dll:ValidateLocale": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "895"
+      },
+      "KERNEL32.dll:VerLanguageNameA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "896"
+      },
+      "KERNEL32.dll:VerLanguageNameW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "897"
+      },
+      "KERNEL32.dll:VerSetConditionMask": {
+        "function": {
+          "convention": "Unknown"
+        },
+        "ordinal": "898"
+      },
+      "KERNEL32.dll:VerifyConsoleIoHandle": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "899"
+      },
+      "KERNEL32.dll:VerifyVersionInfoA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "900"
+      },
+      "KERNEL32.dll:VerifyVersionInfoW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "901"
+      },
+      "KERNEL32.dll:VirtualAlloc": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "902"
+      },
+      "KERNEL32.dll:VirtualAllocEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "903"
+      },
+      "KERNEL32.dll:VirtualFree": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "904"
+      },
+      "KERNEL32.dll:VirtualFreeEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "905"
+      },
+      "KERNEL32.dll:VirtualLock": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "906"
+      },
+      "KERNEL32.dll:VirtualProtect": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "907"
+      },
+      "KERNEL32.dll:VirtualProtectEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "908"
+      },
+      "KERNEL32.dll:VirtualQuery": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "909"
+      },
+      "KERNEL32.dll:VirtualQueryEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "910"
+      },
+      "KERNEL32.dll:VirtualUnlock": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "911"
+      },
+      "KERNEL32.dll:WTSGetActiveConsoleSessionId": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        },
+        "ordinal": "912"
+      },
+      "KERNEL32.dll:WaitCommEvent": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "913"
+      },
+      "KERNEL32.dll:WaitForDebugEvent": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "914"
+      },
+      "KERNEL32.dll:WaitForMultipleObjects": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "915"
+      },
+      "KERNEL32.dll:WaitForMultipleObjectsEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "916"
+      },
+      "KERNEL32.dll:WaitForSingleObject": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "917"
+      },
+      "KERNEL32.dll:WaitForSingleObjectEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "918"
+      },
+      "KERNEL32.dll:WaitNamedPipeA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "919"
+      },
+      "KERNEL32.dll:WaitNamedPipeW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "920"
+      },
+      "KERNEL32.dll:WideCharToMultiByte": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "32"
+        },
+        "ordinal": "921"
+      },
+      "KERNEL32.dll:WinExec": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "922"
+      },
+      "KERNEL32.dll:Wow64DisableWow64FsRedirection": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "923"
+      },
+      "KERNEL32.dll:Wow64EnableWow64FsRedirection": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "924"
+      },
+      "KERNEL32.dll:Wow64RevertWow64FsRedirection": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "925"
+      },
+      "KERNEL32.dll:WriteConsoleA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "926"
+      },
+      "KERNEL32.dll:WriteConsoleInputA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "927"
+      },
+      "KERNEL32.dll:WriteConsoleInputVDMA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "928"
+      },
+      "KERNEL32.dll:WriteConsoleInputVDMW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "929"
+      },
+      "KERNEL32.dll:WriteConsoleInputW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "930"
+      },
+      "KERNEL32.dll:WriteConsoleOutputA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "931"
+      },
+      "KERNEL32.dll:WriteConsoleOutputAttribute": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "932"
+      },
+      "KERNEL32.dll:WriteConsoleOutputCharacterA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "933"
+      },
+      "KERNEL32.dll:WriteConsoleOutputCharacterW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "934"
+      },
+      "KERNEL32.dll:WriteConsoleOutputW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "935"
+      },
+      "KERNEL32.dll:WriteConsoleW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "936"
+      },
+      "KERNEL32.dll:WriteFile": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "937"
+      },
+      "KERNEL32.dll:WriteFileEx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "938"
+      },
+      "KERNEL32.dll:WriteFileGather": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "939"
+      },
+      "KERNEL32.dll:WritePrivateProfileSectionA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "940"
+      },
+      "KERNEL32.dll:WritePrivateProfileSectionW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "941"
+      },
+      "KERNEL32.dll:WritePrivateProfileStringA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "942"
+      },
+      "KERNEL32.dll:WritePrivateProfileStringW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "943"
+      },
+      "KERNEL32.dll:WritePrivateProfileStructA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "944"
+      },
+      "KERNEL32.dll:WritePrivateProfileStructW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "945"
+      },
+      "KERNEL32.dll:WriteProcessMemory": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "20"
+        },
+        "ordinal": "946"
+      },
+      "KERNEL32.dll:WriteProfileSectionA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "947"
+      },
+      "KERNEL32.dll:WriteProfileSectionW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "948"
+      },
+      "KERNEL32.dll:WriteProfileStringA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "949"
+      },
+      "KERNEL32.dll:WriteProfileStringW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "950"
+      },
+      "KERNEL32.dll:WriteTapemark": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "16"
+        },
+        "ordinal": "951"
+      },
+      "KERNEL32.dll:ZombifyActCtx": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "952"
+      },
+      "KERNEL32.dll:_lclose": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "955"
+      },
+      "KERNEL32.dll:_lcreat": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "956"
+      },
+      "KERNEL32.dll:_llseek": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "957"
+      },
+      "KERNEL32.dll:_lopen": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "958"
+      },
+      "KERNEL32.dll:_lread": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "959"
+      },
+      "KERNEL32.dll:_lwrite": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "960"
+      },
+      "KERNEL32.dll:lstrcatA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "962"
+      },
+      "KERNEL32.dll:lstrcatW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "963"
+      },
+      "KERNEL32.dll:lstrcmpA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "965"
+      },
+      "KERNEL32.dll:lstrcmpW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "966"
+      },
+      "KERNEL32.dll:lstrcmpiA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "968"
+      },
+      "KERNEL32.dll:lstrcmpiW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "969"
+      },
+      "KERNEL32.dll:lstrcpyA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "971"
+      },
+      "KERNEL32.dll:lstrcpyW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "8"
+        },
+        "ordinal": "972"
+      },
+      "KERNEL32.dll:lstrcpynA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "974"
+      },
+      "KERNEL32.dll:lstrcpynW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "12"
+        },
+        "ordinal": "975"
+      },
+      "KERNEL32.dll:lstrlenA": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "977"
+      },
+      "KERNEL32.dll:lstrlenW": {
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        },
+        "ordinal": "978"
+      },
+      "KERNEL32.dll:FreeEnvironmentStringsW": {
+        "cmt": "manual",
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        }
+      },
+      "KERNEL32.dll:FreeEnvironmentStringsA": {
+        "cmt": "manual",
+        "function": {
+          "convention": "stdcall",
+          "delta": "4"
+        }
+      },
+      "KERNEL32.dll:GetEnvironmentStrings": {
+        "cmt": "manual",
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        }
+      },
+      "KERNEL32.dll:GetEnvironmentStringsW": {
+        "cmt": "manual",
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        }
+      },
+      "KERNEL32.dll:GetEnvironmentStringsA": {
+        "cmt": "manual",
+        "function": {
+          "convention": "stdcall",
+          "delta": "0"
+        }
+      }
+    }
+  }
+}

@@ -1,10 +1,9 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/format.hpp>
 
 #include <rose.h>
 #include <BinarySymbolicExpr.h>
-#include <YicesSolver.h>
 #include <integerOps.h>
 
 #include "semantics.hpp"
@@ -14,13 +13,13 @@
 #include "enums.hpp"
 #include "descriptors.hpp"
 
+namespace pharos {
+
 // This is where we construct the semantics logging facility.
 Sawyer::Message::Facility slog("FSEM");
 
 // Used in a couple of places now that we're putting multiple values in an ITE expression.
-using rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
-
-typedef rose::BinaryAnalysis::YicesSolver YicesSolver;
+using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
 
 // A naughty global variable for controlling the number of times we spew about discarded
 // expressions.  Used in SymbolicValue::scopy().
@@ -81,7 +80,8 @@ SymbolicValuePtr SymbolicValue::incomplete(size_t nbits) {
 // Another situation that warrants special treatment is values that are defined by the loader
 // (primarily during import resolution).  When this flag is set, it prompts additional analysis
 // to determine if the correct import can be determined.
-SymbolicValuePtr SymbolicValue::loader_defined(size_t nbits) {
+SymbolicValuePtr SymbolicValue::loader_defined() {
+  size_t nbits = global_descriptor_set->get_arch_bits();
   SymbolicValuePtr retval = SymbolicValuePtr(new SymbolicValue(nbits));
   TreeNodePtr tn = LeafNode::createVariable(nbits, "", LOADER_DEFINED);
   retval->set_expression(tn);
@@ -103,35 +103,6 @@ bool SymbolicValue::is_loader_defined() const {
 // This method tests for the presence of the SEI defined INCOMPLETE bit.
 bool SymbolicValue::is_incomplete() const {
   return (get_expression()->flags() & INCOMPLETE);
-}
-
-// Moved into semantics.cpp so we can experiment more easily...
-//#define MODIFIER_DEBUGGING
-const InsnSet& SymbolicValue::get_modifiers() const { // definition
-#ifdef MODIFIER_DEBUGGING
-  const InsnSet& edefs = get_defining_instructions();
-  if (modifiers != edefs) {
-    OINFO << "GM:"; // ugly: << " " << *get_expression() << ":";
-    BOOST_FOREACH(SgAsmInstruction* insn, modifiers) {
-      if (edefs.find(insn) == edefs.end()) {
-        OINFO << " +m=" << addr_str(insn->get_address());
-      }
-    }
-    BOOST_FOREACH(SgAsmInstruction* insn, edefs) {
-      if (modifiers.find(insn) == modifiers.end()) {
-        OINFO << " +d=" << addr_str(insn->get_address());
-      }
-    }
-    OINFO << LEND;
-  }
-#endif
-
-  // This is the bottom line.   Return our list or ROSE's list...
-#ifdef OUR_MODIFIERS
-  return modifiers;
-#else
-  return get_defining_instructions();
-#endif
 }
 
 #ifdef CUSTOM_ROSE
@@ -184,16 +155,20 @@ SymbolicValuePtr SymbolicValue::scopy(size_t new_width) const {
 
 void SymbolicValue::discard_oversized_expression() {
   size_t nnodes = get_expression()->nNodes();
-  if (nnodes > 5000) {
-    GTRACE << "Very big expression has " << nnodes << " nodes." << LEND;
-  }
+  //if (nnodes > 5000) {
+  //  GTRACE << "Very big expression has " << nnodes << " nodes." << LEND;
+  //}
 
-  if (nnodes > 50000) {
+  // There's almost never expressions with more than 50,000 nodes. But when there are,
+  // performance tanks horribly, taking 2-3 seconds to process a single instruction.  Since
+  // expressions with more than about 500 nodes are of very questionable value anyway, let's
+  // discard any that's larger than that low threshold.
+  if (nnodes > 500) {
     // Almost/all of the discarded expressions are a single bit.  Situtations where the value
     // is larger than one bit might be worth investigating, but don't elevate the error past a
     // warning, because ordinary users don't care about this.
     if (get_width() != 1) {
-      GDEBUG << "Discarding non-boolean expression of " << get_width() << " bits." << LEND;
+      GTRACE << "Discarding non-boolean expression of " << get_width() << " bits." << LEND;
     }
     // This is unwise now that the limit is much higher.
     //SDEBUG << "Discarded expression was:" << *this << LEND;
@@ -226,7 +201,7 @@ bool operator==(const SymbolicValue& a, const SymbolicValue& b) {
 
 // No longer used, but keeping in case we need this code in the future.  The correct
 // implementation would presumably look something like this... (completely untested).
-#define ULT_OP rose::BinaryAnalysis::SymbolicExpr::OP_ULT
+#define ULT_OP Rose::BinaryAnalysis::SymbolicExpr::OP_ULT
 bool operator<(const SymbolicValue& a, const SymbolicValue& b) {
   OERROR << "Using untested SymbolicValue::operator<() code!" << LEND;
   TreeNodePtr aexpr = a.get_expression();
@@ -240,10 +215,11 @@ bool operator<(const SymbolicValue& a, const SymbolicValue& b) {
       else return false;
     }
 
-    YicesSolver solver;
+    //typedef Rose::BinaryAnalysis::YicesSolver YicesSolver;
+    //YicesSolver solver;
     //solver.set_debug(stderr);
-    solver.set_linkage(YicesSolver::LM_EXECUTABLE);
-    if (solver.satisfiable(lt)) return true;
+    //solver.set_linkage(YicesSolver::LM_EXECUTABLE);
+    //if (solver.satisfiable(lt)) return true;
   }
   catch(...) {
     OERROR << "Caught unhandled while comparing symbolic values!" << LEND;
@@ -258,7 +234,7 @@ bool operator<(const SymbolicValue& a, const SymbolicValue& b) {
 void extract_possible_values(const TreeNodePtr& tn, TreeNodePtrSet& s) {
   const InternalNodePtr in = tn->isInteriorNode();
   if (in && in->getOperator() == OP_ITE) {
-    rose::BinaryAnalysis::SymbolicExpr::Nodes children = in->children();
+    Rose::BinaryAnalysis::SymbolicExpr::Nodes children = in->children();
     extract_possible_values(children[1], s);
     extract_possible_values(children[2], s);
   }
@@ -289,7 +265,7 @@ bool treenode_contains_ite(const TreeNodePtr& tn) {
   if (in) {
     if (in->getOperator() == OP_ITE) return true;
     else {
-      BOOST_FOREACH(const TreeNodePtr& cn, in->children()) {
+      for (const TreeNodePtr& cn : in->children()) {
         if (treenode_contains_ite(cn)) return true;
       }
     }
@@ -308,8 +284,8 @@ bool SymbolicValue::can_be_equal(SymbolicValuePtr other) {
   // Handle the most common case first as a performance improvement?
   if (get_expression()->isEquivalentTo(other->get_expression())) return true;
 
-  BOOST_FOREACH(const TreeNodePtr& mv, get_possible_values()) {
-    BOOST_FOREACH(const TreeNodePtr& ov, other->get_possible_values()) {
+  for (const TreeNodePtr& mv : get_possible_values()) {
+    for (const TreeNodePtr& ov : other->get_possible_values()) {
       if (mv->isEquivalentTo(ov)) return true;
     }
   }
@@ -363,9 +339,9 @@ boost::optional<int64_t> SymbolicValue::get_stack_const() const {
     }
     return boost::none;
   }
-  else if (inode->getOperator() == rose::BinaryAnalysis::SymbolicExpr::OP_ADD) {
+  else if (inode->getOperator() == Rose::BinaryAnalysis::SymbolicExpr::OP_ADD) {
     //SDEBUG << "Found add operator." << LEND;
-    BOOST_FOREACH(const TreeNodePtr tp, inode->children()) {
+    for (const TreeNodePtr tp : inode->children()) {
       LeafNodePtr lp = tp->isLeafNode();
       //if (lp) {
       //  SDEBUG << "Leaf Node in stack delta eval is: " << *lp << LEND;
@@ -384,8 +360,11 @@ boost::optional<int64_t> SymbolicValue::get_stack_const() const {
         delta += get_signed_value(lp);
         //SDEBUG << "Increased delta to: " << delta << LEND;
       }
-      // Otherwise, check to see if this variable is the expected esp_0.
-      else {
+      else if (lp->isVariable() && (lp->flags() & UNKNOWN_STACK_DELTA)) {
+        // Ignore unknown stack delta variables
+        // do nothing
+      } else {
+        // Otherwise, check to see if this variable is the expected esp_0.
         const std::string& cmt = lp->comment();
         //SDEBUG << "Leaf node comment is: '" << cmt << "'" << LEND;
         if (cmt.empty()) confused = true;
@@ -491,9 +470,6 @@ void SymbolicValue::merge(const SymbolicValuePtr& other, const SymbolicValuePtr&
   STRACE << "SymbolicValue::merge() other=" << *other << LEND;
 
   this->defs.insert(other->defs.begin(), other->defs.end());
-#ifdef OUR_MODIFIERS
-  this->modifiers.insert(other->modifiers.begin(), other->modifiers.end());
-#endif
 
   // If my expression is already bottom, there's not much point in worrying about the other
   // value.  Switched to use ROSE bottom values.
@@ -532,28 +508,8 @@ void SymbolicValue::merge(const SymbolicValuePtr& other, const SymbolicValuePtr&
 }
 
 void SymbolicValue::print(std::ostream &o, RoseFormatter& fmt) const {
-  // Display the modifiers.
-  o << "mods={";
-  // It is occasionally useful to disable modifiers when comparing outputs.
-  // By default, this code should be enabled however.
-#if 1
-  size_t nmods=0;
-#ifndef OUR_MODIFIERS
-  // This is a hackish way to preserve the sames output.  The entire modifiers printing loop
-  // should really be removed when we quit maintaining our own modifiers list.
-  InsnSet modifiers = get_defining_instructions();
-#endif
-  for (InsnSet::const_iterator mi=modifiers.begin(); mi!=modifiers.end(); ++mi, ++nmods) {
-    SgAsmInstruction *insn = *mi;
-    if (insn!=NULL)
-      o <<(nmods>0?",":"") << StringUtility::addrToString(insn->get_address());
-  }
-#endif
-  o <<"} ";
-
   // Call our parent print routine.
   ParentSValue::print(o, fmt);
-  //o << " myexpr=" << *expr <<"}";
 }
 
 //==============================================================================================
@@ -596,24 +552,27 @@ void AbstractAccess::print(std::ostream &o) const {
 void AbstractAccess::debug(std::ostream &o) const {
   o << str() << LEND;
   o << "Writers: " << LEND;
-  BOOST_FOREACH(SgAsmInstruction* insn, latest_writers) {
+  for (const SgAsmInstruction* insn : latest_writers) {
     o << debug_instruction(insn) << LEND;
   }
 }
 
 void AbstractAccess::set_latest_writers(SymbolicStatePtr& state) {
   // Set the modifiers based on inspecting the current abstract access and the passed state.
-  // Disabled because our memory infrastructure doesn't support writers yet. :-(
-  // Our std::set<rose_addr_t>, compared to ROSE's Swayer containers...
+  // We're converting from a Sawyer container of rose_addr_t to an InsnSet as well, because
+  // that's more convenient in our code.
   if (isMemReference) {
     SymbolicMemoryStatePtr mstate = state->get_memory_state();
     MemoryCellPtr cell = mstate->findCell(memory_address);
-    // This should never happen.
+    // This happens when the expression is an ITE or the program accesses unspecified
+    // addresses.   The latter probably means that the analysis is bad, but we can't
+    // complain too loudly here. :-(   More thought will probably be required.
     if (!cell) {
-      GFATAL << "No memory cell for address:" << *memory_address << LEND;
+      GDEBUG << "No memory cell for address:" << *memory_address << LEND;
       return;
     }
-    // Now get the writers for just this one cell.
+    // Now get the writers for just this one cell.  There's been some recent email discussion
+    // with Robb that this approach is defective, and there's a fix pending in ROSE.
     const MemoryCell::AddressSet& writers = cell->getWriters();
     for (rose_addr_t addr : writers.values()) {
       //OINFO << "Latest memory writer for " << str() << " was: " << addr_str(addr) << LEND;
@@ -633,15 +592,18 @@ void AbstractAccess::set_latest_writers(SymbolicStatePtr& state) {
   }
 }
 
+} // namespace pharos
 
 //==============================================================================================
 //==============================================================================================
 
 // This is a ghetto way to override these simplifiers.  I've talked to Robb about these, and
 // they improved versions should show up in ROSE before too much longer.  Review again in NEWWAY.
-namespace rose {
+namespace Rose {
 namespace BinaryAnalysis {
 namespace SymbolicExpr {
+
+using namespace pharos;
 
   TreeNodePtr
   IteSimplifier::rewrite(InternalNode *inode) const
@@ -780,16 +742,10 @@ namespace SymbolicExpr {
       if (ite) {
         //OINFO << "Reordering: inode=" << *inode << LEND;
 
-        Nodes values1;
-        values1.push_back(ite->child(1));
-        values1.push_back(other);
-        TreeNodePtr add1 = InternalNode::create(inode->nBits(), OP_ADD, values1);
+        TreeNodePtr add1 = InternalNode::create(inode->nBits(), OP_ADD, ite->child(1), other);
         //OINFO << "Add1: " << *add1 << LEND;
 
-        Nodes values2;
-        values2.push_back(ite->child(2));
-        values2.push_back(other);
-        TreeNodePtr add2 = InternalNode::create(inode->nBits(), OP_ADD, values2);
+        TreeNodePtr add2 = InternalNode::create(inode->nBits(), OP_ADD, ite->child(2), other);
         //OINFO << "Add2: " << *add2 << LEND;
 
         TreeNodePtr new_ite_expr = InternalNode::create(inode->nBits(),
@@ -879,9 +835,9 @@ namespace SymbolicExpr {
     return InternalNode::create(inode->nBits(), OP_ADD, children, inode->comment());
   }
 
-}
-}
-}
+} // namespace SymbolicExpr
+} // namespace BinaryAnalysis
+} // namespace rose
 
 /* Local Variables:   */
 /* mode: c++          */

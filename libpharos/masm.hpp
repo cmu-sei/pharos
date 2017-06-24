@@ -1,4 +1,4 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_MASM_H
 #define Pharos_MASM_H
@@ -9,25 +9,27 @@
 #include <rose.h>
 #include <AstTraversal.h>
 
+namespace pharos {
+
 // duplicative :-(
 typedef std::set<rose_addr_t> AddrSet;
 
 // ======================================================================
 // A traversal class to build the label map.  A global instance of this
-// class is used to avoid having to pass 
+// class is used to avoid having to pass
 // ======================================================================
 typedef std::map<rose_addr_t, std::string> ImportLabelMap;
-typedef rose::BinaryAnalysis::AsmUnparser::LabelMap RoseLabelMap;
+typedef Rose::BinaryAnalysis::AsmUnparser::LabelMap RoseLabelMap;
 
 class DebugLabelMap: public AstPreOrderTraversal
 {
   RoseLabelMap labels;
   ImportLabelMap imports;
- 
+
  public:
 
   DebugLabelMap() { }
-  DebugLabelMap(SgProject *p) { 
+  DebugLabelMap(SgProject *p) {
     this->traverse(p);
   }
   const RoseLabelMap* get_labels() { return &labels; }
@@ -74,12 +76,14 @@ public:
 // These are the support functions required to debug an instruction line.
 // Call them if they're useful, but I don't expect them to be.
 std::string debug_opcode_bytes(const SgUnsignedCharList& data, const unsigned int max_bytes);
-std::string masm_unparseX86Expression(SgAsmExpression *expr, 
+std::string masm_unparseX86Expression(SgAsmExpression *expr,
                                       const RoseLabelMap *labels = global_label_map.get_labels());
 std::string masm_unparseX86Expression(SgAsmExpression *expr, SgAsmx86Instruction *insn, bool leaMode,
                                       const RoseLabelMap *labels = global_label_map.get_labels());
 std::string masm_x86TypeToPtrName(SgAsmType* ty);
 std::string masm_x86ValToLabel(uint64_t val, const RoseLabelMap *labels = global_label_map.get_labels());
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

@@ -1,0 +1,153 @@
+This file documents the facts currently exported from OOAnalyzer in human readable terms.
+
+possibleConstructor(Method).
+
+  Method returns ECX in EAX (and meets C++ ordering expectations for a constructor).
+
+uninitializedReads(Method).
+
+  Method has uninitialized reads that are often (but not always) indicative that Method is not
+  a constructor.  Specifically, the method reads members from the object that are not
+  initialized in the local evaluation context.  The most significant (only?) case that this
+  algorithm does not test for is reads of members that were initialized by a call to anotehr
+  method such as a parent constructor.
+
+possibleDeletingDestructor(Method).
+
+  Method returns ECX in EAX (and meets C++ ordering expectations for a destructor?).
+
+possibleRealDestructor(Method).
+
+  Method returns ECX in EAX (and meets C++ ordering expectations for a destructor?).
+
+possibleVFTableWrite(Insn, Method, Offset, VFTable).
+
+  Instruction Insn in Method writes a possible virtual function table pointer (VFTable) at Offset
+  into the current object for the Method.
+
+possibleVFTableEntry(VFTable, Offset, Address).
+
+  The possible virtual function table at address VFTable, has an entry at Offset that points to
+  Address.   The address pointed to may or may not have a corresponding function or method.
+
+possibleVBTableWrite(Insn, Method, Offset, VBTable).
+
+  Instruction Insn in Method writes a possible virtual base table pointer (VBTable) at Offset
+  into the current object for the Method.
+
+possibleVBTableEntry(VBTable, Offset, Value).
+
+  The possible virtual base table at address VBTable, has an entry at Offset that contains
+  Value.  The value is not a pointer, but an offset in the object (small negative and postive
+  values are exepected).
+
+funcOffset(Insn, Caller, Callee, Offset).
+
+  Instruction Insn in method Caller calls Callee passing Offset of the current object in Caller
+  as the this-pointer to Callee.
+
+methodMemberAccess(Insn, Method, Offset, Size).
+
+  Instruction Insn in Method accesses the current Size bytes of memory at Offset in the
+  currrent this-pointer.
+
+thisPtrAllocation(Insn, Function, ThisPtr, Type, Size).
+
+  Instruction Insn in Function allocates Size bytes of memory of Type and assigns it to the
+  specified ThisPtr. Type is one of: "type_Heap", "type_Unknown", "type_Stack", "type_Global",
+  or "type_Param".  It's likely that only "type_Heap" is exported as a Prolog fact currently.
+
+thisPtrUsage(Insn, Function, ThisPtr, Method).
+
+  Instruction Insn in Function calls Method on the object represented by ThisPtr.  The ThisPtr
+  field can be tested for equivalence to other this pointers, but is otherwise opaque (it's a
+  hash of the TreeNode values representing the object pointer).
+
+possibleVirtualFunctionCall(Insn, Function, ThisPtr, VTableOffset, VFuncOffset).
+
+  Instruction Insn in Function makes a call that structurally resembles a virtual function
+  call.  VTableOffset is the offset in the object where the virtual function table is located,
+  and VFuncOffset is the offset into the virtual function table (provided that call is in fact
+  a virtual function call).
+
+thisPtrOffset(ThisPtr1, Offset, ThisPtr2).
+
+  When Offset is added to ThisPtr1, it yields ThisPtr2.  Typically this means that ThisPtr2 is
+  a pointer to an embedded object of base class at the given offset within ThisPtr1.
+
+preceeds(A, B).
+
+  Instruction A can be executed before instruction B in the control flow graph.  A and B are
+  both the last instructions in a ROSE-style basic block. These facts are intended to be used
+  in conjunction with ThisPtrUsage facts to determine whether a method can be a constructor or
+  destructor based on method call order.
+
+purecall(Address).
+
+  The method/function/import at Address is an implementation of the purecall stub that Visual
+  Studio uses to mark virtual methods on abstract base classes that do not have implementations.
+
+rTTICompleteObjectLocator(Pointer, Address, TDAddress, CHDAddress, Offset, CDOffset)
+
+  There's a pointer to an RTTI Complete Object Locator data structure at Pointer (address just
+  before the VFTable) which points to Address which is where the RTTI Complete Object Locator
+  data structure is located in moemory.  TDAddress and CHDAddress are the addresses of the
+  corresponding Type Descriptor and Class Hierarchy Descriptor respectively.  Offset is
+  described as the offset of this VFTable in the class.  CDOffset is described as the
+  constructor displacement offset (?).  This object occurs once per VFTable (not once per
+  class).
+
+rTTITypeDescriptor(Address, VFTable, Name)
+
+  There's an RTTI Type Descriptor at Address.  The virtual function table is at address VFTable
+  and the Name of the class is specified (in the mangled name format).
+
+rTTIClassHierarchyDescriptor(Address, Attributes, BaseClasses)
+
+  There's an RTTI Class Hierarchy Descriptor at Address. The Attributes are reported to be two
+  individual bits.  If bit zero is set there is multiple inheritance.  If bit one set, there is
+  virtual inheritance.  BaseClasses is a list of RTTI Base Class Descriptor addresses.
+
+rTTIBaseClassDescriptor(Address, TypeDescriptorAddress, NumBases, WhereM, WhereP, WhereV, 
+                        Attributes, ClassHierarchyDescriptor)
+
+  There's an RTTI Base Class Descriptor at Address. The type of the base class is described by
+  the RTTI Type Descriptor at TypeDescriptorAddress.  WhereM, WhereP and WhereV describe the
+  location of the base class relative to the derived class.  WhereM is the member displacement,
+  WhereP is the vtable displacement, WhereV is the displacement inside the vtable.  The class
+  hierarchy descriptor parameter is an undocumented extension that appears to describe this
+  particular base class' hierarchy.
+
+rTTIInformation(RTTIAddress, ClassName).
+
+  There's a RTTI data structure at RTTIAddress.  The class name provided by the RTTI data
+  structure is ClassName.  Perhaps this fact should be changed so that the virtual function
+  table address is used instead (because it's always one pointer size greater than RTTIAddress.
+
+symbolGlobalObject(Address, ClassName, VariableName).
+
+  There's a global object at Address of type ClassName with the name VariableName.  This fact
+  is currently unused because it's unclear how the ClassName/Address can be connected to other
+  facts, and we're not currently reporting global object instances.
+
+symbolClass(Address, ClassName).
+
+  The method at the Address is known to be on the class represented by ClassName.  This
+  information comes from symbols such as imports by name, but might also come from embedded
+  debugging information in otehr architectures and file formats.
+
+  Ideally the ClassName would be represented in the same mangled name format as the names that
+  appear in the RTTI data structures, but that's probably not convenient in the short term.  In
+  the meantime, the only guarantee would be that two classes with the same name are the same
+  class.
+
+symbolProperty(Address, property).
+
+  The method at the Address is known to have the stated property.  Property would be one of
+  'constructor', 'realDestructor', 'deletingDestructor', or 'virtual'. 
+
+/* Local Variables:   */
+/* mode: text         */
+/* fill-column:    95 */
+/* comment-column: 0  */
+/* End:               */

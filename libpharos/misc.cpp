@@ -1,14 +1,12 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 // For timing our execution.
 #include <time.h>
 #include <unistd.h>
 
 #include <rose.h>
-#include <YicesSolver.h>
 #include <BinaryLoader.h>
 
-#include <MemoryMap.h>
 #include <Sawyer/ProgressBar.h>
 #include <integerOps.h>
 
@@ -16,16 +14,80 @@
 #include "options.hpp"
 #include "partitioner.hpp"
 #include "util.hpp"
+#include "matcher.hpp"
+#include "semantics.hpp"
 
+#include <boost/algorithm/string.hpp> // for starts_with
+#include <boost/optional/optional_io.hpp>
+#include <boost/format.hpp>
+#include <chrono>
+
+#ifdef __GNUC__
+// for non-portable backtrace code
 #include <cxxabi.h>
 extern "C" {
 #include <execinfo.h>
+}
+#endif // __GNUC__
+
+namespace pharos {
+
+using Rose::BinaryAnalysis::BinaryLoader;
+
+using Rose::BinaryAnalysis::SymbolicExpr::OP_ADD;
+using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
+
+TreeNodePtr operator+(const TreeNodePtr & a, int64_t b)
+{
+  constexpr auto bbits = sizeof(b) * CHAR_BIT;
+  if (a) {
+    auto bv = Sawyer::Container::BitVector(a->nBits());
+    bv.fromInteger(uint64_t(b));
+    if (a->nBits() > bbits) {
+      bv.signExtend(bv.hull(),
+                    Sawyer::Container::BitVector::BitRange::baseSize(0, bbits));
+    }
+    auto c = LeafNode::createConstant(bv);
+    return InternalNode::create(a->nBits(), OP_ADD, a, c);
+  }
+  return LeafNode::createInteger(bbits, b);
+}
+
+// Here's a helper function for cleaning up the mess that is stack delta constants.  Because we
+// chose to initialize ESP to zero rather than a variable, it's hard to tell what's a stack
+// delta and what's a constant address.  The purpose of putting this code here is much like the
+// functions above for architecture.  It gives us some specific text to search for to find
+// places where we're obviously touching this bit of brokenness.  See also get_stack_const() in
+// semantics.hpp.
+bool filter_stack(rose_addr_t addr) {
+  if (addr > 0x0000FFFF && addr < 0x80000000) return true;
+  return false;
+}
+
+// Convert an SgUnsignedCharList into a hex C++ string.
+std::string MyHex(const SgUnsignedCharList& data) {
+  char buffer[8];
+  std::string result = "";
+
+  size_t n = data.size();
+  for (size_t i = 0; i < n; i++) {
+    sprintf(buffer, "%02X", data[i]);
+    result += buffer;
+  }
+  return result;
+}
+
+// Cory is trying to enforce some consistency in how we print addresses so that we can control
+// the format by changing only one (or at least just a few) places in the code.  There's no
+// implicit claim that boost::format("0x%08X") is the "correct" answer, just that there should
+// be some consistency, and that the whole std::hex / std::dec thing sucks...
+std::string addr_str(rose_addr_t addr) {
+  return boost::str(boost::format("0x%08X") % addr);
 }
 
 // Get the message levels from Sawyer::Message::Common.
 using namespace Sawyer::Message::Common;
 
-typedef rose::BinaryAnalysis::YicesSolver YicesSolver;
 typedef std::vector<rose_addr_t> AddrVector;
 
 // This ought to be a method on Register Descriptor...
@@ -37,24 +99,9 @@ bool RegisterDescriptorLtCmp(const RegisterDescriptor a, const RegisterDescripto
   } else return a.get_major() < b.get_major();
 }
 
-// Compute the elapsed time between two timespecs.
-double tdiff(timespec start, timespec end)
-{
-  timespec temp;
-  if ((end.tv_nsec - start.tv_nsec) < 0) {
-    temp.tv_sec = end.tv_sec - start.tv_sec - 1;
-    temp.tv_nsec = 1000000000 + end.tv_nsec - start.tv_nsec;
-  } else {
-    temp.tv_sec = end.tv_sec - start.tv_sec;
-    temp.tv_nsec = end.tv_nsec - start.tv_nsec;
-  }
-  double elapsed = temp.tv_sec + (double(temp.tv_nsec) / 1000000000.0);
-  return elapsed;
-}
-
-void customize_message_facility(ProgOptVarMap& vm, Sawyer::Message::Facility facility, std::string name) {
+void customize_message_facility(const ProgOptVarMap& vm, Sawyer::Message::Facility facility, std::string name) {
   // Create a sink associated with standard output.
-  Sawyer::Message::FdSinkPtr mout = Sawyer::Message::FdSink::instance(1);
+  Sawyer::Message::FdSinkPtr mout = Sawyer::Message::FdSink::instance(global_logging_fileno);
   if (!color_terminal() || vm.count("batch")) {
     ODEBUG << "Forcing non-color logging." << LEND;
     mout->overridePropertiesNS().useColor = false;
@@ -68,383 +115,6 @@ void customize_message_facility(ProgOptVarMap& vm, Sawyer::Message::Facility fac
   // Get the options logging facility working with the standard options.
   facility.renameStreams(name);
   facility.initStreams(mout->prefix(prefix));
-}
-
-static SgAsmBlock *
-buildAst(P2::Engine &engine, const P2::Partitioner &partitioner) {
-    static SgAsmBlock *gblock = NULL;
-    if (NULL==gblock)
-        gblock = P2::Modules::buildAst(partitioner, engine.interpretation());
-    return gblock;
-}
-
-SgAsmInterpretation* get_partitioner2_interpretation(ProgOptVarMap& vm) {
-  timespec start_ts;
-
-  clock_gettime(CLOCK_REALTIME, &start_ts);
-  OINFO << "Using experimental version two of function partitioner!" << LEND;
-
-  // Use a partitioning engine since this makes this tool much easier to write.
-  //CERTEngine engine;
-  P2::Engine engine;
-  engine.memoryIsExecutable(true);
-  engine.deExecuteZeros(64);
-  // It's VERY unclear right now whether enabling semantics helps or hinders.  There are some
-  // known bugs in enabling it, probably because it hasn't been well tested (Robb has it off by
-  // default because of the performance impact).  On the Objdigger test suite, it doesn't
-  // impact the object detections regardless of the setting, but it does add and remove a wide
-  // variety of other messages about unexpected conditions.
-  engine.usingSemantics(true);
-
-  // Enable Robb's standard thunk splitting logic.
-  engine.splittingThunks(true);
-  // Assume that functions always return.
-  engine.functionReturnAnalysis(rose::BinaryAnalysis::Partitioner2::Engine::MAYRETURN_ALWAYS_YES);
-
-  // Parse the command-line
-  std::vector<std::string> specimen_names;
-  specimen_names.push_back(vm["file"].as<std::string>());
-
-  if (specimen_names.empty())
-    throw std::runtime_error("no specimen specified; see --help");
-
-  // Load the specimen as raw data or an ELF or PE container.
-  MemoryMap map = engine.loadSpecimens(specimen_names);
-  SgAsmInterpretation *interp = engine.interpretation();
-  // Applies memoryIsExecutable and deExecutesZeros() settings.
-  engine.adjustMemoryMap();
-
-  // This changes the permissions of all segments in the program to add the permissions in the
-  // first parameter, and remove the permissions in the second parameter.
-  //engine.memoryMap().dump(std::cerr);
-  // Retired in favor of memoryisExecutable() below.
-  //engine.memoryMap().any().changeAccess(MemoryMap::READ_WRITE_EXECUTE, MemoryMap::NO_ACCESS);
-  //engine.memoryMap().dump(std::cerr);
-
-  // Create a partitioner that's tuned for a certain architecture, and then tune it even more
-  // depending on our command-line.
-  P2::Partitioner partitioner = engine.createPartitioner();
-  // Enable our custom CFG debugger.
-  // partitioner.cfgAdjustmentCallbacks().append(Monitor::instance());
-  size_t arch_bits = partitioner.instructionProvider().instructionPointerRegister().get_nbits();
-  if (arch_bits != 32) {
-    OFATAL << "Only 32-bit Windows PE executables are supported at this time." << LEND;
-    return NULL;
-  }
-
-  customize_message_facility(vm, P2::mlog, "PRT2");
-  P2::mlog[Sawyer::Message::FATAL].enable();
-  P2::mlog[Sawyer::Message::ERROR].enable();
-  P2::mlog[Sawyer::Message::MARCH].enable();
-  if (vm.count("pdebug")) {
-    ODEBUG << "Partitioner debugging enabled." << LEND;
-    // Set the time limit to zero seconds to report everything.
-    P2::mlog[Sawyer::Message::WARN].enable();
-    P2::mlog[Sawyer::Message::INFO].enable();
-    P2::mlog[Sawyer::Message::DEBUG].enable();
-  }
-
-  // Show what we'll be working on (stdout for the record, and diagnostics also)
-  //partitioner.memoryMap().dump(mlog[INFO]);
-
-  // Run the partitioner
-  engine.runPartitioner(partitioner);
-  // Enable progress bars only if the output is to a terminal...
-  if (isatty(1) && vm.count("batch") == 0) {
-    partitioner.enableProgressReports(true);
-  }
-  if (partitioner.functions().empty() && engine.startingVas().empty()) {
-    OINFO <<"no starting points for recursive disassembly; perhaps you need --start?\n";
-    return NULL;
-  }
-
-  // We should probably save an instruction provider in the global descriptor set instead of
-  // making a map of addresses to instructions in the global descriptor set.  Unfortunately,
-  // this approach is much less convenient in Partitioner1 than in Partitioner2, so it'll
-  // probably have to wait until we retire Partitioner1.
-
-  // global_descriptor_set.instruction_provider = &(partitioner.instructionProvider());
-  // Don't create new instructions after this point...
-  // global_descriptor_set.instruction_provider->disableDisassembler();
-
-  SgAsmBlock* block = buildAst(engine, partitioner);
-
-  GTRACE << "done calling partitioner2" << LEND;
-
-  GTRACE << "calling set_global_block" << LEND;
-  interp->set_global_block(block);
-  GTRACE << "done calling set_global_block, calling set_parent" << LEND;
-  block->set_parent(interp);
-  GTRACE << "done calling set_parent" << LEND;
-
-  timespec end_ts;
-  clock_gettime(CLOCK_REALTIME, &end_ts);
-  OINFO << "ROSE disassembly complete, " << tdiff(start_ts, end_ts) << " seconds elapsed." << LEND;
-
-  return interp;
-}
-
-// Build a ROSE project from a specified set of command line options.
-// This is now the "standard" way to initiliaze our front end.
-SgAsmInterpretation* get_interpretation(ProgOptVarMap& vm) {
-  bool p2 = vm.count("partitioner2");
-  if (!p2) {
-    auto v = vm.config().path_get("pharos.partitioner");
-    p2 = v && (v.Scalar() == "2");
-  }
-  if (p2) {
-    return get_partitioner2_interpretation(vm);
-  }
-
-  timespec start_ts;
-  clock_gettime(CLOCK_REALTIME, &start_ts);
-
-  // apparently passing the '-rose:partitioner_config FILENAME' along to
-  // frontend doesn't suffice, we need to configure our Partitioner as well?
-  //bool grab_partitioner_config(false);
-
-  SgProject *project = NULL;
-  SgAsmInterpretation *interp = NULL;
-  try {
-    GTRACE << "Calling ROSE frontend()" << LEND;
-    std::vector<std::string> args;
-    args.push_back("bogus");
-    args.push_back("-rose:read_executable_file_format_only");
-    args.push_back(vm["file"].as<std::string>());
-    // Annoyingly, this still issues assertions for things as predicatable as file names that
-    // do not exist.  When given a C++ source file, it asserts on not having been compiled with
-    // the C++ frontend.  If we want graceful error handling, we'll need to replace this call
-    // with our own code to do whatever it does...
-    project = frontend(args);
-    GTRACE << "Returned from calling ROSE frontend()" << LEND;
-    if (project == NULL) {
-      OFATAL << "Failed to obtain ROSE project handle." << LEND;
-      return NULL;
-    }
-
-    // Find the PE32 interpretation.  Skip the 16-bit DOS stub.
-    interp = GetWin32Interpretation(project);
-    if (interp == NULL) {
-      OFATAL << "Failed to obtain PE32 interpretation." << LEND;
-      return NULL;
-    }
-
-    // Create a sink associated with standard output.
-    Sawyer::Message::FdSinkPtr mout = Sawyer::Message::FdSink::instance(1);
-    if (!color_terminal() || vm.count("batch")) {
-      mout->overridePropertiesNS().useColor = false;
-    }
-    // Create a prefix object so that we can modify prefix properties.
-    Sawyer::Message::PrefixPtr prefix = Sawyer::Message::Prefix::instance();
-    prefix = prefix->showProgramName(false)->showElapsedTime(false);
-
-    // Clear the memory map if we already have one?  Cory asks, why would we have one?
-    MemoryMap *map = interp->get_map();
-    if (map != NULL) map->clear();
-    // (Re)load the file? It's unclear to Cory what this code really does...
-    BinaryLoader *loader = BinaryLoader::lookup(interp)->clone();
-
-    // Rename the loader streams so the formatting matches ours.
-    loader->mlog.renameStreams("LOAD");
-    // Apply the prefix to the loader log stream.
-    loader->mlog.initStreams(mout->prefix(prefix));
-    // Enable errors and warnings?  Not needed?
-    loader->mlog[Sawyer::Message::FATAL].enable();
-    loader->mlog[Sawyer::Message::ERROR].enable();
-    // While MARCH is still in INFO, we need this for compatability.
-    loader->mlog[Sawyer::Message::WARN].enable();
-    loader->mlog[Sawyer::Message::INFO].enable();
-
-    if (vm.count("ldebug")) {
-      // Loader debugging is currently broken until we learn more about Sawyer.
-      // Log loader messages to standard out (although in Robb's format, not ours).
-      //loader->mlog.initStreams(Sawyer::Message::FdSink::instance(1));
-    }
-
-    // Make the progress bar a little more responsive...
-    Sawyer::ProgressBarSettings::initialDelay(2.0);
-    Sawyer::ProgressBarSettings::minimumUpdateInterval(0.5);
-
-    loader->set_perform_remap(true);
-    loader->load(interp);
-
-    // Build (clone?) the disassembler
-    GTRACE << "calling ROSE Disassembler::lookup" << LEND;
-    RoseDisassembler *disassembler = RoseDisassembler::lookup(interp)->clone();
-    GTRACE << "returned from calling ROSE Disassembler::lookup" << LEND;
-    GTRACE << "calling ROSE Disassembler::set_search, etc" << LEND;
-    if (disassembler->get_wordsize() != 4) {
-      OFATAL << "Only 32-bit Windows PE executables are supported at this time." << LEND;
-      return NULL;
-    }
-
-    // Now get the map for real, and complain if we can't.
-    map = interp->get_map();
-    if (map == NULL) {
-      OFATAL << "Failed to get memory map." << LEND;
-      return NULL;
-    }
-
-    unsigned insn_search = RoseDisassembler::SEARCH_DEFAULT; // FUNCSYMS + FOLLOWING
-    // insn_search |= Disassembler::SEARCH_IMMEDIATE;
-    // insn_search |= Disassembler::SEARCH_NONEXE;
-    // insn_search |= Disassembler::SEARCH_UNUSED;
-    if (vm.count("dsearch")) {
-      BOOST_FOREACH(std::string kw, vm["dsearch"].as<StrVector>()) {
-        ODEBUG << "Enabling disassembler search criteria '" << kw << "'... (not really)."<< LEND;
-      }
-    }
-
-    disassembler->set_search(insn_search);
-    disassembler->set_alignment(1); // what does this do?
-
-    // Rename the disasembler streams so the formatting matches ours.
-    disassembler->mlog.renameStreams("DISA");
-    // Apply the prefix to the disassembler log streams.
-    disassembler->mlog.initStreams(mout->prefix(prefix));
-    // Enable errors and warnings?  Not needed?
-    disassembler->mlog[Sawyer::Message::FATAL].enable();
-    disassembler->mlog[Sawyer::Message::ERROR].enable();
-    // Enable progress bars only if the output is to a terminal...
-    if (isatty(1) && vm.count("batch") == 0) {
-      disassembler->mlog[Sawyer::Message::MARCH].enable();
-    }
-
-    if (vm.count("ddebug")) {
-      ODEBUG << "Disassembler debugging enabled." << LEND;
-      // Set the time limit to zero seconds to report everything.
-      disassembler->set_progress_reporting(0.0);
-      disassembler->mlog[Sawyer::Message::WARN].enable();
-      disassembler->mlog[Sawyer::Message::INFO].enable();
-    }
-    else {
-      disassembler->set_progress_reporting(120.0);
-    }
-
-    // We want the disassembler to look at memory addresses that have ANY permission, not just
-    // those that are marked executable.  So we do this by default, unless the user requests
-    // that we respect permissions.  This is further complicated by the fact that the argument
-    // to set_protection() is a MASK for the required bits, and ROSE defaults to respecting,
-    // rather than ignoring...
-    if (vm.count("respect_protection") == 0) {
-      disassembler->set_protection(0);
-    }
-
-    GTRACE << "returned from calling ROSE Disassembler::set_search, etc" << LEND;
-
-    GTRACE << "setting up the partitioner" << LEND;
-    // set up the partitioner
-    RosePartitioner *partitioner(NULL);
-    bool stockpart = vm.count("stockpart");
-    if (!stockpart) {
-      auto v = vm.config()["partitioner"];
-      stockpart = v && (v.Scalar() == "stock");
-    }
-    if (stockpart) {
-      ODEBUG << "Using stock ROSE partitioner instead of custom partitioner." << LEND;
-      partitioner = new RosePartitioner();
-    }
-    else {
-      partitioner = new CERTPartitioner();
-    }
-
-    //unsigned func_search = SgAsmFunction::FUNC_CALL_TARGET |
-    // SgAsmFunction::FUNC_CALL_INSN | SgAsmFunction::FUNC_ENTRY_POINT |
-    // SgAsmFunction::FUNC_IMPORT | SgAsmFunction::FUNC_SYMBOL;
-    unsigned func_search = SgAsmFunction::FUNC_DEFAULT;
-    if (vm.count("psearch")) {
-      BOOST_FOREACH(std::string kw, vm["psearch"].as<StrVector>()) {
-        ODEBUG << "Enabling partitioner search criteria '" << kw << "'... (not really)."<< LEND;
-      }
-    }
-    partitioner->set_search(func_search);
-
-    if (vm.count("pconfig")) {
-      std::string pconfig = vm["pconfig"].as<std::string>();
-      OINFO << "Loading partitioner config file: " << pconfig << LEND;
-      partitioner->load_config(pconfig);
-    }
-    disassembler->set_partitioner(partitioner);
-
-    // Rename the disasembler streams so the formatting matches ours.
-    partitioner->mlog.renameStreams("PART");
-    // Apply the prefix to the partitioner log streams.
-    partitioner->mlog.initStreams(mout->prefix(prefix));
-    // Enable errors and warnings?  Not needed?
-    partitioner->mlog[Sawyer::Message::FATAL].enable();
-    partitioner->mlog[Sawyer::Message::ERROR].enable();
-    // Enable progress bars only if the output is to a terminal...
-    if (isatty(1) && vm.count("batch") == 0) {
-      partitioner->mlog[Sawyer::Message::MARCH].enable();
-    }
-
-    if (vm.count("pdebug")) {
-      ODEBUG << "Partitioner debugging enabled." << LEND;
-      // Set the time limit to zero seconds to report everything.
-      partitioner->set_progress_reporting(0.0);
-      partitioner->mlog[Sawyer::Message::WARN].enable();
-      partitioner->mlog[Sawyer::Message::INFO].enable();
-    }
-    else {
-      partitioner->set_progress_reporting(120.0);
-    }
-
-    // Configure the partitioner logging.
-
-    // It appears that this code forces the creation of certain functions by the disassembler.
-    // If that's true we should probably be seeding it with more than just the interpretation
-    // enty points.  For example, functions provided in the user's JSON configuration file.
-    // Cory also comments that this looks like it should be a partitioner extension, and not
-    // here now that we have our own partitioner.
-    GTRACE << "setting up the worklist" << LEND;
-    // Go through the PE headers and look for entry points
-    RoseDisassembler::AddressSet worklist;
-
-    const SgAsmGenericHeaderPtrList &headers = interp->get_headers()->get_headers();
-    for (SgAsmGenericHeaderPtrList::const_iterator hi=headers.begin(); hi!=headers.end(); ++hi) {
-      // Seed disassembler work list with entry addresses
-      SgRVAList entry_rvalist = (*hi)->get_entry_rvas();
-      for (size_t i=0; i<entry_rvalist.size(); i++) {
-        rose_addr_t entry_va = (*hi)->get_base_va() + entry_rvalist[i].get_rva();
-        worklist.insert(entry_va);
-        GTRACE << "Added entry_va " << addr_str(entry_va) << " to worklist." << LEND;
-      }
-
-      disassembler->search_function_symbols(&worklist, map, *hi);
-    }
-    GTRACE << "done setting up the worklist" << LEND;
-
-    GTRACE << "calling partitioner" << LEND;
-    SgAsmBlock *block  = partitioner->partition(interp, disassembler, map);
-    GTRACE << "done calling partitioner" << LEND;
-
-    // There's a new way to get the map of all VAs in program to instructions in the
-    // Partitioner2 system, and since we never used the old map anyway, I'm just disabling this
-    // features rather than porting it to the new code right now.
-    // RoseDisassembler::InstructionMap insns = partitioner->get_instructions();
-    // if (insnmap) *insnmap = insns;
-
-    // Link instructions into AST if possible
-    GTRACE << "calling set_global_block" << LEND;
-    interp->set_global_block(block);
-    GTRACE << "done calling set_global_block, calling set_parent" << LEND;
-    block->set_parent(interp);
-    GTRACE << "done calling set_parent" << LEND;
-
-    delete loader;
-    delete disassembler;
-    delete partitioner;
-
-  } catch (...) {
-    OFATAL << "Caught exception, Rose disassembly failure..." << LEND;
-    exit(2);
-  }
-
-  timespec end_ts;
-  clock_gettime(CLOCK_REALTIME, &end_ts);
-  OINFO << "ROSE disassembly complete, " << tdiff(start_ts, end_ts) << " seconds elapsed." << LEND;
-
-  return interp;
 }
 
 // This should be turned into a nicer utility function.
@@ -512,21 +182,6 @@ rose_addr_t insn_get_fallthru(SgAsmInstruction* insn) {
   return insn->get_address() + insn->get_raw_bytes().size();
 }
 
-// This is icky, but better to hide the ickness here than repeat it everywhere that we need
-// basic block successors.  The relationship between this and the instruction sucessors is
-// still very confusing, and so we'll probably replace this eventually anyway.
-AddrSet bb_get_successors(SgAsmBlock* bb) {
-  AddrSet result;
-  const SgAsmIntegerValuePtrList &targets = bb->get_successors();
-  for (SgAsmIntegerValuePtrList::const_iterator tit=targets.begin(); tit!=targets.end(); ++tit) {
-    SgAsmBlock *bb_successor = isSgAsmBlock((*tit)->get_baseNode());
-    // bb_sucessor was actualy NULL.  I'm not sure why!
-    if (bb_successor == NULL) continue;
-    result.insert(bb_successor->get_address());
-  }
-  return result;
-}
-
 // This is the counterpart to insn_get_fallthru(), except that here the intention is to return
 // the one address that is NOT the fallthru address.  For call instructions that call to
 // registers, this could be mutiple targets, but in the case of jumps, there should always be
@@ -535,13 +190,478 @@ AddrSet bb_get_successors(SgAsmBlock* bb) {
 rose_addr_t insn_get_branch_target(SgAsmInstruction* insn) {
   bool complete;
   rose_addr_t fallthru = insn_get_fallthru(insn);
-  BOOST_FOREACH(rose_addr_t target, insn->getSuccessors(&complete)) {
+  for (rose_addr_t target : insn->getSuccessors(&complete)) {
     GDEBUG << "INSN successor: " << addr_str(target) << LEND;
     if (target == fallthru) continue;
     else return target;
   }
   assert("No non-fall thru edges found.");
   return 0xDEADBEEF;
+}
+
+std::string insn_get_generic_category(SgAsmInstruction *insn) {
+  std::string result = "UNCAT"; // if we haven't singled something out yet...
+  // this code horribly x86 specific for now, but later needs to be able to handle ARM, etc.
+  // The categories themselves are of course generic, and hopefully comprehensive enough but
+  // can be expanded later.
+
+  // okay, I think a lot of these comparisons for x86 can be simplified by using the first
+  // couple of chars in the mnemonic much of the time, so let's start there:
+  std::string mnemonic = insn->get_mnemonic(); // this comes back lowercase, but may want to force that at some point...
+
+  // should I remove the "rep" prefix?  I think remove it from mnemonic, then add REP prefix to
+  // the category?
+  bool got_rep = false;
+  if (boost::starts_with(mnemonic,"rep"))
+  {
+    //boost::erase_head(mnemonic,4); // that works for rep_ but not for repn?{e,z}_
+    std::vector< std::string > SplitVec;
+    boost::split(SplitVec,mnemonic,boost::is_any_of("_"));
+    //prefix = SplitVec[0];
+    mnemonic = SplitVec[1];
+    got_rep = true;
+  } else if (boost::starts_with(mnemonic,"far")) {  // WHY are "farCall" and "farJmp" being output as mnemonics???
+    if (mnemonic[3] == 'C')
+      mnemonic = "call";
+    else
+      mnemonic = "jmp";
+  }
+
+  // what about LOCK prefix?  XAQUIRE/XRELEASE?
+
+  // probably best to swtich on the first char:
+  switch (mnemonic[0])
+  {
+    case 'a':
+      if (mnemonic[1] == 'a')
+        result = "MATH";
+      else if (mnemonic[1] == 'd')
+      {
+        if (mnemonic == "adc" || mnemonic == "add")
+          result = "MATH";
+        else // others are SIMD variants
+          result = "SIMD";
+      }
+      else if (mnemonic[1] == 'e') // aes*
+        result = "CRYPTO";
+      else if (mnemonic[1] == 'n') // and*
+      {
+        if (mnemonic.size() <=4) // and & andn
+          result = "LOGIC";
+        else
+          result = "SIMD";
+      }
+      // else stay uncat
+      break;
+    case 'b':
+      if (mnemonic[1] == 'e')
+        result = "LOGIC"; // bextr
+      else if (mnemonic[1] == 'l')
+        if (mnemonic[1] == 's')
+          result = "LOGIC";
+        else
+          result = "SIMD";
+      else if (mnemonic[1] == 's')
+        if (mnemonic[2] == 'w')
+          result = "XFER";
+        else
+          result = "LOGIC";
+      else if (mnemonic[1] == 't')
+        result = "LOGIC";
+      else if (mnemonic[1] == 'z')
+        result = "LOGIC";
+      // else stay uncat
+      break;
+    case 'c':
+      if (mnemonic[1] == 'a') // call
+        result = "BR";
+      else if (mnemonic[1] == 'b' ||
+               mnemonic[1] == 'd' ||
+               mnemonic[1] == 'q' ||
+               mnemonic[1] == 'w') // all sign extend instructions...
+        result = "XFER"; // I guess...
+      //else if (mnemonic[1] == 'l') // all flags related or flushing cache
+      //  result = ???
+      else if (boost::starts_with(mnemonic,"cmov"))
+        result = "XFER";
+      else if (boost::starts_with(mnemonic,"cmp"))
+      {
+        if (mnemonic == "cmp")
+          result = "CMP";
+        else if (mnemonic[3] == 'x')
+          result = "XFER"; // I guess....
+        else if (mnemonic[3] == 'p')
+          result = "SIMD";
+        else if (mnemonic[3] == 's')
+          result = "STR"; // there is actually a conflict here w/ CMPSD being STR or SIMD based on operands and there is a CMPSS that is SIMD only...but lets err on the likely more common case I assume, for now
+      }
+      else if (mnemonic[1] == 'l')
+      {
+        if (mnemonic[2] == 'd')
+          result = "STR"; // CLD, let's call that STR related I guess
+        else
+          result = "SYS"; // most of the other CL* ones feel like SYS, I think...
+      }
+      else if (mnemonic[1] == 'o')
+        result = "SIMD";
+      else if (mnemonic[1] == 'p') // CPUID
+        result = "SYS"; // I guess, maybe?
+      else if (mnemonic[1] == 'r') // CRC32
+        result = "MATH";
+      else if (mnemonic[1] == 'v')
+        result = "SIMD";
+      // else stay uncat
+      break;
+    case 'd':
+      if (mnemonic[1] < 'i' || mnemonic == "div")
+        result = "MATH";
+      else
+        result = "SIMD";
+      break;
+    case 'e':
+      if (mnemonic[1] == 'm') // EMMS
+        result = "FLT";
+      else if (mnemonic[1] == 'n') // ENTER
+        result = "BR";
+      else // EXTRACTPS
+        result = "SIMD";
+      break;
+    case 'f':
+      result = "FLT";
+      break;
+    case 'g': // no g instructions in x86?
+      break;
+    case 'h':
+      if (mnemonic == "HLT")
+        result = "SYS";
+      else
+        result = "SIMD";
+      break;
+    case 'i':
+      if (mnemonic[1] == 'd' || mnemonic[1] == 'm') // IDIV IMUL
+        result = "MATH";
+      else if (mnemonic[1] == 'n')
+      {
+        if (mnemonic.size() == 2) // IN
+        {
+          result = "I/O";
+        }
+        else if (mnemonic[2] == 'c') // INC
+          result = "MATH";
+        else if (mnemonic[2] == 's')
+        {
+          if (mnemonic.size() == 3 || // INS, INS{B,W,D}
+              mnemonic[3] == 'b' ||
+              mnemonic[3] == 'w' ||
+              mnemonic[3] == 'd')
+            result = "I/O"; // and/or STR?
+          else
+            result = "SIMD";
+        }
+        else if (mnemonic[2] == 't') // INT variants
+          result = "BR"; // or SYS?
+        else if (mnemonic[2] == 'v') // INV*
+          result = "SYS";
+      }
+      else if (mnemonic[1] == 'r') // IRET variants
+        result = "BR"; // or SYS?
+      // that should cover the e range completely
+      break;
+    case 'j': // all jump variants
+      result = "BR";
+      // else stay uncat
+      break;
+    case 'k':
+      // no k's really
+      break;
+    case 'l':
+      if (mnemonic[1] == 'a')
+        result = "XFER";
+      else if (mnemonic[1] == 'd')
+      {
+        if (mnemonic[2] == 's') // LDS
+          result = "XFER";
+        else
+          result = "SIMD";
+      }
+      else if (mnemonic[1] == 'e')
+      {
+        switch (mnemonic[2])
+        {
+          case 's':
+            result = "XFER"; // LES
+            break;
+          case 'a':
+            if (mnemonic.size() == 3)
+              result = "MATH"; // LEA
+            else
+              result = "BR"; // LEAVE
+        }
+      }
+      else if (mnemonic[1] == 'g')
+      {
+        if (mnemonic.size() == 3) // LGS
+          result = "XFER";
+        else // must be LGDT
+          result = "SYS";
+      }
+      else if (mnemonic[1] == 'i' ||
+               mnemonic[1] == 'l' ||
+               mnemonic[1] == 'm') // LIDT LLDT LMSW
+        result = "SYS";
+      else if (mnemonic[1] == 'o')
+      {
+        if (mnemonic[2] == 'd') // LODS*
+          result = "STR";
+        else // LOOP
+          result = "BR";
+      }
+      else if (mnemonic[1] == 'z') // LZCNT
+        result = "LOGIC";
+      else if (mnemonic[2] == 's') // L{F,S}S
+        result = "XFER";
+      else // LSL, LTR
+        result = "SYS";
+      break;
+    case 'm':
+      if (mnemonic[1] == 'o') // let's start w/ 'o' because of MOV
+      {
+        if (mnemonic[2] == 'v')
+        {
+          if (mnemonic.size() == 3) // MOV
+            result = "XFER";
+          else if (mnemonic[3] == 's')
+          {
+            if (mnemonic.size() == 4) // MOVS
+              result = "STR";
+            else if (mnemonic[4] == 'b' ||
+                     mnemonic[4] == 'w' ||
+                     mnemonic[4] == 'd' ||
+                     mnemonic[4] == 'q')
+              result = "STR"; // note, collision w/ MOVSD between STR & SIMD
+            else if (mnemonic[4] == 'x') // MOVSX*
+              result = "XFER";
+            else
+              result = "SIMD";
+          }
+          else if (mnemonic[3] == 'z') // MOVZX*
+            result = "XFER";
+          else
+            result = "SIMD";
+        }
+        else // MONITOR
+          result = "SYS";
+      }
+      else if (mnemonic[1] == 'a' || mnemonic[1] == 'i') // MAX* MIN*
+        result = "SIMD";
+      else if (mnemonic[1] == 'f') // MFENCE
+        result = "XFER";
+      else if (mnemonic[1] == 'u')
+      {
+        if (mnemonic.size() == 3) // MUL
+          result = "MATH";
+        else if (mnemonic[3] == 'x') // MULX
+          result = "MATH";
+        else
+          result = "SIMD";
+      }
+      else // MWAIT
+        result = "SYS";
+      break;
+    case 'n':
+      if (mnemonic[1] == 'e') // NEG
+        result = "MATH";
+      else if (mnemonic[2] == 'p') // NOP
+        result = "NOP";
+      else // NOT
+        result = "LOGIC";
+      break;
+    case 'o':
+      if (mnemonic.size() == 2) // OR
+        result = "LOGIC";
+      else if (mnemonic[1] == 'r')
+        result = "SIMD"; // ORP{D,S}
+      else if (mnemonic.size() == 3) // OUT
+        result = "I/O";
+      else // OUTS*
+        result = "I/O"; // or STR?
+      break;
+    case 'p':
+      if (mnemonic[1] == 'a')
+      {
+        if (mnemonic[1] == 'u') // PAUSE
+          result = "SYS";
+        else
+          result = "SIMD"; // most of PA*
+      }
+      else if (mnemonic[1] == 'o')
+      {
+        if (mnemonic[2] == 'p') // POP*
+          if (mnemonic.size() == 6) // POPCNT
+            result = "LOGIC";
+          else
+            result = "XFER";
+        else // POR
+          result = "SIMD";
+      }
+      else if (mnemonic[1] == 'r') // PRE*
+        result = "XFER"; // I guess?
+      else if (boost::starts_with(mnemonic,"push"))
+        result = "XFER";
+      else if (mnemonic == "pdep" || mnemonic == "pext")
+        result = "LOGIC";
+      else
+        result = "SIMD"; // LOTS of them in P*
+      // else stay uncat
+      break;
+    case 'q':
+      // no Q* in x86
+      break;
+    case 'r':
+      if (mnemonic.size() == 3)
+      {
+        if (mnemonic[1] == 'e') // RET
+          result = "BR";
+        else if (mnemonic[1] == 's') // RSM
+          result = "SYS";
+        else // RCL/RCR/ROL/ROR
+          result = "LOGIC";
+      }
+      else if (mnemonic[1] == 'd')
+        result = "SYS";
+      else if (mnemonic == "rorx")
+        result = "LOGIC";
+      else
+        result = "SIMD";
+      break;
+    case 's': // much diversity here...
+      if (mnemonic.size() == 3 && (mnemonic[1] == 'a' || mnemonic[1] == 'h')) // shifts
+        result = "LOGIC";
+      else if (mnemonic.size() == 4 && mnemonic[3] == 'x') // shifts
+        result = "LOGIC";
+      else if (mnemonic[1] == 'a') // SAHF only one not covered by the first two checks...
+        result = "XFER"; // I guess?
+      else if (mnemonic[1] == 'b')
+        result = "MATH";
+      else if (mnemonic[1] == 'c')
+        result = "STR";
+      else if (mnemonic[1] == 'e') // SETcc
+        result = "LOGIC"; // maybe?
+      else if (mnemonic[1] == 'f') // SFENCE
+        result = "XFER"; // maybe?
+      else if (mnemonic[1] == 'g' || // SGDT, SIDT, SLDT
+               mnemonic[1] == 'i' ||
+               mnemonic[1] == 'l')
+        result = "SYS";
+      else if (mnemonic[1] == 'h')
+      {
+        if (mnemonic[2] == 'a') // SHA*
+          result = "CRYPTO";
+        else if (mnemonic[3] == 'd')  // SH{L,R}D
+          result = "LOGIC";
+        else
+          result = "SIMD";
+      }
+      else if (mnemonic[1] == 'h')
+        result = "SYS";
+      else if (mnemonic[1] == 'q')
+        result = "SIMD";
+      else if (mnemonic[1] == 't')
+      {
+        if (mnemonic[2] == 'd')
+          result = "STR"; // STD, same logic for calling this STR as for CLD
+        else if (mnemonic[2] == 'r' || mnemonic[2] == 'i') // STR STI
+          result = "SYS";
+        else if (mnemonic[2] == 'm')
+          result = "FLT";
+        else if (mnemonic[2] == 'o')
+          result = "STR";
+        // else uncat
+      }
+      else if (mnemonic[1] == 'u')
+      {
+        if (mnemonic.size() == 3) // SUB
+          result = "MATH";
+        else
+          result = "SIMD";
+      }
+      else if (mnemonic[1] == 'w' || mnemonic[1] == 'y') // SWAPGS and SYS*
+        result = "SYS";
+      // else stay uncat
+      break;
+    case 't': // only 2 of these in x86?
+      if (mnemonic[1] == 'e') // TEST
+        result = "CMP";
+      else // TZCNT
+        result = "LOGIC";
+      break;
+    case 'u':
+      if (mnemonic[1] == 'd') // UD2
+        result = "SYS"; // or could leave uncat?
+      else if (mnemonic != "unknown") // ROSE sometimes returns this????
+        result = "SIMD";
+      break;
+    case 'v':
+      if (mnemonic[1] == 'e' && mnemonic[2] == 'r')
+        result = "SYS";
+      else if (mnemonic[1] == 'm' && mnemonic[2] != 'a')
+        result = "VMM";
+      else
+        result = "SIMD";
+      break;
+    case 'w':
+      // only a couple of these, and they all look like SYS to me
+      result = "SYS";
+      break;
+    case 'x':
+      if (mnemonic == "xor")
+        result = "LOGIC";
+      else if (mnemonic == "xchg")
+        result = "XFER";
+      else if (mnemonic == "xadd")
+        result = "MATH";
+      else if (boost::starts_with(mnemonic,"xorp"))
+        result = "SIMD";
+      else if (boost::starts_with(mnemonic,"xlat"))
+        result = "XFER";
+      else
+        result = "SYS";
+      // else stay uncat
+      break;
+    case 'y':
+      // no y in x86
+      break;
+    case 'z':
+      // no z in x86
+      break;
+  }
+
+  if (got_rep)
+    result = "REP_" + result;
+
+  return result;
+}
+
+const std::vector< std::string > get_all_insn_generic_categories()
+{
+  // array init is much nicer than vec init...  oh, but wait, in C++11 we can do this for
+  // vectors now!
+  static const std::vector< std::string > rvec = {
+    "BR",
+    "CMP",
+    "CRYPTO",
+    "FLT",
+    "I/O",
+    "LOGIC",
+    "MATH",
+    "SIMD",
+    "STR",
+    "SYS",
+    "UNCAT",
+    "VMM",
+    "XFER"
+  };
+  return rvec; // return a copy of rvec
 }
 
 // Return X for an instruction of the form "jxx [X]".  This code is fairly ugly to be in the
@@ -560,6 +680,35 @@ rose_addr_t insn_get_jump_deref(SgAsmInstruction* insn) {
   return aref->get_absoluteValue();
 }
 
+const SgAsmInstruction* last_insn_in_block(const SgAsmBlock* bb) {
+  const SgAsmStatementPtrList & insns = bb->get_statementList();
+  if (insns.size() < 1) return NULL;
+  const SgAsmInstruction *last_insn = isSgAsmInstruction(insns[insns.size() - 1]);
+  return last_insn;
+}
+
+const SgAsmX86Instruction* last_x86insn_in_block(const SgAsmBlock* bb) {
+  const SgAsmStatementPtrList & insns = bb->get_statementList();
+  if (insns.size() < 1) return NULL;
+  const SgAsmX86Instruction *last_insn = isSgAsmX86Instruction(insns[insns.size() - 1]);
+  return last_insn;
+}
+
+rose_addr_t block_get_jmp_target(SgAsmBlock* bb) {
+  // getSuccessors is incorrectly non-const?
+  SgAsmStatementPtrList & insns = bb->get_statementList();
+  if (insns.size() < 1) return 0;
+  SgAsmX86Instruction *last = isSgAsmX86Instruction(insns[insns.size() - 1]);
+  // Instead we shold just do this:
+  // const SgAsmX86Instruction* last = last_x86insn_in_block(bb);
+
+  if (!last) return 0;
+  if (last->get_kind() != x86_jmp && last->get_kind() != x86_farjmp) return 0;
+  bool ignored = false;
+  AddrSet successors = last->getSuccessors(&ignored);
+  return *(successors.begin());
+}
+
 SgAsmBlock* insn_get_block(const SgAsmInstruction* insn) {
   if (insn == NULL) return NULL;
   return isSgAsmBlock(insn->get_parent());
@@ -571,86 +720,150 @@ SgAsmFunction* insn_get_func(const SgAsmInstruction* insn) {
   return isSgAsmFunction(block->get_parent());
 }
 
-using rose::BinaryAnalysis::SymbolicExpr::OP_ADD;
-
-AddConstantExtractor::AddConstantExtractor(const TreeNodePtr& tn) {
-  // By default we weren't well formed.
-  well_formed = false;
-  constant_portion = 0;
-  variable_portion = tn;
-
-  // To be well formed, the tree node must be an internal node.
-  InternalNodePtr in = tn->isInteriorNode();
-  if (in == NULL) {
-    // We must be an leaf node if we're not an internal node.
-    LeafNodePtr lp = tn->isLeafNode();
-    // If we're a known leaf node, put the constant in the constant portion, and set the
-    // variable portion to NULL.
-    if (lp->isNumber()) {
-      constant_portion = IntegerOps::signExtend2(lp->toInt(), lp->nBits(), 8*sizeof(int64_t));
-      variable_portion = TreeNodePtr();
-    }
-    // If we weren't a known value, the default construction was correct.  Either way, we're done.
+// Merge the expressions represented by "other" into "this"
+void AddConstantExtractor::merge(AddConstantExtractor && other)
+{
+  if (data.empty()) {
+    data = std::move(other.data);
     return;
   }
-
-  // To be well formed, we must be an ADD operation.
-  if (in->getOperator() != OP_ADD) return;
-
-  // We're going to accumulate all of the value of the expression here except for the constant
-  // portion.
-  rose::BinaryAnalysis::SymbolicExpr::Nodes values;
-
-  // For each child in the add expression.
-  BOOST_FOREACH(const TreeNodePtr& atn, in->children()) {
-    LeafNodePtr lp = atn->isLeafNode();
-    // We're looking for a constant leaf node.
-    if (lp != NULL && lp->isNumber()) {
-      // Mark that we found a constant inside the add expression.
-      well_formed = true;
-      // Cory chose to increase the constant portion by the known value because if there were
-      // more than one constant in the expression, we'd want to sum all of the pieces since
-      // we're dicarding them all.  This shouldn't happen because the simplifer should only
-      // permit one constant in the list, but let's be defensive.
-      constant_portion += IntegerOps::signExtend2(lp->toInt(), lp->nBits(), 8*sizeof(int64_t));
-    }
-    // All other cases become part of the variable portion.
-    else {
-      values.push_back(atn);
-    }
-  }
-
-  // If we were well formed, we need to create the variable portion.
-  if (well_formed) {
-    size_t vars = values.size();
-    // If there's no variable portion, we weren't well formed after all.  Set the variable
-    // portion to NULL.
-    if (vars == 0) {
-      well_formed = false;
-      variable_portion = TreeNodePtr();
-    }
-    // If there's exactly one other variable part (a very common case), just return that one
-    // value as the variable portion.
-    else if (vars == 1) {
-      variable_portion = values[0];
-    }
-    // In other cases, we need to make a new ADD operation from the multiple variable parts.
-    else {
-      variable_portion = InternalNode::create(tn->nBits(), OP_ADD, values);
-    }
+  for (auto & key_value : other.data) {
+    auto & local_constants = data[tget<const TreeNodePtr>(key_value)];
+    local_constants.insert(std::begin(tget<constset_t>(key_value)),
+                           std::end(tget<constset_t>(key_value)));
   }
 }
 
-namespace pharos {
+// Add the expression represented by "other" into "this"
+void AddConstantExtractor::add(AddConstantExtractor && other)
+{
+  // If other has no data, return
+  if (other.data.empty()) {
+    return;
+  }
+
+  // If I have no data, use other's data
+  if (data.empty()) {
+    data = std::move(other.data);
+    return;
+  }
+
+  datamap_t new_data;
+
+  // For each pair of my data and other's data...
+  for (auto & my_data : data) {
+    for (auto & other_data : other.data) {
+
+      // Construct the new variable portion
+      TreeNodePtr n;
+      if (!my_data.first) {
+        // If I have no variable portion, use other's
+        n = tget<const TreeNodePtr>(other_data);
+      } else if (!tget<const TreeNodePtr>(other_data)) {
+        // If other has no variable portion, use mine
+        n = tget<const TreeNodePtr>(my_data);
+      } else {
+        // Use the sum of our variable portions
+        size_t nbits = std::max(tget<const TreeNodePtr>(my_data)->nBits(),
+                                tget<const TreeNodePtr>(other_data)->nBits());
+        n = InternalNode::create(nbits, OP_ADD, tget<const TreeNodePtr>(my_data),
+                                 tget<const TreeNodePtr>(other_data));
+      }
+
+      // Get the constant set for this variable portion
+      auto & constants = new_data[n];
+
+      // Insert the power-set of my constants to other's constants
+      for (auto a : tget<constset_t>(my_data)) {
+        for (auto b : tget<constset_t>(other_data)) {
+          constants.insert(a + b);
+        }
+      }
+    }
+  }
+
+  // swap my data for the new data
+  data = std::move(new_data);
+}
+
+template <typename T>
+using Incomplete = matcher::Flags<INCOMPLETE, T>;
+
+AddConstantExtractor::AddConstantExtractor(const TreeNodePtr& tn) {
+  using namespace matcher;
+
+  LeafNodePtr lp = tn->isLeafNode();
+  if (lp) {
+    // If this is a constant, insert as a null variable portion with single-value constant set
+    if (lp->isNumber()) {
+      int64_t val = IntegerOps::signExtend2(lp->toInt(), lp->nBits(), 8*sizeof(int64_t));
+      data.emplace(std::make_pair(TreeNodePtr(), constset_t{val}));
+      return;
+    }
+    // Add other leaf nodes as non-constant portions;
+    data.emplace(tn, constset_t{0});
+    return;
+  }
+
+  // If this is an ITE, merge the AddConstantExtractor of the true and false branches
+  TreeNodePtr t, f;
+  auto ite_m = Matcher<Expr<Op<OP_ITE>, Incomplete<Var>, Ref<Any>, Ref<Any>>>{t, f};
+  if (ite_m(tn)) {
+    AddConstantExtractor a(t);
+    a.merge(AddConstantExtractor(f));
+    data = std::move(a.data);
+    return;
+  }
+
+  // If this is an ADD, add the constant extraction of each child
+  InternalNodePtr in;
+  auto add_m = Matcher<Ref<Expr<Op<OP_ADD>, ArgList>>>(in);
+  if (add_m(tn)) {
+    for (auto & child : in->children()) {
+      add(AddConstantExtractor(child));
+    }
+    return;
+  }
+
+  // Otherwise, just add as variable portion
+  data.emplace(tn, constset_t{0});
+}
+
+const TreeNodePtr & AddConstantExtractor::variable_portion() const
+{
+  if (data.empty()) {
+    static const TreeNodePtr empty{};
+    return empty;
+  }
+  return tget<const TreeNodePtr>(*std::begin(data));
+}
+
+int64_t AddConstantExtractor::constant_portion() const
+{
+  if (!data.empty()) {
+    auto & v = tget<constset_t>(*std::begin(data));
+    if (!v.empty()) {
+      return *std::begin(v);
+    }
+  }
+  return 0;
+}
+
+bool AddConstantExtractor::well_formed() const
+{
+  // Well formed, right now, means that variable_portion() returns non-null
+  return variable_portion();
+}
 
 void backtrace(Sawyer::Message::Facility & log, Sawyer::Message::Importance level, int maxlen)
 {
+#ifdef __GNUC__
   // create and fill the buffer of backtrace addresses
   std::unique_ptr<void *[]> buffer(new void *[maxlen]);
   int n = ::backtrace(buffer.get(), maxlen);
 
   // get the backtrace as an array of strings
-  constexpr auto deleter = [](char **v){ std::free(v); };
+  auto deleter = [](char **v){ std::free(v); };
   std::unique_ptr<char*[], decltype(deleter)> trace_array(
     backtrace_symbols(buffer.get(), n), deleter);
 
@@ -669,7 +882,7 @@ void backtrace(Sawyer::Message::Facility & log, Sawyer::Message::Importance leve
 
       // demangle the symbol
       int status;
-      constexpr auto delc = [](char *v){ std::free(v); };
+      auto delc = [](char *v){ std::free(v); };
       std::unique_ptr<char, decltype(delc)> demangled(
         abi::__cxa_demangle(symbol.c_str(), nullptr, nullptr, &status), delc);
 
@@ -685,6 +898,7 @@ void backtrace(Sawyer::Message::Facility & log, Sawyer::Message::Importance leve
     log[level] && log[level] << "| " << trace << '\n';
   }
   log[level] && log[level] << LEND;
+#endif // __GNUC__
 }
 
 } // namespace pharos

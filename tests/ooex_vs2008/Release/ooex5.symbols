@@ -1,0 +1,186 @@
+00401000	func	?func1@Base@@UAEHXZ	public: virtual int __thiscall Base::func1(void)
+00401020	func	?func2@Base@@UAEHXZ	public: virtual int __thiscall Base::func2(void)
+00401040	func	?func1@Base2@@UAEHXZ	public: virtual int __thiscall Base2::func1(void)
+00401060	func	?func2@Base2@@UAEHXZ	public: virtual int __thiscall Base2::func2(void)
+00401080	func	??0Derived@@QAE@XZ	public: __thiscall Derived::Derived(void)
+00401100	func	?func4@Derived@@UAEHXZ	public: virtual int __thiscall Derived::func4(void)
+00401110	func	?func3@Derived@@UAEHXZ	public: virtual int __thiscall Derived::func3(void)
+00401120	func	_main	None
+00401167	func	@__security_check_cookie@4	__fastcall __security_check_cookie(x)
+00401171	func	failure	None
+00401176	thunk	__purecall	None
+0040117c	func	??3@YAXPAX@Z_0	void __cdecl operator delete(void *)
+00401182	func	??_Etype_info@@UAEPAXI@Z	public: virtual void * __thiscall type_info::`vector deleting destructor'(unsigned int)
+004011ce	func	??2@YAPAXI@Z_0	void * __cdecl operator new(unsigned int)
+004011d4	func	pre_cpp_init	None
+0040121f	func	__tmainCRTStartup	None
+00401345	func	$LN35	None
+00401358	func	$LN30	None
+00401359	func	$LN21	None
+00401375	func	$LN36	None
+00401395	func	pre_c_init	None
+00401476	func	_mainCRTStartup	None
+00401480	func	___report_gsfailure	None
+00401586	func	?__ArrayUnwind@@YGXPAXIHP6EX0@Z@Z	void __stdcall __ArrayUnwind(void *, unsigned int, int, void (__thiscall *)(void *))
+004015a9	func	$LN7	None
+004015cc	func	$LN9	None
+004015d2	func	$LN23	None
+004015e4	func	??_M@YGXPAXIHP6EX0@Z@Z	void __stdcall `eh vector destructor iterator'(void *, unsigned int, int, void (__thiscall *)(void *))
+00401627	func	$LN11	None
+0040162f	func	$LN8	None
+00401646	func	$LN9_0	None
+00401647	func	?__CxxUnhandledExceptionFilter@@YGJPAU_EXCEPTION_POINTERS@@@Z	long __stdcall __CxxUnhandledExceptionFilter(struct _EXCEPTION_POINTERS *)
+00401683	func	$LN6	None
+00401689	func	___CxxSetUnhandledExceptionFilter	None
+00401698	thunk	__amsg_exit	None
+0040169e	func	__onexit	None
+00401731	func	$LN9_1	None
+0040173a	func	$LN6_0	None
+00401742	func	$LN7_0	None
+00401743	func	_atexit	None
+0040175a	func	__RTC_Initialize	None
+00401780	func	__RTC_Terminate	None
+004017a6	thunk	__XcptFilter	None
+004017b0	func	__ValidateImageBase	None
+004017f0	func	__FindPESection	None
+00401840	func	__IsNonwritableInCurrentImage	None
+004018cb	func	$LN7_1	None
+004018de	func	$LN11_0	None
+004018df	func	$LN8_0	None
+004018fe	thunk	__initterm	None
+00401904	thunk	__initterm_e	None
+0040190c	func	__SEH_prolog4	None
+00401951	func	__SEH_epilog4	None
+00401965	func	__except_handler4	None
+0040198a	func	__setdefaultprecision	None
+004019b5	func	__setargv	None
+004019b8	func	___security_init_cookie	None
+00401a4e	thunk	__crt_debugger_hook	None
+00401a54	func	?terminate@@YAXXZ_0	void __cdecl terminate(void)
+00401a5a	func	??1type_info@@UAE@XZ	public: virtual __thiscall type_info::~type_info(void)
+00401a60	thunk	__unlock	None
+00401a66	thunk	___dllonexit	None
+00401a6c	thunk	__lock	None
+00401a72	thunk	__except_handler4_common	None
+00401a78	thunk	__invoke_watson	None
+00401a7e	thunk	__controlfp_s	None
+00402000	name	__imp__GetCurrentProcessId@0	__declspec(dllimport) __stdcall GetCurrentProcessId()
+00402004	name	__imp__GetCurrentThreadId@0	__declspec(dllimport) __stdcall GetCurrentThreadId()
+00402008	name	__imp__GetTickCount@0	__declspec(dllimport) __stdcall GetTickCount()
+0040200c	name	__imp__QueryPerformanceCounter@4	__declspec(dllimport) __stdcall QueryPerformanceCounter(x)
+00402010	name	__imp__IsDebuggerPresent@0	__declspec(dllimport) __stdcall IsDebuggerPresent()
+00402014	name	__imp__SetUnhandledExceptionFilter@4	__declspec(dllimport) __stdcall SetUnhandledExceptionFilter(x)
+00402018	name	__imp__UnhandledExceptionFilter@4	__declspec(dllimport) __stdcall UnhandledExceptionFilter(x)
+0040201c	name	__imp__GetCurrentProcess@0	__declspec(dllimport) __stdcall GetCurrentProcess()
+00402020	name	__imp__TerminateProcess@8	__declspec(dllimport) __stdcall TerminateProcess(x, x)
+00402024	name	__imp__InterlockedCompareExchange@12	__declspec(dllimport) __stdcall InterlockedCompareExchange(x, x, x)
+00402028	name	__imp__Sleep@4	__declspec(dllimport) __stdcall Sleep(x)
+0040202c	name	__imp__InterlockedExchange@8	__declspec(dllimport) __stdcall InterlockedExchange(x, x)
+00402030	name	__imp__GetSystemTimeAsFileTime@4	__declspec(dllimport) __stdcall GetSystemTimeAsFileTime(x)
+00402034	name	_KERNEL32_NULL_THUNK_DATA	None
+00402038	name	__imp____setusermatherr	None
+0040203c	name	__imp___adjust_fdiv	None
+00402040	name	__imp____p__commode	None
+00402044	name	__imp____p__fmode	None
+00402048	name	__imp___encode_pointer	None
+0040204c	name	__imp____set_app_type	None
+00402050	name	__imp___crt_debugger_hook	None
+00402054	name	__imp___configthreadlocale	None
+00402058	name	__imp_?_type_info_dtor_internal_method@type_info@@QAEXXZ	__declspec(dllimport) public: void __thiscall type_info::_type_info_dtor_internal_method(void)
+0040205c	name	__imp___unlock	None
+00402060	name	__imp____dllonexit	None
+00402064	name	__imp___lock	None
+00402068	name	__imp___onexit	None
+0040206c	name	__imp___decode_pointer	None
+00402070	name	__imp___except_handler4_common	None
+00402074	name	__imp___invoke_watson	None
+00402078	name	__imp___controlfp_s	None
+0040207c	name	__imp___initterm_e	None
+00402080	name	__imp___initterm	None
+00402084	name	__imp____initenv	None
+00402088	name	__imp__exit	None
+0040208c	name	__imp___XcptFilter	None
+00402090	name	__imp___exit	None
+00402094	name	__imp___cexit	None
+00402098	name	__imp____getmainargs	None
+0040209c	name	__imp___amsg_exit	None
+004020a0	name	__imp_??2@YAPAXI@Z	__declspec(dllimport) void * __cdecl operator new(unsigned int)
+004020a4	name	__imp_??3@YAXPAX@Z	__declspec(dllimport) void __cdecl operator delete(void *)
+004020a8	name	__imp___purecall	None
+004020ac	name	__imp_?terminate@@YAXXZ	__declspec(dllimport) void __cdecl terminate(void)
+004020b0	name	__imp__rand	None
+004020b4	name	_MSVCR90_NULL_THUNK_DATA	None
+004020b8	name	___xc_a	None
+004020bc	name	pcppinit	None
+004020c0	name	___xc_z	None
+004020c4	name	___xi_a	None
+004020c8	name	pcinit	None
+004020cc	name	pinit	None
+004020d0	name	___xi_z	None
+00402100	name	??_7type_info@@6B@	const type_info::`vftable'
+00402104	name	GS_ExceptionPointers	None
+00402110	name	??_7Base2@@6B@	const Base2::`vftable'
+00402120	name	??_7Derived@@6BBase@@@	const Derived::`vftable'{for `Base'}
+00402130	name	??_7Derived@@6BBase2@@@	const Derived::`vftable'{for `Base2'}
+00402140	name	__load_config_used	None
+004021cc	name	??_R4type_info@@6B@	const type_info::`RTTI Complete Object Locator'
+004021e0	name	??_R3type_info@@8	type_info::`RTTI Class Hierarchy Descriptor'
+004021f0	name	??_R2type_info@@8	type_info::`RTTI Base Class Array'
+004021f8	name	??_R1A@?0A@EA@type_info@@8	type_info::`RTTI Base Class Descriptor at (0, -1, 0, 64)'
+00402214	name	??_R4Derived@@6BBase2@@@	const Derived::`RTTI Complete Object Locator'{for `Base2'}
+00402228	name	??_R4Derived@@6BBase@@@	const Derived::`RTTI Complete Object Locator'{for `Base'}
+0040223c	name	??_R3Derived@@8	Derived::`RTTI Class Hierarchy Descriptor'
+0040224c	name	??_R2Derived@@8	Derived::`RTTI Base Class Array'
+0040225c	name	??_R1BA@?0A@EA@Base2@@8	Base2::`RTTI Base Class Descriptor at (16, -1, 0, 64)'
+00402278	name	??_R1A@?0A@EA@Derived@@8	Derived::`RTTI Base Class Descriptor at (0, -1, 0, 64)'
+00402294	name	??_R4Base2@@6B@	const Base2::`RTTI Complete Object Locator'
+004022a8	name	??_R3Base2@@8	Base2::`RTTI Class Hierarchy Descriptor'
+004022b8	name	??_R2Base2@@8	Base2::`RTTI Base Class Array'
+004022c0	name	??_R1A@?0A@EA@Base2@@8	Base2::`RTTI Base Class Descriptor at (0, -1, 0, 64)'
+004022dc	name	??_R3Base@@8	Base::`RTTI Class Hierarchy Descriptor'
+004022ec	name	??_R2Base@@8	Base::`RTTI Base Class Array'
+004022f4	name	??_R1A@?0A@EA@Base@@8	Base::`RTTI Base Class Descriptor at (0, -1, 0, 64)'
+00402310	name	___safe_se_handler_table	None
+00402314	name	___rtc_iaa	None
+00402318	name	___rtc_izz	None
+0040231c	name	___rtc_taa	None
+00402320	name	___rtc_tzz	None
+004023c4	name	__IMPORT_DESCRIPTOR_MSVCR90	None
+004023d8	name	__IMPORT_DESCRIPTOR_KERNEL32	None
+004023ec	name	__NULL_IMPORT_DESCRIPTOR	None
+004024ec	name	aMsvcr90_dll	None
+004027da	name	aKernel32_dll	None
+00403000	name	??_R0?AVtype_info@@@8	class type_info `RTTI Type Descriptor'
+00403008	name	a_?avtype_info@	None
+00403018	name	___security_cookie	None
+0040301c	name	___security_cookie_complement	None
+00403020	name	___native_dllmain_reason	None
+00403024	name	___native_vcclrit_reason	None
+00403028	name	___globallocalestatus	None
+0040302c	name	___defaultmatherr	None
+00403030	name	??_R0?AVDerived@@@8	class Derived `RTTI Type Descriptor'
+00403038	name	a_?avderived@@	None
+00403048	name	??_R0?AVBase2@@@8	class Base2 `RTTI Type Descriptor'
+00403050	name	a_?avbase2@@	None
+0040305c	name	??_R0?AVBase@@@8	class Base `RTTI Type Descriptor'
+00403070	name	argc	None
+00403074	name	envp	None
+00403078	name	argv	None
+0040307c	name	managedapp	None
+00403080	name	argret	None
+00403084	name	startinfo	None
+00403088	name	mainret	None
+0040308c	name	has_cctor	None
+00403090	name	GS_ExceptionRecord	None
+004030e0	name	DebuggerWasPresent	None
+004030e8	name	GS_ContextRecord	None
+004033b4	name	__dowildcard	None
+004033b8	name	__newmode	None
+004033bc	name	__commode	None
+004033c0	name	__fmode	None
+004033c4	name	__adjust_fdiv	None
+004033c8	name	___native_startup_state	None
+004033cc	name	___native_startup_lock	None
+004033d0	name	___onexitend	None
+004033d4	name	___onexitbegin	None
+004033d8	name	___dyn_tls_init_callback	None

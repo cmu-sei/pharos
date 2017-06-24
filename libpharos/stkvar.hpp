@@ -1,4 +1,4 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Stkvar_H
 #define Stkvar_H
@@ -7,50 +7,62 @@
 
 #include "semantics.hpp"
 
+
+namespace pharos {
+
 // Forward declaration to simplify include cycles.
+class TypeDescriptor;
+typedef boost::shared_ptr< TypeDescriptor > TypeDescriptorPtr;
 
 class FunctionDescriptor;
+class DUAnalysis;
 
 // Data structure for a stack variable. A stack variable is a memory location on
 // the stack that is accessed via one of the stack registers (frame or stack
 // pointer).
 class StackVariable {
-public:
+ public:
 
-   // Builds a new stack variable. Currently, the size is set to, and left at, 0
-   StackVariable(int64_t off, TreeNodePtr tnp) : offset_(off), variable_(tnp), size_(0) {  }
+  // Builds a new stack variable.
+  StackVariable(SgAsmx86Instruction *insn, int64_t off, const AbstractAccess &aa);
 
-   void add_usage(SgAsmx86Instruction *i);
+  // Read properties for various stack variable elements
 
-   // getters for the various stack variable
+  int64_t offset() const;
 
-   int64_t get_offset() const;
+  const InsnSet& usages();
 
-   TreeNodePtr get_variable();
+  std::vector<std::reference_wrapper<const AbstractAccess>> accesses();
 
-   size_t get_size() const;
+  void add_evidence(SgAsmx86Instruction *i, const AbstractAccess& aa);
 
-   InsnSet& get_usages();
+  void add_usage(SgAsmx86Instruction *i);
 
-   // prints the major parts of a stack variable (offset, value, usage
-   // instructions and size)
-   std::string to_string() const;
+  void add_access(const AbstractAccess& aa);
 
-private:
+  TypeDescriptorPtr get_type_descriptor() const;
 
-   // the offset (to the stack pointer)
-   int64_t offset_;
+  // prints the major parts of a stack variable (offset, value, usage
+  // instructions and size)
+  std::string to_string() const;
 
-   // the expression associated with the StackVariable. This may be the same
-   // for all variables ... in that case saving the expression is not necessary
-   TreeNodePtr variable_;
+ private:
 
-   // The width of the variable
-   size_t size_;
+  // the offset of this variable. Maintained for lookup purposes
+  int64_t offset_;
 
-   // The set of instructions that use the stack variable
-   InsnSet usages_;
-};
+  TypeDescriptorPtr type_descriptor_;
+
+  // the AbstractAccesses associated with the StackVariable. This may be the same
+  // for all variables ... in that case saving the expression is not necessary
+
+  std::vector<std::reference_wrapper<const AbstractAccess>> abstract_accesses_;
+
+  // The set of instructions that use the stack variable
+  InsnSet usages_;
+
+}; // end StackVariable
+
 
 // return true if the instruction supplied is associated with a saved
 // register. Return false otherwise.
@@ -64,7 +76,29 @@ bool uses_parameter(const SgAsmx86Instruction *insn, FunctionDescriptor *fd);
 // Detect stack variables for a given function
 void analyze_stack_variables(FunctionDescriptor *fd);
 
+// the following function are helpers to gather information about stack
+// variables. They are local to this function
+void identify_stack_variables(FunctionDescriptor *fd);
+
+const AbstractAccess* get_memory_access(SgAsmX86Instruction* insn,
+                                        const DUAnalysis& du, const TreeNodePtr value);
+
+void assign_stack_variable_types(FunctionDescriptor *fd);
+
+void analyze_accesses_for_stack_variables(SgAsmX86Instruction* insn,
+                                          const AbstractAccessVector* aavec, FunctionDescriptor *fd,
+                                          const SymbolicValuePtr &initial_esp_sv);
+
+
 // a list of stack variable pointers
-typedef std::vector<StackVariable*> StackVariableList;
+typedef std::vector<StackVariable*> StackVariablePtrList;
+
+} // namespace pharos
 
 #endif
+
+/* Local Variables:   */
+/* mode: c++          */
+/* fill-column:    95 */
+/* comment-column: 0  */
+/* End:               */

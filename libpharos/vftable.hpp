@@ -1,4 +1,4 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_VFTable_H
 #define Pharos_VFTable_H
@@ -9,9 +9,36 @@
 #include "funcs.hpp"
 #include "datatypes.hpp"
 
+namespace pharos {
+
+class VirtualBaseTable {
+
+ public:
+
+  // The address in memory where the virtual base table is located.
+  rose_addr_t addr;
+
+  // A best guess size for the table.
+  size_t size;
+
+  VirtualBaseTable(rose_addr_t a) {
+    addr = a;
+    size = 0;
+  }
+
+  void analyze();
+
+  // Limit sizes based on overlaps with other tables and data structures.
+  void analyze_overlaps();
+
+  // Read an entry from the table.
+  signed int read_entry(unsigned int entry) const;
+};
+
+
 class VirtualFunctionTable {
 
-public:
+ public:
 
   // The address in memory where the virtual function table is located.
   rose_addr_t addr;
@@ -101,6 +128,8 @@ public:
 // instructions that write the virtual function table pointer into a specific offset in an
 // object.  Because of inlined constructors, we sometimes need additional information to be
 // able to decide which virtual function tables are associated with which classes.
+
+// Poorly named right now (still deciding how to handle base verus function tables).
 class VFTEvidence {
 
 public:
@@ -111,15 +140,20 @@ public:
   FunctionDescriptor* fd;
   // Our class representing the virtual function table.
   VirtualFunctionTable* vftable;
+  // Our class representing the virtual base table.
+  VirtualBaseTable* vbtable;
 
-  VFTEvidence(SgAsmInstruction* i, FunctionDescriptor* f, VirtualFunctionTable* t) {
+  // We'll probably also want a this-pointer value here in the future.
+
+  VFTEvidence(SgAsmInstruction* i, FunctionDescriptor* f,
+              VirtualFunctionTable* vft, VirtualBaseTable* vbt) {
     insn = i;
     fd = f;
-    vftable = t;
-    // All of the pointers must be valid!
+    vftable = vft;
+    vbtable = vbt;
+    // The instruction and the function descriptor pointers must be valid.
     assert(insn != NULL);
     assert(fd != NULL);
-    assert(vftable != NULL);
   }
 };
 
@@ -133,12 +167,18 @@ struct VFTEvidenceCompare {
 typedef std::set<VFTEvidence, VFTEvidenceCompare> VFTEvidenceSet;
 
 // Map addresses in the program to virtual function tables.
-typedef std::map<rose_addr_t, VirtualFunctionTable*> VTableAddrMap;
+typedef std::map<rose_addr_t, VirtualFunctionTable*> VFTableAddrMap;
+typedef std::map<rose_addr_t, VirtualBaseTable*> VBTableAddrMap;
 
 // Global table for tracking unique virtual function tables.  This allow us to prevent
 // duplicated effort, by re-using earlier analysis of the same table.  Should perhaps be part
 // of the global descriptor set.
-extern VTableAddrMap global_vtables;
+extern VFTableAddrMap global_vftables;
+
+// A global tables for tracking virtual base tables.
+extern VBTableAddrMap global_vbtables;
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

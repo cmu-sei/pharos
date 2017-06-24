@@ -1,12 +1,13 @@
 // Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "config.hpp"
-#include <boost/foreach.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
 using YAML::Node;
 
+// Needed in older versions of yaml-cpp.  Will cause an redeclaration error in newer versions.
+#if 0
 namespace YAML {
 template <>
 struct convert<Node> {
@@ -17,10 +18,11 @@ struct convert<Node> {
   }
 };
 }
+#endif
 
 namespace pharos {
 
-#include "config.yaml.i"
+#include "config.yaml.ii"
 
 const std::string ConfigNode::empty_string;
 
@@ -38,7 +40,7 @@ ConfigNode::path_get(
   const ConfigNode *c = this;
   ConfigNode n;
   while (std::getline(ss, item, sep)) {
-    n = c->get(item);
+    n = (*c)[item];
     c = &n;
   }
   return *c;
@@ -97,7 +99,7 @@ ConfigNode::merge_nodes(
   }
   if (cnode(b)["_replace"]) {
     Node c(YAML::NodeType::Map);
-    BOOST_FOREACH(Node::iterator::value_type n, b) {
+    for (Node::iterator::value_type n : b) {
       if (n.first.IsScalar() && n.first.Scalar() == "_replace") {
         continue;
       }
@@ -115,7 +117,7 @@ ConfigNode::merge_nodes(
   }
   // Create a new map 'c' with the same mappings as a, merged with b
   Node c(YAML::NodeType::Map);
-  BOOST_FOREACH(Node::iterator::value_type n, a) {
+  for (Node::iterator::value_type n : a) {
     if (n.first.IsScalar()) {
       const std::string & key = n.first.Scalar();
       Node t(cnode(b)[key]);
@@ -127,7 +129,7 @@ ConfigNode::merge_nodes(
     c[n.first] = n.second;
   }
   // Add the mappings from 'b' not already in 'c'
-  BOOST_FOREACH(Node::iterator::value_type n, b) {
+  for (Node::iterator::value_type n : b) {
     if (!n.first.IsScalar() || !cnode(c)[n.first.Scalar()]) {
       c[n.first] = n.second;
     }
@@ -187,10 +189,23 @@ Config
 Config::default_config(const std::string &appname) {
   Config cfg(appname);
   std::string config(
-    reinterpret_cast<const char *>(&libpharos_config_yaml),
-    libpharos_config_yaml_len);
+    reinterpret_cast<const char *>(&config_yaml),
+    config_yaml_len);
   cfg.merge(config, "<default>");
   return cfg;
+}
+
+Config &
+Config::mergeFile(const std::string &filename, const std::string &name)
+{
+  boost::filesystem::ifstream file;
+  boost::filesystem::path p(filename);
+  file.open(p);
+  if (!file) {
+    throw BadFileError(filename);
+  }
+  this->merge(file, name.empty() ? filename : name);
+  return *this;
 }
 
 namespace {
@@ -202,6 +217,9 @@ get_file(const char *filename, boost::filesystem::ifstream &stream) {
     return false;
   }
   stream.open(path);
+  if (!stream) {
+    throw BadFileError(filename);
+  }
   return true;
 }
 } // anonymous namespace
@@ -256,6 +274,15 @@ ConfigException::build_what(
     o << msg << ": '" << node.path() << "' from source '"
       << node.source() << "'";
   }
+  return o.str();
+}
+
+std::string
+BadFileError::build_what(
+  const std::string &filename)
+{
+  std::stringstream o;
+  o << "Could not open " << filename;
   return o.str();
 }
 

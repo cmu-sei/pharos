@@ -1,4 +1,4 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Calls_H
 #define Pharos_Calls_H
@@ -8,13 +8,15 @@
 #include <boost/iterator/filter_iterator.hpp> // for filter_iterator
 #include <rose.h>
 
-class PDG;
-
 #include "masm.hpp"
 #include "funcs.hpp"
 #include "imports.hpp"
 #include "state.hpp"
 #include "convention.hpp"
+
+namespace pharos {
+
+class PDG;
 
 enum CallType {
   CallImmediate,
@@ -74,7 +76,7 @@ class CallDescriptor {
   // call target.  In many calls, this will point directly to the descriptor for the actual
   // function that is called.  But if there are multiple targets, we will allocate a new
   // descriptor that merges the results from all of the targets.  If the call target is a
-  // single import, this pointer will point to the functuon descriptor associated with the
+  // single import, this pointer will point to the function descriptor associated with the
   // import.
   FunctionDescriptor* function_descriptor;
 
@@ -103,6 +105,9 @@ class CallDescriptor {
   // wrong (e.g. empty).  In between, we may be confident or just guessing.
   GenericConfidence confidence;
 
+  // A variable to represent the stack delta when then delta is unknown (missing)
+  mutable LeafNodePtr stack_delta_variable;
+
   // Is the call internal, external, or unknown?
   CallTargetLocation call_location;
 
@@ -124,6 +129,11 @@ class CallDescriptor {
   // The symbolic return value.
   SymbolicValuePtr return_value;
 
+  // For calls that indeterminate targets, we may want to record the "expected" stack delta for
+  // the call, without any rigorous knowledge of where we call to.  This stack delta contains
+  // that information.
+  StackDelta stack_delta;
+
 public:
 
   CallDescriptor() {
@@ -137,7 +147,7 @@ public:
     call_location = CallLocationUnknown;
     function_override = NULL;
     containing_function = NULL;
-    return_value = SymbolicValue::instance();
+    // return_value is NULL by default
   }
 
   CallDescriptor(SgAsmx86Instruction* i) {
@@ -152,7 +162,7 @@ public:
     function_override = NULL;
     containing_function = NULL;
     analyze();
-    return_value = SymbolicValue::instance();
+    // return_value is NULL by default
   }
 
   ~CallDescriptor() {
@@ -191,7 +201,7 @@ public:
   ImportDescriptor* get_import_descriptor() const { return import_descriptor; }
 
   // Get and set the return value.
-  SymbolicValuePtr get_return_value() { return return_value; }
+  const SymbolicValuePtr & get_return_value() const { return return_value; }
   void set_return_value(SymbolicValuePtr r) { return_value = r; }
 
   void update_connections();
@@ -205,8 +215,9 @@ public:
     return call_type;
   }
 
-  StackDelta get_stack_delta();
-  StackDelta get_stack_parameters();
+  StackDelta get_stack_delta() const;
+  const LeafNodePtr & get_stack_delta_variable() const;
+  StackDelta get_stack_parameters() const;
 
   // Cory wants to isolate this better.  Maybe with friend, or by moving defuse code into funcs?
   ParameterList& get_rw_parameters() { return parameters; }
@@ -316,6 +327,8 @@ private:
   GenericConfidence conf;
   TargetSetCardinality target_card;
 };
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

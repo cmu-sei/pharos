@@ -1,7 +1,6 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/format.hpp>
-#include <boost/foreach.hpp>
 
 #include <rose.h>
 
@@ -11,6 +10,8 @@
 #include "usage.hpp"
 #include "method.hpp"
 #include "member.hpp"
+
+namespace pharos {
 
 // A global map of object uses.  Populated in analyze_functions_for_object_uses().
 ObjectUseMap object_uses;
@@ -24,7 +25,7 @@ template<> char const* EnumStrings<AllocType>::data[] = {
 };
 
 
-using rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
+using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
 
 // A hacked up routine to pick the correct object pointer from an ITE expression.  There's much
 // better ways to implement this, but none that will be as easy for demonstrating that this is
@@ -87,7 +88,7 @@ void ThisPtrUsage::debug_methods() const {
   // combination of the best attributes.
   if (GDEBUG) {
     GDEBUG << "Methods sharing a this-pointer=" << *(this_ptr) << " :";
-    BOOST_FOREACH(const ThisCallMethod* tcm, methods) {
+    for (const ThisCallMethod* tcm : methods) {
       GDEBUG << "  " << tcm->address_string();
     }
     GDEBUG << LEND;
@@ -100,7 +101,7 @@ void ThisPtrUsage::debug() const {
   //GDEBUG << " alloc=" << Enum2Str(alloc_type) << " { ";
   GDEBUG << " { ";
 
-  BOOST_FOREACH(const ThisCallMethod* tcm, methods) {
+  for (const ThisCallMethod* tcm : methods) {
     GDEBUG << tcm->address_string() << " ";
   }
   GDEBUG << "}";
@@ -111,7 +112,7 @@ void ThisPtrUsage::pick_ctor() {
   ThisCallMethodSet ctors;
 
   // Try picking the constructor by looking at the methods set.
-  BOOST_FOREACH(ThisCallMethod* tcm, methods) {
+  for (ThisCallMethod* tcm : methods) {
     // If this one could be a constructor, add it to the set.
     if (tcm->is_constructor()) ctors.insert(tcm);
   }
@@ -138,7 +139,7 @@ void ThisPtrUsage::pick_ctor() {
   else if (ctors.size() == 0) {
     if (GDEBUG) {
       GDEBUG << "Unable to choose constructor for ThisPtrUsage " << identifier() << ":" << LEND;
-      BOOST_FOREACH(ThisCallMethod* tcm, methods) {
+      for (ThisCallMethod* tcm : methods) {
         GDEBUG << "  Called method: " << tcm->address_string() << LEND;
       }
     }
@@ -150,7 +151,7 @@ void ThisPtrUsage::pick_ctor() {
   // like to remove entirely. :-(
   else {
     GWARN << "Conflicting data on which method is a constructor, choices were:" << LEND;
-    BOOST_FOREACH(ThisCallMethod* tcm, ctors) {
+    for (ThisCallMethod* tcm : ctors) {
       // Hackishly pick the old style first_method if we can't decide.
       if (tcm == first_method) {
         ctor = tcm;
@@ -178,11 +179,11 @@ void ThisPtrUsage::apply_constructor_dominance_rule() {
   // This is a poorly performing way to do this.  A better way would involve a work queue and
   // consider each pair only once, and remove a method on every dominance test.  But this is
   // easier, and will produce the same result, just with a longer run time.
-  BOOST_FOREACH(MethodEvidenceMap::value_type& opair, method_evidence) {
+  for (MethodEvidenceMap::value_type& opair : method_evidence) {
     SgAsmX86Instruction* outer_insn = isSgAsmX86Instruction(opair.first);
     if (outer_insn == NULL) continue;
     ThisCallMethod* otcm = *(opair.second.begin());
-    BOOST_FOREACH(MethodEvidenceMap::value_type& ipair, method_evidence) {
+    for (MethodEvidenceMap::value_type& ipair : method_evidence) {
       SgAsmX86Instruction* inner_insn = isSgAsmX86Instruction(ipair.first);
       if (inner_insn == NULL) continue;
 
@@ -195,7 +196,7 @@ void ThisPtrUsage::apply_constructor_dominance_rule() {
       if (pdg->get_cdg().post_dominates(inner_insn, outer_insn)) {
         GDEBUG << "Insn: " << debug_instruction(outer_insn) << " dominates "
                << debug_instruction(inner_insn) << LEND;
-        BOOST_FOREACH(ThisCallMethod* tcm, ipair.second) {
+        for (ThisCallMethod* tcm : ipair.second) {
           GDEBUG << "Method " << tcm->address_string()
                  << " cannot be a constructor because it is dominated by "
                  << otcm->address_string() << LEND;
@@ -252,7 +253,7 @@ void ThisPtrUsage::analyze_alloc() {
   // This is hackish too.  We need it for debugging so that we have some way of reporting which
   // instructions are involved in the confusion.
   SgAsmInstruction* first_insn = NULL;
-  BOOST_FOREACH(SgAsmInstruction *ginsn, this_ptr->get_defining_instructions()) {
+  for (SgAsmInstruction *ginsn : this_ptr->get_defining_instructions()) {
     // For debugging so that we have an address.
     if (first_insn == NULL) first_insn = ginsn;
 
@@ -262,10 +263,9 @@ void ThisPtrUsage::analyze_alloc() {
     // Since definers isn't the "latest" definer just yet, filter our subsequent analysis to
     // the one that wrote the this-ptr value.  This is hackish and wrong because we shouldn't
     // have to filter.  But maybe once we can upgrade , this code can go away...
-    const AbstractAccessVector* writes = du.get_writes(insn);
-    if (writes == NULL) continue;
+    auto writes = du.get_writes(insn);
     bool found_write = false;
-    BOOST_FOREACH(const AbstractAccess& aa, *writes) {
+    for (const AbstractAccess& aa : writes) {
       if (aa.value->get_expression()->isEquivalentTo(this_ptr->get_expression())) {
         found_write = true;
         break;
@@ -320,16 +320,23 @@ ObjectUse::ObjectUse(FunctionDescriptor* f) {
   fd = f;
   assert(fd != NULL);
   analyze_object_uses();
+}
+
+void ObjectUse::apply_constructor_dominance_rule() {
   // For each reference, apply the constructor dominance rule to the this-pointer usage.
   // This must occur after we've analyzed all of the object uses in the function, because
   // it's comparing found calls against each other.
-  BOOST_FOREACH(ThisPtrUsageMap::value_type& rpair, references) {
+
+  // This method is very wrong, and completely unecessary in the Prolog version, so it needed
+  // to be moved from the constructor into this method so it could be called after the prolog
+  // exporting occurred.
+  for (ThisPtrUsageMap::value_type& rpair : references) {
     rpair.second.apply_constructor_dominance_rule();
   }
 }
 
 void ObjectUse::debug() const {
-  BOOST_FOREACH(const ThisPtrUsageMap::value_type& rpair, references) {
+  for (const ThisPtrUsageMap::value_type& rpair : references) {
     const ThisPtrUsage& tpu = rpair.second;
     GDEBUG << "OU: " << fd->address_string() << " ";
     tpu.debug();
@@ -344,7 +351,7 @@ void ObjectUse::debug() const {
 // the find_this_call_methods() analysis pass, and after this routine we should have a
 // reasonable set of this-pointers in references.
 void ObjectUse::analyze_object_uses() {
-  BOOST_FOREACH(CallDescriptor* cd, fd->get_outgoing_calls()) {
+  for (CallDescriptor* cd : fd->get_outgoing_calls()) {
     // The the value in the this-pointer location (ECX) before the call.
     SymbolicValuePtr this_ptr = get_this_ptr_for_call(cd);
     GDEBUG << "This-Ptr for call at " << cd->address_string() <<  " is " << *this_ptr << LEND;
@@ -358,7 +365,7 @@ void ObjectUse::analyze_object_uses() {
     SVHash hash = this_ptr->get_hash();
 
     // Go through each of the possible targets looking for OO methods.
-    BOOST_FOREACH(rose_addr_t target, cd->get_targets()) {
+    for (rose_addr_t target : cd->get_targets()) {
       // If we're not an OO method, we're not interested.
       ThisCallMethod* tcm = follow_oo_thunks(target);
       if (tcm == NULL) continue;
@@ -380,6 +387,8 @@ void ObjectUse::analyze_object_uses() {
     }
   }
 }
+
+} // namespace pharos
 
 /* Local Variables:   */
 /* mode: c++          */

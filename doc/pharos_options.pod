@@ -1,0 +1,180 @@
+=head2 PHAROS OPTIONS
+
+The following options are common to most pharos tools.
+
+=over 4
+
+=item B<-h>, B<--help>
+
+Output program option help information and exit.
+
+=item B<-C>, B<--config>=I<PHAROS_CONFIG_FILE>
+
+Read configuration options from I<PHAROS_CONFIG_FILE> after reading
+config options from the usual locations.  The usual locations are
+C<I<$PHAROS_ROOT>/share/pharos/etc/pharos.yaml>, from any file contained
+in the C<PHAROS_CONFIG> environment variable, and from
+C<~/.pharos.yaml>.  This option can be specified multiple times.
+
+=item B<--no-user-file>
+
+Do not read C<~/.pharos.yaml> when determining configuration options.
+
+=item B<--no-site-file>
+
+Do not read C<I<PHAROS_ROOT>/share/pharos/etc/pharos.yaml> when
+determining configuration options.
+
+=item B<--dump-config>
+
+After reading and merging configuration files, output the resulting
+configuration information to stdout, then exit.
+
+=item B<-I>, B<--imports>=I<IMPORT_CONFIG_FILE>
+
+To be documented.
+
+=item B<-i>, B<--include-func>=I<ADDRESS>
+
+When analyzing an executable, only consider functions at location
+I<ADDRESS>, which should be a hexadecimal number.  This option can be
+specified multiple times.
+
+=item B<-e>, B<--exclude-func>=I<ADDRESS>
+
+When analyzing an executable, specifically do not consider any
+function at location I<ADDRESS>, which should be a hexadecimal number.
+This option can be specified multiple times.
+
+=item B<--log>=I<LOG_CONTROL_STRING>
+
+Use I<LOG_CONTROL_STRING> to determine what log messages are output.
+These strings are documented in the Sawyer C++ library documentation,
+under C<Message::Facilities::control()>.
+
+=item B<-b>, B<--batch>
+
+Suppress terminal-based magic in output, such as colors, progress
+bars, etc.
+
+=item B<--allow-64bit>
+
+Allow the analysis of 64-bit executables.
+
+=item B<-l>, B<--library>=I<CONFIG_DIR>
+
+Look for API information that cannot be found in the API database in
+the JSON files in I<CONFIG_DIR>.
+
+=item B<--apidb>=I<APIDB_FILE>
+
+Use the specified SQLite database or JSON file in I<APIDB_FILE> as a
+repository of API and type information.  This is a repeatable option,
+with later files overriding earlier ones.
+
+=item B<--timeout>=I<TIMEOUT>
+
+Set the absolute defuse timeout in seconds.  (Default: 900 seconds)
+
+=item B<--reltimeout>=I<TIMEOUT>
+
+Set the relative defuse timeout in seconds.  (Default: 20 seconds)
+
+=item B<--ptimeout>=I<TIMEOUT>
+
+Set the absolute partitioner timeout in seconds.  (Default: 300 seconds)
+
+=item B<--preltimeout>=I<TIMEOUT>
+
+Set the relative partitioner timeout in seconds.  (Default: 300 seconds)
+
+=item B<--maxmem>=I<MEMSIZE>
+
+Set the absolute maximum memory usage in megabytes.  (Default: 40000
+MiB)
+
+=item B<--relmaxmem>=I<MEMSIZE>
+
+Set the relative maximum memory usage in megabytes.  (Default: 1000
+MiB)
+
+=item B<--blockcounterlimit>=I<NUMBER>
+
+Set the number of instructions a basic block may have before analysis
+on it is stopped.  (Default: 3000)
+
+=item B<--funccounterlimit>=I<NUMBER>
+
+Set the number of blocks a function may have before analysis on it is
+stopped.  (Default: 3000)
+
+=item B<-v>, B<--verbose>=I<NUMBER>
+
+Set the verbosity of logging, 1-14.  (Default: 3)
+
+=back
+
+=head2 ROSE OPTIONS
+
+Options that determine how ROSE is used.
+
+=over 4
+
+=item B<--pconfig>=I<PARTITIONER_CONFIG_FILE>
+
+Not documented.
+
+=item B<--psearch>=I<PARTITIONER_SEARCH_FILE>
+
+Not documented.
+
+=item B<--dsearch>=I<DISASSEMBLER_SEARCH_FILE>
+
+Not documented.
+
+=item B<--stockpart>
+
+Use the stock (built into ROSE) version of the partitioner.  This will
+generally give worse results, as the default partitioner (customized,
+version 2) is the target partitioner for pharos software.  This option
+is primarily for testing changes to ROSE or the partitioner.
+
+=item B<--partitioner1>
+
+Use the old version of the customized pharos partitioner.  This will
+generally give worse results, as the default partitioner (customized,
+version 2) is the target partitioner for pharos software.  This option
+is primarily for comparing changes between the new and old
+partitioners.
+
+=item B<--partitioner2>
+
+Use the second customized version of the pharos partitioner.  This is
+the default.  This option will override a partitioner chosen by the
+config file.
+
+=item B<--no-semantics>
+
+Disable semantic analysis during partitioning.
+
+=item B<--ldebug>
+
+Enable loader debugging.
+
+=item B<--ddebug>
+
+Enable disassembler debugging.
+
+=item B<--pdebug>
+
+Enable partitioner debugging.
+
+=item B<--respect-protection>
+
+Respect segment protections.
+
+=item B<--rose-version>
+
+Output the version of ROSE that the program was compiled against, and exit.
+
+=back

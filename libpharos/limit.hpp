@@ -20,15 +20,13 @@
 // functions had already been analyzed without triggering the second
 // limit.
 
-#include <sys/time.h> // For definition of timespec
 #include <sys/resource.h> // For definition of rusage
 
 #include <string>
+#include <chrono>
 #include "options.hpp"
 
-// This is a global value for when we first started execution.
-extern bool first_ts_set;
-extern timespec first_ts;
+namespace pharos {
 
 enum LimitCode {
   LimitSuccess,
@@ -42,30 +40,34 @@ enum LimitCode {
 };
 
 class ResourceLimit {
+ public:
+  using clock = std::chrono::steady_clock;
+  using time_point = std::chrono::time_point<clock>;
+  using duration = std::chrono::duration<double>;
 
-private:
+ private:
 
   size_t counter;
   rusage start_ru;
-  timespec start_ts;
+  time_point start_ts;
 
   size_t counter_limit;
   double relative_cpu_limit;
   double absolute_cpu_limit;
   double relative_memory_limit;
   double absolute_memory_limit;
-  double relative_clock_limit;
-  double absolute_clock_limit;
+  duration relative_clock_limit;
+  duration absolute_clock_limit;
 
   std::string msg;
 
-public:
+ public:
 
   ResourceLimit();
 
   void reset_counter() { counter = 0; }
   void increment_counter() { counter++; }
-  size_t get_counter() { return counter; }
+  size_t get_counter() const { return counter; }
 
   void set_counter_limit(size_t limit) {
     counter_limit = limit;
@@ -82,6 +84,9 @@ public:
   }
 
   void set_clock_limits(double relative, double absolute) {
+    set_clock_limits(duration(relative), duration(absolute));
+  }
+  void set_clock_limits(duration relative, duration absolute) {
     relative_clock_limit = relative;
     absolute_clock_limit = absolute;
   }
@@ -90,26 +95,27 @@ public:
 
   std::string get_message() { return msg; }
 
-  double get_relative_clock();
-  double get_relative_cpu();
-  double get_relative_memory();
+  duration get_relative_clock() const;
+  double get_relative_cpu() const;
+  double get_relative_memory() const;
 
-  double get_absolute_clock();
-  double get_absolute_cpu();
-  double get_absolute_memory();
+  duration get_absolute_clock() const;
+  double get_absolute_cpu() const;
+  double get_absolute_memory() const;
 
-  std::string get_relative_usage();
-  std::string get_absolute_usage();
+  std::string get_relative_usage() const;
+  std::string get_absolute_usage() const;
 
 };
 
 struct PharosLimits {
-  enum class limit_type { BASE, PARTITIONER };
+  enum class limit_type { BASE, FUNC, PARTITIONER };
 
   PharosLimits(const ProgOptVarMap &vm);
 
   void set_clock_limits(ResourceLimit &limit, limit_type ltype) const;
   void set_cpu_limits(ResourceLimit &limit, limit_type ltype) const;
+  void set_counter_limit(ResourceLimit &limit, limit_type ltype) const;
 
   void set_memory_limits(ResourceLimit &limit) const {
     if (maxmem && relative_maxmem) {
@@ -118,14 +124,8 @@ struct PharosLimits {
   }
 
 
-  void set_counter_limit(ResourceLimit &limit) const {
-    if (counter_limit) {
-      limit.set_counter_limit(*counter_limit);
-    }
-  }
-
   void set_limits(ResourceLimit &limit, limit_type ltype) const {
-    set_counter_limit(limit);
+    set_counter_limit(limit, ltype);
     set_clock_limits(limit, ltype);
     set_cpu_limits(limit, ltype);
     set_memory_limits(limit);
@@ -140,10 +140,13 @@ struct PharosLimits {
   boost::optional<double> maxmem;
   boost::optional<double> relative_maxmem;
 
-  boost::optional<int> counter_limit;
+  boost::optional<int> block_counter_limit;
+  boost::optional<int> func_counter_limit;
 };
 
 const PharosLimits &get_global_limits();
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

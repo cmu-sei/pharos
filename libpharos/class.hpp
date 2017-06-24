@@ -1,4 +1,4 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Class_H
 #define Pharos_Class_H
@@ -6,6 +6,8 @@
 #include "member.hpp"
 #include "method.hpp"
 #include "usage.hpp"
+
+namespace pharos {
 
 // An object representing all methods and members associated with a particular constructor.
 class ClassDescriptor {
@@ -73,7 +75,7 @@ public:
     name = n;
   }
 
-  ThisCallMethod* get_method(const rose_addr_t addr);
+  ThisCallMethod* get_method(const rose_addr_t addr) const;
 
   void set_name(std::string n) { name.assign(n); }
   std::string get_name() const { return name; }
@@ -147,6 +149,8 @@ typedef std::map<rose_addr_t, ClassDescriptor> ClassDescriptorMap;
 
 // Data accumulated about objects with one specific constructor
 extern ClassDescriptorMap classes;
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

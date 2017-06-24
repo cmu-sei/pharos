@@ -1,0 +1,30 @@
+{
+    "Sig":{
+        "Name":"TestSig1",
+        "Description":"Test a signature",
+        "Category":"Test category",
+        "Pattern":[
+            {
+                "API":"TestAPI1",
+                "Retn":{
+                    "Name":"R"
+                }
+            },
+            {
+                "API":"TestAPI2",
+                "Args":[
+                    {
+                        "Name":"P1",
+                        "Type":"IN",
+                        "Index":0
+                    },
+                    {
+                        "Name":"P2",
+                        "Type":"OUT",
+                        "Index":1
+                    }
+                ]
+            }
+        ]
+    }
+}

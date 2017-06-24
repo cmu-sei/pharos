@@ -1,4 +1,4 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Convention_H
 #define Pharos_Convention_H
@@ -6,6 +6,8 @@
 #include "semantics.hpp"
 // For RegisterSet..
 #include "state.hpp"
+
+namespace pharos {
 
 // Forward declaration to simplify include cycles.
 class FunctionDescriptor;
@@ -149,18 +151,7 @@ public:
   // Constructor. All calling conventions must have a non-zero word size and non-empty
   // name. The name need not be unique, but it is often helpful if it is.  The compiler name
   // field may be empty.
-  CallingConvention(size_t w, const std::string &n, const std::string &c) {
-    word_size = w;
-    name = n;
-    compiler = c;
-    param_order = ORDER_UNKNOWN;
-    this_location = THIS_UNKNOWN;
-    retval_location = RETVAL_UNKNOWN;
-    stack_alignment = 0;
-    // We must have a name and a size.
-    assert(word_size > 0);
-    assert(!name.empty());
-  }
+  CallingConvention(size_t word_size_, const std::string &name_, const std::string &compiler_);
 
   size_t get_word_size() const { return word_size; }
   void set_word_size(size_t w) { word_size = w; }
@@ -320,6 +311,12 @@ public:
   // adjustments required for the size of the return address in the called context.
   SymbolicValuePtr address;
 
+  // Determines whether this parameter is a a read-only, read-write, or write-only parameter.
+  // This member was added as part of the API database code, and is not currently computed
+  // based on access patterns for functions linked into the excutable.  It should be.
+  typedef enum inout_en { DIRECTION_NONE, DIRECTION_IN, DIRECTION_OUT, DIRECTION_INOUT } DirectionEnum;
+  DirectionEnum direction = DIRECTION_NONE;
+
   // In the called context, this is the instruction that provides evidence that the parameter
   // was read while uninitilized.  Mostly useful for determining how we decided that there was
   // a parameter at all.  In the caller context, this is the instruction that passed the
@@ -338,11 +335,11 @@ public:
   // added in the future, but isn't currently supported.
 
   // A constructor convenient for adding stack parameters.
-  ParameterDefinition(size_t c, SymbolicValuePtr v, std::string n, std::string t,
-                      const SgAsmInstruction* i, SymbolicValuePtr a, size_t d);
+  ParameterDefinition(size_t c, const SymbolicValuePtr& v, std::string n, std::string t,
+                      const SgAsmInstruction* i, const SymbolicValuePtr& a, size_t d);
 
   // A form convenient for adding register parameters.
-  ParameterDefinition(size_t c, SymbolicValuePtr v, std::string n, std::string t,
+  ParameterDefinition(size_t c, const SymbolicValuePtr& v, std::string n, std::string t,
                       const SgAsmInstruction* i, const RegisterDescriptor* r);
 
   bool is_reg() const { return (reg != NULL); }
@@ -350,13 +347,15 @@ public:
 
   size_t get_num() const { return num; }
   const std::string& get_name() const { return name; }
+  const std::string & get_type() const { return type; }
   SymbolicValuePtr get_value() const { return value; }
-  void set_stack_attributes(SymbolicValuePtr v, SymbolicValuePtr a, SgAsmInstruction* i, SymbolicValuePtr p);
-  void set_reg_attributes(SymbolicValuePtr v, const SgAsmInstruction* i, SymbolicValuePtr p);
+  void set_stack_attributes(const SymbolicValuePtr& v, const SymbolicValuePtr& a, SgAsmInstruction* i, const SymbolicValuePtr& p);
+  void set_reg_attributes(const SymbolicValuePtr& v, const SgAsmInstruction* i, const SymbolicValuePtr& p);
   const RegisterDescriptor* get_register() const { return reg; }
   size_t get_stack_delta() const { return stack_delta; }
   // Spew a description of the parameter to the log.
   void debug() const;
+  std::string to_string() const;
 };
 
 //===========================================================================================
@@ -498,17 +497,15 @@ class RegisterUsage {
 public:
   FunctionDescriptor* fd;
 
-  // Architecture size.  Perhaps not the best way to do this...
-  size_t arch_size;
-
   // Registers that were changed between the input state and the output state.
   RegisterSet changed_registers;
-  // Registers that were unchanged between the input state and the output state.
-  RegisterSet unchanged_registers;
   // Registers that were saved and then restored.  (A subset of unchanged).
   SavedRegisterSet saved_registers;
   // Registers that were read as a parameter to the function.
   RegisterEvidenceMap parameter_registers;
+
+  // Instructions only used to allocate stack memory
+  InsnSet stack_allocation_insns;
 
   // These two may not be needed...
 
@@ -519,8 +516,6 @@ public:
 
   RegisterUsage() {
     fd = NULL;
-    // 32-bit versus 64-bit naughtiness here.  We should get this from somewhere.
-    arch_size = 32;
   }
 
   // Analyze the function...
@@ -563,6 +558,8 @@ public:
   const CallingConvention* find(size_t word_size, const std::string &name) const;
 
 };
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

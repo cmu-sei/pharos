@@ -1,12 +1,13 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/format.hpp>
-#include <boost/foreach.hpp>
 
 #include <rose.h>
 
 #include "class.hpp"
 #include "misc.hpp"
+
+namespace pharos {
 
 // Data accumulated about objects with one specific constructor
 ClassDescriptorMap classes;
@@ -55,14 +56,14 @@ ClassDescriptor::ClassDescriptor(rose_addr_t a, ThisCallMethod* tc) {
 
 void ClassDescriptor::debug() const {
   GDEBUG << "CL: addr=" << addr_str(address) << " { ";
-  BOOST_FOREACH(ThisCallMethod* tcm, methods) {
+  for (const ThisCallMethod* tcm : methods) {
     GDEBUG << tcm->address_string() << " ";
   }
   GDEBUG << "}" << LEND;
 }
 
-ThisCallMethod* ClassDescriptor::get_method(const rose_addr_t addr) {
-  BOOST_FOREACH(ThisCallMethod *m, methods) {
+ThisCallMethod* ClassDescriptor::get_method(const rose_addr_t addr) const {
+  for (ThisCallMethod *m : methods) {
     if (m->get_address() == addr) {
       return m;
     }
@@ -70,13 +71,13 @@ ThisCallMethod* ClassDescriptor::get_method(const rose_addr_t addr) {
 
   // Now we have to check virtual functions ... sigh ... these should probably be in the
   // method set
-  BOOST_FOREACH(MemberMap::value_type &mpair, data_members) {
-    Member &mbr = mpair.second;
+  for (const MemberMap::value_type &mpair : data_members) {
+    const Member &mbr = mpair.second;
 
     if (mbr.is_virtual() == false) continue;
 
     // this is a vfptr
-    VirtualFunctionTable *vtable = mbr.get_vftable();
+    const VirtualFunctionTable *vtable = mbr.get_vftable();
     if (vtable != NULL) {
 
       // Perhaps we should print the whole vtable here via vftable->print(o)...
@@ -233,14 +234,14 @@ void ClassDescriptor::find_parents() {
   parent_ctors.clear();
 
   // Accumulate parents from the list of members.
-  BOOST_FOREACH(const MemberMap::value_type &mpair, data_members) {
+  for (const MemberMap::value_type &mpair : data_members) {
     const Member& member = mpair.second;
     // For this purpose, we've also declared any embedded object at offset zero as
     // effectively a parent class.  By that I mean that we've included methods that are
     // associated with that embedded object.  Perhaps we should change is_parent() to match
     // as well, but Cory would like to discuss it with Jeff first.
     if (member.is_parent() || member.offset == 0) {
-      BOOST_FOREACH(rose_addr_t addr, member.embedded_ctors) {
+      for (rose_addr_t addr : member.embedded_ctors) {
         GTRACE << "Evaluating embedded method addr: " << addr_str(addr) << LEND;
         // Skip methods that are not constructors.
         if (this_call_methods.find(addr) == this_call_methods.end()) continue;
@@ -261,7 +262,7 @@ void ClassDescriptor::find_parents() {
 
   if (parent_ctors.size() > 0) {
     GDEBUG << "Parents of " << address_string() << LEND;
-    BOOST_FOREACH(rose_addr_t parent, parent_ctors) {
+    for (rose_addr_t parent : parent_ctors) {
       GDEBUG << "  Parent: " << addr_str(parent) << LEND;
     }
   }
@@ -288,7 +289,7 @@ void ClassDescriptor::find_ancestors() {
   // Why would we not have a constructor?
   if (my_ctor != NULL) {
     // For each parent recursively find ancestors.
-    BOOST_FOREACH(rose_addr_t parent, parent_ctors) {
+    for (rose_addr_t parent : parent_ctors) {
       // Get the class for the parent.
       ClassDescriptorMap::iterator finder = classes.find(parent);
       // If it wasn't found, just skip it.  This shouldn't really happen.  Genearte a warning?
@@ -311,11 +312,13 @@ void ClassDescriptor::find_ancestors() {
 
   if (ancestor_ctors.size() > 0) {
     GDEBUG << "Ancestors of " << address_string() << LEND;
-    BOOST_FOREACH(rose_addr_t ancestor, ancestor_ctors) {
+    for (rose_addr_t ancestor : ancestor_ctors) {
       GDEBUG << "  Ancestor: " << boost::str(boost::format("0x%08X") % ancestor) << LEND;
     }
   }
 }
+
+} // namespace pharos
 
 /* Local Variables:   */
 /* mode: c++          */

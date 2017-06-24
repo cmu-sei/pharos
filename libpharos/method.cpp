@@ -1,9 +1,11 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "pdg.hpp"
 #include "method.hpp"
 #include "class.hpp"
 #include "vftable.hpp"
+
+namespace pharos {
 
 // This is newly created global map to track all methods following the "this-call" calling
 // convention.  The map itself maps the address of the function to a ThisCallMethod instance.
@@ -23,7 +25,7 @@ SymbolicValuePtr get_this_ptr_for_call(const CallDescriptor* cd) {
   // Try to decide if any of our targets are object oriented.  This should be a shared method
   // somewhere. We've done the same thing while resolving virtual calls.
   bool oo_target = false;
-  BOOST_FOREACH(rose_addr_t target, cd->get_targets()) {
+  for (rose_addr_t target : cd->get_targets()) {
     ThisCallMethod* tcm = follow_oo_thunks(target);
     if (tcm != NULL) {
       GDEBUG << "Call at " << cd->address_string() << " calls OO target "
@@ -44,8 +46,7 @@ SymbolicValuePtr get_this_ptr_for_call(const CallDescriptor* cd) {
     return SymbolicValue::instance();
   }
   // We should be able to find this globally somehow...
-  const RegisterDictionary* regdict = RegisterDictionary::dictionary_pentium4();
-  const RegisterDescriptor* this_reg = regdict->lookup(THIS_PTR_STR);
+  const RegisterDescriptor* this_reg = global_descriptor_set->get_arch_reg(THIS_PTR_STR);
   assert(this_reg != NULL);
   // Read ECX from the state immediately before the call.
   SymbolicValuePtr this_value = state->read_register(*this_reg);
@@ -270,7 +271,7 @@ void ThisCallMethod::set_constructor(bool b, GenericConfidence conf) {
     // force the destructor field to false, and make a note of that.
     if (destructor || deleting_destructor) {
       // This message can probably remain at GWARN, because we should rarely trigger it.
-      OINFO << "Constructor " << address_string() << " cannot also be a destructor." << LEND;
+      GWARN << "Constructor " << address_string() << " cannot also be a destructor." << LEND;
       destructor = false;
       deleting_destructor = false;
     }
@@ -282,7 +283,7 @@ void ThisCallMethod::debug() const {
   if (is_constructor()) GDEBUG << " ctor { ";
   else if (is_destructor()) GDEBUG << " dtor { ";
   else GDEBUG << "      { ";
-  BOOST_FOREACH(const FuncOffsetMap::value_type& fopair, passed_func_offsets) {
+  for (const FuncOffsetMap::value_type& fopair : passed_func_offsets) {
     const FuncOffset& fo = fopair.second;
     GDEBUG << fo.offset << "=" << fo.tcm->address_string() << " ";
   }
@@ -291,7 +292,7 @@ void ThisCallMethod::debug() const {
   if (GDEBUG && calling_classes.size() != 1) {
     GDEBUG << "TCM: " << address_string() << " is assigned to "
            << calling_classes.size() << " classes." << LEND;
-    BOOST_FOREACH(ClassDescriptor* cls, calling_classes) {
+    for (const ClassDescriptor* cls : calling_classes) {
       GDEBUG << "TCM: " << address_string() << " in " << cls->address_string() << LEND;
     }
   }
@@ -301,26 +302,48 @@ bool ThisCallMethod::find_this_pointer()
 {
   GTRACE << "ThisCallMethod::find_this_pointer(): " << fd->address_string() << LEND;
 
+  // For thunks, we used to fail through with not finding the appropriate references to ECX (in
+  // the thunk function itself).  Then I made some changes to thunk propogation, and we ended
+  // up here more often, but it just generated more errors.  We should probably revisit _why_
+  // we don't need to find the this-pointer in thunks, but I'm not shocked by that.  This
+  // change will at least make it more explicit that this code isn't intended to be run against
+  // thunks, and if there's a fix in the future it will probably be to _follow_ thunks here,
+  // propagate the this-pointer from the target func, or maybe just to emit a new thunk fact.
+  if (fd->is_thunk()) return false;
+
   // We should probably be using a RegisterDescriptor (or an AbstractAccess)
   // to describe the this pointer anyway.  Here we need it to pass to is_reg().
-  const RegisterDictionary* regdict = RegisterDictionary::dictionary_pentium4();
-  const RegisterDescriptor* this_reg = regdict->lookup(THIS_PTR_STR);
-  const RegisterDescriptor* edx = regdict->lookup("edx");
+  const RegisterDescriptor* this_reg = global_descriptor_set->get_arch_reg(THIS_PTR_STR);
+  const RegisterDescriptor* edx = global_descriptor_set->get_arch_reg("edx");
 
   PDG *p = fd->get_pdg();
   if (p == NULL) return false;
   //const Insn2DUChainMap& dd = p->get_usedef().get_dependencies();
 
   // What Cory would like to do here is check fd->calling_convention == ConventionThisCall, and
-  // move on, but to get there we'll have to define the standard calling conventions correctly,
-  // and that's started in convention.hpp but is far from complete.
+  // move on.   He tried enabling this code as part of fix while debugging another issue, but
+  // this code sadly rejected _many_ functions that really were __thiscall so it had to be disabled.
+#if 0
+  bool thiscall_cc = false;
+  for (const CallingConvention* cc : fd->get_calling_conventions()) {
+    if (cc && cc->get_name() == "__thicall") {
+      thiscall_cc = true;
+      break;
+    }
+  }
+
+  if (!thiscall_cc) {
+    GWARN << "Rejected function " << fd->address_string() << " because it was not __thiscall." << LEND;
+    return false;
+  }
+#endif
 
   const RegisterUsage& ru = fd->get_register_usage();
 
   GDEBUG << "ThisCallMethod getting RegisterUsage: " << fd->address_string() << LEND;
   // Display for debugging, should probably be a function of it's own.
   GDEBUG << "Function " << fd->address_string() << " has parameters: ";
-  BOOST_FOREACH(const RegisterEvidenceMap::value_type& rpair, ru.parameter_registers) {
+  for (const RegisterEvidenceMap::value_type& rpair : ru.parameter_registers) {
     const RegisterDescriptor* rd = rpair.first;
     GDEBUG << " " << unparseX86Register(*rd, NULL);
   }
@@ -341,28 +364,27 @@ bool ThisCallMethod::find_this_pointer()
     return false;
   }
 
-  const AccessMap& reads = p->get_usedef().get_reads();
+  auto & ud = p->get_usedef();
 
   // Cory's curious if there's a more efficient way to find a particular read...
 
   // Iterate through basic blocks
-  BOOST_FOREACH(SgAsmStatement* bs, fd->get_func()->get_statementList()) {
-    SgAsmBlock *bb = isSgAsmBlock(bs);
+  for (const SgAsmStatement* bs : fd->get_func()->get_statementList()) {
+    const SgAsmBlock *bb = isSgAsmBlock(bs);
     if (!bb) continue;
-    BOOST_FOREACH(SgAsmStatement* is, bb->get_statementList()) {
+    for (SgAsmStatement* is : bb->get_statementList()) {
       SgAsmX86Instruction *insn = isSgAsmX86Instruction(is);
       if (!insn) continue;
-      // If there are no reads just continue.
-      if (reads.find(insn) == reads.end()) continue;
-      // For each access...
-      BOOST_FOREACH(const AbstractAccess& aa, reads.at(insn)) {
+      // For each register access...
+      for (const AbstractAccess& aa : ud.get_reads(insn)) {
         // We're looking for an access to the "this-pointer" register.
         if (!aa.is_reg(this_reg)) continue;
 
-        TreeNodePtr tnptr = aa.value->get_expression();
+        // We're looking for an access to the "this-pointer" register.
+        const TreeNodePtr & tnptr = aa.value->get_expression();
 
         // Cory's insisting that all valid this-pointer accesses be the "correct" size.
-        if (aa.size != get_arch_bits()) {
+        if (aa.size != global_descriptor_set->get_arch_bits()) {
           GDEBUG << "Bad thisptr (size): " << *tnptr << " at " << debug_instruction(insn) << LEND;
           continue;
         }
@@ -398,8 +420,10 @@ bool ThisCallMethod::find_this_pointer()
 }
 
 void ThisCallMethod::test_for_constructor() {
-  // This method is a heuristic attempt to determine whether we're a constructor or not.  It's
-  // imperfect, but it's what we're doing currently.
+  // This method is a heuristic attempt to determine whether we're a constructor or not.  The
+  // rule is that we're not a constructor if we don't return (in EAX) the this-pointer that was
+  // passed in ECX.  We originally thought that this rule was flawed, but have subsequently
+  // decided that perhaps it's actually a sound rule (for the Visual Studio compiler).
 
   // It's unclear to Cory if we should still be checking for a thunk here.  I suspect not.  We
   // probably shouldn't be creating ThisCallMethods for the thunks, but that will require more
@@ -421,15 +445,14 @@ void ThisCallMethod::test_for_constructor() {
   // Get definition and usage analysis, so that we can access in the input and output states.
   const DUAnalysis& du = p->get_usedef();
   // Obtain the final value of eax (the return value).
-  const RegisterDictionary* regdict = RegisterDictionary::dictionary_pentium4();
-  const RegisterDescriptor* eaxrd = regdict->lookup("eax");
+  const RegisterDescriptor* eaxrd = global_descriptor_set->get_arch_reg("eax");
   // If we don't have an output state, it's because analysis failed.  Just return that the
   // function is not a constructor in the lack of any better evidence.
   const SymbolicStatePtr output_state = du.get_output_state();
   if (!output_state) return;
   SymbolicValuePtr final_eax = output_state->read_register(*eaxrd);
   // And the initial value of ECX (the this pointer).
-  const RegisterDescriptor* ecxrd = regdict->lookup(THIS_PTR_STR);
+  const RegisterDescriptor* ecxrd = global_descriptor_set->get_arch_reg(THIS_PTR_STR);
   // Cory's unsure if it's even possible to be missing an input state, but returning false wil
   // be better than performing an invalid memory dereference.
   const SymbolicStatePtr input_state = du.get_input_state();
@@ -457,18 +480,137 @@ void ThisCallMethod::test_for_constructor() {
   }
 }
 
+bool
+ThisCallMethod::test_for_uninit_reads() const
+{
+  // This is a new rule for eliminating constructors based on the idea that valid constructors
+  // can't be reading values out of the object (before initialization) during construction.
+
+  // We're only interested in applying this rule if the previous one decided that we could be a
+  // constructor.
+  if (!constructor) return false;
+
+  // Same thunk logic as the previous rule...
+  // Check to see if this function is a thunk to another.  Should be calling follow_oo_thunks?
+  FunctionDescriptor *this_call_fd = fd->get_jmp_fd();
+  // If there's no thunk, just use the FD we were given.
+  if (this_call_fd == NULL) this_call_fd = fd;
+
+  PDG* p = this_call_fd->get_pdg();
+  if (p == NULL) return false;
+  //GDEBUG << "Evaluating constructor candidate " << this_call_fd->address_string() << LEND;
+
+  TreeNodePtr tptr = thisptr->get_expression();
+
+  //GDEBUG << " This-pointer is:" << *tptr << LEND;
+
+  const DUAnalysis& du = p->get_usedef();
+
+  // For every memory read in the function...
+  for (const AccessMap::value_type& access : du.get_accesses()) {
+    SgAsmX86Instruction* insn = isSgAsmX86Instruction(access.first);
+    if (!insn) continue;
+    // The second entry of the pair is the vector of abstract accesses.
+    for (const AbstractAccess& aa : access.second) {
+      // We're only interested in reads...
+      if (!aa.isRead) continue;
+
+      // We're only interested in memory reads, so get that out of the way first thing.
+      if (!aa.is_mem()) continue;
+
+      // We should have a value.   If we don't something went wrong.
+      if (aa.value == NULL) continue;
+
+      // If there's a writer, the memory cell was not uninitialized, and we're only looking for
+      // uninitialized reads so this method can still be a constructor.
+      if (aa.latest_writers.size() != 0) continue;
+
+      // Get the definers for this instruction.
+      const InsnSet &definers = aa.value->get_defining_instructions();
+
+      // If there's more than one definer, we're definitely not reading an uninitialized value.
+      if (definers.size() > 1) continue;
+
+      // If there's exactly one definer and it's the current instruction that also counts as an
+      // uninitialized read.  That's because the instruction that 'created' the memory cell by
+      // reading it is in the list of definers.
+      if (definers.size() == 1) {
+        SgAsmInstruction* first_definer = *(definers.begin());
+        if (insn->get_address() != first_definer->get_address()) continue;
+      }
+
+      // But if the read turns out to be a "fake" read, then we can still be a constructor.
+      if (du.fake_read(insn, aa)) continue;
+
+      // Next we need to check whether we're accessing the object.  In other words, is the
+      // memory access an offset into the this-pointer?  The exact test that's really desired
+      // here is probably more complicated than this since it should include ITEs and other
+      // complex expressions, but since this is a rule that simply eliminates possible
+      // constructors, a false negative isn't a super big deal (so far).
+      AddConstantExtractor ace = AddConstantExtractor(aa.memory_address->get_expression());
+      TreeNodePtr vp = ace.variable_portion();
+      // If there's _no_ variable portion, it's definitely not an object reference.
+      if (!vp) continue;
+      // If the the variable portion is not our this-pointer, this memory read is not relevant.
+      if (!(tptr->isEquivalentTo(vp))) continue;
+
+      // An exception needs to be made for reads of virtual base tables.  It's a little unclear
+      // why but it appears to have something to do object initialization order.
+      int64_t cp = ace.constant_portion();
+
+      //GDEBUG << "Method is accessing object offset " << cp << LEND;
+
+      // Find the member definition for this offset.
+      MemberMap::const_iterator existing_member_finder = data_members.find(cp);
+      if (existing_member_finder != data_members.end()) {
+        const Member& emem = existing_member_finder->second;
+        //GDEBUG << "Found member in object at offset " << cp << LEND;
+
+        // Look through each VFTableEvidence structure to check for vbtables.
+        bool exempted = false;
+        for (const VFTEvidence& e : emem.get_vftable_evidence()) {
+          if (e.vbtable) {
+            exempted = true;
+            break;
+          }
+        }
+
+        // If the member is a virtual base table pointer, it's exempted from this rule.
+        if (exempted) {
+          //GDEBUG << "Method " << this_call_fd->address_string()
+          //       << " was exempted because the read was from a vbtable!" << LEND;
+          continue;
+        }
+      }
+
+      GDEBUG << "Method " << this_call_fd->address_string() << " is not a constructor because of "
+             << debug_instruction(insn) << " which reads object offset " << cp << "." << LEND;
+
+      // If we've made it this far, we're not a constructor because we're reading members from
+      // the object that we have not initialized, and that's not consistent with how
+      // constructors operate.
+      // constructor = false;
+      // We're probably more confident than a guess here, but for right now it doesn't matter.
+      // constructor_confidence = ConfidenceGuess;
+      // Once we have negative answer, we're done for this entire method.
+      return true;
+    }
+  }
+  return false;
+}
+
 void ThisCallMethod::find_members() {
   PDG* p = fd->get_pdg();
   if (p == NULL) return;
-  const AccessMap& reads = p->get_usedef().get_reads();
-  const AccessMap& writes = p->get_usedef().get_writes();
+
+  auto & ud = p->get_usedef();
 
   GTRACE << "Looking for data members in " << address_string() << LEND;
 
-  BOOST_FOREACH(SgAsmStatement* bs, fd->get_func()->get_statementList()) {
-    SgAsmBlock *bb = isSgAsmBlock(bs);
+  for (const SgAsmStatement* bs : fd->get_func()->get_statementList()) {
+    const SgAsmBlock *bb = isSgAsmBlock(bs);
     if (!bb) continue;
-    BOOST_FOREACH(SgAsmStatement* is, bb->get_statementList()) {
+    for (SgAsmStatement* is : bb->get_statementList()) {
       SgAsmX86Instruction *insn = isSgAsmX86Instruction(is);
       if (!insn) continue;
 
@@ -479,47 +621,39 @@ void ThisCallMethod::find_members() {
 
       // Look for memory accesses (typically of the form [tptr + offset]).
 
-      if (reads.find(insn) != reads.end()) {
-        BOOST_FOREACH(const AbstractAccess& aa, reads.at(insn)) {
-          // We're only interested in memory accesses...
-          if (!aa.is_mem()) continue;
+      for (const AbstractAccess& aa : ud.get_mem_reads(insn)) {
+        // Assume that the expression is a properly formed offset into our object and attempt
+        // to obtain the offset into that object.
+        boost::optional<int64_t> offset = get_offset(aa.memory_address->get_expression());
+        // We're only interested in memory references to our this-pointer that have properly
+        // formed constant offsets.
+        if (!offset) continue;
 
-          // Assume that the expression is a properly formed offset into our object and attempt
-          // to obtain the offset into that object.
-          boost::optional<int64_t> offset = get_offset(aa.memory_address->get_expression());
-          // We're only interested in memory references to our this-pointer that have properly
-          // formed constant offsets.
-          if (!offset) continue;
-
-          if (*offset >= 0) {
-            // Add the member to the method.  Calling get_byte_size() is more accurate than
-            // reading sizes off of the operands (e.g. movsd) which we're probably not handling
-            // correctly anyway, but it's also simpler.
-            add_data_member(Member(*offset, aa.get_byte_size(), 0, insn, NULL));
-          }
-          else {
-            GDEBUG << "Ignoring negative object offset (" << *offset
-                   << ") read at insn " << debug_instruction(insn) << LEND;
-          }
+        if (*offset >= 0) {
+          // Add the member to the method.  Calling get_byte_size() is more accurate than
+          // reading sizes off of the operands (e.g. movsd) which we're probably not handling
+          // correctly anyway, but it's also simpler.
+          add_data_member(Member(*offset, aa.get_byte_size(), 0, insn, NULL));
+        }
+        else {
+          GDEBUG << "Ignoring negative object offset (" << *offset
+                 << ") read at insn " << debug_instruction(insn) << LEND;
         }
       }
 
       // Now for writes (same code as reads, but with no comments).  Cory would like to be able
       // to do something witty with a custom iterator here to process both lists with the same
       // block of code to be executed.
-      if (writes.find(insn) != writes.end()) {
-        BOOST_FOREACH(const AbstractAccess& aa, writes.at(insn)) {
-          if (!aa.is_mem()) continue;
-          boost::optional<int64_t> offset = get_offset(aa.memory_address->get_expression());
-          if (!offset) continue;
+      for (const AbstractAccess& aa : ud.get_mem_writes(insn)) {
+        boost::optional<int64_t> offset = get_offset(aa.memory_address->get_expression());
+        if (!offset) continue;
 
-          if (*offset >= 0) {
-            add_data_member(Member(*offset, aa.get_byte_size(), 0, insn, NULL));
-          }
-          else {
-            GDEBUG << "Ignoring negative object offset (" << *offset
-                   << ") write at insn " << debug_instruction(insn) << LEND;
-          }
+        if (*offset >= 0) {
+          add_data_member(Member(*offset, aa.get_byte_size(), 0, insn, NULL));
+        }
+        else {
+          GDEBUG << "Ignoring negative object offset (" << *offset
+                 << ") write at insn " << debug_instruction(insn) << LEND;
         }
       }
     }
@@ -527,7 +661,7 @@ void ThisCallMethod::find_members() {
 }
 
 void ThisCallMethod::find_passed_func_offsets() {
-  BOOST_FOREACH(CallDescriptor* cd, fd->get_outgoing_calls()) {
+  for (const CallDescriptor* cd : fd->get_outgoing_calls()) {
     SgAsmX86Instruction* insn = isSgAsmX86Instruction(cd->get_insn());
     assert(insn != NULL);
 
@@ -544,7 +678,7 @@ void ThisCallMethod::find_passed_func_offsets() {
     // We could check for offset zero or four here, but that does not seem to be the best
     // approach.  if (*offset != 0) continue;
 
-    BOOST_FOREACH(rose_addr_t saddr, cd->get_targets()) {
+    for (rose_addr_t saddr : cd->get_targets()) {
       ThisCallMethod* ctcm = follow_oo_thunks(saddr);
       // If the method is not __thiscall, then we don't care about it.  In addition to
       // following thunks, the oo version validates that the target is a member of the global
@@ -584,9 +718,12 @@ void ThisCallMethod::analyze_vftables() {
   GDEBUG << "Analyzing vftables for " << fd->address_string() << LEND;
 
   // For every write in the function...
-  BOOST_FOREACH(const AccessMap::value_type& access, p->get_usedef().get_writes()) {
+  for (const AccessMap::value_type& access : p->get_usedef().get_accesses()) {
     // The second entry of the pair is the vector of abstract accesses.
-    BOOST_FOREACH(const AbstractAccess& aa, access.second) {
+    for (const AbstractAccess& aa : access.second) {
+      // We only want writes
+      if (aa.isRead) continue;
+
       // We're only interested in writes that write a constant value to the target.
       // This is a reasonably safe presumption for compiler generated code.
       if (!aa.value->is_number()) continue;
@@ -619,70 +756,131 @@ void ThisCallMethod::analyze_vftables() {
 
       GDEBUG << "Analyzing vtable access instruction: " << debug_instruction(insn) << LEND;
 
-      // What's left is starting to look a lot like the initialization of a virtual function
-      // table pointer.  Let's check to see if we've already analyzed this address.  If so,
-      // there's no need to analyze it again, just use the previous results.
-      VirtualFunctionTable* vftable = NULL;
-      if (global_vtables.find(constaddr) != global_vtables.end()) {
-        vftable = global_vtables[constaddr];
-      }
-      else {
-        // This memory is not currently freed anywhere. :-( Sorry 'bout that. -- Cory
-        vftable = new VirtualFunctionTable(constaddr);
-        vftable->analyze();
-        global_vtables[constaddr] = vftable;
-      }
-
-      // The address can only truly be a virtual function table if it passes some basic tests,
-      // such as having at least one function pointer.
-      if (vftable->max_size < 1) {
-        // If there were no pointer at all, just reject the table outright.
-        if (vftable->non_function == 0) {
-          GINFO << "Possible virtual function table at " << addr_str(constaddr)
-                << " rejected because no valid pointers were found." << LEND;
-          // Don't add the table to the list of tables for the object.
-          continue;
-        }
-        // But if there were valid non-function pointers, let's continue to assume that we've
-        // had a disassembly failure, and add the table to the list of tables even though it's
-        // obviously broken.
-        else {
-          GINFO << "Possible virtual function table at " << addr_str(constaddr)
-                << " is highly suspicious because no function pointers were found." << LEND;
-        }
-      }
-
       // Let's try to extract the object pointer variable, and any offset
       // that's present.
       TreeNodePtr tn = aa.memory_address->get_expression();
       AddConstantExtractor ace(tn);
+      TreeNodePtr vp = ace.variable_portion();
       // There must be a variable portion.
-      if (ace.variable_portion == NULL) {
-        GWARN << "Malformed virtual function table initialization: expr=" << *tn
-              << " at instruction: " << debug_instruction(insn) << LEND;
-        continue;
-      }
-      // The variable portion must be a single variable.
-      if (ace.variable_portion->isLeafNode() == NULL) {
-        GWARN << "Malformed virtual function table initialization: expr=" << *tn
-              << " at instruction: " << debug_instruction(insn) << LEND;
+      if (vp == NULL) {
+        GDEBUG << "Malformed virtual function table initialization: expr=" << *tn
+               << " at instruction: " << debug_instruction(insn) << LEND;
         continue;
       }
 
-      // The variable portion must actually match the current this-pointer.  This check was not
-      // being performed previously because we assumed that vtable writes in the constructor
-      // would be to the object for this constructor, but when this constructor embeds another
-      // object and the constuctor for the embeded object was inlined into this method, we get
-      // misleading results here.
-      if (!(ace.variable_portion->isEquivalentTo(leaf))) {
-        GWARN << "Rejected virtual function table write for wrong object "
-              << *ace.variable_portion << " != " << *leaf
-              << " at instruction: " << debug_instruction(insn) << LEND;
-        continue;
+      // If the variable portion is a single variable, it must match the this-pointer.
+      if (vp->isLeafNode() != NULL) {
+        // The variable portion must actually match the current this-pointer.  This check was
+        // not being performed previously because we assumed that vtable writes in the
+        // constructor would be to the object for this constructor, but when this constructor
+        // embeds another object and the constuctor for the embeded object was inlined into
+        // this method, we get misleading results here.
+        if (!(vp->isEquivalentTo(leaf))) {
+          GDEBUG << "Rejected virtual function table write for wrong object " << *vp
+                 << " != " << *leaf << " at instruction: " << debug_instruction(insn) << LEND;
+          continue;
+        }
+      }
+      // There's another crazy possibility caused by virtual base tables (primarily?).  It
+      // involves an offset into the object that contains two variable portions.  One is the
+      // object pointer, which is truly variable, and the other is a semi-constant that was
+      // read out the virtual base table.  Unfortunately, we don't currently have a good
+      // general purpose system for replacing variables with their constant values from the
+      // program image, so we're going to hack it up a little bit here and just look for an add
+      // operation that contains out this pointer.  Unfortunately the VXTableWrite facts will
+      // be incorrect (because they assume the vbtable adjustment was zero) until we
+      // reimplement this code more robustly...
+      else {
+        // We must be an interior node if we weren't a leaf node.
+        InternalNodePtr inode = vp->isInteriorNode();
+        // In this branch we're not a this-pointer until we find what we're looking for.
+        bool found_this_ptr = false;
+        // If we're an ADD operation, that's what we're looking for.
+        if (inode && inode->getOperator() == Rose::BinaryAnalysis::SymbolicExpr::OP_ADD) {
+          // Now go through each node and see if one of them is the object pointer.
+          for (const TreeNodePtr ctp : inode->children()) {
+            if (ctp->isEquivalentTo(leaf)) found_this_ptr = true;
+          }
+        }
+        if (found_this_ptr) {
+          GWARN << "Ignoring unknown virtual base table offset in instruction "
+                << addr_str(insn->get_address()) << LEND;
+        }
+        else {
+          GDEBUG << "Rejected virtual function table write for wrong object " << *vp
+                 << " does not contain thisptr at instruction: " << debug_instruction(insn) << LEND;
+          continue;
+        }
+      }
+
+      // What's left is starting to look a lot like the initialization of a virtual function
+      // table pointer.  Let's check to see if we've already analyzed this address.  If so,
+      // there's no need to analyze it again, just use the previous results.
+      VirtualFunctionTable* vftable = NULL;
+      VirtualBaseTable* vbtable = NULL;
+      if (global_vftables.find(constaddr) != global_vftables.end()) {
+        vftable = global_vftables[constaddr];
+      }
+      else if (global_vbtables.find(constaddr) != global_vbtables.end()) {
+        vbtable = global_vbtables[constaddr];
+      }
+      else {
+        // It's important that the table go into one of the two global lists here so that we
+        // don't have to keep processing it over and over again.
+
+        // This memory is not currently freed anywhere. :-( Sorry 'bout that. -- Cory
+
+        // Starting by doing virtual base table analysis.  This analysis should not falsely
+        // claim any virtual function tables, and tables that are very invalid will get handled
+        // as malformed virtual function tables..
+        vbtable = new VirtualBaseTable(constaddr);
+        vbtable->analyze();
+        // If the vbtable doesn't have at least two entries, it's invalid.
+        if (vbtable->size > 1) {
+          //GDEBUG << "Found possible virtual base table at: " << addr_str(constaddr) << LEND;
+          global_vbtables[constaddr] = vbtable;
+        }
+        else {
+          // Free the vbtable that we decided not to use.  At least I freed something. :-)
+          delete vbtable;
+          vbtable = NULL;
+          //GDEBUG << "Found possible virtual function table at: " << addr_str(constaddr) << LEND;
+          // Now try creating a virtual function table at the same address.
+          vftable = new VirtualFunctionTable(constaddr);
+          vftable->analyze();
+          global_vftables[constaddr] = vftable;
+        }
+      }
+
+      if (vbtable != NULL) {
+        // Unclear what else we should be doing with the vbtables right now.
+      }
+
+      // There's more work to be done, but only for virtual function tables, not virtual base
+      // tables.
+      if (vftable != NULL) {
+        // The address can only truly be a virtual function table if it passes some basic tests,
+        // such as having at least one function pointer.
+        if (vftable->max_size < 1) {
+          // If there were no pointer at all, just reject the table outright.
+          if (vftable->non_function == 0) {
+            GDEBUG << "Possible virtual function table at " << addr_str(constaddr)
+                   << " rejected because no valid pointers were found." << LEND;
+            // Don't add the table to the list of tables for the object.
+            continue;
+          }
+          // But if there were valid non-function pointers, let's continue to assume that we've
+          // had a disassembly failure, and add the table to the list of tables even though it's
+          // obviously broken.
+          else {
+            GDEBUG << "Possible virtual function table at " << addr_str(constaddr)
+                   << " is highly suspicious because no function pointers were found." << LEND;
+          }
+        }
       }
 
       // This is the offset into the object where the virtual function table pointer is stored.
-      int64_t offset = ace.constant_portion;
+      int64_t offset = ace.constant_portion();
       if (offset >= 0) {
 
         // Check to see if there's already a member at that offset with a different virtual
@@ -697,13 +895,16 @@ void ThisCallMethod::analyze_vftables() {
             emem.debug();
           }
         }
-        GINFO << "VTable write: " << *ace.variable_portion << " offset=" << offset << " <- "
-              << addr_str(constaddr) << " in " << debug_instruction(insn) << LEND;
-        VFTEvidence ve(insn, fd, vftable);
-        add_data_member(Member(offset, get_arch_bytes(), 0, x86insn, &ve));
+        GDEBUG << "VTable write: " << *ace.variable_portion() << " offset=" << offset << " <- "
+               << addr_str(constaddr) << " in " << debug_instruction(insn) << LEND;
+        GINFO << "Possible virtual " << (vftable ? "function" : "base") << " table found at "
+              << addr_str(constaddr) << " installed by " << addr_str(insn->get_address()) << LEND;
+        size_t arch_bytes = global_descriptor_set->get_arch_bytes();
+        VFTEvidence ve(insn, fd, vftable, vbtable);
+        add_data_member(Member(offset, arch_bytes, 0, x86insn, &ve));
       }
       else {
-        GWARN << "Rejected negative virtual function table offset=" << ace.constant_portion
+        GWARN << "Rejected negative virtual function table offset=" << ace.constant_portion()
               << " at instruction: " << debug_instruction(insn) << LEND;
       }
 
@@ -732,6 +933,8 @@ ThisCallMethod* follow_oo_thunks(rose_addr_t addr) {
   // And return a pointer to it.
   return &tcm;
 }
+
+} // namespace pharos
 
 /* Local Variables:   */
 /* mode: c++          */

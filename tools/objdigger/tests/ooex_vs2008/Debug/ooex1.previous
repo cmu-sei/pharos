@@ -1,0 +1,311 @@
+OPTI[WHERE]: Verbose logging level set to 4.
+OPTI[INFO ]: Analyzing executable: tests/ooex_vs2008/Debug/ooex1.exe
+OPTI[INFO ]: Object Digger version X.
+OBJD[INFO ]: Using version two of function partitioner.
+OBJD[INFO ]: Enabling semantic control flow analysis during function partitioning.
+OPTI[WHERE]: Forcing non-color logging.
+OPTI[INFO ]: ROSE disassembly complete.
+OBJD[INFO ]: Loaded API database: kernel32.json
+OBJD[INFO ]: Loaded API database: msvcr90d.json
+OBJD[WARN ]: No stack delta information for: MSVCR90D.dll:?terminate@@YAXXZ
+OBJD[WARN ]: No stack delta information for: MSVCR90D.dll:__initenv
+OBJD[WARN ]: No stack delta information for: MSVCR90D.dll:_adjust_fdiv
+OBJD[INFO ]: Finding imported new methods...
+OBJD[INFO ]: Imported new '??2@YAPAXI@Z' found at address 0x004192CC __declspec(dllimport) void * __cdecl operator new(unsigned int).
+OBJD[INFO ]: Function at 0x00411822 void * __cdecl operator new(unsigned int) is a thunk to a new() method.
+OBJD[INFO ]: Function at 0x0041119F void * __cdecl operator new(unsigned int) is a thunk to a thunk to a new() method.
+OBJD[INFO ]: Finding imported delete methods...
+OBJD[INFO ]: Imported delete '??3@YAXPAX@Z' found at address 0x004192D4 __declspec(dllimport) void __cdecl operator delete(void *).
+OBJD[INFO ]: Function at 0x0041181C void __cdecl operator delete(void *) is a thunk to a delete() method.
+OBJD[INFO ]: Function at 0x00411096 void __cdecl operator delete(void *) is a thunk to a thunk to a delete() method.
+OBJD[INFO ]: Finding imported purecall methods...
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 412047: mov       eax, [ebp+4]
+OBJD[WARN ]: Function 0x00411830 __fastcall __security_check_cookie(x) includes only 3 of 12 blocks in the control flow.
+FSEM[WARN ]: Unknown call target at: 4136DE: call      [ebp-114], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413709: call      edi, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 4137CD: call      [419210]
+FSEM[WARN ]: Unknown call target at: 41375A: call      edi, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413765: call      ebx, parameter analysis failed.
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x00413610 GetPdbDll
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +005C(Wrong) at instruction: 413375: call      [4191D8]
+FSEM[WARN ]: Unknown call target at: 413392: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4133AE: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4133CD: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4133E8: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413401: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41341B: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413441: call      edx, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +00A0(Wrong) at instruction: 41349D: call      [4191B8]
+FSEM[WARN ]: Unknown call target at: 4134C4: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413512: call      edx, parameter analysis failed.
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Unknown call target at: 41346B: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 413529: call      [4191BC]
+FSEM[WARN ]: Unknown call target at: 413536: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413540: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41354A: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413554: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413441: call      edx, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +00A0(Wrong) at instruction: 41349D: call      [4191B8]
+FSEM[WARN ]: Unknown call target at: 4134C4: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413512: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41346B: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 413529: call      [4191BC]
+FSEM[WARN ]: Unknown call target at: 413536: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413540: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41354A: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413554: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413441: call      edx, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +00A0(Wrong) at instruction: 41349D: call      [4191B8]
+FSEM[WARN ]: Unknown call target at: 4134C4: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413512: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41346B: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 413529: call      [4191BC]
+FSEM[WARN ]: Unknown call target at: 413536: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413540: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41354A: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413554: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413441: call      edx, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +00A0(Wrong) at instruction: 41349D: call      [4191B8]
+FSEM[WARN ]: Unknown call target at: 4134C4: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413512: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41346B: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 413529: call      [4191BC]
+FSEM[WARN ]: Unknown call target at: 413536: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413540: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41354A: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413554: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413441: call      edx, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +00A0(Wrong) at instruction: 41349D: call      [4191B8]
+FSEM[WARN ]: Unknown call target at: 4134C4: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413512: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41346B: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0000(Wrong) at instruction: 413529: call      [4191BC]
+FSEM[WARN ]: Unknown call target at: 413536: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413540: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 41354A: call      edx, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 413554: call      edx, parameter analysis failed.
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00413425 in function 0x004132A0 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long)
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x004134E0 in function 0x004132A0 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long)
+FSEM[WARN ]: There were 470 stack delta analysis failures in function 0x004132A0 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long)
+OBJD[WARN ]: Function 0x00412170 DebuggerProbe includes only 3 of 5 blocks in the control flow.
+OBJD[WARN ]: Function 0x00412520 DebuggerRuntime includes only 3 of 5 blocks in the control flow.
+FSEM[WARN ]: Skipping creation of 32 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0E6C(Wrong) at instruction: 412418: call      edi
+FSEM[WARN ]: Skipping creation of 32 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0E6C(Wrong) at instruction: 412449: call      edi
+FSEM[WARN ]: Unknown call target at: 412472: call      [ebp-E38], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4123E6: call      esi, parameter analysis failed.
+FSEM[WARN ]: There were 3 stack delta analysis failures in function 0x00412290 failwithmessage
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 41185E: mov       eax, [ebp+4]
+FSEM[WARN ]: Unknown call target at: 412CE7: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 412CE7: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 412CE7: call      eax, parameter analysis failed.
+FSEM[WARN ]: There were 2 stack delta analysis failures in function 0x00412CD0 __RTC_Terminate
+FSEM[WARN ]: Replaced excessively large expression with v?[32]<unspec,f=10000>
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x0041191F in function 0x00411900 __fastcall _RTC_AllocaHelper(x, x, x)
+FSEM[WARN ]: Replaced excessively large expression with v?[32]<unspec,f=10000>
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412630 in function 0x004125F0 void __cdecl _RTC_StackFailure(void *, char const *)
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412650 in function 0x004125F0 void __cdecl _RTC_StackFailure(void *, char const *)
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412664 in function 0x004125F0 void __cdecl _RTC_StackFailure(void *, char const *)
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412675 in function 0x004125F0 void __cdecl _RTC_StackFailure(void *, char const *)
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412694 in function 0x004125F0 void __cdecl _RTC_StackFailure(void *, char const *)
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x004126A6 in function 0x004125F0 void __cdecl _RTC_StackFailure(void *, char const *)
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +001C(Wrong) at instruction: 4118C2: call      4110D7
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +001C(Wrong) at instruction: 4118C2: call      4110D7
+FSEM[WARN ]: There were 2 stack delta analysis failures in function 0x00411880 __fastcall _RTC_CheckStackVars(x, x)
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 4118BD: mov       edx, [ebp+4]
+FSEM[WARN ]: Replaced excessively large expression with v?[32]<unspec,f=10000>
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412974 in function 0x00412940 __RTC_UninitUse
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00412990 in function 0x00412940 __RTC_UninitUse
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x004129A4 in function 0x00412940 __RTC_UninitUse
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x004129B5 in function 0x00412940 __RTC_UninitUse
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x004129D4 in function 0x00412940 __RTC_UninitUse
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x004129E6 in function 0x00412940 __RTC_UninitUse
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 412A0D: mov       eax, [ebp+4]
+FSEM[WARN ]: Replaced excessively large expression with v?[1]<unspec,f=10000>
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +010C(Wrong) at instruction: 41167A: call      41119F
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x00411610 __thiscall Derived::Derived(void)
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +013C(Wrong) at instruction: 4114AD: call      411127
+FSEM[WARN ]: There were 1 stack delta analysis failures in function 0x004113F0 _main
+OBJD[WARN ]: Function 0x00411C10 __tmainCRTStartup includes only 39 of 46 blocks in the control flow.
+FSEM[WARN ]: Unknown call target at: 411D80: call      [418594], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 411D80: call      [418594], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 411D80: call      [418594], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 411D80: call      [418594], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 411D80: call      [418594], parameter analysis failed.
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x00411C65 in function 0x00411C10 __tmainCRTStartup
+FSEM[WARN ]: Unexpected instruction at end of basic block: 411D4C: int3      
+FSEM[WARN ]: There were 10 stack delta analysis failures in function 0x00411C10 __tmainCRTStartup
+FSEM[WARN ]: Unknown call target at: 4128F1: call      [418534], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4128F1: call      [418534], parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 4127CB: call      eax, parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 4 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +016C(Wrong) at instruction: 412803: call      [4191DC]
+FSEM[WARN ]: Unknown call target at: 412811: call      [418534], parameter analysis failed.
+FSEM[WARN ]: Skipping creation of 16 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +017C(Wrong) at instruction: 412828: call      412290
+FSEM[WARN ]: There were 2 stack delta analysis failures in function 0x00412730 void __cdecl _RTC_AllocaFailure(void *, struct _RTC_ALLOCA_NODE *, int)
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0020(Wrong) at instruction: 4119DB: call      4111D1
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0020(Wrong) at instruction: 4119F7: call      4111D1
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +001C(Wrong) at instruction: 411989: call      4110D7
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0020(Wrong) at instruction: 4119DB: call      4111D1
+FSEM[WARN ]: Skipping creation of 12 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +0020(Wrong) at instruction: 4119F7: call      4111D1
+FSEM[WARN ]: Skipping creation of 8 bytes of parameter dependencies due to low confidence of stack delta.
+FSEM[WARN ]: Stack delta was: +001C(Wrong) at instruction: 411989: call      4110D7
+FSEM[WARN ]: Maximum iterations (5) exceeded for block 0x004119B6 in function 0x00411940 __fastcall _RTC_CheckStackVars2(x, x, x)
+FSEM[WARN ]: There were 6 stack delta analysis failures in function 0x00411940 __fastcall _RTC_CheckStackVars2(x, x, x)
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 411984: mov       eax, [ebp+4]
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 4119D5: mov       ecx, [ebp+4]
+FSEM[WARN ]: Suspicious access of stack return address by instruction: 4119F1: mov       ecx, [ebp+4]
+FSEM[WARN ]: Unknown call target at: 412CB7: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 412CB7: call      eax, parameter analysis failed.
+FSEM[WARN ]: Unknown call target at: 412CB7: call      eax, parameter analysis failed.
+FSEM[WARN ]: There were 2 stack delta analysis failures in function 0x00412CA0 __RTC_Initialize
+FSEM[WARN ]: Unexpected instruction at end of basic block: 411504: add       [eax], eax
+OBJD[WARN ]: Function 0x00411F00 check_managed_app includes only 2 of 10 blocks in the control flow.
+OPTI[INFO ]: Function analysis took X seconds.
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=0 thisptr=v?[32] insn=4133AE: call      edx
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=28 thisptr=v?[32] insn=4133CD: call      eax
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=32 thisptr=v?[32] insn=4133E8: call      edx
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=104 thisptr=v?[32] insn=413401: call      eax
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=112 thisptr=v?[32] insn=413512: call      edx
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=64 thisptr=v?[32] insn=413540: call      edx
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=56 thisptr=v?[32] insn=41354A: call      edx
+OBJD[INFO ]: Virtual Call: vtoff=0 vfoff=40 thisptr=v?[32] insn=413554: call      edx
+OBJD[INFO ]: Function 0x00411501 uses __thiscall convention.
+OBJD[INFO ]: Function 0x00411570 __thiscall Composite::Composite(void) uses __thiscall convention.
+OBJD[INFO ]: Function 0x004115C0 int __thiscall Composite::func3(void) uses __thiscall convention.
+OBJD[INFO ]: Function 0x00411610 __thiscall Derived::Derived(void) uses __thiscall convention.
+OBJD[INFO ]: Function 0x00411750 int __thiscall Derived::func4(void) uses __thiscall convention.
+OBJD[INFO ]: Function 0x004117C0 int __thiscall Derived::func5(class Composite, int) uses __thiscall convention.
+OBJD[INFO ]: Function 0x00411830 __fastcall __security_check_cookie(x) uses __thiscall convention.
+OBJD[WARN ]: Unable to find parameter for new() call at 0x0041167A
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Virtual function table at 0x00416818 GS_ExceptionPointers entry 1, has a non-function pointer 0x00418170 GS_ExceptionRecord at address 0x00416818
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Virtual function table at 0x00416818 GS_ExceptionPointers entry 2, has a non-function pointer 0x004181C8 GS_ContextRecord at address 0x0041681C
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OBJD[WARN ]: Bad read of address and size. address=0x0 size=0x4
+OPTI[INFO ]: Exported 304 Prolog facts to ...
+OPTI[INFO ]: Analyzing object oriented data structures...
+OPTI[INFO ]: Exported 15 Prolog results to ...
+OBJD[INFO ]: Possible inherited constructor: 0x00411610 __thiscall Derived::Derived(void) inherits from 0x00411570 __thiscall Composite::Composite(void)
+OBJD[INFO ]: Parent constructor is located at offset 0x4
+OBJD[INFO ]: Recursively finding methods...
+OBJD[INFO ]: Removing ancestor methods...
+OBJD[INFO ]: Analyzing vtable overlap...
+OBJD[INFO ]: Analyzing virtual function calls...
+OBJD[WARN ]: Call at 0x004133AE is in function 0x004132A0 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long) which has no known object uses.
+OBJD[WARN ]: Call at 0x004133CD is in function 0x004132A0 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long) which has no known object uses.
+OBJD[WARN ]: Call at 0x004133E8 is in function 0x004132A0 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long) which has no known object uses.
+OBJD[WARN ]: Call at 0x00413401 is in function 0x004132A0 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long) which has no known object uses.
+OBJD[WARN ]: Call at 0x00413512 is in function 0x004132A0 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long) which has no known object uses.
+OBJD[WARN ]: Call at 0x00413540 is in function 0x004132A0 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long) which has no known object uses.
+OBJD[WARN ]: Call at 0x0041354A is in function 0x004132A0 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long) which has no known object uses.
+OBJD[WARN ]: Call at 0x00413554 is in function 0x004132A0 int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long) which has no known object uses.
+OBJD[INFO ]: Merging classes that share methods...
+OBJD[INFO ]: Removing empty classes...
+OBJD[INFO ]: Reanalyzing members from methods...
+OBJD[INFO ]: Setting members from methods in classes...
+OBJD[INFO ]: Analyzing embedded objects...
+OBJD[INFO ]: Disallowing virtual constructors...
+OBJD[INFO ]: Evaluating virtual destructors...
+OBJD[INFO ]: Analyzing final class sizes...
+OPTI[INFO ]: ================================================================================
+OPTI[INFO ]: Constructor: Cls_411570 (0x00411570 __thiscall Composite::Composite(void))
+OPTI[INFO ]: Member: Offset: 0x0000 Size: 0x0004
+OPTI[INFO ]:   Member used at: 411596: mov       [eax], 1 in function 0x00411570 __thiscall Composite::Composite(void)
+OPTI[INFO ]:   Member used at: 4115ED: add       eax, [ecx] in function 0x004115C0 int __thiscall Composite::func3(void)
+OPTI[INFO ]: Member: Offset: 0x0004 Size: 0x0001
+OPTI[INFO ]:   Member used at: 41159F: mov       [eax+4], 61 in function 0x00411570 __thiscall Composite::Composite(void)
+OPTI[INFO ]:   Member used at: 4115E6: movsx     eax, [eax+4] in function 0x004115C0 int __thiscall Composite::func3(void)
+OPTI[INFO ]: Total object instance size: 0x5
+OPTI[INFO ]: Constructor: 0x00411570 __thiscall Composite::Composite(void)
+OPTI[INFO ]: Method: 0x004115C0 int __thiscall Composite::func3(void)
+OPTI[INFO ]: ================================================================================
+OPTI[INFO ]: Constructor: Cls_411610 (0x00411610 __thiscall Derived::Derived(void))
+OPTI[INFO ]: Member: Offset: 0x0000 Size: 0x0004
+OPTI[INFO ]:   Member used at: 4116E2: mov       [ecx], eax in function 0x00411610 __thiscall Derived::Derived(void)
+OPTI[INFO ]:   Member used at: 4117F1: add       eax, [ecx] in function 0x004117C0 int __thiscall Derived::func5(class Composite, int)
+OPTI[INFO ]: Member: Offset: 0x0004 Size: 0x0005 [embedded object]
+OPTI[INFO ]:   Passed to method at 0x00411570 __thiscall Composite::Composite(void)
+OPTI[INFO ]:   Passed to method at 0x004115C0 int __thiscall Composite::func3(void)
+OPTI[INFO ]:   Member used at: 411658: call      411082 in function 0x00411610 __thiscall Derived::Derived(void)
+OPTI[INFO ]:   Member used at: 4116DA: call      4111D6 in function 0x00411610 __thiscall Derived::Derived(void)
+OPTI[INFO ]:   Member used at: 41178F: call      4111D6 in function 0x00411750 int __thiscall Derived::func4(void)
+OPTI[INFO ]: Member: Offset: 0x000C Size: 0x0004
+OPTI[INFO ]:   Member used at: 4116D1: mov       [ecx+C], edx in function 0x00411610 __thiscall Derived::Derived(void)
+OPTI[INFO ]:   Member used at: 411776: cmp       [eax+C], 0 in function 0x00411750 int __thiscall Derived::func4(void)
+OPTI[INFO ]:   Member used at: 41177F: mov       ecx, [eax+C] in function 0x00411750 int __thiscall Derived::func4(void)
+OPTI[INFO ]: Total object instance size: 0x10
+OPTI[INFO ]: Constructor: 0x00411610 __thiscall Derived::Derived(void)
+OPTI[INFO ]: Method: 0x00411750 int __thiscall Derived::func4(void)
+OPTI[INFO ]: Method: 0x004117C0 int __thiscall Derived::func5(class Composite, int)
+OPTI[INFO ]: Inherited Method: 0x00411570 __thiscall Composite::Composite(void) Offset: 0x4
+OPTI[INFO ]: ================================================================================
+OBJD[INFO ]: Exporting classes to JSON file: tests/ooex_vs2008/Debug/ooex1.json
+OPTI[INFO ]: Found 2 classes, 5 methods, 0 virtual calls, and 12 usage instructions.
+OPTI[INFO ]: Successfully exported to JSON file 'tests/ooex_vs2008/Debug/ooex1.json'.
+OPTI[INFO ]: Object digger analysis complete.

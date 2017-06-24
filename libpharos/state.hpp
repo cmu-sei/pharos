@@ -4,6 +4,9 @@
 #define Pharos_State_H
 
 #include "semantics.hpp"
+#include "misc.hpp"
+
+namespace pharos {
 
 // Renames of standard ROSE typdefs.
 typedef Semantics2::BaseSemantics::RegisterState BaseRegisterState;
@@ -64,26 +67,31 @@ public:
 // Custom class required to implement equals().  At least for a while longer.
 class SymbolicRegisterState: public RegisterStateGeneric {
 
-  // -----------------------------------------------------------------------------------------
-  // Required official interface
-  // -----------------------------------------------------------------------------------------
-
 protected:
+  // Constructors are protected to ensure that instance() methods are used instead.
+
   // Constructors must take custom types to ensure promotion.
   explicit SymbolicRegisterState(const SymbolicValuePtr &proto, const RegisterDictionary *rd):
     RegisterStateGeneric(proto, rd) {
-    STRACE << "SymbolicRegisterState::SymbolicRegisterState(proto, rd)" << LEND;
+    // moving the global_rops creation to pharos_main caused this message to always come out:
+    //STRACE << "SymbolicRegisterState::SymbolicRegisterState(proto, rd)" << LEND;
     merger(CERTMerger::instance());
 
-    // For some reason the DF register still needs to be initialized or our code doesn't work
-    // properly.  This might be a bug in ROSE, or something subtle in our code.  For now,
-    // simply initializing the DF register to a variable (which is what should happen by
-    // default without this code) somehow fixes the problem.
+    // We still require pre-initialization of the registers in our system.   I'm not sure why.
     Semantics2::DispatcherX86Ptr dispatcher = RoseDispatcherX86::instance();
     dispatcher->set_register_dictionary(regdict);
-    std::vector<RegisterDescriptor> regs;
-    regs.push_back(*(regdict->lookup("df")));
+#ifdef DF_FLAG_ONLY
+    // For a while I mistakenly thought that the problem was specific to the direction flag
+    // register.  That was reinforced by a bad workaround that initialized all registers rather
+    // than just the one direction flag register.  Here's what should have worked if the
+    // problem was really just the DF register (but it doesn't):
+
+    //std::vector<RegisterDescriptor> regs;
+    //regs.push_back(*(regdict->lookup("df")));
+    //initialize_nonoverlapping(regs, false);
+#else
     initialize_nonoverlapping(dispatcher->get_usual_registers(), false);
+#endif
   }
 
   // Copy constructor should ensure a deep copy.
@@ -114,6 +122,9 @@ public:
     return SymbolicRegisterStatePtr(new SymbolicRegisterState(sproto, rd));
   }
 
+  // Default constructors are a CERT addition.
+  static SymbolicRegisterStatePtr instance();
+
   // Each custom class must implement promote.
   static SymbolicRegisterStatePtr promote(const BaseRegisterStatePtr &v) {
     SymbolicRegisterStatePtr retval = boost::dynamic_pointer_cast<SymbolicRegisterState>(v);
@@ -136,18 +147,6 @@ public:
   // Custom interface
   // -----------------------------------------------------------------------------------------
 
-  // Default constructors are a CERT addition.
-  explicit SymbolicRegisterState():
-    RegisterStateGeneric(SymbolicValue::instance(),
-                        RegisterDictionary::dictionary_pentium4()) {
-  }
-
-  // Parameterless instance() is an unsafe/not-useful CERT addition?
-  static SymbolicRegisterStatePtr instance() {
-    STRACE << "NOT USED?" << LEND;
-    return SymbolicRegisterStatePtr(new SymbolicRegisterState());
-  }
-
   // CERT addition so we don't have to promote return value.
   SymbolicRegisterStatePtr sclone() {
     STRACE << "SymbolicRegisterState::sclone()" << LEND;
@@ -168,8 +167,11 @@ public:
   // on access" behaviors of the the standard readRegister() method.
   SymbolicValuePtr read_register(const RegisterDescriptor& rd) {
     BaseRiscOperators* ops = (BaseRiscOperators*)global_rops.get();
-    return SymbolicValue::promote(RegisterStateGeneric::readRegister(rd, ops));
+    return SymbolicValue::promote(RegisterStateGeneric::readRegister(
+                                    rd, ops->undefined_(rd.get_nbits()), ops));
   }
+
+  SymbolicValuePtr inspect_register(const RegisterDescriptor& rd);
 
   void type_recovery_test() const;
 
@@ -180,12 +182,13 @@ public:
 //==============================================================================================
 class SymbolicMemoryState: public BaseMemoryCellMap {
 
+protected:
+  // Constructors are protected to ensure that instance() methods are used instead.
 
   // Constructors must take custom types to ensure promotion.
   explicit SymbolicMemoryState(const MemoryCellPtr &protocell_)
     : BaseMemoryCellMap(protocell_->get_address(), protocell_->get_value()) {
     merger(CERTMerger::instance());
-    assert(protocell_!=NULL);
   }
 
   // Constructors must take custom types to ensure promotion.
@@ -198,11 +201,6 @@ class SymbolicMemoryState: public BaseMemoryCellMap {
   explicit SymbolicMemoryState(const SymbolicMemoryState & other)
     : BaseMemoryCellMap(other) {
     // Our merger is copied by default?
-  }
-
-  SymbolicMemoryState()
-    : BaseMemoryCellMap(SymbolicValue::instance(), SymbolicValue::instance()) {
-    merger(CERTMerger::instance());
   }
 
 public:
@@ -239,9 +237,10 @@ public:
     return SymbolicMemoryStatePtr(new SymbolicMemoryState(*other));
   }
 
-  // Parameterless instance() is an unsafe/not-useful CERT addition?
+  // Default constructors are a CERT addition.
   static SymbolicMemoryStatePtr instance() {
-    return SymbolicMemoryStatePtr(new SymbolicMemoryState());
+    SymbolicValuePtr svalue = SymbolicValue::instance();
+    return SymbolicMemoryStatePtr(new SymbolicMemoryState(svalue, svalue));
   }
 
   virtual BaseMemoryStatePtr create(const BaseSValuePtr &addr,
@@ -282,6 +281,8 @@ public:
 
 };
 
+class DUAnalysis;
+
 //==============================================================================================
 // CellMapChunks
 //==============================================================================================
@@ -294,10 +295,10 @@ public:
 //
 // E.g.:
 //
-// CellMapChunks chunks(some_memory);
-// BOOST_FOREACH(const CellMapChunks::Chunk & chunk, chunks) {
+// CellMapChunks chunks(usedef);
+// for (const CellMapChunks::Chunk & chunk : chunks) {
 //   // Iterator over the chunk's memory
-//   BOOST_FOREACH(TreeNode & value, chunk) {
+//   for (TreeNodePtr & value : chunk) {
 //     // Do something with each memory value
 //   }
 // }
@@ -314,7 +315,7 @@ class CellMapChunks {
   typedef const Chunk    value_type;
 
   // Constructor
-  CellMapChunks(const SymbolicMemoryState &memory);
+  CellMapChunks(const DUAnalysis & usedef, bool df_flag = false);
 
   // Chunk iterator begin
   iterator begin() const {
@@ -327,18 +328,6 @@ class CellMapChunks {
   }
 
  private:
-  // Make an ordering on Tree Nodes.
-  struct TreeNodePtrCompare {
-    bool operator()(const TreeNodePtr &a, const TreeNodePtr &b) const {
-      if (!b) {
-        return false;
-      }
-      if (!a) {
-        return true;
-      }
-      return a->compareStructure(b) < 0;
-    }
-  };
 
   // A map of offsets to memory contents
   typedef std::map<int64_t, TreeNodePtr> offset_map_t;
@@ -354,7 +343,7 @@ class CellMapChunks {
 
   // An iterator over the values of an offset_map_t
   class cell_iterator : public boost::iterator_adaptor<
-    cell_iterator, offset_map_t::const_iterator, TreeNode>
+    cell_iterator, offset_map_t::const_iterator, const TreeNodePtr>
   {
    public:
     cell_iterator() {}
@@ -368,8 +357,8 @@ class CellMapChunks {
       return this->base()->first;
     }
 
-    TreeNode &dereference() const {
-      return *this->base()->second;
+    const TreeNodePtr &dereference() const {
+      return this->base()->second;
     }
   };
 
@@ -453,24 +442,16 @@ class CellMapChunks {
 // Custom class required to implement equals().  At least for a while longer.
 class SymbolicState: public BaseState {
 
-  // -----------------------------------------------------------------------------------------
-  // Required official interface
-  // -----------------------------------------------------------------------------------------
-
 protected:
+  // Constructors are protected to ensure that instance() methods are used instead.
 
   // Constructors must take custom types to ensure promotion.
   explicit SymbolicState(const SymbolicRegisterStatePtr & regs, const SymbolicMemoryStatePtr & mem):
     BaseState(regs, mem) { }
 
-  // Copy constructor should ensure a deep copy.  BUG! But it doesn't!
+  // Copy constructor should ensure a deep copy.  BUG!?!?!?! But it doesn't!
   explicit SymbolicState(const SymbolicState &other): BaseState(other) {
     STRACE << "SymbolicState::SymbolicState(other)" << LEND;
-  }
-
-  // Default constructors are a CERT addition.
-  SymbolicState(): BaseState(SymbolicRegisterState::instance(),
-                             SymbolicMemoryState::instance()) {
   }
 
 public:
@@ -481,9 +462,11 @@ public:
     return SymbolicStatePtr(new SymbolicState(regs, mem));
   }
 
-  // Parameterless instance() is an unsafe/not-useful CERT addition?
+  // Default constructors are a CERT addition.
   static SymbolicStatePtr instance() {
-    return SymbolicStatePtr(new SymbolicState());
+    SymbolicMemoryStatePtr mstate = SymbolicMemoryState::instance();
+    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance();
+    return SymbolicStatePtr(new SymbolicState(rstate, mstate));
   }
 
   // Each custom class must implement promote.
@@ -502,15 +485,22 @@ public:
 
   virtual BaseStatePtr clone() const ROSE_OVERRIDE {
     STRACE << "SymbolicState::clone()" << LEND;
-    SymbolicMemoryStatePtr mymem = SymbolicMemoryState::promote(memory);
+    SymbolicMemoryStatePtr mymem = SymbolicMemoryState::promote(memoryState());
     SymbolicMemoryStatePtr mem_clone = mymem->sclone();
-    SymbolicRegisterStatePtr myregs = SymbolicRegisterState::promote(registers);
+    SymbolicRegisterStatePtr myregs = SymbolicRegisterState::promote(
+      // this const_cast<> is due to a bug in BaseSemantics2.h, whete registerState() is
+      // supposed to be const.
+      (const_cast<SymbolicState *>(this))->registerState());
     SymbolicRegisterStatePtr reg_clone = myregs->sclone();
     SymbolicStatePtr state_clone = SymbolicStatePtr(new SymbolicState(reg_clone, mem_clone));
     return state_clone;
   }
 
-  virtual bool merge(const BaseStatePtr &other, BaseRiscOperators *ops) ROSE_OVERRIDE;
+ private:
+  bool merge(const BaseStatePtr &other, BaseRiscOperators *ops) ROSE_OVERRIDE;
+
+ public:
+  bool merge(const BaseStatePtr &other, BaseRiscOperators *ops, const SymbolicValuePtr & cond);
 
   // -----------------------------------------------------------------------------------------
   // Custom interface
@@ -528,13 +518,16 @@ public:
   // Dynamically cast the register state object to our custom class.  While this same method is
   // defined on our parent, it is not virtual, and so this only applies to our custom class.
   SymbolicRegisterStatePtr get_register_state() const {
-    return boost::dynamic_pointer_cast<SymbolicRegisterState>(registers);
+    return boost::dynamic_pointer_cast<SymbolicRegisterState>(
+      // this const_cast<> is due to a bug in BaseSemantics2.h, whete registerState() is
+      // supposed to be const.
+      (const_cast<SymbolicState *>(this))->registerState());
   }
 
   // Dynamically cast the memory state object to our custom class.  While this same method is
   // defined on our parent, it is not virtual, and so this only applies to our custom class.
   SymbolicMemoryStatePtr get_memory_state() const {
-    return boost::dynamic_pointer_cast<SymbolicMemoryState>(memory);
+    return boost::dynamic_pointer_cast<SymbolicMemoryState>(memoryState());
   }
 
   // ???
@@ -560,6 +553,8 @@ public:
   void type_recovery_test() const;
 
 };
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

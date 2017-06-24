@@ -1,6 +1,5 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016, 2017 Carnegie Mellon University.  See LICENSE file for terms.
 
-#include <boost/foreach.hpp>
 #include <boost/optional.hpp>
 #include <boost/property_tree/ptree.hpp>
 
@@ -8,8 +7,34 @@
 
 #include "imports.hpp"
 #include "util.hpp"
+#include "apidb.hpp"
+#include "descriptors.hpp"
+
+namespace pharos {
+
+ImportDescriptor::ImportDescriptor(const APIDefinition &func) :
+  ImportDescriptor()
+{
+  new_method = false;
+  delete_method = false;
+  purecall_method = false;
+
+  if (!func.get_name().empty()) {
+    name = func.get_name();
+  }
+  if (!func.dll_name.empty()) {
+    dll = func.dll_name + ".dll";
+  }
+  ordinal = func.ordinal;
+
+  function_descriptor.set_api(func);
+}
 
 ImportDescriptor::ImportDescriptor(std::string d, SgAsmPEImportItem *i) {
+  new_method = false;
+  delete_method = false;
+  purecall_method = false;
+
   item = i;
   address = item->get_iat_entry_va();
   std::string iname = item->get_name()->get_string();
@@ -27,17 +52,40 @@ ImportDescriptor::ImportDescriptor(std::string d, SgAsmPEImportItem *i) {
   }
 
   // Create a new variable value to represent the memory initialized by the loader.
-  loader_variable = SymbolicValue::loader_defined(get_arch_bits());
+  loader_variable = SymbolicValue::loader_defined();
 }
 
 std::string ImportDescriptor::get_dll_root() const {
-  std::string root;
-  BOOST_FOREACH(char c, get_dll_name()) if (c == '.') break; else root += c;
-  return root;
+  auto & dll_name = get_dll_name();
+  auto dot = dll_name.find_first_of('.');
+  return dll_name.substr(0, dot);
 }
 
 void ImportDescriptor::read_config(const boost::property_tree::ptree& tree) {
-  // Address.  I'm somewhat uncertain about when we would need to override this.
+  // The new way of loading import data!
+  auto fdata = global_descriptor_set->apidb->get_api_definition(dll, name);
+  if (fdata) {
+    GTRACE << "Found API " << get_best_name() << " in API database." << LEND;
+    name = fdata->get_name();
+    dll = fdata->dll_name;
+    ordinal = fdata->ordinal;
+  }
+  else {
+    // The import name and DLL.  I'm uncertain about when we would need to override this.
+    boost::optional<std::string> namestr = tree.get_optional<std::string>("name");
+    if (namestr) name = *namestr;
+    boost::optional<std::string> dllstr = tree.get_optional<std::string>("dll");
+    if (dllstr) dll = *dllstr;
+    boost::optional<size_t> ordnum = tree.get_optional<size_t>("ordinal");
+    if (ordnum) {
+      ordinal = *ordnum;
+      GTRACE << "Read ordinal from config " << *ordnum << " and " << ordinal
+             << " for dll=" << dll << " name=" << name << LEND;
+    }
+  }
+
+  // Address.  I'm somewhat uncertain about when we would need to override this.  It is never
+  // loaded from the API database, and would only be specified on a per-analysis file basis.
   boost::optional<rose_addr_t> addr = tree.get_optional<rose_addr_t>("address");
   if (addr) {
     if (address != 0 && address != *addr) {
@@ -49,21 +97,18 @@ void ImportDescriptor::read_config(const boost::property_tree::ptree& tree) {
     }
   }
 
-  // The import name and DLL.  I'm uncertain about when we would need to override this.
-  boost::optional<std::string> namestr = tree.get_optional<std::string>("name");
-  if (namestr) name = *namestr;
-  boost::optional<std::string> dllstr = tree.get_optional<std::string>("dll");
-  if (dllstr) dll = *dllstr;
-  boost::optional<size_t> ordnum = tree.get_optional<size_t>("ordinal");
-  if (ordnum) {
-    ordinal = *ordnum;
-    GTRACE << "Read ordinal from config " << *ordnum << " and " << ordinal
-           << " for dll=" << dll << " name=" << name << LEND;
-  }
-
   // Read the function descriptor from the ptree branch "function".
   boost::optional<const boost::property_tree::ptree&> ftree = tree.get_child_optional("function");
   if (ftree) function_descriptor.read_config(ftree.get());
+
+  // Override any answer about the stack delta and calling convention from the JSON configs
+  // with the answer from the JSON mockup of the API database.  This is not in the correct
+  // order long term, but is muddled up in our need to load both because the API database isn't
+  // complete yet.  The user config file should override the database once it's complete.
+  if (fdata) {
+    GTRACE << "Calling set_api() for " << get_best_name() << LEND;
+    function_descriptor.set_api(*fdata);
+  }
 
   // Callers needs to be copied from elsewhere.
   read_config_addr_set("callers", tree, callers);
@@ -185,7 +230,7 @@ void ImportDescriptor::validate(std::ostream &o) {
 ImportDescriptor* ImportDescriptorMap::find_name(std::string dll, std::string name) {
   std::string normed = to_lower(dll) + ":" + to_lower(name);
 
-  BOOST_FOREACH(ImportDescriptorMap::value_type& pair, *this) {
+  for (ImportDescriptorMap::value_type& pair : *this) {
     ImportDescriptor& id = pair.second;
     if (id.get_normalized_name() == normed) {
       return &id;
@@ -198,7 +243,7 @@ ImportDescriptorSet ImportDescriptorMap::find_name(std::string name) {
   ImportDescriptorSet ids;
   std::string lname = to_lower(name);
 
-  BOOST_FOREACH(ImportDescriptorMap::value_type& pair, *this) {
+  for (ImportDescriptorMap::value_type& pair : *this) {
     ImportDescriptor& id = pair.second;
     if (to_lower(id.get_name()) == lname) {
       ids.insert(&id);
@@ -207,6 +252,8 @@ ImportDescriptorSet ImportDescriptorMap::find_name(std::string name) {
 
   return ids;
 }
+
+} // namespace pharos
 
 /* Local Variables:   */
 /* mode: c++          */

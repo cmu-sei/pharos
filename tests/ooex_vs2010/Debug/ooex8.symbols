@@ -1,0 +1,392 @@
+00401000	name	__enc$textbss$begin	None
+00411000	name	__enc$textbss$end	None
+00411005	thunk	j___setdefaultprecision	None
+0041100a	thunk	j___setargv	None
+0041100f	thunk	j___RTC_GetErrDesc	None
+00411014	thunk	j_@__security_check_cookie@4	__fastcall __security_check_cookie(x)
+00411019	thunk	j__IsDebuggerPresent@0	__stdcall IsDebuggerPresent()
+0041101e	thunk	j___RTC_Terminate	None
+00411023	thunk	j__WideCharToMultiByte@32	__stdcall WideCharToMultiByte(x, x, x, x, x, x, x, x)
+00411028	thunk	j_@_RTC_AllocaHelper@12	__fastcall _RTC_AllocaHelper(x, x, x)
+0041102d	thunk	j_?_RTC_GetErrorFuncW@@YAP6AHHPB_WH00ZZPBX@Z	int (__cdecl *__cdecl _RTC_GetErrorFuncW(void const *))(int, wchar_t const *, int, wchar_t const *, wchar_t const *, ...)
+00411032	thunk	j___RTC_NumErrors	None
+00411037	thunk	j____setusermatherr	None
+0041103c	thunk	j__Sleep@4	__stdcall Sleep(x)
+00411041	thunk	j__GetModuleFileNameW@12	__stdcall GetModuleFileNameW(x, x, x)
+00411046	thunk	j____security_init_cookie	None
+0041104b	thunk	j__SetUnhandledExceptionFilter@4	__stdcall SetUnhandledExceptionFilter(x)
+00411050	thunk	j___cexit	None
+00411055	thunk	j___CrtDbgReportW	None
+0041105a	thunk	j__VirtualQuery@12	__stdcall VirtualQuery(x, x, x)
+0041105f	thunk	j__atexit	None
+00411064	thunk	j__MultiByteToWideChar@24	__stdcall MultiByteToWideChar(x, x, x, x, x, x)
+00411069	thunk	j___RTC_SetErrorType	None
+0041106e	thunk	j___except_handler4	None
+00411073	thunk	j___lock	None
+00411078	thunk	j__GetProcAddress@8	__stdcall GetProcAddress(x, x)
+0041107d	thunk	j_@_RTC_CheckStackVars@8	__fastcall _RTC_CheckStackVars(x, x)
+00411082	thunk	j_??3@YAXPAX@Z_0	void __cdecl operator delete(void *)
+00411087	thunk	j____report_gsfailure	None
+0041108c	thunk	j_?terminate@@YAXXZ_0	void __cdecl terminate(void)
+00411091	thunk	j___exit	None
+00411096	thunk	j__GetCurrentThreadId@0	__stdcall GetCurrentThreadId()
+0041109b	thunk	j___initterm	None
+004110a0	thunk	j__GetCurrentProcess@0	__stdcall GetCurrentProcess()
+004110a5	thunk	j___RTC_UninitUse	None
+004110aa	thunk	j___RTC_Shutdown	None
+004110af	thunk	j___FindPESection	None
+004110b4	thunk	j__LoadLibraryW@4	__stdcall LoadLibraryW(x)
+004110b9	thunk	j__HeapSetInformation@16	__stdcall HeapSetInformation(x, x, x, x)
+004110be	thunk	j___configthreadlocale	None
+004110c3	thunk	j___RTC_InitBase	None
+004110c8	thunk	j_?_RTC_StackFailure@@YAXPAXPBD@Z	void __cdecl _RTC_StackFailure(void *, char const *)
+004110cd	thunk	j__RaiseException@16	__stdcall RaiseException(x, x, x, x)
+004110d2	thunk	j___crt_debugger_hook	None
+004110d7	thunk	j_??0B@@QAE@XZ	public: __thiscall B::B(void)
+004110dc	thunk	j_??0C@@QAE@XZ	public: __thiscall C::C(void)
+004110e1	thunk	j_??0D@@QAE@XZ	public: __thiscall D::D(void)
+004110e6	thunk	j_??0A@@QAE@XZ	public: __thiscall A::A(void)
+004110eb	thunk	j___ValidateImageBase	None
+004110f0	thunk	j__InterlockedCompareExchange@12	__stdcall InterlockedCompareExchange(x, x, x)
+004110f5	thunk	j__GetProcessHeap@0	__stdcall GetProcessHeap()
+004110fa	thunk	j___RTC_SetErrorFuncW	None
+004110ff	thunk	j___onexit	None
+00411104	thunk	j__NtCurrentTeb	None
+00411109	thunk	j__HeapFree@12	__stdcall HeapFree(x, x, x)
+0041110e	thunk	j___RTC_SetErrorFunc	None
+00411113	thunk	j___invoke_watson_if_error	None
+00411118	thunk	j__TerminateProcess@8	__stdcall TerminateProcess(x, x)
+0041111d	func	start	None
+00411122	thunk	j_?__CxxUnhandledExceptionFilter@@YGJPAU_EXCEPTION_POINTERS@@@Z	long __stdcall __CxxUnhandledExceptionFilter(struct _EXCEPTION_POINTERS *)
+00411127	thunk	j____CxxSetUnhandledExceptionFilter	None
+0041112c	thunk	j__QueryPerformanceCounter@4	__stdcall QueryPerformanceCounter(x)
+00411131	thunk	j___unlock	None
+00411136	thunk	j__GetCurrentProcessId@0	__stdcall GetCurrentProcessId()
+0041113b	thunk	j_@_RTC_CheckStackVars2@12	__fastcall _RTC_CheckStackVars2(x, x, x)
+00411140	thunk	j____set_app_type	None
+00411145	thunk	j___RTC_CheckEsp	None
+0041114a	thunk	j__main	None
+0041114f	thunk	j__EncodePointer@4	__stdcall EncodePointer(x)
+00411154	thunk	j___RTC_Initialize	None
+00411159	thunk	j___controlfp_s	None
+0041115e	thunk	j__GetSystemTimeAsFileTime@4	__stdcall GetSystemTimeAsFileTime(x)
+00411163	thunk	j__DecodePointer@4	__stdcall DecodePointer(x)
+00411168	thunk	j___invoke_watson	None
+0041116d	thunk	j_?_RTC_GetSrcLine@@YAHPAEPA_WKPAH1K@Z	int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long)
+00411172	thunk	j___CRT_RTC_INITW	None
+00411177	thunk	j__GetTickCount@0	__stdcall GetTickCount()
+0041117c	thunk	j___IsNonwritableInCurrentImage	None
+00411181	thunk	j____CxxFrameHandler3	None
+00411186	thunk	j__HeapAlloc@12	__stdcall HeapAlloc(x, x, x)
+0041118b	thunk	j___amsg_exit	None
+00411190	thunk	j_??2@YAPAXI@Z_0	void * __cdecl operator new(unsigned int)
+00411195	thunk	j___XcptFilter	None
+0041119a	thunk	j___CrtSetCheckCount	None
+0041119f	thunk	j__InterlockedExchange@8	__stdcall InterlockedExchange(x, x)
+004111a4	thunk	j__UnhandledExceptionFilter@4	__stdcall UnhandledExceptionFilter(x)
+004111a9	thunk	j___except_handler4_common	None
+004111ae	thunk	j___matherr	None
+004111b3	thunk	j____getmainargs	None
+004111b8	thunk	j__lstrlenA@4	__stdcall lstrlenA(x)
+004111bd	thunk	j_?_RTC_Failure@@YAXPAXH@Z	void __cdecl _RTC_Failure(void *, int)
+004111c2	thunk	j_?_RTC_AllocaFailure@@YAXPAXPAU_RTC_ALLOCA_NODE@@H@Z	void __cdecl _RTC_AllocaFailure(void *, struct _RTC_ALLOCA_NODE *, int)
+004111c7	thunk	j__exit_0	None
+004111cc	thunk	j____dllonexit	None
+004111d1	thunk	j__FreeLibrary@4	__stdcall FreeLibrary(x)
+004111d6	thunk	j___initterm_e	None
+004111db	thunk	j_?_RTC_GetErrorFunc@@YAP6AHHPBDH00ZZPBX@Z	int (__cdecl *__cdecl _RTC_GetErrorFunc(void const *))(int, char const *, int, char const *, char const *, ...)
+004113c0	func	_main	None
+0041152f	func	varname	None
+00411590	func	??0D@@QAE@XZ	public: __thiscall D::D(void)
+00411640	func	??0A@@QAE@XZ	public: __thiscall A::A(void)
+004116a0	func	??0B@@QAE@XZ	public: __thiscall B::B(void)
+00411720	func	??0C@@QAE@XZ	public: __thiscall C::C(void)
+00411798	func	??3@YAXPAX@Z_0	void __cdecl operator delete(void *)
+0041179e	func	??2@YAPAXI@Z_0	void * __cdecl operator new(unsigned int)
+004117a4	thunk	___CxxFrameHandler3	None
+004117b0	func	@__security_check_cookie@4	__fastcall __security_check_cookie(x)
+004117ba	func	failure	None
+004117d0	func	__RTC_CheckEsp	None
+004117d3	func	esperror	None
+00411800	func	@_RTC_CheckStackVars@8	__fastcall _RTC_CheckStackVars(x, x)
+00411880	func	@_RTC_AllocaHelper@12	__fastcall _RTC_AllocaHelper(x, x, x)
+004118c0	func	@_RTC_CheckStackVars2@12	__fastcall _RTC_CheckStackVars2(x, x, x)
+004119d0	func	?_RTC_Failure@@YAXPAXH@Z	void __cdecl _RTC_Failure(void *, int)
+00411a40	func	failwithmessage	None
+00411ce0	func	DebuggerProbe	None
+00411d44	func	$LN5	None
+00411d49	func	$LN9	None
+00411d4a	func	$LN6	None
+00411d90	func	DebuggerRuntime	None
+00411e06	func	$LN5_0	None
+00411e0b	func	$LN9_0	None
+00411e0c	func	$LN6_0	None
+00411e60	func	?_RTC_StackFailure@@YAXPAXPBD@Z	void __cdecl _RTC_StackFailure(void *, char const *)
+00411fa0	func	?_RTC_AllocaFailure@@YAXPAXPAU_RTC_ALLOCA_NODE@@H@Z	void __cdecl _RTC_AllocaFailure(void *, struct _RTC_ALLOCA_NODE *, int)
+00412120	func	_getMemBlockDataString	None
+004121b0	func	__RTC_UninitUse	None
+004122e0	func	__RTC_InitBase	None
+00412320	func	__RTC_Shutdown	None
+00412340	func	pre_c_init	None
+004123f0	func	pre_cpp_init	None
+00412460	func	_mainCRTStartup	None
+00412480	func	__tmainCRTStartup	None
+00412674	func	$LN22	None
+0041268e	func	$LN24	None
+0041268f	func	$LN23	None
+00412780	func	_NtCurrentTeb	None
+00412790	func	check_managed_app	None
+00412820	func	___report_gsfailure	None
+00412980	func	?_RTC_GetSrcLine@@YAHPAEPA_WKPAH1K@Z	int __cdecl _RTC_GetSrcLine(unsigned char *, wchar_t *, unsigned long, int *, wchar_t *, unsigned long)
+00412bf7	func	DONE5	None
+00412c07	func	DONE4	None
+00412c10	func	DONE3	None
+00412c1a	func	DONE2	None
+00412c24	func	DONE1	None
+00412cf0	func	GetPdbDll	None
+00412f60	func	__RTC_NumErrors	None
+00412f70	func	__RTC_GetErrDesc	None
+00412f90	func	__RTC_SetErrorType	None
+00412fc0	func	__RTC_SetErrorFunc	None
+00412ff0	func	__RTC_SetErrorFuncW	None
+00413020	func	?_RTC_GetErrorFunc@@YAP6AHHPBDH00ZZPBX@Z	int (__cdecl *__cdecl _RTC_GetErrorFunc(void const *))(int, char const *, int, char const *, char const *, ...)
+00413030	func	?_RTC_GetErrorFuncW@@YAP6AHHPB_WH00ZZPBX@Z	int (__cdecl *__cdecl _RTC_GetErrorFuncW(void const *))(int, wchar_t const *, int, wchar_t const *, wchar_t const *, ...)
+00413040	func	__except_handler4	None
+00413074	thunk	__CRT_RTC_INITW	None
+00413080	func	?__CxxUnhandledExceptionFilter@@YGJPAU_EXCEPTION_POINTERS@@@Z	long __stdcall __CxxUnhandledExceptionFilter(struct _EXCEPTION_POINTERS *)
+00413100	func	___CxxSetUnhandledExceptionFilter	None
+0041311a	thunk	__configthreadlocale	None
+00413120	func	__setdefaultprecision	None
+00413170	func	__invoke_watson_if_error	None
+004131a2	thunk	___setusermatherr	None
+004131b0	func	__matherr	None
+004131c0	func	__setargv	None
+004131d0	func	__RTC_Initialize	None
+00413200	func	__RTC_Terminate	None
+00413230	func	__onexit	None
+00413303	func	$LN6_1	None
+0041330d	func	$LN7	None
+0041330e	func	$LN9_1	None
+00413360	func	_atexit	None
+00413384	thunk	___set_app_type	None
+0041338a	thunk	__amsg_exit	None
+00413390	thunk	___getmainargs	None
+004133a0	func	___security_init_cookie	None
+004134b8	thunk	__exit	None
+004134be	thunk	__XcptFilter	None
+004134c4	thunk	__cexit	None
+004134ca	func	_exit_0	None
+004134d0	thunk	__CrtSetCheckCount	None
+004134e0	func	__ValidateImageBase	None
+00413560	func	__FindPESection	None
+00413600	func	__IsNonwritableInCurrentImage	None
+004136c9	func	$LN7_0	None
+004136e2	func	$LN9_2	None
+004136e3	func	$LN8	None
+00413756	thunk	__CrtDbgReportW	None
+0041375c	thunk	__initterm	None
+00413762	thunk	__initterm_e	None
+00413768	thunk	__crt_debugger_hook	None
+0041376e	thunk	__except_handler4_common	None
+00413774	func	?terminate@@YAXXZ_0	void __cdecl terminate(void)
+0041377a	thunk	__controlfp_s	None
+00413780	thunk	__invoke_watson	None
+00413786	thunk	__unlock	None
+0041378c	thunk	___dllonexit	None
+00413792	thunk	__lock	None
+00413798	thunk	_WideCharToMultiByte@32	__stdcall WideCharToMultiByte(x, x, x, x, x, x, x, x)
+0041379e	thunk	_IsDebuggerPresent@0	__stdcall IsDebuggerPresent()
+004137a4	thunk	_MultiByteToWideChar@24	__stdcall MultiByteToWideChar(x, x, x, x, x, x)
+004137aa	thunk	_RaiseException@16	__stdcall RaiseException(x, x, x, x)
+004137b0	thunk	_lstrlenA@4	__stdcall lstrlenA(x)
+004137b6	thunk	_GetProcAddress@8	__stdcall GetProcAddress(x, x)
+004137bc	thunk	_LoadLibraryW@4	__stdcall LoadLibraryW(x)
+004137c2	thunk	_EncodePointer@4	__stdcall EncodePointer(x)
+004137c8	thunk	_InterlockedExchange@8	__stdcall InterlockedExchange(x, x)
+004137ce	thunk	_Sleep@4	__stdcall Sleep(x)
+004137d4	thunk	_InterlockedCompareExchange@12	__stdcall InterlockedCompareExchange(x, x, x)
+004137da	thunk	_HeapSetInformation@16	__stdcall HeapSetInformation(x, x, x, x)
+004137e0	thunk	_TerminateProcess@8	__stdcall TerminateProcess(x, x)
+004137e6	thunk	_GetCurrentProcess@0	__stdcall GetCurrentProcess()
+004137ec	thunk	_UnhandledExceptionFilter@4	__stdcall UnhandledExceptionFilter(x)
+004137f2	thunk	_SetUnhandledExceptionFilter@4	__stdcall SetUnhandledExceptionFilter(x)
+004137f8	thunk	_HeapFree@12	__stdcall HeapFree(x, x, x)
+004137fe	thunk	_HeapAlloc@12	__stdcall HeapAlloc(x, x, x)
+00413804	thunk	_GetProcessHeap@0	__stdcall GetProcessHeap()
+0041380a	thunk	_GetModuleFileNameW@12	__stdcall GetModuleFileNameW(x, x, x)
+00413810	thunk	_VirtualQuery@12	__stdcall VirtualQuery(x, x, x)
+00413816	thunk	_FreeLibrary@4	__stdcall FreeLibrary(x)
+0041381c	thunk	_DecodePointer@4	__stdcall DecodePointer(x)
+00413822	thunk	_QueryPerformanceCounter@4	__stdcall QueryPerformanceCounter(x)
+00413828	thunk	_GetTickCount@0	__stdcall GetTickCount()
+0041382e	thunk	_GetCurrentThreadId@0	__stdcall GetCurrentThreadId()
+00413834	thunk	_GetCurrentProcessId@0	__stdcall GetCurrentProcessId()
+0041383a	thunk	_GetSystemTimeAsFileTime@4	__stdcall GetSystemTimeAsFileTime(x)
+004147a0	func	__unwindfunclet$_main$0	None
+004147ae	name	__ehhandler$_main	None
+00416000	name	___xc_a	None
+00416104	name	pcppinit	None
+00416208	name	___xc_z	None
+0041630c	name	___xi_a	None
+00416410	name	pcinit	None
+00416514	name	pinit	None
+00416618	name	___xi_z	None
+0041673c	name	??_8D@@7BC@@@	const D::`vbtable'{for `C'}
+00416748	name	??_8D@@7BB@@@	const D::`vbtable'{for `B'}
+00416754	name	??_8B@@7B@	const B::`vbtable'
+00416760	name	??_8C@@7B@	const C::`vbtable'
+0041676c	name	msg	None
+00416790	name	aStackMemoryAro	None
+004167c4	name	aALocalVariable	None
+00416804	name	aStackMemoryWas	None
+00416828	name	aACastToASmalle	None
+00416980	name	aTheValueOfEspW	None
+00416a8c	name	_RTC_ErrorMessages	None
+00416aa4	name	_RTC_NoFalsePositives	None
+00416abc	name	stack_premsg	None
+00416ad8	name	stack_postmsg	None
+00416aec	name	uninit_premsg	None
+00416afc	name	uninit_postmsg	None
+00416b48	name	aRunTimeCheck_1	None
+00416b70	name	aUnknownModuleN	None
+00416b88	name	aUnknownFilenam	None
+00416ba0	name	aRunTimeCheckFa	None
+00416bf0	name	aRuntimeCheckEr	None
+00416c74	name	aStackCorrupted	None
+00416ca8	name	aStackAreaAro_1	None
+00416d00	name	aSSSS	None
+00416d14	name	aSSPSLdSDS	None
+00416d30	name	aStackAreaAroun	None
+00416d88	name	aAddress0x	None
+00416d98	name	aSize	None
+00416da4	name	aAllocationNumb	None
+00416dd8	name	aData	None
+00416de4	name	ProcName	None
+00416df0	name	LibFileName	None
+00416e0c	name	a_2x	None
+00416e14	name	aAVariableIsBei	None
+00416e58	name	aFDdVctoolsCrt_	None
+00416ed0	name	a__native_start	None
+00416f30	name	GS_ExceptionPointers	None
+00416f3c	name	mspdbName	None
+00416f5c	name	aR	None
+00416f60	name	aPdbopenvalidat	None
+00416f74	name	aEnvironmentdir	None
+00416fa8	name	aSoftwareMicros	None
+00417018	name	aRegclosekey	None
+00417028	name	aRegqueryvaluee	None
+0041703c	name	aRegopenkeyexw	None
+0041704c	name	aAdvapi32_dll	None
+0041706c	name	aStackAround_al	None
+00417094	name	aLocalVariableU	None
+004170c8	name	aStackMemoryCor	None
+004170e4	name	aCastToSmallerT	None
+00417118	name	aStackPointerCo	None
+00417138	name	_RTC_errlist	None
+00417150	name	?ProcessDetach@NativeDll@_CrtImplementationDetails_@@0IB	private: static unsigned int const _CrtImplementationDetails_::NativeDll::ProcessDetach
+00417154	name	?ProcessAttach@NativeDll@_CrtImplementationDetails_@@0IB	private: static unsigned int const _CrtImplementationDetails_::NativeDll::ProcessAttach
+00417158	name	?ThreadAttach@NativeDll@_CrtImplementationDetails_@@0IB	private: static unsigned int const _CrtImplementationDetails_::NativeDll::ThreadAttach
+0041715c	name	?ThreadDetach@NativeDll@_CrtImplementationDetails_@@0IB	private: static unsigned int const _CrtImplementationDetails_::NativeDll::ThreadDetach
+00417160	name	?ProcessVerifier@NativeDll@_CrtImplementationDetails_@@0IB	private: static unsigned int const _CrtImplementationDetails_::NativeDll::ProcessVerifier
+00417168	name	_Expression	None
+004171e0	name	_Function	None
+00417218	name	_File	None
+00417520	name	___rtc_iaa	None
+00417728	name	___rtc_izz	None
+0041782c	name	___rtc_taa	None
+00417a34	name	___rtc_tzz	None
+00418000	name	___security_cookie	None
+00418004	name	___security_cookie_complement	None
+00418008	name	?_RTC_ErrorLevels@@3PAHA	int * _RTC_ErrorLevels
+00418010	name	crttype	None
+00418020	name	___globallocalestatus	None
+00418024	name	___defaultmatherr	None
+00418028	name	___native_dllmain_reason	None
+0041802c	name	___native_vcclrit_reason	None
+00418138	name	?wsprintffp@@3P6AHPADPBDZZA	int (__cdecl *wsprintffp)(char *, char const *, ...)
+0041813c	name	init	None
+00418140	name	argc	None
+00418144	name	envp	None
+00418148	name	argv	None
+0041814c	name	managedapp	None
+00418150	name	argret	None
+00418154	name	startinfo	None
+00418158	name	mainret	None
+0041815c	name	has_cctor	None
+00418168	name	GS_ExceptionRecord	None
+004181b8	name	DebuggerWasPresent	None
+004181c0	name	GS_ContextRecord	None
+0041852c	name	mspdb	None
+00418530	name	PDBOK	None
+00418531	name	alreadyTried	None
+00418534	name	_RTC_ErrorReportFunc	None
+00418538	name	_RTC_ErrorReportFuncW	None
+00418540	name	__commode	None
+00418544	name	__fmode	None
+00418548	name	__dowildcard	None
+0041854c	name	__newmode	None
+00418550	name	___native_startup_state	None
+00418560	name	___native_startup_lock	None
+00418564	name	___onexitend	None
+00418574	name	___onexitbegin	None
+00418578	name	__NoHeapEnableTerminationOnCorruption	None
+0041857c	name	___dyn_tls_init_callback	None
+004191a0	name	__imp__GetCurrentProcessId@0	__declspec(dllimport) __stdcall GetCurrentProcessId()
+004191a4	name	__imp__GetCurrentThreadId@0	__declspec(dllimport) __stdcall GetCurrentThreadId()
+004191a8	name	__imp__GetTickCount@0	__declspec(dllimport) __stdcall GetTickCount()
+004191ac	name	__imp__QueryPerformanceCounter@4	__declspec(dllimport) __stdcall QueryPerformanceCounter(x)
+004191b0	name	__imp__DecodePointer@4	__declspec(dllimport) __stdcall DecodePointer(x)
+004191b4	name	__imp__FreeLibrary@4	__declspec(dllimport) __stdcall FreeLibrary(x)
+004191b8	name	__imp__VirtualQuery@12	__declspec(dllimport) __stdcall VirtualQuery(x, x, x)
+004191bc	name	__imp__GetModuleFileNameW@12	__declspec(dllimport) __stdcall GetModuleFileNameW(x, x, x)
+004191c0	name	__imp__GetProcessHeap@0	__declspec(dllimport) __stdcall GetProcessHeap()
+004191c4	name	__imp__HeapAlloc@12	__declspec(dllimport) __stdcall HeapAlloc(x, x, x)
+004191c8	name	__imp__HeapFree@12	__declspec(dllimport) __stdcall HeapFree(x, x, x)
+004191cc	name	__imp__SetUnhandledExceptionFilter@4	__declspec(dllimport) __stdcall SetUnhandledExceptionFilter(x)
+004191d0	name	__imp__UnhandledExceptionFilter@4	__declspec(dllimport) __stdcall UnhandledExceptionFilter(x)
+004191d4	name	__imp__GetCurrentProcess@0	__declspec(dllimport) __stdcall GetCurrentProcess()
+004191d8	name	__imp__TerminateProcess@8	__declspec(dllimport) __stdcall TerminateProcess(x, x)
+004191dc	name	__imp__HeapSetInformation@16	__declspec(dllimport) __stdcall HeapSetInformation(x, x, x, x)
+004191e0	name	__imp__InterlockedCompareExchange@12	__declspec(dllimport) __stdcall InterlockedCompareExchange(x, x, x)
+004191e4	name	__imp__Sleep@4	__declspec(dllimport) __stdcall Sleep(x)
+004191e8	name	__imp__InterlockedExchange@8	__declspec(dllimport) __stdcall InterlockedExchange(x, x)
+004191ec	name	__imp__EncodePointer@4	__declspec(dllimport) __stdcall EncodePointer(x)
+004191f0	name	__imp__LoadLibraryW@4	__declspec(dllimport) __stdcall LoadLibraryW(x)
+004191f4	name	__imp__GetProcAddress@8	__declspec(dllimport) __stdcall GetProcAddress(x, x)
+004191f8	name	__imp__lstrlenA@4	__declspec(dllimport) __stdcall lstrlenA(x)
+004191fc	name	__imp__RaiseException@16	__declspec(dllimport) __stdcall RaiseException(x, x, x, x)
+00419200	name	__imp__MultiByteToWideChar@24	__declspec(dllimport) __stdcall MultiByteToWideChar(x, x, x, x, x, x)
+00419204	name	__imp__IsDebuggerPresent@0	__declspec(dllimport) __stdcall IsDebuggerPresent()
+00419208	name	__imp__WideCharToMultiByte@32	__declspec(dllimport) __stdcall WideCharToMultiByte(x, x, x, x, x, x, x, x)
+0041920c	name	__imp__GetSystemTimeAsFileTime@4	__declspec(dllimport) __stdcall GetSystemTimeAsFileTime(x)
+00419210	name	_KERNEL32_NULL_THUNK_DATA	None
+00419250	name	__imp___lock	None
+00419254	name	__imp____dllonexit	None
+00419258	name	__imp___unlock	None
+0041925c	name	__imp___invoke_watson	None
+00419260	name	__imp___controlfp_s	None
+00419264	name	__imp_?terminate@@YAXXZ	__declspec(dllimport) void __cdecl terminate(void)
+00419268	name	__imp___except_handler4_common	None
+0041926c	name	__imp___crt_debugger_hook	None
+00419270	name	__imp___initterm_e	None
+00419274	name	__imp___initterm	None
+00419278	name	__imp___CrtDbgReportW	None
+0041927c	name	__imp___CrtSetCheckCount	None
+00419280	name	__imp____initenv	None
+00419284	name	__imp__exit	None
+00419288	name	__imp___cexit	None
+0041928c	name	__imp___XcptFilter	None
+00419290	name	__imp___exit	None
+00419294	name	__imp____getmainargs	None
+00419298	name	__imp___amsg_exit	None
+0041929c	name	__imp____set_app_type	None
+004192a0	name	__imp___fmode	None
+004192a4	name	__imp___commode	None
+004192a8	name	__imp____setusermatherr	None
+004192ac	name	__imp___configthreadlocale	None
+004192b0	name	__imp___CRT_RTC_INITW	None
+004192b4	name	__imp____CxxFrameHandler3	None
+004192b8	name	__imp_??2@YAPAXI@Z	__declspec(dllimport) void * __cdecl operator new(unsigned int)
+004192bc	name	__imp___onexit	None
+004192c0	name	__imp_??3@YAXPAX@Z	__declspec(dllimport) void __cdecl operator delete(void *)
+004192c4	name	_MSVCR100D_NULL_THUNK_DATA	None

@@ -1,0 +1,37 @@
+function(get_prolog_dependencies result)
+  set(files ${ARGV})
+  list(REMOVE_AT files 0)
+  set(rv)
+  foreach(file ${files})
+    if(NOT EXISTS "${file}")
+      continue()
+    endif()
+    list(APPEND rv "${file}")
+    get_filename_component(dir "${file}" DIRECTORY)
+    get_filename_component(realfile "${file}" ABSOLUTE)
+    execute_process(
+      COMMAND
+      grep -E [=[^ *(:- *|#)include *[("]]=] ${file}
+      INPUT_FILE ${file}
+      OUTPUT_VARIABLE raw_includes
+      ERROR_QUIET
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+    string(REPLACE "\n" ";" includes "${raw_includes}")
+    foreach(line ${includes})
+      string(REGEX MATCH [=[^ *#]=] hash "${line}")
+      if(hash)
+        string(REGEX MATCH [=["([^"]*)"]=] dummy "${line}")
+        set(filename "${CMAKE_MATCH_1}")
+      else()
+        string(REGEX MATCH [=[\( *('([^']*)'|"([^"]*)"|([^ )]*)) *\)]=] dummy "${line}")
+        set(filename "${CMAKE_MATCH_2}${CMAKE_MATCH_3}${CMAKE_MATCH_4}")
+      endif()
+      get_filename_component(path "${filename}" ABSOLUTE BASE_DIR "${dir}")
+      message("-- Prolog: ${realfile} depends on ${path}")
+      get_prolog_dependencies(subresult "${path}" "${path}.pl" "${path}.P" "${path}.prolog")
+      list(APPEND rv ${subresult})
+    endforeach()
+  endforeach()
+  list(REMOVE_DUPLICATES rv)
+  set(${result} "${rv}" PARENT_SCOPE)
+endfunction()

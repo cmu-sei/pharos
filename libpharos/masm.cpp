@@ -1,4 +1,4 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <rose.h>
 #include <BinaryControlFlow.h>
@@ -6,7 +6,9 @@
 #include "util.hpp"
 #include "misc.hpp"
 
-typedef rose::BinaryAnalysis::ControlFlow::Graph CFG;
+namespace pharos {
+
+typedef Rose::BinaryAnalysis::ControlFlow::Graph CFG;
 typedef boost::graph_traits<CFG>::vertex_descriptor CFGVertex;
 
 DebugLabelMap global_label_map;
@@ -54,11 +56,11 @@ void DebugDisasm::visit(SgNode* n)
   if (isSgAsmFunction(n) != NULL) {
     SgAsmFunction *func = isSgAsmFunction(n);
     AddrSet::iterator it;
-    rose_addr_t addr = func->get_address();
+    rose_addr_t addr = func->get_entry_va();
     bool found = std::find(target_addrs.begin(), target_addrs.end(), addr) != target_addrs.end();
     if (target_addrs.size() == 0 || found) {
       found_addrs.insert(addr);
-      std::cout << "------------------------------------- Func: " << addr_str(func->get_address()) << LEND;
+      std::cout << "------------------------------------- Func: " << addr_str(func->get_entry_va()) << LEND;
       fcnt++;
       std::string funcstr = debug_function(func, hex_bytes, basic_block_lines, show_reasons);
       std::cout << funcstr;
@@ -112,10 +114,10 @@ std::string masm_x86TypeToPtrName(SgAsmType* ty) {
     case 64: return "double";
     case 80: return "ldouble";
     }
-  } else if (ty == rose::SageBuilderAsm::buildTypeVector(2, rose::SageBuilderAsm::buildTypeU64())) {
+  } else if (ty == Rose::SageBuilderAsm::buildTypeVector(2, Rose::SageBuilderAsm::buildTypeU64())) {
     return "dqword";
   } else if (SgAsmVectorType *vt = isSgAsmVectorType(ty)) {
-    return "V" + StringUtility::numberToString(vt->get_nElmts()) + masm_x86TypeToPtrName(vt->get_elmtType());
+    return "V" + std::to_string(vt->get_nElmts()) + masm_x86TypeToPtrName(vt->get_elmtType());
   }
   ASSERT_not_reachable("unhandled type: " + ty->toString());
 }
@@ -196,12 +198,12 @@ std::string masm_unparseX86Expression(SgAsmExpression *expr,
     // because the entire interface to unparsex86Expression has changed.  We should try to
     // report our changes to a current version of unparseAsm.C.  BUG!!! BUG!!! BUG!!!
     case V_SgAsmIndirectRegisterExpression: {
-      //SgAsmInstruction *tinsn = rose::SageInterface::getEnclosingNode<SgAsmInstruction>(expr);
+      //SgAsmInstruction *tinsn = Rose::SageInterface::getEnclosingNode<SgAsmInstruction>(expr);
       SgAsmIndirectRegisterExpression* rr = isSgAsmIndirectRegisterExpression(expr);
       //result = unparseX86Register(insn, rr->get_descriptor(), registers);
       //if (!result.empty() && '0'==result[result.size()-1])
       //  result = result.substr(0, result.size()-1);
-      result += "(" + StringUtility::numberToString(rr->get_index()) + ")";
+      result += "(" + std::to_string(rr->get_index()) + ")";
       break;
     }
     case V_SgAsmIntegerValueExpression: {
@@ -258,13 +260,13 @@ std::string masm_unparseX86Expression(SgAsmExpression *expr,
     }
   }
 
+#if 0
   if (expr->get_replacement() != "") {
     result += " <" + expr->get_replacement() + ">";
   }
-#if 0
     if (expr->get_bit_size()>0) {
-        result += " <@" + StringUtility::numberToString(expr->get_bit_offset()) +
-                  "+" + StringUtility::numberToString(expr->get_bit_size()) + ">";
+      result += " <@" + std::to_string(expr->get_bit_offset()) +
+                "+" + std::to_string(expr->get_bit_size()) + ">";
     }
 #endif
     return result;
@@ -302,7 +304,7 @@ std::string debug_function(SgAsmFunction * func, const unsigned int max_bytes,
 {
   std::string result = "";
 
-  rose::BinaryAnalysis::ControlFlow cfg_analyzer;
+  Rose::BinaryAnalysis::ControlFlow cfg_analyzer;
   CFG cfg = cfg_analyzer.build_block_cfg_from_ast<CFG>(func);
 
   CFGVertex entry_vertex = 0;
@@ -350,11 +352,11 @@ std::string debug_instruction(const SgAsmInstruction *inst, const unsigned int m
 
   if (max_bytes > 0) {
     std::string opbytes = debug_opcode_bytes(inst->get_raw_bytes(), max_bytes);
-    snprintf(buffer, sizeof(buffer), "%0" PRIX64 " %-*s %-9s %s", inst->get_address(), (max_bytes * 2)+1,
-             opbytes.c_str(), inst->get_mnemonic().c_str(), opstr.c_str());
+    //snprintf(buffer, sizeof(buffer), "%0" PRIX64 ": %-9s %s ; BYTES: %-*s", inst->get_address(), inst->get_mnemonic().c_str(), opstr.c_str(),(max_bytes * 2)+1,opbytes.c_str());
+    snprintf(buffer, sizeof(buffer), "%0" PRIX64 ": %-9s %-15s \t; BYTES: %s", inst->get_address(), inst->get_mnemonic().c_str(), opstr.c_str(),opbytes.c_str());
   }
   else {
-    snprintf(buffer, sizeof(buffer), "%0" PRIX64 " %-9s %s", inst->get_address(),
+    snprintf(buffer, sizeof(buffer), "%0" PRIX64 ": %-9s %s", inst->get_address(),
              inst->get_mnemonic().c_str(), opstr.c_str());
   }
 
@@ -362,6 +364,9 @@ std::string debug_instruction(const SgAsmInstruction *inst, const unsigned int m
 
   return result;
 }
+
+} // namespace pharos
+
 /* Local Variables:   */
 /* mode: c++          */
 /* fill-column:    95 */

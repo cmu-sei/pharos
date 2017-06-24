@@ -1,4 +1,4 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_JSON_OO_H
 #define Pharos_JSON_OO_H
@@ -9,6 +9,8 @@
 
 #include "misc.hpp"
 #include "class.hpp"
+
+namespace pharos {
 
 // This class creates a JSON output file for the class specification. The created JSON file is
 // compatible with the JSON Importer IDA Plugin.
@@ -61,6 +63,8 @@ public:
   boost::property_tree::ptree get_json();
 
 };
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

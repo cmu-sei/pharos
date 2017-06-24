@@ -1,6 +1,5 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
-#include <boost/foreach.hpp>
 #include <boost/optional.hpp>
 #include <boost/property_map/property_map.hpp>
 
@@ -9,6 +8,8 @@
 
 #include "calls.hpp"
 #include "vcall.hpp"
+
+namespace pharos {
 
 template<> char const* EnumStrings<CallType>::data[] = {
   "Immediate",
@@ -30,7 +31,24 @@ bool CallDescriptorCompare::operator()(const CallDescriptor* x, const CallDescri
   return (x->get_address() < y->get_address());
 }
 
-StackDelta CallDescriptor::get_stack_delta() {
+const LeafNodePtr & CallDescriptor::get_stack_delta_variable() const {
+  if (import_descriptor != nullptr) {
+    return import_descriptor->get_stack_delta_variable();
+  }
+  if (function_override != nullptr) {
+    return function_override->get_stack_delta_variable();
+  }
+  if (function_descriptor != nullptr) {
+    return function_descriptor->get_stack_delta_variable();
+  }
+  if (stack_delta_variable == nullptr) {
+    size_t arch_bits = global_descriptor_set->get_arch_bits();
+    stack_delta_variable = LeafNode::createVariable(arch_bits, "", UNKNOWN_STACK_DELTA);
+  }
+  return stack_delta_variable;
+}
+
+StackDelta CallDescriptor::get_stack_delta() const {
   GDEBUG << "Getting stack delta for " << *this << LEND;
 
   // Apparently imported descriptor has to be first.  I should be more consistent in describing
@@ -94,12 +112,14 @@ StackDelta CallDescriptor::get_stack_delta() {
     GDEBUG << "Final stack delta according to call_descriptor" << merged << LEND;
     return merged;
   }
-  // We've got no idea where the function calls to.
-  else
-    return StackDelta(0, ConfidenceNone);
+  // We've got no idea where the function calls to, and so we have no idea what the stack delta
+  // was unless the user (or maybe some future constaint based stack solving) told us.
+  else {
+    return stack_delta;
+  }
 }
 
-StackDelta CallDescriptor::get_stack_parameters() {
+StackDelta CallDescriptor::get_stack_parameters() const {
   GDEBUG << "Getting stack parameters for " << *this << LEND;
 
   // Apparently imported descriptor has to be first.  I should be more consistent in describing
@@ -149,8 +169,10 @@ StackDelta CallDescriptor::get_stack_parameters() {
     }
   }
 
-  GDEBUG << "Call descriptor has no stack parameter data." << LEND;
-  return StackDelta(0, ConfidenceNone);
+  if (stack_delta.confidence == ConfidenceNone) {
+    GDEBUG << "Call descriptor has no stack parameter data." << LEND;
+  }
+  return stack_delta;
 }
 
 void CallDescriptor::validate(std::ostream &o, FunctionDescriptorMap& fdmap) {
@@ -254,7 +276,7 @@ void CallDescriptor::update_connections() {
   assert(insn != NULL);
   const SgAsmFunction *func = insn_get_func(insn);
   assert(func != NULL);
-  containing_function = global_descriptor_set->get_func(func->get_address());
+  containing_function = global_descriptor_set->get_func(func->get_entry_va());
   assert(containing_function != NULL);
 
   containing_function->add_outgoing_call(this);
@@ -315,7 +337,7 @@ void CallDescriptor::update_connections() {
     function_descriptor = new FunctionDescriptor();
     function_allocated = true;
     // Now merge each of the call targets into the merged description.
-    BOOST_FOREACH(rose_addr_t t, targets) {
+    for (rose_addr_t t : targets) {
       // This might include bogus addresses for the import descriptors, but that's ok, the test
       // for NULL will cause us to do the right thing.
       FunctionDescriptor* fd = fdmap.get_func(t);
@@ -323,7 +345,7 @@ void CallDescriptor::update_connections() {
     }
     // Now propgate any discoveries made during merging back to each of the call targets.
     // Also update the function description to record that this call is one of their callers.
-    BOOST_FOREACH(rose_addr_t t, targets) {
+    for (rose_addr_t t : targets) {
       FunctionDescriptor* fd = fdmap.get_func(t);
       if (fd != NULL) {
         fd->propagate(function_descriptor);
@@ -484,9 +506,9 @@ void CallDescriptor::analyze() {
       break;
     }
     case V_SgAsmIntegerValueExpression: {
-      // Cory says we should really be comparing this against the default address size.
+      size_t arch_bits = global_descriptor_set->get_arch_bits();
       SgAsmIntegerValueExpression* int_expr = isSgAsmIntegerValueExpression(expr);
-      if (int_expr->get_significantBits() != 32) {
+      if (int_expr->get_significantBits() != arch_bits) {
         GWARN << "Unexpected size for fixed call target address at" << address_string() << LEND;
       }
       confidence = ConfidenceCertain;
@@ -501,6 +523,9 @@ void CallDescriptor::analyze() {
     }
   }
 }
+
+} // namespace pharos
+
 /* Local Variables:   */
 /* mode: c++          */
 /* fill-column:    95 */

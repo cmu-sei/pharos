@@ -1,29 +1,63 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
-
-#include <boost/foreach.hpp>
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "globals.hpp"
 #include "masm.hpp"
 #include "descriptors.hpp"
 #include "datatypes.hpp"
+#include "util.hpp"
+#include "typedb.hpp"
+
+namespace pharos {
+
+GlobalMemoryDescriptor::GlobalMemoryDescriptor() {
+  address = 0;
+  initialized = false;
+  in_image = false;
+  confidence = ConfidenceNone;
+  type = DTypeNone;
+  size = 0;
+  access_size = 0;
+
+  // Because we have no concept of NULL symbolic values, empty will have to do
+  value = SymbolicValuePtr();
+  memory_address = SymbolicValuePtr();
+}
+
+GlobalMemoryDescriptor::GlobalMemoryDescriptor(rose_addr_t addr) {
+    address = addr;
+    confidence = ConfidenceNone;
+    type = DTypeNone;
+    size = 0;
+    access_size = 0;
+    analyze(addr);
+
+    // defaulting to the width of the architcture. This is not really right, but not really
+    // wrong either
+    size_t arch_bits = global_descriptor_set->get_arch_bits();
+    memory_address = SymbolicValue::constant_instance(arch_bits, addr);
+
+    // We don't really know the value of the global variable. We can get it's initial value,
+    // but that can change over the course of the program
+    value = SymbolicValue::variable_instance(arch_bits);
+}
 
 void GlobalMemoryDescriptor::short_print(std::ostream &o) const {
   o << "Global: addr=" << address_string();
 
   o << " refs=[";
-  BOOST_FOREACH(SgAsmInstruction* insn, refs) {
+  for (const SgAsmInstruction* insn : refs) {
     o << boost::str(boost::format(" 0x%08X") % insn->get_address());
   }
   o << " ]";
 
   o << " reads=[";
-  BOOST_FOREACH(SgAsmInstruction* insn, reads) {
+  for (const SgAsmInstruction* insn : reads) {
     o << boost::str(boost::format(" 0x%08X") % insn->get_address());
   }
   o << " ]";
 
   o << " writes=[";
-  BOOST_FOREACH(SgAsmInstruction* insn, writes) {
+  for (const SgAsmInstruction* insn : writes) {
     o << boost::str(boost::format(" 0x%08X") % insn->get_address());
   }
   o << " ]";
@@ -34,13 +68,13 @@ void GlobalMemoryDescriptor::print(std::ostream &o) const {
     << " image=" << in_image << " init=" << initialized
     << " asize=" << access_size << " tsize=" << size << LEND;
 
-  BOOST_FOREACH(SgAsmInstruction* insn, refs) {
+  for (const SgAsmInstruction* insn : refs) {
     o << "   Ref: " << debug_instruction(insn) << LEND;
   }
-  BOOST_FOREACH(SgAsmInstruction* insn, reads) {
+  for (const SgAsmInstruction* insn : reads) {
     o << "  Read: " << debug_instruction(insn) << LEND;
   }
-  BOOST_FOREACH(SgAsmInstruction* insn, writes) {
+  for (const SgAsmInstruction* insn : writes) {
     o << " Write: " << debug_instruction(insn) << LEND;
   }
 }
@@ -190,7 +224,7 @@ void TypeSEH3ExceptionRegistration::read(rose_addr_t a) {
   TryLevel.read(a + 12);
 }
 
-std::string TypeSEH3ExceptionRegistration::str() {
+std::string TypeSEH3ExceptionRegistration::str() const {
   return boost::str(boost::format("<next=%s ehfunc=%s scopetable=%s lvl=%s>") %
              Next.str() % ExceptionHandler.str() %
              ScopeTable.str() % TryLevel.str());
@@ -205,7 +239,7 @@ void TypeSEH4ScopeTableRecord::read(rose_addr_t a) {
   HandleFunc.read(a + 8);
 }
 
-std::string TypeSEH4ScopeTableRecord::str() {
+std::string TypeSEH4ScopeTableRecord::str() const {
   return boost::str(boost::format("<lvl=%s filter=%s handler=%s>") %
              EnclosingLevel.str() % FilterFunc.str() % HandleFunc.str());
 }
@@ -229,14 +263,14 @@ void TypeSEH4ScopeTable::read(rose_addr_t a) {
   // Negative one is reported to be the approprioate value for EH3.
 }
 
-std::string TypeSEH4ScopeTable::str() {
+std::string TypeSEH4ScopeTable::str() const {
   std::string base = boost::str(boost::format("<gsc=%s gscx=%s ehc=%s ehcx=%s>") %
                          GSCookieOffset.str() %
                          GSCookieXOROffset.str() %
                          EHCookieOffset.str() %
                          EHCookieXOROffset.str());
   base += "recs=[ ";
-  BOOST_FOREACH(TypeSEH4ScopeTableRecord scope, ScopeRecord) {
+  for (const TypeSEH4ScopeTableRecord & scope : ScopeRecord) {
     base += scope.str();
   }
   base += " ]";
@@ -261,7 +295,7 @@ void TypeSEH4TryBlockMapEntry::read(rose_addr_t a) {
   //}
 }
 
-std::string TypeSEH4TryBlockMapEntry::str() {
+std::string TypeSEH4TryBlockMapEntry::str() const {
   return boost::str(boost::format("<trylow=%s tryhigh=%s catchhigh=%s ncatches=%s handlers=%s>") %
              tryLow.str() % tryHigh.str() % catchHigh.str() %
              nCatches.str() % pHandlerArray.str());
@@ -274,7 +308,7 @@ void TypeSEH4HandlerType::read(rose_addr_t a) {
   addressOfHandler.read(a + 12);
 }
 
-std::string TypeSEH4HandlerType::str() {
+std::string TypeSEH4HandlerType::str() const {
   return boost::str(boost::format("<adj=%s type=%s obj=%s handler=%s>") %
              adjectives.str() % pType.str() %
              dispatchObj.str() % addressOfHandler.str());
@@ -287,7 +321,7 @@ void TypeSEH4UnwindMapEntry::read(rose_addr_t a) {
   action.read(a + 4);
 }
 
-std::string TypeSEH4UnwindMapEntry::str() {
+std::string TypeSEH4UnwindMapEntry::str() const {
   return boost::str(boost::format("<tostate=%s action=%s>") % toState.str() % action.str());
 }
 
@@ -333,7 +367,7 @@ void TypeSEH4FuncInfo::read(rose_addr_t a) {
   }
 }
 
-std::string TypeSEH4FuncInfo::str() {
+std::string TypeSEH4FuncInfo::str() const {
   return boost::str(boost::format(
     "<magic=%s states=%s unwind=%s ntries=%s trymap=%s nip=%s ipm=%s estypes=%s flags=%s>") %
              magicNumber.str() %
@@ -345,10 +379,10 @@ std::string TypeSEH4FuncInfo::str() {
 
 void TypeSEH4FuncInfo::dump() {
   GINFO << "SEH4FuncInfo @0x" << std::hex << address << std::dec << ": " << str() << LEND;
-  BOOST_FOREACH(TypeSEH4UnwindMapEntry entry, unwind_map) {
+  for (const TypeSEH4UnwindMapEntry & entry : unwind_map) {
     GINFO << "  " << entry.str() << LEND;
   }
-  BOOST_FOREACH(TypeSEH4TryBlockMapEntry entry, try_block_map) {
+  for (const TypeSEH4TryBlockMapEntry & entry : try_block_map) {
     GINFO << "  " << entry.str() << LEND;
   }
 }
@@ -363,7 +397,7 @@ void TypeRTCVarDesc::read(rose_addr_t a) {
   var_name.read(var_name_addr.value);
 }
 
-std::string TypeRTCVarDesc::str() {
+std::string TypeRTCVarDesc::str() const {
   return boost::str(boost::format("<offset=%s size=%s name='%s'>") %
                     var_offset.str() % var_size.str() % var_name.str());
 }
@@ -382,13 +416,13 @@ void TypeRTCFrameDesc::read(rose_addr_t a) {
   }
 }
 
-std::string TypeRTCFrameDesc::str() {
+std::string TypeRTCFrameDesc::str() const {
   return boost::str(boost::format("<count=%s>") % varCount.str());
 }
 
 void TypeRTCFrameDesc::dump() {
   GINFO << "RTCFrameDesc @0x" << std::hex << address << std::dec << ": " << str() << LEND;
-  BOOST_FOREACH(TypeRTCVarDesc var, vars) {
+  for (const TypeRTCVarDesc & var : vars) {
     GINFO << "  " << var.str() << LEND;
   }
 }
@@ -401,7 +435,7 @@ void TypeRTTITypeDescriptor::read(rose_addr_t a) {
   size = 8 + name.size;
 }
 
-std::string TypeRTTITypeDescriptor::str() {
+std::string TypeRTTITypeDescriptor::str() const {
   return boost::str(boost::format("<vftable=%s name='%s'>") % pVFTable.str() % name.str());
 }
 
@@ -418,7 +452,7 @@ void TypeRTTICompleteObjectLocator::read(rose_addr_t a) {
   class_desc.read(pClassDescriptor.value);
 }
 
-std::string TypeRTTICompleteObjectLocator::str() {
+std::string TypeRTTICompleteObjectLocator::str() const {
   return boost::str(boost::format("<sig=%s offset=%s cdo=%s type=%s class=%s>")
                     % signature.str() % offset.str() % cdOffset.str() %
                     pTypeDescriptor.str() % pClassDescriptor.str());
@@ -428,7 +462,7 @@ void TypeRTTICompleteObjectLocator::dump() {
   GINFO << "RTTI Object @0x" << std::hex << address << std::dec << ": " << str() << LEND;
   GINFO << "  Type: " << type_desc.str() << LEND;
   GINFO << "  Class: " << class_desc.str() << LEND;
-  BOOST_FOREACH (TypeRTTIBaseClassDescriptor bcd, class_desc.base_classes) {
+  for (const TypeRTTIBaseClassDescriptor & bcd : class_desc.base_classes) {
     GINFO << "    Base Class: " << bcd.str() << LEND;
   }
 }
@@ -450,36 +484,50 @@ void TypeRTTIClassHierarchyDescriptor::read(rose_addr_t a) {
   }
 }
 
-std::string TypeRTTIClassHierarchyDescriptor::str() {
+std::string TypeRTTIClassHierarchyDescriptor::str() const {
   return boost::str(boost::format("<sig=%s attr=%s numbases=%s>") %
                     signature.str() % attributes.str() % numBaseClasses.str());
 }
 
-void TypeRTTIBaseClassArray::read(rose_addr_t a) {
-  if (a) return;
+void TypeRTTIBaseClassArray::read(UNUSED rose_addr_t a) {
 }
 
-std::string TypeRTTIBaseClassArray::str() {
+std::string TypeRTTIBaseClassArray::str() const {
   return boost::str(boost::format("<incomplete>"));
 }
 
 void TypeRTTIBaseClassDescriptor::read(rose_addr_t a) {
   address = a;
-  size = 24;
+  size = 28;
   pTypeDescriptor.read(a);
   numContainedBases.read(a + 4);
   where_mdisp.read(a + 8);
   where_pdisp.read(a + 12);
   where_vdisp.read(a + 16);
   attributes.read(a + 20);
+  pClassDescriptor.read(a + 24);
+
+  type_desc.read(pTypeDescriptor.value);
+
+  // This quickly turns into a recursive relationship, and could even be a cycle, so we'll need
+  // to give some more thought to whether we ought to be doing this.  A visited list is
+  // probably required, and we definitely don't want to store the whole tree inside each object
+  // as we would do if this were a member variable instead of a discarded local.  I was trying
+  // to read it here because I wanted it to throw if there's a problem during reading, but it
+  // turns out that even normal files have endless loops.
+
+  //TypeRTTIClassHierarchyDescriptor chd;
+  //chd.read(pClassDescriptor.value);
 }
 
-std::string TypeRTTIBaseClassDescriptor::str() {
+std::string TypeRTTIBaseClassDescriptor::str() const {
   return boost::str(boost::format("<type=%s numbase=%s pmd=(%s,%s,%s) attr=%s>") %
                     pTypeDescriptor.str() % numContainedBases.str() %
                     where_mdisp.str() % where_pdisp.str() % where_vdisp.str() %
                     attributes.str());
 }
+
+} // namespace pharos
 
 /* Local Variables:   */
 /* mode: c++          */

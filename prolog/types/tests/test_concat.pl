@@ -1,0 +1,21 @@
+
+% in this concat the left-most treenode is signed, thus 0x1) is signed
+opConcat(0x1, [0x2, 0x3]).
+value(0x2, 0xffffffff).
+bitwidth(0x2, 0x20).
+
+% in this concat the left-most treenode (0x4) is unsigned, thus 0x6) is unsigned
+opConcat(0x6, [0x4, 0x5]).
+value(0x4, 0x7f). 
+bitwidth(0x4, 0x20).
+
+% 0x5) is signed, but it is not the left-most part of the concat
+value(0x5, 0xf0000000). 
+bitwidth(0x5, 0x20).
+
+expectedSigned(0x1, is).
+expectedSigned(0x2, is).
+expectedSigned(0x5, is).
+expectedSigned(0x4, isnot).
+expectedSigned(0x6, isnot).
+

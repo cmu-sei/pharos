@@ -1,0 +1,90 @@
+{
+    "Structures" : [
+        {
+            "Name": "Cls1",
+            "Members": [
+                {"name": "x","type": "dword","offset": 4, "count":1},
+                {"name": "y","type": "byte","offset":8, "count":1}
+            ],
+            "Methods": [
+                {"ea": "401230","name":"Ctor1","type":"ctor"},
+                {"ea": "401110","name":"Func2","type":"meth"}
+            ],
+            "Vftables": [
+                {"ea":"4121e8","vfptr":0,
+                 "entries": [
+                     { "ea": "401250","offset": 0,"name":"Virt1", "type": "meth"}
+                 ] 
+                }
+            ],
+            "Parents" : [
+                {"name": "Cls0", "offset": 0 }
+            ]
+        },
+        {
+            "Name": "Cls2",
+            "Members": [
+                {"type":"struc","name":"s","offset":4,"class":"Str1", "count":1},
+                {"name": "z","type": "byte","offset":62, "count":1}
+            ],
+            "Methods": [ 
+                {"ea":"401280", "name":"Ctor1", "type":"ctor"}
+            ],
+            "Vftables": [ 
+                {"ea":"412200", "vfptr":0,
+                 "entries": [
+                     {"ea":"4012A0","offset":0, "name":"Virt1","type":"meth"},
+                     {"ea":"4011A0", "offset":4, "name":"Virt2","type":"meth"}
+                 ]
+                }
+            ]
+        },
+        {
+            "Name": "Str1",
+            "Members" : [
+                {"type":"dword","name":"x","offset":0, "count":1},
+                {"type":"dword","name":"y","offset":4, "count":1},
+                {"type":"byte","name":"s","offset":8,"count": 50}
+            ]
+        },
+        {
+            "Name": "Cls0",
+            "Methods": [
+                {"ea":"4012d0", "name":"Ctor", "type":"ctor"}
+            ],
+            "Vftables": [
+                {"ea":"4121e8","vfptr":0,
+                 "entries": [
+                     { "ea": "401250","offset": 0,"name": "func1", "type": "meth"}
+                 ] 
+                }                
+            ]
+        },
+        {
+            "Name": "Cls3",
+            "Members": [
+                {"type":"dword","name":"i","offset":80, "count":1}
+            ],
+            "Methods": [
+                { "ea":"401160", "name":"Ctor", "type":"ctor"}
+            ],
+            "Vftables": [
+                {"ea":"4121b0","vfptr":0,
+                 "entries": [
+                     { "ea": "4011D0","offset": 0,"name": "Virt1", "type": "meth"}
+                 ] 
+                },
+                {"ea":"4121a4","vfptr":12,
+                 "entries": [
+                     { "ea": "401200","offset": 0,"name": "Virt1", "type": "meth"},
+                     { "ea": "4011A0","offset": 4,"name": "Virt1", "type": "meth"}
+                 ] 
+                }
+            ],
+            "Parents" : [
+                {"name": "Cls1", "offset": 0 },
+                {"name": "Cls2", "offset": 12 }
+            ]
+        }
+    ]
+}

@@ -1,7 +1,10 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "state.hpp"
 #include "riscops.hpp"
+#include "defuse.hpp"
+
+namespace pharos {
 
 // Copied from riscops.hpp
 extern SymbolicRiscOperatorsPtr global_rops;
@@ -13,11 +16,19 @@ extern SymbolicRiscOperatorsPtr global_rops;
 #define DSTREAM SDEBUG
 #endif
 
+using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
+
+SymbolicRegisterStatePtr SymbolicRegisterState::instance() {
+  SymbolicValuePtr svalue = SymbolicValue::instance();
+  const RegisterDictionary* regdict = global_descriptor_set->get_regdict();
+  return SymbolicRegisterStatePtr(new SymbolicRegisterState(svalue, regdict));
+}
+
 // Compare the symbolic values of two register states.
 bool SymbolicRegisterState::equals(const SymbolicRegisterStatePtr & other) {
   STRACE << "GenericRegisterState::equals()" << LEND;
-  BOOST_FOREACH(RegisterStateGeneric::RegPairs& rpl, registers_.values()) {
-    BOOST_FOREACH(RegisterStateGeneric::RegPair& rp, rpl) {
+  for (const RegisterStateGeneric::RegPairs& rpl : registers_.values()) {
+    for (const RegisterStateGeneric::RegPair& rp : rpl) {
       // SEMCLEANUP Make these (and others) be references for performance?
       SymbolicValuePtr value = SymbolicValue::promote(rp.value);
       SymbolicValuePtr ovalue = other->read_register(rp.desc);
@@ -52,16 +63,30 @@ bool SymbolicRegisterState::equals(const SymbolicRegisterStatePtr & other) {
   return true;
 }
 
+SymbolicValuePtr SymbolicRegisterState::inspect_register(const RegisterDescriptor& rd) {
+  RegisterStateGeneric::AccessCreatesLocationsGuard(this, false);
+  try {
+    return read_register(rd);
+  }
+  catch (const RegisterNotPresent &) {
+    return SymbolicValuePtr();
+  }
+}
+
+
 // Compare to register states.
 RegisterSet SymbolicRegisterState::diff(const SymbolicRegisterStatePtr & other) {
+  RegisterStateGeneric::AccessCreatesLocationsGuard(this, false);
   RegisterSet changed;
   // For each register in our state, compare it with the other.
-  BOOST_FOREACH(RegisterStateGeneric::RegPairs& rpl, registers_.values()) {
-    BOOST_FOREACH(RegisterStateGeneric::RegPair& rp, rpl) {
+  for (const RegisterStateGeneric::RegPairs& rpl : registers_.values()) {
+    for (const RegisterStateGeneric::RegPair& rp : rpl) {
       SymbolicValuePtr value = SymbolicValue::promote(rp.value);
-      SymbolicValuePtr ovalue = other->read_register(rp.desc);
-      // This is a bad hackish way to do this, but we need more support from ROSE on this...
-      if (unparseX86Register(rp.desc, NULL) == "eip") continue;
+      SymbolicValuePtr ovalue = other->inspect_register(rp.desc);
+      // If there's no value at all in the output state, it must be unchanged.
+      if (!ovalue) continue;
+      // 64-bit issue! This should be the following code (but one thing at a time...)
+      if (rp.desc == global_descriptor_set->get_ip_reg()) continue;
       // Report everything that's not guaranteed to match.  The caller can think harder about
       // the results if they want, but we shouldn't force more analysis than is required here.
       if (!(value->must_equal(ovalue, NULL))) {
@@ -101,21 +126,59 @@ bool mem_compare(SymbolicValuePtr addr, SymbolicValuePtr value, SymbolicValuePtr
   return false;
 }
 
-CellMapChunks::CellMapChunks(const SymbolicMemoryState &memory) {
-  TreeNodePtr base;
+CellMapChunks::CellMapChunks(const DUAnalysis & usedef, bool df_flag) {
+  const auto & input_state = usedef.get_input_state();
+  const auto & output_state = usedef.get_output_state();
+  if (!input_state || !output_state) {
+    return;
+  }
+
+  // The df flag should be treated as a constant value when chunking addresses
+  const RegisterDictionary* regdict = global_descriptor_set->get_regdict();
+  const RegisterDescriptor* df_reg = regdict->lookup("df");
+  const auto & df_sym = const_cast<SymbolicStatePtr &>(input_state)->read_register(*df_reg);
+  const auto & df_tn = df_sym ? df_sym->get_expression() : TreeNodePtr();
+  auto df_value = LeafNode::createBoolean(df_flag);
 
   // Build the sorted memory map
-  for (const auto & cell : memory.allCells()) {
+  const auto & memory = output_state->get_memory_state();
+  for (const auto & cell : memory->allCells()) {
     const SymbolicValuePtr & addr = SymbolicValue::promote(cell->get_address());
-    AddConstantExtractor ade(addr->get_expression());
-    section_map_t::iterator iter = section_map.find(ade.variable_portion);
-    if (iter == section_map.end()) {
-      iter = section_map.insert(std::make_pair(ade.variable_portion,
-                                               offset_map_t())).first;
+    auto expr = addr->get_expression();
+    if (df_tn) {
+      // Set references of df in the expression to the value of df_flag, and re-evaluate
+      expr = expr->substitute(df_tn, df_value);
     }
-    offset_map_t &map = iter->second;
-    map[ade.constant_portion] =
-      SymbolicValue::promote(cell->get_value())->get_expression();
+    // Extract the possible values, dealing with the possibility of ITEs
+    AddConstantExtractor ade(expr);
+    for (const auto & ade_data : ade.get_data()) {
+      // Variable portion
+      const auto & var = ade_data.first;
+      // Offset (only use the first)
+      auto offset = *ade_data.second.begin();
+
+      // Find the variable portion in the map
+      section_map_t::iterator iter = section_map.find(var);
+      if (iter == section_map.end()) {
+        // If this variable potion is not in the map, add it
+        iter = section_map.insert(std::make_pair(var, offset_map_t())).first;
+      }
+      // last_value has the existing value in the map for this offset (will create if
+      // not extant)
+      auto & last_value = iter->second[offset];
+      // The value for this memory location
+      const auto & value = SymbolicValue::promote(cell->get_value())->get_expression();
+      if (last_value) {
+        // If a value already existed, add this value to it via an ITE
+        auto tcond = LeafNode::createVariable(1, "", INCOMPLETE);
+        auto ite = InternalNode::create(std::max(last_value->nBits(), value->nBits()),
+                                        OP_ITE, std::move(tcond), value, last_value);
+        last_value = std::move(ite);
+      } else {
+        // Otherwise, store the value
+        last_value = value;
+      }
+    }
   }
 }
 
@@ -153,8 +216,8 @@ void CellMapChunks::chunk_iterator::increment()
 
 // Type recovery test!
 
-typedef rose::BinaryAnalysis::SymbolicExpr::Visitor TreeNodeVisitor;
-typedef rose::BinaryAnalysis::SymbolicExpr::VisitAction VisitAction;
+typedef Rose::BinaryAnalysis::SymbolicExpr::Visitor TreeNodeVisitor;
+typedef Rose::BinaryAnalysis::SymbolicExpr::VisitAction VisitAction;
 
 class TypeRecoveryVisitor: public TreeNodeVisitor {
 
@@ -168,11 +231,11 @@ public:
   virtual VisitAction preVisit(const TreeNodePtr& tn) {
     OINFO << indent << tn->hash() << ": "<< *tn << LEND;
     indent = indent + "  ";
-    return rose::BinaryAnalysis::SymbolicExpr::CONTINUE;
+    return Rose::BinaryAnalysis::SymbolicExpr::CONTINUE;
   }
   virtual VisitAction postVisit(UNUSED const TreeNodePtr& tn) {
     indent = indent.substr(0, indent.size() - 2);
-    return rose::BinaryAnalysis::SymbolicExpr::CONTINUE;
+    return Rose::BinaryAnalysis::SymbolicExpr::CONTINUE;
   }
 };
 
@@ -180,10 +243,9 @@ public:
 //#define LONG_REPORT
 
 void SymbolicRegisterState::type_recovery_test() const {
-  const RegisterDictionary *rdict =  RegisterDictionary::dictionary_pentium4();
   TypeRecoveryVisitor trv;
-  BOOST_FOREACH(const RegisterStateGeneric::RegPairs& rpl, registers_.values()) {
-    BOOST_FOREACH(const RegisterStateGeneric::RegPair& rp, rpl) {
+  for (const RegisterStateGeneric::RegPairs& rpl : registers_.values()) {
+    for (const RegisterStateGeneric::RegPair& rp : rpl) {
       // To cut down on the size of the spew, only do general purpose bit registers.
 #ifndef LONG_REPORT
       //bool is_af = (unparseX86Register(rp.desc, rdict) == "af");
@@ -195,12 +257,12 @@ void SymbolicRegisterState::type_recovery_test() const {
 #ifdef LONG_REPORT
       OINFO << "------------------------------------------------------------------------" << LEND;
 #endif
-      OINFO << "Reg: " << unparseX86Register(rp.desc, rdict)
+      OINFO << "Reg: " << unparseX86Register(rp.desc, regdict)
             << " " << rp.desc // For debugging major and minor numbers.
             << " = " << *value << LEND;
 #ifdef LONG_REPORT
 
-      BOOST_FOREACH(const TreeNodePtr& v, value->get_possible_values()) {
+      for (const TreeNodePtr& v : value->get_possible_values()) {
         OINFO << "  Possible value: " << *v << LEND;
       }
 
@@ -217,14 +279,15 @@ void SymbolicState::type_recovery_test() const {
   get_memory_state()->type_recovery_test();
 }
 
-bool SymbolicState::merge(const BaseStatePtr &other, BaseRiscOperators *ops) {
-  // Create a new variable representing the condition under which we will have the current (or
-  // "this") value during merging, versus the "other" value.  Since we don't currently compute
-  // this properly, just create a new incomplete condition.  We should do this here rather than
-  // in the register and memory merge() methods, because it will be the same condition for both
-  // states.
-  SymbolicValuePtr condition = SymbolicValue::incomplete(1);
+bool SymbolicState::merge(const BaseStatePtr &, BaseRiscOperators *) {
+  // We do not want this class to be merged without a given condition (I.e., by the ROSE API
+  // internals.
+  abort();
+}
 
+bool SymbolicState::merge(const BaseStatePtr &other, BaseRiscOperators *ops,
+                          const SymbolicValuePtr & condition)
+{
   // Get the currenter CERTMerger() object which contains context for the merge operation, and
   // set the condition there, so that it will be available later in createOptionalMerge().
   CERTMergerPtr cert_mem_merger = get_memory_state()->merger().dynamicCast<CERTMerger>();
@@ -247,7 +310,7 @@ SymbolicValuePtr SymbolicMemoryState::read_memory(const SymbolicValuePtr& addres
 
 void SymbolicMemoryState::type_recovery_test() const {
   TypeRecoveryVisitor trv;
-  BOOST_FOREACH(const MemoryCellPtr& cell, allCells()) {
+  for (const MemoryCellPtr& cell : allCells()) {
     SymbolicValuePtr address = SymbolicValue::promote(cell->get_address());
     SymbolicValuePtr value = SymbolicValue::promote(cell->get_value());
     TreeNodePtr tn = value->get_expression();
@@ -267,7 +330,7 @@ void SymbolicMemoryState::type_recovery_test() const {
 
 // Compare to memory states based on their symbolic values.
 bool SymbolicMemoryState::equals(const SymbolicMemoryStatePtr& other) {
-  BOOST_FOREACH(const MemoryCellPtr cell, allCells()) {
+  for (const MemoryCellPtr & cell : allCells()) {
     SymbolicValuePtr ma = SymbolicValue::promote(cell->get_address());
     SymbolicValuePtr mv = SymbolicValue::promote(cell->get_value());
 
@@ -286,7 +349,7 @@ bool SymbolicMemoryState::equals(const SymbolicMemoryStatePtr& other) {
       }
     }
   }
-  BOOST_FOREACH(const MemoryCellPtr ocell, other->allCells()) {
+  for (const MemoryCellPtr & ocell : other->allCells()) {
     SymbolicValuePtr oma = SymbolicValue::promote(ocell->get_address());
     SymbolicValuePtr omv = SymbolicValue::promote(ocell->get_value());
 
@@ -331,18 +394,18 @@ bool SymbolicMemoryState::merge(const BaseMemoryStatePtr& other_,
     if (const MemoryCellPtr &thisCell = cells.getOrDefault(key)) {
       BaseSValuePtr otherValue = otherCell->get_value();
       BaseSValuePtr thisValue = thisCell->get_value();
-      BaseSValuePtr newValue = thisValue->createOptionalMerge(otherValue, merger(), valOps->get_solver()).orDefault();
+      BaseSValuePtr newValue = thisValue->createOptionalMerge(otherValue, merger(), valOps->solver()).orDefault();
       if (newValue)
         thisCellChanged = true;
 
-      MemoryCell::AddressSet otherWriters = otherCell->getWriters();
-      MemoryCell::AddressSet thisWriters = thisCell->getWriters();
+      const MemoryCell::AddressSet & otherWriters = otherCell->getWriters();
+      const MemoryCell::AddressSet & thisWriters = thisCell->getWriters();
       MemoryCell::AddressSet newWriters = otherWriters | thisWriters;
       if (newWriters != thisWriters)
         thisCellChanged = true;
 
-      InputOutputPropertySet otherProps = otherCell->ioProperties();
-      InputOutputPropertySet thisProps = thisCell->ioProperties();
+      const InputOutputPropertySet & otherProps = otherCell->ioProperties();
+      const InputOutputPropertySet & thisProps = thisCell->ioProperties();
       InputOutputPropertySet newProps = otherProps | thisProps;
       if (newProps != thisProps)
         thisCellChanged = true;
@@ -365,7 +428,7 @@ bool SymbolicMemoryState::merge(const BaseMemoryStatePtr& other_,
     else {
       BaseSValuePtr otherValue = otherCell->get_value();
       // Create the incomplete value.
-      BaseSValuePtr newValue = otherValue->createOptionalMerge(BaseSValuePtr(), merger(), valOps->get_solver()).orDefault();
+      BaseSValuePtr newValue = otherValue->createOptionalMerge(BaseSValuePtr(), merger(), valOps->solver()).orDefault();
       if (!newValue) continue;
       // Write the merged cell into this memory state.
       writeMemory(otherCell->get_address(), newValue, addrOps, valOps);
@@ -386,7 +449,7 @@ bool SymbolicMemoryState::merge(const BaseMemoryStatePtr& other_,
     if(processed.find(key) != processed.end()) continue;
     BaseSValuePtr thisValue = thisCell->get_value();
     // This cell must exist only in this memory state.  Merge it with an incomplete value.
-    BaseSValuePtr newValue = thisValue->createOptionalMerge(BaseSValuePtr(), merger(), valOps->get_solver()).orDefault();
+    BaseSValuePtr newValue = thisValue->createOptionalMerge(BaseSValuePtr(), merger(), valOps->solver()).orDefault();
     if (!newValue) continue;
     // Write the merged cell into this memory state.
     writeMemory(thisCell->get_address(), newValue, addrOps, valOps);
@@ -397,6 +460,8 @@ bool SymbolicMemoryState::merge(const BaseMemoryStatePtr& other_,
 
   return changed;
 }
+
+} // namespace pharos
 
 /* Local Variables:   */
 /* mode: c++          */

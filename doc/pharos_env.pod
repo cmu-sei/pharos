@@ -1,0 +1,5 @@
+=item PHAROS_PASS_EXCEPTIONS
+
+When set, pharos will pass high-level exceptions to the top level,
+causing an abort instead an error message.  This is useful primarily
+for debugging and getting stack traces.

@@ -1,6 +1,7 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <rose.h>
 #include <Sawyer/Message.h>
@@ -9,6 +10,33 @@
 #include "options.hpp"
 #include "util.hpp"
 #include "descriptors.hpp"
+
+// these next ones needed for global obj cleanup...
+#include "riscops.hpp"
+#include "usage.hpp"
+#include "method.hpp"
+#include "vftable.hpp"
+#include "masm.hpp"
+#include "class.hpp"
+#include "revision.hpp"
+#include "build.hpp"
+
+// for non portable unhandled exception stuff in pharos_main:
+#ifdef __GNUC__
+#include <cstdlib>
+#include <cxxabi.h>
+using namespace __cxxabiv1;
+#endif
+
+namespace pharos {
+
+namespace bf = boost::filesystem;
+
+namespace {
+bf::path lib_root;
+}
+
+int global_logging_fileno = STDOUT_FILENO;
 
 // For logging options and other critically important "informational" messages.  This facility
 // is meant to always be logged at level "INFO" and above.  The "WHERE" level includes optional
@@ -30,9 +58,6 @@ ProgOptDesc cert_standard_options() {
 
   certopt.add_options()
     ("help,h",        "display help")
-    ("imports,I",
-     po::value<std::string>(),
-     "analysis configuration file (JSON)")
     ("config,C",
      po::value<std::vector<std::string>>()->composing(),
      "pharos configuration file (can be specified multiple times)")
@@ -40,6 +65,16 @@ ProgOptDesc cert_standard_options() {
      "don't load the user's configuration file")
     ("no-site-file",
      "don't load the site's configuration file")
+    ("dump-config",
+     "display current active config parameters")
+    ("imports,I",
+     po::value<std::string>(),
+     "analysis configuration file (JSON)")
+    ("analyze-types",
+     "generate prolog type information")
+    ("type-file",
+     po::value<std::string>(),
+     "name of type (prolog) facts file")
     ("include-func,i",
      po::value<StrVector>(),
      "limit analysis to a specific function")
@@ -53,9 +88,12 @@ ProgOptDesc cert_standard_options() {
      po::value<std::string>(),
      "log facility control string")
     ("batch,b", "suppress colors, progress bars, etc.")
+    ("allow-64bit", "allow analysis of 64-bit executables")
     ("library,l",
-     po::value<std::string>()->default_value(DEFAULT_LIB),
+     po::value<std::string>(),
      "specify the path to the objdigger library")
+    ("apidb", po::value<std::vector<std::string>>(),
+     "path to sqlite or JSON file containing API and type information")
     ("timeout", po::value<double>(),
      "specify the absolute defuse timeout value")
     ("reltimeout", po::value<double>(),
@@ -68,10 +106,10 @@ ProgOptDesc cert_standard_options() {
      "specify the absolute max memory usage value")
     ("relmaxmem", po::value<double>(),
      "specify the relative max memory usage value")
-    ("counterlimit", po::value<int>(),
-     "specify the counter limit value")
+    ("blockcounterlimit", po::value<int>(),
+     "limit the number of instructions per basic block")
     ("funccounterlimit", po::value<int>(),
-     "specify the function counter limit value")
+     "limit the number of blocks (roughly) per function")
     ("verbose,v",
      po::value<int>()->implicit_value(DEFAULT_VERBOSITY),
      //po::value<int>()->default_value(DEFAULT_VERBOSITY),
@@ -81,27 +119,19 @@ ProgOptDesc cert_standard_options() {
 
   ProgOptDesc roseopt("ROSE options");
   roseopt.add_options()
-    ("pconfig",
-     po::value<std::string>(),
-     "partitioner configuration file")
-    ("psearch",
-     po::value<StrVector>(),
-     "partitioner search heuristics")
-    ("dsearch",
-     po::value<StrVector>(),
-     "disassembler search heuristics")
     ("stockpart",
-     "use stock partitioner instead of our modified one")
+     "use stock partitioner version one instead of our modified one")
     ("partitioner2",
-     "use stock partitioner2 instead of our modified one")
-    ("ldebug",
-     "enable loader debugging")
-    ("ddebug",
-     "enable disassembler debugging")
+     "use our customized version two partitioner")
+    ("no-semantics",
+     "disable semantic analysis during parititioning")
     ("pdebug",
      "enable partitioner debugging")
-    ("respect-protections",
-     "respect segment protections")
+#if 0  // maybe eventually...
+    ("threads",
+     po::value<unsigned int>(),
+     "enable threaded processing")
+#endif
     ("rose-version",
      "output ROSE version information and exit immediately")
     ;
@@ -110,15 +140,57 @@ ProgOptDesc cert_standard_options() {
   return certopt;
 }
 
-ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od) {
+ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od,
+                                 const std::string & proghelptext)
+{
   namespace po = boost::program_options;
+
+  // Try to locate the library root
+  auto av0path = bf::path(argv[0]);
+  auto prog_loc = av0path.parent_path();
+  if (prog_loc.empty()) {
+    // Need to look for executable in system path
+    // This is unix-specific
+    const char *penv = std::getenv("PATH");
+    if (penv) {
+      for (auto i =
+             boost::make_split_iterator(penv, boost::first_finder(":", boost::is_equal()));
+           i != decltype(i)(); ++i)
+      {
+        auto pdir = bf::path(i->begin(), i->end());
+        if (bf::is_regular_file(pdir / av0path)) {
+          prog_loc = bf::canonical(pdir);
+          break;
+        }
+      }
+    }
+  } else {
+    prog_loc = bf::canonical(prog_loc);
+  }
+
+  bf::path root_loc;
+
+  if (prog_loc.filename() == "bin") {
+    // Assume the install root is one directory below.
+    root_loc = prog_loc.parent_path();
+    lib_root = root_loc / "share/pharos";
+  } else {
+    // This is disabled in release builds to prevent PHAROS_BUILD_LOCATION from ending up in
+    // the binary
+    if (exists(prog_loc / "CMakeFiles")) {
+      root_loc = lib_root = PHAROS_BUILD_LOCATION;
+    } else
+    {
+      root_loc = lib_root = bf::current_path();
+    }
+  }
 
   ProgOptVarMap vm;
 
   ProgPosOptDesc posopt;
   posopt.add("file", -1);
 
-  Sawyer::Message::FdSinkPtr mout = Sawyer::Message::FdSink::instance(1);
+  Sawyer::Message::FdSinkPtr mout = Sawyer::Message::FdSink::instance(global_logging_fileno);
 
   // Create a prefix object so that we can modify prefix properties.
   Sawyer::Message::PrefixPtr prefix = Sawyer::Message::Prefix::instance();
@@ -134,12 +206,11 @@ ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od) {
 
   po::store(po::command_line_parser(argc, argv).
             options(od).positional(posopt).run(), vm);
-  po::notify(vm);
 
-  boost::filesystem::path program = argv[0];
+  bf::path program = argv[0];
   vm.config(pharos::Config::load_config(
               program.filename().native(),
-              vm.count("no-site-file") ? nullptr : "/etc/pharos.yaml",
+              vm.count("no-site-file") ? nullptr : (root_loc / "etc/pharos.yaml").c_str(),
               vm.count("no-site-file") ? nullptr : "PHAROS_CONFIG",
               vm.count("no-user-file") ? nullptr : ".pharos.yaml"));
   if (vm.count("config")) {
@@ -147,12 +218,19 @@ ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od) {
       vm.config().mergeFile(filename);
     }
   }
+  if (vm.count("dump-config")) {
+    // Use cout, so it can easily be copied to a file
+    std::cout << vm.config() << LEND;
+    exit(3);
+  }
 
   // ----------------------------------------------------------------------------------------
   // Configure the rest of the logging facilities
   // ----------------------------------------------------------------------------------------
 
-  rose::Diagnostics::initialize();
+  Rose::Diagnostics::initialize();
+  Sawyer::ProgressBarSettings::initialDelay(3.0);
+  Sawyer::ProgressBarSettings::minimumUpdateInterval(1.0);
 
   // Create a sink associated with standard output.
   if (!color_terminal() || vm.count("batch")) {
@@ -164,14 +242,21 @@ ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od) {
   // We can now log to olog if we need to...
 
   if (vm.count("help")) {
-    OFATAL << od << LEND;
+    if (!proghelptext.empty()) {
+      std::cout << proghelptext << "\n\n";
+    }
+    std::cout << od;
+    std::cout << "\nRevID: " << pharos::REVISION << std::endl;
     exit(3);
   }
 
   if (vm.count("rose-version")) {
-    OFATAL << version_message() << LEND;
+    std::cout << version_message() << std::endl;
     exit(3);
   }
+
+  // We complain about non-included required options here.
+  po::notify(vm);
 
   // Add the global logging facility to the known facilities.
   Sawyer::Message::mfacilities.insert(glog);
@@ -189,7 +274,7 @@ ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od) {
   // The options log is the exception to the rule that only errors and above are reported.
   olog[Sawyer::Message::WARN].enable();
   olog[Sawyer::Message::INFO].enable();
-  if (isatty(1)) {
+  if (isatty(global_logging_fileno)) {
     olog[Sawyer::Message::MARCH].enable();
   }
 
@@ -284,19 +369,19 @@ ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od) {
     OINFO << "Analyzing executable: " << vm["file"].as<std::string>() << LEND;
   }
   else {
-    OFATAL << "You must specifiy at least one executable to analyze." << LEND;
+    OFATAL << "You must specify at least one executable to analyze." << LEND;
     exit(3);
   }
 
   if (vm.count("include-func")) {
-    BOOST_FOREACH(std::string astr, vm["include-func"].as<StrVector>()) {
+    for (const std::string & astr : vm["include-func"].as<StrVector>()) {
       rose_addr_t addr = parse_number(astr);
       ODEBUG << "Limiting analysis to function: " << addr_str(addr) << LEND;
     }
   }
 
   if (vm.count("exclude-func")) {
-    BOOST_FOREACH(std::string astr, vm["exclude-func"].as<StrVector>()) {
+    for (const std::string & astr : vm["exclude-func"].as<StrVector>()) {
       rose_addr_t addr = parse_number(astr);
       ODEBUG << "Excluding function: " << addr_str(addr) << LEND;
     }
@@ -310,6 +395,15 @@ ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od) {
   return vm;
 }
 
+bf::path get_default_libdir()
+{
+  if (!lib_root.empty()) {
+    return lib_root;
+  }
+  return bf::current_path();
+}
+
+
 ProgOptVarMap& get_global_options_vm()
 {
   return global_vm;
@@ -319,7 +413,7 @@ ProgOptVarMap& get_global_options_vm()
 AddrSet option_addr_list(ProgOptVarMap& vm, const char *name) {
   AddrSet aset;
   if (vm.count(name) > 0) {
-    BOOST_FOREACH(std::string as, vm[name].as<StrVector>()) {
+    for (const std::string & as : vm[name].as<StrVector>()) {
       aset.insert(parse_number(as));
     }
   }
@@ -363,11 +457,11 @@ void BottomUpAnalyzer::update_progress() const {
 
 // The default visitor simply computes the PDG and returns.
 void BottomUpAnalyzer::visit(FunctionDescriptor *fd) {
-  try {
+   // try {
     fd->get_pdg();
-  } catch(...) {
-    GERROR << "Error building PDG (caught exception)" << LEND;
-  }
+  // } catch(...) {
+  //   GERROR << "Error building PDG (caught exception)" << LEND;
+  // }
 }
 
 // The default start is a NOP.
@@ -385,7 +479,7 @@ void BottomUpAnalyzer::analyze() {
   start();
 
   AddrSet selected_funcs = option_addr_list(vm, "include-func");
-  BOOST_FOREACH(rose_addr_t a, selected_funcs) {
+  for (rose_addr_t a : selected_funcs) {
     ODEBUG << "Limiting analysis to function: " << addr_str(a) << LEND;
   }
   size_t selected = selected_funcs.size();
@@ -393,14 +487,14 @@ void BottomUpAnalyzer::analyze() {
   if (selected > 0) filtering = true;
   AddrSet excluded_funcs = option_addr_list(vm, "exclude-func");
   GDEBUG << "Filtering is " << filtering << LEND;
-  BOOST_FOREACH(const rose_addr_t addr, excluded_funcs) {
+  for (const rose_addr_t addr : excluded_funcs) {
     GINFO << "Function " << addr_str(addr) << " excluded" << LEND;
   }
 
   FuncDescVector ordered_funcs = ds->funcs_in_bottom_up_order();
   total_funcs = ordered_funcs.size();
   processed_funcs = 0;
-  BOOST_FOREACH(FunctionDescriptor* fd, ordered_funcs) {
+  for (FunctionDescriptor* fd : ordered_funcs) {
     // If we're limiting analysis to specific functions, do that now.
     AddrSet::iterator fit = selected_funcs.find(fd->get_address());
     if (filtering) {
@@ -438,6 +532,79 @@ void BottomUpAnalyzer::analyze() {
   // User overridden finish() method.
   finish();
 }
+
+void cleanup_our_globals() {
+  // need to clean up some static globals that are or get things in them dynamically allocated,
+  // to prevent static object ctor/dtor order problems w/ statically linked exec from crashing
+  // in various ways at exit time during static object destruction:
+  global_rops.reset(); // riscops.hpp
+  object_uses.clear(); // usage.hpp
+  this_call_methods.clear(); // method.hpp
+  global_vftables.clear(); // vftable.hpp, this one is probably safe to not do this on, but just in case :)
+  global_vbtables.clear(); // vftable.hpp, this one is probably safe to not do this on, but just in case :)
+  //global_label_map.clear(); // masm.hpp
+  classes.clear(); // calls.hpp
+  //delete global_descriptor_set; // descriptors.hpp
+  //global_descriptor_set->get_global_map().clear();
+  //global_descriptor_set->get_import_map().clear();
+  //global_descriptor_set->get_call_map().clear();
+  //global_descriptor_set->get_func_map().clear();
+}
+
+static void report_exception(const std::exception & e, int level = 0)
+{
+  if (level == 0) {
+    GFATAL << "Pharos main error: ";
+  }  else {
+    GFATAL << std::string(level, ' ') << "Reason: ";
+  }
+  GFATAL << e.what() << LEND;
+  try {
+    std::rethrow_if_nested(e);
+  } catch (const std::exception & e2) {
+    report_exception(e2, level + 1);
+  } catch (...) {
+    // Do nothing
+  }
+}
+
+int pharos_main(main_func_ptr fn, int argc, char **argv, int logging_fileno) {
+  int rc = 0;
+  atexit(cleanup_our_globals);
+
+  global_logging_fileno = logging_fileno;
+
+  ROSE_INITIALIZE;
+
+  if (getenv(PHAROS_PASS_EXCEPTIONS_ENV)) {
+    rc = fn(argc, argv);
+  } else {
+    try {
+      rc = fn(argc, argv);
+    } catch (const std::exception &e) {
+      report_exception(e);
+      rc = EXIT_FAILURE;
+    } catch (...) {
+#ifdef __GNUC__
+      // totally non portable gcc specific stuff, courtesy of here:
+      // http://stackoverflow.com/questions/4885334/c-finding-the-type-of-a-caught-default-exception/24997351#24997351
+      std::string uxname(__cxa_current_exception_type()->name());
+      int status = 0;
+      char * buff = __cxxabiv1::__cxa_demangle(uxname.c_str(), NULL, NULL, &status);
+      GFATAL << "Pharos main error, caught an unexpected exception named " << buff << LEND;
+      std::free(buff);
+#else
+      GFATAL << "Pharos main error, caught an unexpected exception" << LEND;
+#endif // __GNUC__
+      rc = EXIT_FAILURE;
+    }
+  }
+
+  return rc;
+}
+
+} // namespace pharos
+
 /* Local Variables:   */
 /* mode: c++          */
 /* fill-column:    95 */

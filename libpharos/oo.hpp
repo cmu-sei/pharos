@@ -1,4 +1,4 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_OO_Forward_Declarations_H
 #define Pharos_OO_Forward_Declarations_H
@@ -9,6 +9,8 @@
 // problems in the complicated OO analysis infrastructure.  It should only include declarations
 // that require no additional include.  For clarity is should try to avoid definiing things
 // that are not required.
+
+namespace pharos {
 
 // Forward declaration of Member because class defintions contain methods, and members
 // reference the class description for
@@ -38,6 +40,8 @@ struct ClassDescriptorCompare {
   bool operator()(const ClassDescriptor* x, const ClassDescriptor* y) const;
 };
 typedef std::set<ClassDescriptor*, ClassDescriptorCompare> ClassDescriptorSet;
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

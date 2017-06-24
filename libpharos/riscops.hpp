@@ -1,4 +1,4 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_RiscOps_H
 #define Pharos_RiscOps_H
@@ -6,20 +6,20 @@
 #include "semantics.hpp"
 #include "state.hpp"
 
-typedef rose::BinaryAnalysis::SMTSolver SMTSolver;
+namespace pharos {
+
+typedef Rose::BinaryAnalysis::SMTSolver SMTSolver;
 
 typedef Semantics2::SymbolicSemantics::RiscOperators SymRiscOperators;
 typedef Semantics2::SymbolicSemantics::RiscOperatorsPtr SymRiscOperatorsPtr;
 
-typedef boost::shared_ptr<class CustomDispatcher> CustomDispatcherPtr;
+using Rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_ALL_DEFINERS;
+using Rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_NO_DEFINERS;
+using Rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_LATEST_DEFINER;
 
-using rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_ALL_DEFINERS;
-using rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_NO_DEFINERS;
-using rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_LATEST_DEFINER;
-
-using rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_ALL_WRITERS;
-using rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_NO_WRITERS;
-using rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_LATEST_WRITER;
+using Rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_ALL_WRITERS;
+using Rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_NO_WRITERS;
+using Rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_LATEST_WRITER;
 
 //==============================================================================================
 // Symbolic RISC Operators
@@ -29,32 +29,33 @@ using rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_LATE
 // we temporarily store reads and writes on a per instruction basis here.
 class SymbolicRiscOperators: public SymRiscOperators {
 
-protected:
+private:
   // Cache a handle to the EIP register descriptor so that we can easily remove reads and
   // writes of the instruction pointer.
-  const RegisterDescriptor *EIP;
+  RegisterDescriptor EIP;
 
-  // Constructors must take custom types to ensure promotion.
-  explicit SymbolicRiscOperators(const SymbolicValuePtr& protoval_, SMTSolver* solver_ = NULL):
-    SymRiscOperators(protoval_, solver_) {
-    set_name("CERT");
-    computingDefiners(TRACK_LATEST_DEFINER);
-    computingRegisterWriters(TRACK_LATEST_WRITER);
-    computingMemoryWriters(TRACK_LATEST_WRITER);
-    const RegisterDictionary* regdict = RegisterDictionary::dictionary_pentium4();
-    EIP = regdict->lookup("eip");
-  }
+public:
+  // These maps are used to track the reads and writes of each instruction.  This is one of the
+  // primary pieces of new functionality in this override of RiscOperators.  Perhaps we should
+  // make these private as well.
+  AbstractAccessVector reads;
+  AbstractAccessVector writes;
 
-  // Constructors must take custom types to ensure promotion.
-  explicit SymbolicRiscOperators(const SymbolicStatePtr& state_, SMTSolver* solver_ = NULL):
-    SymRiscOperators(state_, solver_) {
-    set_name("CERT");
-    computingDefiners(TRACK_LATEST_DEFINER);
-    computingRegisterWriters(TRACK_LATEST_WRITER);
-    computingMemoryWriters(TRACK_LATEST_WRITER);
-    const RegisterDictionary* regdict = RegisterDictionary::dictionary_pentium4();
-    EIP = regdict->lookup("eip");
-  }
+  // This map represents memory accesses
+  std::map<TreeNode*, TreeNodePtr> memory_accesses;
+
+  // Map for every treenode we every find
+  std::map<TreeNode*, TreeNodePtr> unique_treenodes;
+
+protected:
+  // Constructors must remain private so that all instances are constructed through calls to
+  // instance().
+
+  // Standard ROSE constructor must take custom types to ensure promotion.
+  explicit SymbolicRiscOperators(const SymbolicValuePtr& aprotoval_, SMTSolver* asolver_ = NULL);
+
+  // Standard ROSE constructor must take custom types to ensure promotion.
+  explicit SymbolicRiscOperators(const SymbolicStatePtr& state_, SMTSolver* asolver_ = NULL);
 
 public:
 
@@ -81,6 +82,15 @@ public:
     return ptr;
   }
 
+  // Default constructors are a CERT addition.
+  static SymbolicRiscOperatorsPtr instance(SMTSolver* solver_ = NULL) {
+    SymbolicMemoryStatePtr mstate = SymbolicMemoryState::instance();
+    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance();
+    SymbolicStatePtr state = SymbolicState::instance(rstate, mstate);
+    SymbolicRiscOperatorsPtr ptr = SymbolicRiscOperatorsPtr(new SymbolicRiscOperators(state, solver_));
+    return ptr;
+  }
+
   // Each custom class must implement promote.
   static SymbolicRiscOperatorsPtr promote(const BaseRiscOperatorsPtr &v) {
     SymbolicRiscOperatorsPtr retval = boost::dynamic_pointer_cast<SymbolicRiscOperators>(v);
@@ -88,25 +98,19 @@ public:
     return retval;
   }
 
-  virtual BaseRiscOperatorsPtr create(const BaseSValuePtr &protoval_,
-                                      SMTSolver *solver_ = NULL) const ROSE_OVERRIDE {
+  virtual BaseRiscOperatorsPtr create(const BaseSValuePtr &aprotoval_,
+                                      SMTSolver *asolver_ = NULL) const ROSE_OVERRIDE {
     STRACE << "RiscOps::create(protoval, solver)" << LEND;
-    return instance(SymbolicValue::promote(protoval_), solver_);
+    return instance(SymbolicValue::promote(aprotoval_), asolver_);
   }
 
   virtual BaseRiscOperatorsPtr create(const BaseStatePtr &state_,
-                                      SMTSolver *solver_= NULL) const ROSE_OVERRIDE {
+                                      SMTSolver *asolver_= NULL) const ROSE_OVERRIDE {
     STRACE << "RiscOps::create(state, solver)" << LEND;
-    return instance(SymbolicState::promote(state_), solver_);
+    return instance(SymbolicState::promote(state_), asolver_);
   }
 
-  virtual BaseSValuePtr get_protoval() const ROSE_OVERRIDE {
-    STRACE << "RiscOps::get_protoval()" << LEND;
-    return protoval;
-  }
-
-  // Overridden to force IP to correct value, and clear assorted vectors...
-  // And this isn't even remotely in this class anymore.  It's in Disassembly!
+  // Overridden to clear our abstract access vectors.
   virtual void startInstruction(SgAsmInstruction *insn) ROSE_OVERRIDE;
 
   virtual BaseSValuePtr readRegister(const RegisterDescriptor &reg) ROSE_OVERRIDE;
@@ -128,18 +132,20 @@ public:
 
   // The standard overridden operators...
   virtual BaseSValuePtr or_(const BaseSValuePtr &a_, const BaseSValuePtr &b_) ROSE_OVERRIDE;
-  virtual BaseSValuePtr concat(const BaseSValuePtr &a_, const BaseSValuePtr &b_) ROSE_OVERRIDE;
 
   // The standard overridden operators that are NOT actually overriden...
   // This code was kept to make it easier to re-enable one of these if needded.
-#if 1
+#if 0
   virtual BaseSValuePtr boolean_(bool b) ROSE_OVERRIDE;
   virtual BaseSValuePtr number_(size_t nbits, uint64_t value) ROSE_OVERRIDE;
   virtual BaseSValuePtr and_(const BaseSValuePtr &a_, const BaseSValuePtr &b_) ROSE_OVERRIDE;
   virtual BaseSValuePtr xor_(const BaseSValuePtr &a_, const BaseSValuePtr &b_) ROSE_OVERRIDE;
   virtual BaseSValuePtr invert(const BaseSValuePtr &a_) ROSE_OVERRIDE;
+  virtual BaseSValuePtr concat(const BaseSValuePtr &a_, const BaseSValuePtr &b_) ROSE_OVERRIDE;
+#endif
   virtual BaseSValuePtr extract(const BaseSValuePtr &a_, size_t begin_bit,
                                 size_t end_bit) ROSE_OVERRIDE;
+#if 0
   virtual BaseSValuePtr leastSignificantSetBit(const BaseSValuePtr &a_) ROSE_OVERRIDE;
   virtual BaseSValuePtr mostSignificantSetBit(const BaseSValuePtr &a_) ROSE_OVERRIDE;
   virtual BaseSValuePtr rotateLeft(const BaseSValuePtr &a_, const BaseSValuePtr &sa_) ROSE_OVERRIDE;
@@ -169,58 +175,11 @@ public:
   // Custom interface
   // -----------------------------------------------------------------------------------------
 
-  // These maps are used to track the reads and writes of each instruction.  This is one of the
-  // primary pieces of new functionality in this override of RiscOperators.
-  AbstractAccessVector reads;
-  AbstractAccessVector writes;
-
-  // Default constructors are a CERT addition, but we didn't implement one?
-  // Is it standard in this case?
-
-  // Parameterless instance() is an unsafe/not-useful CERT addition?
-  static SymbolicRiscOperatorsPtr instance() {
-    SymbolicRiscOperatorsPtr ptr = SymbolicRiscOperatorsPtr(new SymbolicRiscOperators());
-    return ptr;
-  }
-
-  // ??? standard or custom?
-  explicit SymbolicRiscOperators(SMTSolver* solver_ = NULL):
-    SymRiscOperators(SymbolicState::instance(), solver_) {
-    computingDefiners(TRACK_LATEST_DEFINER);
-    computingRegisterWriters(TRACK_LATEST_WRITER);
-    //computingMemoryWriters(TRACK_LATEST_WRITER);
-    const RegisterDictionary* regdict = RegisterDictionary::dictionary_pentium4();
-    EIP = regdict->lookup("eip");
-  }
-
   // CERT addition so we don't have to promote return value.
   SymbolicStatePtr get_sstate() {
     STRACE << "RiscOps::get_sstate()" << LEND;
-    return boost::dynamic_pointer_cast<SymbolicState>(state);
+    return boost::dynamic_pointer_cast<SymbolicState>(currentState());
   }
-
-  // ??? Worthless?
-  BaseStatePtr get_state() {
-    STRACE << "RiscOps::get_state()" << LEND;
-    return boost::dynamic_pointer_cast<SymbolicState>(state);
-  }
-
-  // CERT addition for some reason?
-  void set_sstate(const SymbolicStatePtr &s) {
-    set_state(s);
-  }
-
-  // A COPY of readMemory from our parent class. :-(
-  SymbolicValuePtr readMemory_helper(const RegisterDescriptor &segreg,
-                                     const BaseSValuePtr &address,
-                                     const BaseSValuePtr &dflt,
-                                     const BaseSValuePtr &condition);
-
-  // A COPY of writeMemory from our parent class. :-(
-  void writeMemory_helper(const RegisterDescriptor &segreg,
-                          const BaseSValuePtr &address,
-                          const BaseSValuePtr &value_,
-                          const BaseSValuePtr &condition);
 
   // This is Cory's interface, and it's probably half-baked.
   SymbolicValuePtr read_register(const RegisterDescriptor &reg);
@@ -234,61 +193,17 @@ public:
                          const SymbolicValuePtr &data);
 };
 
-//==============================================================================================
-// Custom instruction dispatcher
-//==============================================================================================
-
-// Custom class not really needed, but included for completeness?
-class CustomDispatcher: public RoseDispatcherX86 {
-
-  // -----------------------------------------------------------------------------------------
-  // Required official interface
-  // -----------------------------------------------------------------------------------------
-
-protected:
-
-  // Constructors must take custom types to ensure promotion.
-  explicit CustomDispatcher(const SymbolicRiscOperatorsPtr &ops): RoseDispatcherX86(ops, 32, NULL) {
-  }
-
-public:
-
-  // Instance() methods must take custom types to ensure promotion.
-  static CustomDispatcherPtr instance(const SymbolicRiscOperatorsPtr &ops) {
-    return CustomDispatcherPtr(new CustomDispatcher(ops));
-  }
-
-  // -----------------------------------------------------------------------------------------
-  // Custom interface
-  // -----------------------------------------------------------------------------------------
-
-  // Default constructors are a CERT addition?
-  CustomDispatcher(): RoseDispatcherX86(SymbolicRiscOperators::instance(), 32, NULL) { }
-
-  // Parameterless instance() is an unsafe/not-useful CERT addition?
-  static CustomDispatcherPtr instance() {
-    return CustomDispatcherPtr(new CustomDispatcher());
-  }
-
-  // Typecast the RiscOperators to our customized version.
-  SymbolicRiscOperatorsPtr get_operators() {
-    return boost::dynamic_pointer_cast<SymbolicRiscOperators>(RoseDispatcherX86::get_operators());
-  }
-};
-
 // This class was renamed just for consistency with the overriden classes, even though it was
 // not.  It is used for catching exceptions when emulating instructions, and is needed roughly
 // whereever RISC operators and the instruction dispatcher are.
-typedef rose::BinaryAnalysis::InstructionSemantics2::BaseSemantics::Exception SemanticsException;
+typedef Rose::BinaryAnalysis::InstructionSemantics2::BaseSemantics::Exception SemanticsException;
 
 // Extern declaration of the global_rops object.  This object is used so that we don't have to
 // carry arround a SymbolicRiscOperatorsPtr everywhere that we want to be able to read from or
 // write to a state.
 extern SymbolicRiscOperatorsPtr global_rops;
 
-// A helper function to create a symbolic RiscOps emulation environment.  I'd still prefer that
-// the default constructor on the SymbolicRiscOperators did this work.
-SymbolicRiscOperatorsPtr make_risc_ops();
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

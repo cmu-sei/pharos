@@ -1,10 +1,12 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Usage_H
 #define Pharos_Usage_H
 
 #include "funcs.hpp"
 #include "oo.hpp"
+
+namespace pharos {
 
 // Don't forget to update the EnumStrings in usage.cpp as well...
 enum AllocType {
@@ -133,6 +135,9 @@ public:
 
   // Analyze function to find object uses.
   void analyze_object_uses();
+
+  // Apply the constructor dominance rule (which is incorrect and has to be done later).
+  void apply_constructor_dominance_rule();
 };
 
 // Typedef for global map recording the use of various objects.
@@ -140,6 +145,8 @@ typedef std::map<rose_addr_t, ObjectUse> ObjectUseMap;
 
 // A global map of object uses.  Populated in analyze_functions_for_object_uses().
 extern ObjectUseMap object_uses;
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

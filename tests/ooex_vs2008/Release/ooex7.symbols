@@ -1,0 +1,151 @@
+00401000	func	?print@ObjectTest@@QAEXV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z	public: void __thiscall ObjectTest::print(class std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>>)
+00401090	func	_main	None
+004010ec	func	@__security_check_cookie@4	__fastcall __security_check_cookie(x)
+004010f6	func	failure	None
+004010fb	func	pre_cpp_init	None
+00401146	func	__tmainCRTStartup	None
+0040126c	func	$LN35	None
+0040127f	func	$LN30	None
+00401280	func	$LN21	None
+0040129c	func	$LN36	None
+004012bc	func	pre_c_init	None
+0040139d	func	_mainCRTStartup	None
+004013a7	func	___report_gsfailure	None
+004014ad	func	?__CxxUnhandledExceptionFilter@@YGJPAU_EXCEPTION_POINTERS@@@Z	long __stdcall __CxxUnhandledExceptionFilter(struct _EXCEPTION_POINTERS *)
+004014e9	func	$LN6	None
+004014ef	func	___CxxSetUnhandledExceptionFilter	None
+004014fe	thunk	__amsg_exit	None
+00401504	func	__onexit	None
+00401597	func	$LN9	None
+004015a0	func	$LN6_0	None
+004015a8	func	$LN7	None
+004015a9	func	_atexit	None
+004015c0	func	__RTC_Initialize	None
+004015e6	func	__RTC_Terminate	None
+0040160c	thunk	__XcptFilter	None
+00401620	func	__ValidateImageBase	None
+00401660	func	__FindPESection	None
+004016b0	func	__IsNonwritableInCurrentImage	None
+0040173b	func	$LN7_0	None
+0040174e	func	$LN11	None
+0040174f	func	$LN8	None
+0040176e	thunk	__initterm	None
+00401774	thunk	__initterm_e	None
+0040177c	func	__SEH_prolog4	None
+004017c1	func	__SEH_epilog4	None
+004017d5	func	__except_handler4	None
+004017fa	func	__setdefaultprecision	None
+00401825	func	__setargv	None
+00401828	func	___security_init_cookie	None
+004018be	thunk	__crt_debugger_hook	None
+004018c4	func	?terminate@@YAXXZ_0	void __cdecl terminate(void)
+004018ca	thunk	__unlock	None
+004018d0	thunk	___dllonexit	None
+004018d6	thunk	__lock	None
+004018dc	thunk	__except_handler4_common	None
+004018e2	thunk	__invoke_watson	None
+004018e8	thunk	__controlfp_s	None
+004018ee	thunk	___CxxFrameHandler3	None
+00401900	func	__unwindfunclet$?print@ObjectTest@@QAEXV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z$0	None
+00401909	func	__ehhandler$?print@ObjectTest@@QAEXV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z	None
+00402000	name	__imp__GetCurrentProcessId@0	__declspec(dllimport) __stdcall GetCurrentProcessId()
+00402004	name	__imp__GetCurrentThreadId@0	__declspec(dllimport) __stdcall GetCurrentThreadId()
+00402008	name	__imp__GetTickCount@0	__declspec(dllimport) __stdcall GetTickCount()
+0040200c	name	__imp__QueryPerformanceCounter@4	__declspec(dllimport) __stdcall QueryPerformanceCounter(x)
+00402010	name	__imp__IsDebuggerPresent@0	__declspec(dllimport) __stdcall IsDebuggerPresent()
+00402014	name	__imp__SetUnhandledExceptionFilter@4	__declspec(dllimport) __stdcall SetUnhandledExceptionFilter(x)
+00402018	name	__imp__UnhandledExceptionFilter@4	__declspec(dllimport) __stdcall UnhandledExceptionFilter(x)
+0040201c	name	__imp__GetCurrentProcess@0	__declspec(dllimport) __stdcall GetCurrentProcess()
+00402020	name	__imp__TerminateProcess@8	__declspec(dllimport) __stdcall TerminateProcess(x, x)
+00402024	name	__imp__InterlockedCompareExchange@12	__declspec(dllimport) __stdcall InterlockedCompareExchange(x, x, x)
+00402028	name	__imp__Sleep@4	__declspec(dllimport) __stdcall Sleep(x)
+0040202c	name	__imp__InterlockedExchange@8	__declspec(dllimport) __stdcall InterlockedExchange(x, x)
+00402030	name	__imp__GetSystemTimeAsFileTime@4	__declspec(dllimport) __stdcall GetSystemTimeAsFileTime(x)
+00402034	name	_KERNEL32_NULL_THUNK_DATA	None
+00402038	name	__imp_??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ	__declspec(dllimport) public: __thiscall std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>>::~basic_string<char, struct std::char_traits<char>, class std::allocator<char>>(void)
+0040203c	name	__imp_?endl@std@@YAAAV?$basic_ostream@DU?$char_traits@D@std@@@1@AAV21@@Z	__declspec(dllimport) class std::basic_ostream<char, struct std::char_traits<char>> & __cdecl std::endl(class std::basic_ostream<char, struct std::char_traits<char>> &)
+00402040	name	__imp_??0?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@PBD@Z	__declspec(dllimport) public: __thiscall std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>>::basic_string<char, struct std::char_traits<char>, class std::allocator<char>>(char const *)
+00402044	name	__imp_??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@P6AAAV01@AAV01@@Z@Z	__declspec(dllimport) public: class std::basic_ostream<char, struct std::char_traits<char>> & __thiscall std::basic_ostream<char, struct std::char_traits<char>>::operator<<(class std::basic_ostream<char, struct std::char_traits<char>> & (__cdecl *)(class std::basic_ostream<char, struct std::char_traits<char>> &))
+00402048	name	__imp_??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@H@Z	__declspec(dllimport) public: class std::basic_ostream<char, struct std::char_traits<char>> & __thiscall std::basic_ostream<char, struct std::char_traits<char>>::operator<<(int)
+0040204c	name	__imp_?cout@std@@3V?$basic_ostream@DU?$char_traits@D@std@@@1@A	__declspec(dllimport) class std::basic_ostream<char, struct std::char_traits<char>> std::cout
+00402050	name	__imp_??$?6DU?$char_traits@D@std@@V?$allocator@D@1@@std@@YAAAV?$basic_ostream@DU?$char_traits@D@std@@@0@AAV10@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@0@@Z	__declspec(dllimport) class std::basic_ostream<char, struct std::char_traits<char>> & __cdecl std::operator<<<char, struct std::char_traits<char>, class std::allocator<char>>(class std::basic_ostream<char, struct std::char_traits<char>> &, class std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>> const &)
+00402054	name	_MSVCP90_NULL_THUNK_DATA	None
+00402058	name	__imp___decode_pointer	None
+0040205c	name	__imp___except_handler4_common	None
+00402060	name	__imp___onexit	None
+00402064	name	__imp___controlfp_s	None
+00402068	name	__imp___lock	None
+0040206c	name	__imp____dllonexit	None
+00402070	name	__imp___unlock	None
+00402074	name	__imp_?terminate@@YAXXZ	__declspec(dllimport) void __cdecl terminate(void)
+00402078	name	__imp___encode_pointer	None
+0040207c	name	__imp___crt_debugger_hook	None
+00402080	name	__imp____set_app_type	None
+00402084	name	__imp____p__fmode	None
+00402088	name	__imp____p__commode	None
+0040208c	name	__imp___adjust_fdiv	None
+00402090	name	__imp____setusermatherr	None
+00402094	name	__imp___configthreadlocale	None
+00402098	name	__imp___initterm_e	None
+0040209c	name	__imp___initterm	None
+004020a0	name	__imp____initenv	None
+004020a4	name	__imp__exit	None
+004020a8	name	__imp___XcptFilter	None
+004020ac	name	__imp___exit	None
+004020b0	name	__imp___cexit	None
+004020b4	name	__imp____getmainargs	None
+004020b8	name	__imp___invoke_watson	None
+004020bc	name	__imp___amsg_exit	None
+004020c0	name	__imp____CxxFrameHandler3	None
+004020c4	name	_MSVCR90_NULL_THUNK_DATA	None
+004020c8	name	___xc_a	None
+004020cc	name	pcppinit	None
+004020d0	name	___xc_z	None
+004020d4	name	___xi_a	None
+004020d8	name	pcinit	None
+004020dc	name	pinit	None
+004020e0	name	___xi_z	None
+0040210c	name	GS_ExceptionPointers	None
+00402114	name	aBadAllocation	None
+00402124	name	aBar	None
+00402128	name	__load_config_used	None
+004021c0	name	___safe_se_handler_table	None
+004021c8	name	___rtc_iaa	None
+004021cc	name	___rtc_izz	None
+004021d0	name	___rtc_taa	None
+004021d4	name	___rtc_tzz	None
+00402260	name	__IMPORT_DESCRIPTOR_MSVCR90	None
+00402274	name	__IMPORT_DESCRIPTOR_MSVCP90	None
+00402288	name	__IMPORT_DESCRIPTOR_KERNEL32	None
+0040229c	name	__NULL_IMPORT_DESCRIPTOR	None
+0040248a	name	aMsvcr90_dll	None
+00402760	name	aMsvcp90_dll	None
+0040288e	name	aKernel32_dll	None
+00403000	name	___security_cookie	None
+00403004	name	___security_cookie_complement	None
+00403008	name	___native_dllmain_reason	None
+0040300c	name	___native_vcclrit_reason	None
+00403010	name	___globallocalestatus	None
+00403014	name	___defaultmatherr	None
+00403018	name	_bad_alloc_Message	None
+00403020	name	argc	None
+00403024	name	envp	None
+00403028	name	argv	None
+0040302c	name	managedapp	None
+00403030	name	argret	None
+00403034	name	startinfo	None
+00403038	name	mainret	None
+0040303c	name	has_cctor	None
+00403040	name	GS_ExceptionRecord	None
+00403090	name	DebuggerWasPresent	None
+00403098	name	GS_ContextRecord	None
+00403364	name	__dowildcard	None
+00403368	name	__newmode	None
+0040336c	name	__commode	None
+00403370	name	__fmode	None
+00403374	name	__adjust_fdiv	None
+00403378	name	___native_startup_state	None
+0040337c	name	___native_startup_lock	None
+00403380	name	___onexitend	None
+00403384	name	___onexitbegin	None
+00403388	name	___dyn_tls_init_callback	None

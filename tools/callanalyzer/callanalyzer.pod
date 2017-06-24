@@ -1,0 +1,183 @@
+=pod
+
+=head1 NAME
+
+B<callanalyzer> - Extract call sites and arguments from a binary
+
+=head1 SYNOPSIS
+
+  callanalyzer [--allow-unknown] [--show-symbolic]
+        [--calls=CALLSET_FILENAME] [--typedb=TYPEDB_FILENAME]
+        [--config=PHAROS_CONFIG_FILE] [--no-user-file]
+        [--no-site-file] [--dump-config]
+        [--imports=IMPORT_CONFIG_FILE] 
+        [--include-func=ADDRESS] [--exclude-func=ADDRESS]
+        [--log=LOG_CONTROL_STRING] [--batch] [--library=CONFIG_DIR]
+        [--apidb=APIDB_FILE] [--timeout=TIMEOUT]
+        [--reltimeout=TIMEOUT] [--ptimeout=TIMEOUT]
+        [--preltimeout=TIMEOUT] [--maxmem=MEMSIZE]
+        [--relmaxmem=MEMSIZE] [--blockcounterlimit=NUMBER]
+        [--funccounterlimit=NUMBER] [--verbose=NUMBER]
+        [--pconfig=PARTITIONER_CONFIG_FILE]
+        [--psearch=PARTITIONER_SEARCH_FILE]
+        [--dsearch=DISASSEMBLER_SEARCH_FILE] [--stockpart]
+        [--partitioner1] [--partitioner2] [--no-semantics] [--pdebug]
+        [--respect-protection] BINARY_FILENAME
+
+  callanalyzer --help
+
+  callanalyzer --rose-version
+
+=head1 DESCRIPTION
+
+B<callanalyzer> extracts from a binary the function call sites,
+reporting on them and outputting what it can determine of their
+parameters' names, types, and values.
+
+=head1 OPTIONS
+
+=head2 B<callanalyzer> OPTIONS
+
+The following options are specific to the B<callanalyzer> program.
+
+=over 4
+
+=item B<--allow-unknown>
+
+Cause all valid calls to be output, regardless of parameter values.
+
+By default, B<callanalyzer> will not output call information if the
+call has either no parameters, or it cannot determine a concrete value
+for any of its parameters.  If this switch is used, all valid calls
+will be reported.
+
+=item B<--show-symbolic>
+
+Cause non-concrete, non-unknown parameter values to be output as
+symbolic expressions.
+
+If a parameter value can not be determined to be a concrete value
+(such as a exact integer or string), by default the value will be
+listed as C<< <abstr> >> (for abstract value).  If this switch is
+used, the underlying symbolic expression will be printed instead.
+
+=item B<--calls>=I<CALLSET_FILENAME>
+
+List only call sites that match the specifications read from the file
+I<CALLSET_FILENAME>.  The file consists of a list of function names
+(mangled names, if analyzing C++-generated binaries) and addresses.
+Addresses must be hexadecimal numbers, and may be preceded by C<0x>
+or C<0X>.  Names and addresses can be white-space and/or
+comma-delimited.  If I<CALLSET_FILENAME> is C<->, the call information
+will be read from stdin.
+
+=item B<--typedb>=I<TYPEDB_FILENAME>
+
+Add the type information listed in the file I<TYPEDB_FILENAME> to the
+internal type database.
+
+=back
+
+@PHAROS_OPTIONS_POD@
+
+=head1 EXAMPLES
+
+Here is a partial example of output of B<callanalyzer> running without
+any extra options:
+
+    OPTI[INFO ]: Call: WaitForSingleObject (0x00401047)
+    OPTI[INFO ]:   Param: hHandle Value: {(HANDLE)0xffffffff -> {(void)<unknown>}}
+    OPTI[INFO ]:   Param: dwMilliseconds Value: {(DWORD)4294967295}
+    OPTI[INFO ]: Call: ExitProcess (0x00401055)
+    OPTI[INFO ]:   Param: uExitCode Value: {(UINT)1}
+    OPTI[INFO ]: Call: GetModuleHandleA (0x00401066)
+    OPTI[INFO ]:   Param: lpModuleName Value: {(LPCTSTR)NULL}
+    OPTI[INFO ]: Call: ReadFile (0x004010B7)
+    OPTI[INFO ]:   Param: hFile Value: {(HANDLE)<abstr> -> {(void)<unknown>}}
+    OPTI[INFO ]:   Param: lpBuffer Value: {(LPVOID)<abstr> -> {(void)<unknown>}}
+    OPTI[INFO ]:   Param: nNumberOfBytesToRead Value: {(DWORD)1000}
+    OPTI[INFO ]:   Param: lpNumberOfBytesRead Value: {(LPDWORD)<abstr> -> {(DWORD)<abstr>}}
+    OPTI[INFO ]:   Param: lpOverlapped Value: {(LPOVERLAPPED)NULL}
+
+This shows four function calls, labelling their names, locations, and
+parameters.  Each parameter's name, type, and value are listed, when
+known.  When a value is not known, it is output as C<< <unknown> >>.
+If a value is partially known (such as an address calculated based on
+the stack location), it is output as C<< <abstr> >>.  Pointers are
+followed until the values are unknown.
+
+Here is the same output with the B<--show-symbolic> option:
+
+    OPTI[INFO ]: Call: WaitForSingleObject (0x00401047)
+    OPTI[INFO ]:   Param: hHandle Value: {(HANDLE)0xffffffff -> {(void)<unknown>}}
+    OPTI[INFO ]:   Param: dwMilliseconds Value: {(DWORD)4294967295}
+    OPTI[INFO ]: Call: ExitProcess (0x00401055)
+    OPTI[INFO ]:   Param: uExitCode Value: {(UINT)1}
+    OPTI[INFO ]: Call: GetModuleHandleA (0x00401066)
+    OPTI[INFO ]:   Param: lpModuleName Value: {(LPCTSTR)NULL}
+    OPTI[INFO ]: Call: ReadFile (0x004010B7)
+    OPTI[INFO ]:   Param: hFile Value: {(HANDLE)(ite[32,f=10000] Cond_from_0x004010A3[1]<f=10000> (ite[32,f=10000] Cond_from_0x004010A3[1]<f=10000> (ite[32,f=10000] Cond_from_0x004010A3[1]<f=10000> (ite[32,f=10000] Cond_from_0x004010A3[1]<f=10000> v521624[32] (concat[32,f=10000] v522060[8]<f=10000> v522024[8]<f=10000> v522016[8]<f=10000> v522028[8]<f=10000>)) (concat[32,f=10000] v522886[8]<f=10000> v522850[8]<f=10000> v522842[8]<f=10000> v522854[8]<f=10000>)) (concat[32,f=10000] v523712[8]<f=10000> v523676[8]<f=10000> v523668[8]<f=10000> v523680[8]<f=10000>)) (concat[32,f=10000] v524538[8]<f=10000> v524502[8]<f=10000> v524494[8]<f=10000> v524506[8]<f=10000>)) -> {(void)<unknown>}}
+    OPTI[INFO ]:   Param: lpBuffer Value: {(LPVOID)(ite[32,f=10000] Cond_from_0x004010A3[1]<f=10000> (ite[32,f=10000] Cond_from_0x004010A3[1]<f=10000> (ite[32,f=10000] Cond_from_0x004010A3[1]<f=10000> (ite[32,f=10000] Cond_from_0x004010A3[1]<f=10000> v521573[32] (concat[32,f=10000] v522056[8]<f=10000> v522010[8]<f=10000> v522008[8]<f=10000> v522044[8]<f=10000>)) (concat[32,f=10000] v522882[8]<f=10000> v522836[8]<f=10000> v522834[8]<f=10000> v522870[8]<f=10000>)) (concat[32,f=10000] v523708[8]<f=10000> v523662[8]<f=10000> v523660[8]<f=10000> v523696[8]<f=10000>)) (concat[32,f=10000] v524534[8]<f=10000> v524488[8]<f=10000> v524486[8]<f=10000> v524522[8]<f=10000>)) -> {(void)<unknown>}}
+    OPTI[INFO ]:   Param: nNumberOfBytesToRead Value: {(DWORD)1000}
+    OPTI[INFO ]:   Param: lpNumberOfBytesRead Value: {(LPDWORD)(add[32] esp_0[32] 0xfffffff8<4294967288,-8>[32]) -> {(DWORD)ecx_0[32]}}
+    OPTI[INFO ]:   Param: lpOverlapped Value: {(LPOVERLAPPED)NULL}
+
+As can be seen, some values are complicated and not very useful, such
+as C<ReadFile>'s C<hFile> parameter.  It can be seen, however, that
+the value of C<lpNumberOfBytesRead> is the stack pointer minus 8, and
+it points to the original contents of C<ECX>.
+
+When B<--allow-unknown> is used, all functions are output, even if no
+useful parameter information is known about them:
+
+    OPTI[INFO ]: Call: WaitForSingleObject (0x00401047)
+    OPTI[INFO ]:   Param: hHandle Value: {(HANDLE)0xffffffff -> {(void)<unknown>}}
+    OPTI[INFO ]:   Param: dwMilliseconds Value: {(DWORD)4294967295}
+    OPTI[INFO ]: Call: ExitProcess (0x00401055)
+    OPTI[INFO ]:   Param: uExitCode Value: {(UINT)1}
+    OPTI[INFO ]: Call: GetModuleHandleA (0x00401066)
+    OPTI[INFO ]:   Param: lpModuleName Value: {(LPCTSTR)NULL}
+    OPTI[INFO ]: Call: (0x00401078)
+    OPTI[INFO ]: Call: (0x0040107F)
+    OPTI[INFO ]: Call: CloseHandle (0x00401088)
+    OPTI[INFO ]:   Param: hObject Value: {(HANDLE)<abstr> -> {(void)<unknown>}}
+    OPTI[INFO ]: Call: ReadFile (0x004010B7)
+    OPTI[INFO ]:   Param: hFile Value: {(HANDLE)<abstr> -> {(void)<unknown>}}
+    OPTI[INFO ]:   Param: lpBuffer Value: {(LPVOID)<abstr> -> {(void)<unknown>}}
+    OPTI[INFO ]:   Param: nNumberOfBytesToRead Value: {(DWORD)1000}
+    OPTI[INFO ]:   Param: lpNumberOfBytesRead Value: {(LPDWORD)<abstr> -> {(DWORD)<abstr>}}
+    OPTI[INFO ]:   Param: lpOverlapped Value: {(LPOVERLAPPED)NULL}
+
+This is similar to the first example, but there are two function calls
+after C<GetModuleHandleA> which were not mapped to any known API calls.
+Also the C<CloseHandle> was not output before because none of its
+parameters contains any non-abstract, non-unknown values.
+
+=head1 ENVIRONMENT
+
+=over 4
+
+@PHAROS_ENV_POD@
+
+=back
+
+=head1 FILES
+
+=over 4 
+
+@PHAROS_FILES_POD@
+
+=back
+
+=for compiled
+head1 NOTES
+
+=for comment
+head1 SEE ALSO
+
+=cut
+
+Local Variables:
+mode:text
+indent-tabs-mode:nil
+End:

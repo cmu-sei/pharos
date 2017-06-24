@@ -1,0 +1,10 @@
+#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "$DIR/../helper.bash" "$DIR"
+
+if [[ $2 == "-V" ]]; then
+    $XSB -e "[typerules], load_dyn('${1}'), report, [validate], validate, halt."
+else
+    $XSB -e "[typerules], load_dyn('${1}'), report, halt."
+ fi
+

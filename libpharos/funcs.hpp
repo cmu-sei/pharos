@@ -1,4 +1,4 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Funcs_H
 #define Pharos_Funcs_H
@@ -10,9 +10,17 @@
 
 #include <rose.h>
 #include <BinaryControlFlow.h>
+#include <Partitioner2/Partitioner.h>
 
 #include "convention.hpp"
-#include "stkvar.hpp"
+
+namespace P2 = Rose::BinaryAnalysis::Partitioner2;
+
+namespace pharos {
+
+class StackVariable;
+// a list of stack variable pointers
+typedef std::vector<StackVariable*> StackVariablePtrList;
 
 // Forward declaration of function descriptor for recursive includes.
 class FunctionDescriptor;
@@ -44,12 +52,17 @@ class ImportDescriptor;
 class PDG;
 class spTracker;
 
+} // namespace pharos
+
 #include "util.hpp"
 #include "enums.hpp"
 #include "delta.hpp"
 #include "convention.hpp"
+#include "apidb.hpp"
 
-typedef rose::BinaryAnalysis::ControlFlow::Graph CFG;
+namespace pharos {
+
+typedef Rose::BinaryAnalysis::ControlFlow::Graph CFG;
 typedef std::set<SgAsmBlock*> BlockSet;
 typedef std::vector<SgAsmx86Instruction*> X86InsnVector;
 typedef std::set<rose_addr_t> AddrSet;
@@ -60,9 +73,9 @@ typedef std::set<rose_addr_t> CallTargetSet;
 typedef std::vector<std::string> TokenSet;
 
 // Forward declaration of some utility functions used by msot of the descriptors.
-void read_config_addr_set(std::string key, const boost::property_tree::ptree& tree,
+void read_config_addr_set(const std::string & key, const boost::property_tree::ptree& tree,
                           CallTargetSet &tset);
-void write_config_addr_set(std::string key, boost::property_tree::ptree* tree,
+void write_config_addr_set(const std::string & key, boost::property_tree::ptree* tree,
                            CallTargetSet &tset);
 
 
@@ -74,14 +87,20 @@ private:
   // object, or it can be an invalid address (typically zero).
   rose_addr_t address;
 
+  // The display name of the function
+  std::string display_name;
+
   // The SgAsmFunction object for the function.  This can be NULL if the function hasn't been
   // found yet.
   SgAsmFunction* func;
 
+  // the Partitioner2 Function object for the function
+  P2::FunctionPtr p2func;
+
   // Is this function believed to be a known new() method?
   bool new_method;
-
   bool delete_method;
+  bool purecall_method;
 
   // The address that this function jumps to if it is a thunk.
   rose_addr_t target_address;
@@ -97,11 +116,11 @@ private:
 
   // The addresses of the call instructions that call to this function.
   CallTargetSet callers;
-  // The call descriptors that arelocated within this function (the outgoing calls).
+  // The call descriptors that are located within this function (the outgoing calls).
   CallDescriptorSet outgoing_calls;
 
   // The list of possible stack variables. Stored as a pointer vector
-  StackVariableList stack_vars;
+  StackVariablePtrList stack_vars;
 
   // Did the user request that this function be excluded?
   bool excluded;
@@ -115,22 +134,41 @@ private:
   size_t stack_analysis_failures;
 
   // The weighted PDG hash for this function.
-  std::string hash;
+  std::string pdg_hash;
 
   CFG control_flow_graph;
+  Rose::BinaryAnalysis::ControlFlow cfg_analyzer;
   bool control_flow_graph_cached;
 
   BlockSet return_blocks;
   bool return_blocks_cached;
 
+  bool hashes_calculated;
+
   // The exact bytes, and the corresponding hash.  Computed on demand and cached by
   // get_exact_bytes() or get_exact_hash() by compute_func_bytes().
-  std::string exact_bytes;
+  std::string exact_bytes; // I'd rather use a vector<byte> here, but old code did it this way so keeping it the same for now...
   std::string exact_hash;
   // The position independent bytes, and the corresponding hash.  Computed on demand and cached
   // by get_pic_bytes() or get_pic_hash() by compute_func_bytes().
   std::string pic_bytes;
   std::string pic_hash;
+
+  std::string composite_pic_hash; // variant of PIC w/ no control flow insn, basic blocks hashed and func hashed by hashing those ordered hashes (ASCII values)...
+
+  std::string mnemonic_hash; // variant of EHASH but only mnemonics
+  std::string mnemonic_category_hash; // variant of PHASH but only mnemonics categories
+  std::string mnemonic_count_hash; // hash of the ordered mnemonic/count pairs
+  std::string mnemonic_category_count_hash; // hash of the orderend mnemcat/count pairs
+
+  std::map< std::string, uint32_t > mnemonic_counts;
+  std::map< std::string, uint32_t > mnemonic_category_counts;
+
+  // might as well collect some fn level stats:
+  unsigned int num_blocks;
+  unsigned int num_blocks_in_cfg;
+  unsigned int num_instructions;
+  unsigned int num_bytes;
 
   // This is set to true if we're pretty certain that we never return.  It's a little unclear
   // what level of semantic analysis we mean right now, but I think it would be fine currently
@@ -169,16 +207,17 @@ private:
   // isn't working.  So in the mean time, this boolean indicates whether return ECX in EAX.
   bool returns_this_pointer;
 
-  // Similarly, we're going to keep track of whether we think we return a value or not right
-  // here.  This should really be handled by more generic code that evaluates all input and
-  // output registers, but the common case (almost exclusively so) is to return a value in EAX.
-  bool returns_eax;
-
   // What is the stack delta for this function?
   StackDelta stack_delta;
 
+  // Variable to use for an unknown stack delta
+  LeafNodePtr stack_delta_variable;
+
   // How many bytes does the function read off the stack?
   StackDelta stack_parameters;
+
+  // these are basically the function chunk boundaries:
+  AddressIntervalSet address_intervals;
 
   // The output state for the function can be found on the defuse object under output_state.
 
@@ -186,8 +225,10 @@ private:
   // target_func, which is corrected in update_connections().
   void update_target_address();
 
-  // Compute the exact bytes and the PIC bytes simultaneously, since they're so similar.
-  void compute_function_bytes();
+  // Compute the exact & PIC bytes & hashes simultaneously, since they're so similar.
+  void compute_function_hashes();
+  // older variant that isn't quite right:
+  void old_compute_function_bytes();
 
   // Walk the reads in the function, and identify reads of stack parameters.  Only called while
   // generating the PDG.
@@ -198,6 +239,8 @@ private:
   void update_register_parameters();
 
   void update_stack_variables();
+
+  void analyze_type_information(const DUAnalysis& du);
 
   // Update the return value fields in the parameter list.  Only called while generating
   // the PDG.
@@ -213,26 +256,34 @@ public:
   void analyze();
 
   // Add a new stack variable to this function
-  void add_stack_variable(SgAsmX86Instruction *i, int64_t off, TreeNodePtr tnp);
+  // void add_stack_variable(SgAsmX86Instruction *i, const AbstractAccess &aa);
+
+  void add_stack_variable(StackVariable *stkvar);
 
   SgAsmFunction* get_func() const { return func; }
 
   // Get and set the name of the function.
   std::string get_name() const;
-  void set_name(std::string name);
+  void set_name(const std::string& name);
 
   rose_addr_t get_address() const { return address; }
-  void set_address(rose_addr_t addr) { address = addr; }
+  void set_address(rose_addr_t addr);
   // two things...#1: why was str() able to be called directly before when it is supposed to be
   // in the boost namespace, and #2: address is technically a 64 bit value and will map to an
   // *ACTUAL* 64 bit value when we start working on 64 bit files...so we'll need to figure out
   // how to cope with that "properly" at some point (likely using PRIx64 & width of 16)
   std::string address_string() const { return boost::str(boost::format("0x%08X") % address); }
 
+  // basically function chunck start/end addresses:
+  const AddressIntervalSet & get_address_intervals() const {
+    return address_intervals;
+  }
+
   // Const only access to the calling convention from outside the function class.
   const CallingConventionPtrVector& get_calling_conventions() const { return calling_conventions; }
 
   StackDelta get_stack_delta() const { return stack_delta; }
+  const LeafNodePtr & get_stack_delta_variable() const { return stack_delta_variable; }
   void update_stack_delta(StackDelta sd);
 
   // Return whether we think we're a new() method.
@@ -243,8 +294,11 @@ public:
   // If we're going to keep the new operator knowledge on the function descriptor, we might as
   // well keep knowledge of the delete operator
   bool is_delete_method() const { return delete_method; }
-
   void set_delete_method(bool d) { delete_method = d; }
+
+  // This is getting repetive... :-(
+  bool is_purecall_method() const { return purecall_method; }
+  void set_purecall_method(bool p) { purecall_method = p; }
 
   // A boolean convenience function for when we only want to test if we're a thunk.
   bool is_thunk() const { return (target_address != 0); }
@@ -300,8 +354,6 @@ public:
 
   void set_returns_this_pointer(bool r) { returns_this_pointer = r; }
   bool get_returns_this_pointer() const { return returns_this_pointer; }
-  void set_returns_eax(bool r) { returns_eax = r; }
-  bool get_returns_eax() const { return returns_eax; }
   bool get_never_returns() const { return never_returns; }
 
   // return the computed PDG for this function
@@ -327,9 +379,24 @@ public:
   // Get something vaugely like the PIC hash.
   const std::string& get_pic_hash();
 
+  const std::string& get_composite_pic_hash();
+  const std::string& get_mnemonic_hash();
+  const std::string& get_mnemonic_category_hash();
+  const std::string& get_mnemonic_count_hash();
+  const std::string& get_mnemonic_category_count_hash();
+
+  const std::map< std::string, uint32_t >& get_mnemonic_counts();
+  const std::map< std::string, uint32_t >& get_mnemonic_category_counts();
+
+  inline unsigned int get_num_blocks() { return num_blocks; };
+  inline unsigned int get_num_blocks_in_cfg() { return num_blocks_in_cfg; };
+  inline unsigned int get_num_instructions() { return num_instructions; };
+  inline unsigned int get_num_bytes() { return num_bytes; };
+
   // A couple of methods that perhaps should be on the function, but we'll put it on the
   // function descriptor for now.
   CFG& get_cfg();
+  Rose::BinaryAnalysis::ControlFlow& get_cfg_analyzer();
   BlockSet& get_return_blocks();
   SgAsmInstruction* get_insn(const rose_addr_t) const;
   X86InsnVector get_insns_addr_order() const;
@@ -358,6 +425,7 @@ public:
   // Read and write from property tree config files.
   void read_config(const boost::property_tree::ptree& tree);
   void write_config(boost::property_tree::ptree* tree);
+  void set_api(const APIDefinition& fdata);
 
   // Merge the important fields from the export descriptor loaded from a DLL config file.
   void merge_export_descriptor(const FunctionDescriptor *dfd);
@@ -366,8 +434,8 @@ public:
   // basic block types, etc.  Return true if anything unusual was found.
   bool check_for_disconnected_blocks();
 
-  // Is this address "in" this function? (Regardless of it's flow-control status)
-  bool contains_addr(rose_addr_t);
+  // Is this insn address "in" this function? (Regardless of it's flow-control status)
+  bool contains_insn_at(rose_addr_t);
 
   // Provide access to the register usage object.
   const RegisterUsage& get_register_usage() const { return register_usage; }
@@ -377,7 +445,7 @@ public:
 
   // Fetch the list of stack variables. This is made a reference to avoid
   // needless copying
-  const StackVariableList& get_stack_variables() const { return stack_vars; }
+  const StackVariablePtrList& get_stack_variables() const { return stack_vars; }
 
 
   void print(std::ostream &o) const;
@@ -386,6 +454,8 @@ public:
     fd.print(o);
     return o;
   }
+
+  std::string disasm() const;
 };
 
 typedef std::vector<FunctionDescriptor *> FuncDescVector;
@@ -402,6 +472,8 @@ public:
       return NULL;
   }
 };
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */

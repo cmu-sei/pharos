@@ -1,6 +1,5 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
-#include <boost/foreach.hpp>
 #include <boost/optional.hpp>
 #include <boost/property_tree/ptree.hpp>
 
@@ -15,6 +14,8 @@
 #include "masm.hpp"
 #include "convention.hpp"
 #include "enums.hpp"
+
+namespace pharos {
 
 // Constructor for the description of a saved register.
 SavedRegister::SavedRegister(RegisterDescriptor r, SgAsmInstruction* push, SgAsmInstruction* pop) {
@@ -85,10 +86,14 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, const Regist
          << " for: " << reg << " writes to: " << *stack_node << " (" << stack_foo << ")" << LEND;
 
   const DUChain* deps = du.get_dependents(insn);
-  if (deps == NULL) return false;
+  if (deps == NULL) {
+    SDEBUG << "Instruction unexpectedly had no dependents!" << LEND;
+    return false;
+  }
+
   // Get the dependents of the push/mov instruction.
-  BOOST_FOREACH(const Definition& sdef, *deps) {
-    STRACE << "  For each dependency:" << sdef.access << LEND;
+  for (const Definition& sdef : *deps) {
+    STRACE << "  For each dependency: " << sdef.access << LEND;
 
     // We're only interested in dependents that read from the same memory address.
     if (!(sdef.access.isRead)) continue;
@@ -97,6 +102,8 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, const Regist
     // Further it must read the stack address that we're interested in...
     SymbolicValuePtr read_addr = sdef.access.memory_address;
     TreeNodePtr read_node = read_addr->get_expression();
+
+    STRACE << "  Dependency is a memory access of: " << *read_node << LEND;
 
     boost::optional<int64_t> opt_read_delta = read_addr->get_stack_const();
     int64_t read_foo = 0;
@@ -118,6 +125,10 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, const Regist
     // coincidental dependency, and not something that coule be the restore instruction.
     if (read_foo != stack_foo) continue;
 
+    // We've found a read of the value that was pushed.  From this point on, we're going to
+    // return a value rather than loop to another dependency.
+    // SDEBUG << "  Dependency is a memory read of the relevant stack address!" << LEND;
+
     // This is the instruction that appears to restore the value.  From this point forward in
     // the logic if we encounter anything unexpected, we should return false, and not simply
     // continue.  The reason for this is that it helps ensure that we don't incorrectly label
@@ -130,16 +141,21 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, const Regist
 
     // This test is required because otherwise, we'll accept call instructions that read pushed
     // parameters, and label them as saved registers.
-    if (restore_insn->get_kind() != x86_pop && restore_insn->get_kind() != x86_mov) return false;
+    if (restore_insn->get_kind() != x86_pop &&
+        restore_insn->get_kind() != x86_mov &&
+        // Perhaps leave should only be a valid restoration instruction when register == ebp?
+        restore_insn->get_kind() != x86_leave) return false;
 
     // Now confirm that the restore instruction writes the value back into the passed register
     // descriptor.
     bool restored_correctly = false;
-    const AbstractAccessVector* rwrites = du.get_writes(restore_insn);
-    if (rwrites == NULL) continue;
-    BOOST_FOREACH(const AbstractAccess& rw, *rwrites) {
-      if (rw.isRead) continue;
-      if (rw.is_reg(&reg)) restored_correctly = true;
+    auto rwrites = du.get_writes(restore_insn);
+    if (std::begin(rwrites) == std::end(rwrites)) return false;
+    for (const AbstractAccess& rw : rwrites) {
+      if (rw.is_reg(&reg)) {
+        restored_correctly = true;
+        break;
+      }
     }
     if (restored_correctly == false) {
       SDEBUG << "The dependent insn: " << debug_instruction(restore_insn)
@@ -155,7 +171,7 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, const Regist
     bool restore_used = false;
     const DUChain* user_deps = du.get_dependents(restore_insn);
     if (user_deps != NULL) {
-      BOOST_FOREACH(const Definition& udef, *user_deps) {
+      for (const Definition& udef : *user_deps) {
         STRACE << "Considering possible user: " << debug_instruction(udef.definer) << LEND;
         if (udef.access.is_reg(&reg)) {
           SDEBUG << "Restored value used by: " << debug_instruction(udef.definer) << LEND;
@@ -170,7 +186,7 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, const Regist
     }
 
     if (!restore_used) {
-      SDEBUG << "Saved register: reg=" << unparseX86Register(reg, NULL)
+      GDEBUG << "Saved register: reg=" << unparseX86Register(reg, NULL)
              << " save=" << debug_instruction(insn)
              << " restore=" << debug_instruction(restore_insn) << LEND;
       saved_registers.insert(SavedRegister(reg, insn, restore_insn));
@@ -181,9 +197,14 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, const Regist
     return false;
   }
 
-  // Apparently we failed to find the required restore instruction, so this is not a saved and
-  // restored register instruction.
-  return false;
+  stack_allocation_insns.insert(insn);
+  
+  // If we've reached this point in the code, we're not really a saved register because we
+  // never found the instruction that restored the original value.  But, we never found any
+  // read of the value at _all_, so while we're not technically a saved register, we're not a
+  // parameter register to the function either, and it's easiest to return true here to cause
+  // that result.
+  return true;
 }
 
 void RegisterUsage::analyze(FunctionDescriptor *f) {
@@ -225,7 +246,7 @@ void RegisterUsage::analyze_parameters() {
   const Insn2DUChainMap& dd = p->get_usedef().get_dependencies();
 
   // Get a handle to the stack pointer register, because it's special.
-  const RegisterDictionary* regdict = RegisterDictionary::dictionary_pentium4();
+  const RegisterDictionary* regdict = global_descriptor_set->get_regdict();
   const RegisterDescriptor* esp = regdict->lookup("esp");
 
   // This is for keeping track of which stack parameter deltas we've actually used, and which
@@ -235,10 +256,10 @@ void RegisterUsage::analyze_parameters() {
 
   SgAsmFunction* func = fd->get_func();
   // For each instruction...
-  BOOST_FOREACH(SgAsmStatement* bs, func->get_statementList()) {
+  for (SgAsmStatement* bs : func->get_statementList()) {
     SgAsmBlock *bb = isSgAsmBlock(bs);
     if (!bb) continue;
-    BOOST_FOREACH(SgAsmStatement* is, bb->get_statementList()) {
+    for (SgAsmStatement* is : bb->get_statementList()) {
       SgAsmX86Instruction *insn = isSgAsmX86Instruction(is);
       if (!insn) continue;
 
@@ -275,7 +296,7 @@ void RegisterUsage::analyze_parameters() {
         }
       }
 
-      BOOST_FOREACH(const Definition& def, dd.at(insn)) {
+      for (const Definition& def : dd.at(insn)) {
         // This is the access that had the NULL definer.
         const AbstractAccess& aa = def.access;
         SDEBUG << "Evaluating " << debug_instruction(insn) << " which uses value "
@@ -353,6 +374,7 @@ void RegisterUsage::analyze_parameters() {
           GDEBUG << "Function " << fd->address_string() << " uses register "
                  << unparseX86Register(*initial_reg, NULL)
                  << " as parameter in " << debug_instruction(insn) << LEND;
+          break;
         }
       }
     }
@@ -360,7 +382,7 @@ void RegisterUsage::analyze_parameters() {
 
   // Display for debugging, should probably be a function of it's own.
   GDEBUG << "Function " << fd->address_string() << " has parameters: ";
-  BOOST_FOREACH(const RegisterEvidenceMap::value_type& rpair, parameter_registers) {
+  for (const RegisterEvidenceMap::value_type& rpair : parameter_registers) {
     const RegisterDescriptor* reg = rpair.first;
     GDEBUG << " " << unparseX86Register(*reg, NULL);
   }
@@ -383,7 +405,7 @@ void RegisterUsage::analyze_changed() {
 
   RegisterSet all_changed_registers = routput->diff(rinput);
 
-  const RegisterDictionary* regdict = RegisterDictionary::dictionary_pentium4();
+  const RegisterDictionary* regdict = global_descriptor_set->get_regdict();
   const RegisterDescriptor* esp = regdict->lookup("esp");
   const RegisterDescriptor* ebp = regdict->lookup("ebp");
   const RegisterDescriptor* esi = regdict->lookup("esi");
@@ -410,7 +432,7 @@ void RegisterUsage::analyze_changed() {
   // are not unusual according to the standard calling conventions.  The actual overwriting of
   // the registers occurs in make_call_dependencies() in defuse.cpp.
 
-  BOOST_FOREACH(const RegisterDescriptor* rd, all_changed_registers) {
+  for (const RegisterDescriptor* rd : all_changed_registers) {
     // Silently reject changes to ESP, we'll handle those through stack delta analysis code.
     if (*rd == *esp) continue;
     // Warn about cases where we reject register changes based on calling convention assumptions.
@@ -425,7 +447,7 @@ void RegisterUsage::analyze_changed() {
   }
 
   GDEBUG << "Function " << fd->address_string() << " changed registers: ";
-  BOOST_FOREACH(const RegisterDescriptor* rd, changed_registers) {
+  for (const RegisterDescriptor* rd : changed_registers) {
     GDEBUG << " " << unparseX86Register(*rd, NULL);
   }
   GDEBUG << LEND;
@@ -458,6 +480,20 @@ template<> char const* EnumStrings<CallingConvention::StackCleanup>::data[] = {
   "unknown",
 };
 
+CallingConvention::CallingConvention(size_t word_size_, const std::string &name_,
+                                     const std::string &compiler_) {
+  word_size = word_size_;
+  name = name_;
+  compiler = compiler_;
+  param_order = ORDER_UNKNOWN;
+  this_location = THIS_UNKNOWN;
+  retval_location = RETVAL_UNKNOWN;
+  stack_alignment = 0;
+  // We must have a name and a size.
+  assert(word_size > 0);
+  assert(!name.empty());
+}
+
 void CallingConvention::add_nonvolatile(const RegisterDictionary* dict, std::string rname) {
   const RegisterDescriptor* rd = dict->lookup(rname);
   if (rd == NULL) {
@@ -476,7 +512,7 @@ void CallingConvention::add_nonvolatile(const RegisterDescriptor *rd) {
 }
 
 void CallingConvention::add_nonvolatile(const RegisterSet& regs) {
-  BOOST_FOREACH(const RegisterDescriptor* rd, regs) {
+  for (const RegisterDescriptor* rd : regs) {
     if (rd == NULL) {
       GFATAL << "Invalid register with adding non-volatile." << LEND;
       assert(rd != NULL);
@@ -498,22 +534,22 @@ void CallingConvention::report() const {
   GDEBUG << "  Stack alignment:   " << stack_alignment << LEND;
 
   GDEBUG << "  Parameter regs:   ";
-  BOOST_FOREACH(const RegisterDescriptor* rd, reg_params) {
+  for (const RegisterDescriptor* rd : reg_params) {
     GDEBUG << " " << unparseX86Register(*rd, NULL);
   }
   GDEBUG << LEND;
 
   GDEBUG << "  Nonvolatile regs: ";
-  BOOST_FOREACH(const RegisterDescriptor* rd, nonvolatile) {
+  for (const RegisterDescriptor* rd : nonvolatile) {
     GDEBUG << " " << unparseX86Register(*rd, NULL);
   }
   GDEBUG << LEND;
 }
 
 // The stack parameter form.
-ParameterDefinition::ParameterDefinition(size_t c, SymbolicValuePtr v, std::string n,
+ParameterDefinition::ParameterDefinition(size_t c, const SymbolicValuePtr& v, std::string n,
                                          std::string t, const SgAsmInstruction* i,
-                                         SymbolicValuePtr a, size_t d) {
+                                         const SymbolicValuePtr& a, size_t d) {
   // The parameter number.
   num = c;
 
@@ -538,12 +574,14 @@ ParameterDefinition::ParameterDefinition(size_t c, SymbolicValuePtr v, std::stri
   stack_delta = d;
   address = a;
   insn = i;
+  direction = DIRECTION_NONE;
 }
 
 // The register parameter form.
-ParameterDefinition::ParameterDefinition(size_t c, SymbolicValuePtr v, std::string n,
+ParameterDefinition::ParameterDefinition(size_t c, const SymbolicValuePtr& v, std::string n,
                                          std::string t, const SgAsmInstruction* i,
                                          const RegisterDescriptor* r) {
+
   // The parameter number.
   num = c;
 
@@ -571,16 +609,17 @@ ParameterDefinition::ParameterDefinition(size_t c, SymbolicValuePtr v, std::stri
 }
 
 // Called as we dynamically discover these attributes for a parameter.
-void ParameterDefinition::set_stack_attributes(SymbolicValuePtr v, SymbolicValuePtr a,
-                                               SgAsmInstruction* i, SymbolicValuePtr p) {
+void ParameterDefinition::set_stack_attributes(const SymbolicValuePtr& v, const SymbolicValuePtr& a,
+                                               SgAsmInstruction* i, const SymbolicValuePtr& p) {
   value = v;
   value_pointed_to = p;
   address = a;
   insn = i;
 }
 
-void ParameterDefinition::set_reg_attributes(SymbolicValuePtr v, const SgAsmInstruction* i,
-                                             SymbolicValuePtr p) {
+void ParameterDefinition::set_reg_attributes(const SymbolicValuePtr& v, const SgAsmInstruction* i,
+                                             const SymbolicValuePtr& p) {
+
   value = v;
   value_pointed_to = p;
   insn = i;
@@ -589,6 +628,60 @@ void ParameterDefinition::set_reg_attributes(SymbolicValuePtr v, const SgAsmInst
 //void ParameterList::add_parameter(SymbolicValuePtr local_value) {
 //  parameters.push_back(CallParameter(0, local_value));
 //}
+
+template<> char const* EnumStrings<ParameterDefinition::DirectionEnum>::data[] = {
+  "none",
+  "in",
+  "out",
+  "inout"
+};
+
+// JSG thinks having the logging baked deep into library code (aka debug) seems like a bad
+// idea. Having a general to_string method that can be used to fetch a string representation
+// seems better.
+std::string ParameterDefinition::to_string() const {
+  std::stringstream out;
+  out << "  num=" << num;
+  if (is_reg()) {
+    out << " reg=" << unparseX86Register(*reg, NULL);
+  }
+  else {
+    out << " sd=" << stack_delta;
+  }
+
+  out << " name=" << name;
+  // if (type.compare("unknown") != 0) {
+  //   out << " type=" << type;
+  // }
+  if (value && value->is_valid()) {
+    out << " value=" << *(value->get_expression());
+
+    try {
+
+      TypeDescriptorPtr tdp = boost::any_cast< TypeDescriptorPtr >(value->get_expression()->userData());
+      if (tdp) {
+        out << " td=(" << tdp->to_string() << ")";
+      } else
+        OINFO << " td=unknown";
+    } catch (...) {
+      out << " td=missing";
+    }
+  }
+  if (value_pointed_to && value_pointed_to->is_valid()) {
+    out << " *value=" << *(value_pointed_to->get_expression());
+  }
+  if (insn != NULL) {
+    out << " insn=" << debug_instruction(insn);
+  }
+  if (is_stack() && address && address->is_valid()) {
+    out << " addr=" << *(address->get_expression());
+  }
+  if (direction != ParameterDefinition::DIRECTION_NONE) {
+    out << " dir=" << Enum2Str(direction);
+  }
+
+  return out.str();
+}
 
 void ParameterDefinition::debug() const {
   OINFO << "  num=" << num;
@@ -605,6 +698,17 @@ void ParameterDefinition::debug() const {
   }
   if (value && value->is_valid()) {
     OINFO << " value=" << *(value->get_expression());
+
+    try {
+
+      TypeDescriptorPtr tdp = boost::any_cast< TypeDescriptorPtr >(value->get_expression()->userData());
+      if (tdp) {
+        OINFO << " type descriptor=[" << tdp->to_string() << "]";
+      } else
+        OINFO << " type descriptor=INVALID";
+    } catch (...) {
+      OINFO << " type descriptor=MISSING";
+    }
   }
   if (value_pointed_to && value_pointed_to->is_valid()) {
     OINFO << " *value=" << *(value_pointed_to->get_expression());
@@ -614,6 +718,9 @@ void ParameterDefinition::debug() const {
   }
   if (is_stack() && address && address->is_valid()) {
     OINFO << " addr=" << *(address->get_expression());
+  }
+  if (direction != ParameterDefinition::DIRECTION_NONE) {
+    OINFO << " dir=" << Enum2Str(direction);
   }
 
   OINFO << LEND;
@@ -632,17 +739,18 @@ void ParameterList::read_config(const boost::property_tree::ptree& tree UNUSED, 
   convention = conv;
 
   // Just wildly assume that EAX was the return the value. :-(
-  const RegisterDictionary* regdict = RegisterDictionary::dictionary_pentium4();
+  const RegisterDictionary* regdict = global_descriptor_set->get_regdict();
   const RegisterDescriptor* eax = regdict->lookup("eax");
 
   // Use a NULL pointer to represent a NULL value?  Replaces invalid SymbolicValue concept?
   SymbolicValuePtr null_ptr;
-  //SymbolicValuePtr null_ptr = SymbolicValue::variable_instance(get_arch_bits());
+  size_t arch_bytes = global_descriptor_set->get_arch_bytes();
+  //SymbolicValuePtr null_ptr = SymbolicValue::variable_instance(arch_bytes * 8);
   create_return_reg(eax, null_ptr);
 
   // Create some arbitrary stack parameters.
-  if (delta < 4 || (delta % 4) != 0) return;
-  create_stack_parameter((size_t)(delta - 4));
+  if (delta < (int)arch_bytes || (delta % arch_bytes) != 0) return;
+  create_stack_parameter((size_t)(delta - arch_bytes));
 
   // And because this is a lame stub of the real function, we're done.
 }
@@ -650,7 +758,7 @@ void ParameterList::read_config(const boost::property_tree::ptree& tree UNUSED, 
 // Find the parameter definition that matches a specific stack delta, or return NULL if it does
 // not exist.
 ParameterDefinition* ParameterList::get_rw_stack_parameter(size_t delta) {
-  BOOST_FOREACH(ParameterDefinition& p, params) {
+  for (ParameterDefinition& p : params) {
     if (p.reg == NULL && p.stack_delta == delta) {
       return &p;
     }
@@ -659,7 +767,7 @@ ParameterDefinition* ParameterList::get_rw_stack_parameter(size_t delta) {
 }
 
 const ParameterDefinition* ParameterList::get_stack_parameter(size_t delta) const {
-  BOOST_FOREACH(const ParameterDefinition& p, params) {
+  for (const ParameterDefinition& p : params) {
     if (p.reg == NULL && p.stack_delta == delta) {
       return &p;
     }
@@ -670,7 +778,7 @@ const ParameterDefinition* ParameterList::get_stack_parameter(size_t delta) cons
 // Find the parameter definition that corresponds to a specific regsiter descriptior, or return
 // NULL if it does not exist.
 ParameterDefinition* ParameterList::get_rw_reg_parameter(const RegisterDescriptor* rd) {
-  BOOST_FOREACH(ParameterDefinition& p, params) {
+  for (ParameterDefinition& p : params) {
     if (p.reg == rd) {
       return &p;
     }
@@ -679,7 +787,7 @@ ParameterDefinition* ParameterList::get_rw_reg_parameter(const RegisterDescripto
 }
 
 const ParameterDefinition* ParameterList::get_reg_parameter(const RegisterDescriptor* rd) const {
-  BOOST_FOREACH(const ParameterDefinition& p, params) {
+  for (const ParameterDefinition& p : params) {
     if (p.reg == rd) {
       return &p;
     }
@@ -688,7 +796,7 @@ const ParameterDefinition* ParameterList::get_reg_parameter(const RegisterDescri
 }
 
 ParameterDefinition* ParameterList::get_rw_return_reg(const RegisterDescriptor* rd) {
-  BOOST_FOREACH(ParameterDefinition& p, returns) {
+  for (ParameterDefinition& p : returns) {
     if (p.reg == rd) {
       return &p;
     }
@@ -697,7 +805,7 @@ ParameterDefinition* ParameterList::get_rw_return_reg(const RegisterDescriptor* 
 }
 
 const ParameterDefinition* ParameterList::get_return_reg(const RegisterDescriptor* rd) const {
-  BOOST_FOREACH(const ParameterDefinition& p, returns) {
+  for (const ParameterDefinition& p : returns) {
     if (p.reg == rd) {
       return &p;
     }
@@ -720,7 +828,7 @@ ParameterDefinition* ParameterList::create_stack_parameter(size_t delta) {
   // something has gone wrong, and to make the type casting interaction between int64_t and
   // size_t a little safer.
   if (delta > 10000) {
-    GWARN << "Ignoring grossly unreasonble stack parameter delta of " << delta << "." << LEND;
+    GWARN << "Ignoring grossly unreasonable stack parameter delta of " << delta << "." << LEND;
     return NULL;
   }
   // We only support dword stack deltas currently.  Surprisingly there were a lot of deltas
@@ -840,14 +948,11 @@ ParameterList::create_return_reg(const RegisterDescriptor *r, const SymbolicValu
   // of the evidence instructions) from the modifiers on the symbolic value.  In this case,
   // we're closer to a better design where the evidence is a list of instructions rather than
   // just one.  But for now, we're only able to hold one evidence instruction in the parameter
-  // definition.
+  // definition.  This code was broken when we removed modifiers, and rather than adding it
+  // back with a single evidence instruction I should talk to JSG and decide how to proceed.
   const SgAsmInstruction* i = NULL;
-  if (v) {
-    InsnSet modifiers = v->get_modifiers();
-    if (modifiers.size() > 0) {
-      i = *(modifiers.begin());
-    }
-  }
+  // Effectively, the previous code was: i = *(g->get_modifiers().begin());
+  // Now we'll need to pass the instruction because writers don't follow the SymbolicValue. :-(
 
   // Create the parameter definition and put it in the list.
   returns.push_back(ParameterDefinition(num, v, "", "", i, r));
@@ -866,20 +971,20 @@ void ParameterList::debug() const {
   else {
     OINFO << LEND;
   }
-  BOOST_FOREACH(const ParameterDefinition& p, params) {
+  for (const ParameterDefinition& p : params) {
     p.debug();
   }
 }
 
 void CallingConventionMatcher::report() const {
   if (!(GDEBUG)) return;
-  BOOST_FOREACH(const CallingConvention& cc, conventions) {
+  for (const CallingConvention& cc : conventions) {
     cc.report();
   }
 }
 
 const CallingConvention* CallingConventionMatcher::find(size_t word_size, const std::string &name) const {
-  BOOST_FOREACH(const CallingConvention& cc, conventions) {
+  for (const CallingConvention& cc : conventions) {
     if (cc.get_word_size() == word_size && cc.get_name() == name) return &cc;
   }
   return NULL;
@@ -904,7 +1009,8 @@ CallingConventionMatcher::match(FunctionDescriptor* fd,
       if (id != NULL) {
         GDEBUG << "Function " << fd->address_string()
                << " is a thunk to " << id->get_long_name() << LEND;
-        const CallingConvention* stdcall = find(get_arch_bits(), "__stdcall");
+        size_t arch_bits = global_descriptor_set->get_arch_bits();
+        const CallingConvention* stdcall = find(arch_bits, "__stdcall");
         if (stdcall != NULL) matches.push_back(stdcall);
         return matches;
       }
@@ -927,17 +1033,19 @@ CallingConventionMatcher::match(FunctionDescriptor* fd,
 
   // Get the stack delta (once)...
   StackDelta sd = fd->get_stack_delta();
-  GDEBUG << "Function stack delta is: " << sd << LEND;
+  GDEBUG << "Function " << fd->address_string() << " stack delta is: " << sd << LEND;
 
-  BOOST_FOREACH(const CallingConvention& cc, conventions) {
+  for (const CallingConvention& cc : conventions) {
     // Only register usage patterns of the correct architecture size can match.
-    if (ru.arch_size != cc.get_word_size()) continue;
+    size_t arch_bits = global_descriptor_set->get_arch_bits();
+    if (arch_bits != cc.get_word_size()) continue;
 
     // If the function changes a non-volatile register, then it can't match.
     bool follows_nonvolatile_rule = true;
-    BOOST_FOREACH(const RegisterDescriptor* rd, cc.get_nonvolatile()) {
+    for (const RegisterDescriptor* rd : cc.get_nonvolatile()) {
       if (ru.changed_registers.find(rd) != ru.changed_registers.end()) {
-        GDEBUG << "Function can't match " << cc.get_name() << " because non-volatile register "
+        GDEBUG << "Function " << fd->address_string() << " can't match "
+               << cc.get_name() << " because non-volatile register "
                << unparseX86Register(*rd, NULL) << " was changed." << LEND;
         follows_nonvolatile_rule = false;
         break;
@@ -953,7 +1061,7 @@ CallingConventionMatcher::match(FunctionDescriptor* fd,
       // and still be callee cleanup.
       if (sd.delta != 0) {
         if (cc.get_stack_cleanup() == CallingConvention::CLEANUP_CALLER) {
-          GDEBUG << "Function can't match " << cc.get_name()
+          GDEBUG << "Function " << fd->address_string() << " can't match " << cc.get_name()
                  << " because it has a stack delta for caller cleanup convention." << LEND;
           continue;
         }
@@ -967,7 +1075,7 @@ CallingConventionMatcher::match(FunctionDescriptor* fd,
 
     // There are a few "fake" parameter registers that we need to ignore.  There should
     // probably be a more portable way of doing this...
-    const RegisterDictionary* regdict = RegisterDictionary::dictionary_pentium4();
+    const RegisterDictionary* regdict = global_descriptor_set->get_regdict();
     // All functions are allowed to use the stack.
     const RegisterDescriptor* esp = regdict->lookup("esp");
     if (temp_params.find(esp) != temp_params.end()) temp_params.erase(esp);
@@ -978,7 +1086,7 @@ CallingConventionMatcher::match(FunctionDescriptor* fd,
     // The calling convention doesn't have register parameters, and the function does, then it
     // can't match the calling convention.
     if (cc.get_reg_params().size() == 0 && temp_params.size() > 0) {
-      GDEBUG << "Function can't match " << cc.get_name()
+      GDEBUG << "Function " << fd->address_string() << " can't match " << cc.get_name()
              << " because it passes parameters in registers." << LEND;
       continue;
     }
@@ -988,7 +1096,7 @@ CallingConventionMatcher::match(FunctionDescriptor* fd,
     // processing parameters.  The intention is to ensure that the parameters were passed in
     // the correct order, but how does this interact with code that accepts unused parameters?
     // Do we end up denying the existence of the register passed parameter?
-    BOOST_FOREACH(const RegisterDescriptor* rd, cc.get_reg_params()) {
+    for (const RegisterDescriptor* rd : cc.get_reg_params()) {
       if (temp_params.find(rd) != temp_params.end()) {
         used_a_parameter_register = true;
         temp_params.erase(rd);
@@ -1010,7 +1118,7 @@ CallingConventionMatcher::match(FunctionDescriptor* fd,
     // Under no circumstances can we match if we're using parameters that are recognized.
     if (temp_params.size() > 0) {
       GDEBUG << "Unmatched parameter registers: ";
-      BOOST_FOREACH(const RegisterEvidenceMap::value_type& rpair, temp_params) {
+      for (const RegisterEvidenceMap::value_type& rpair : temp_params) {
         const RegisterDescriptor* rd = rpair.first;
         GDEBUG << " " << unparseX86Register(*rd, NULL);
       }
@@ -1025,7 +1133,8 @@ CallingConventionMatcher::match(FunctionDescriptor* fd,
     // would have been in the register.
     if (allow_unused_parameters == false &&
         cc.get_reg_params().size() > 0 && !used_a_parameter_register) {
-        GDEBUG << "Function can't match " << cc.get_name() << " because it doesn't use "
+        GDEBUG << "Function " << fd->address_string() << " can't match "
+               << cc.get_name() << " because it doesn't use "
                << "any registers (and unused parameters are disallowed)." << LEND;
       continue;
     }
@@ -1045,6 +1154,7 @@ CallingConventionMatcher::CallingConventionMatcher() {
   // ================================================================================
   // Agner says 16-bit DOS and windows has SI, DI, BP and DS as nonvolatile.
 
+  // The global descriptor set doesn't have a partitioner yet, so we can't use it. :-(
   const RegisterDictionary* regdict = RegisterDictionary::dictionary_pentium4();
 
   const RegisterDescriptor* eax = regdict->lookup("eax");
@@ -1232,6 +1342,8 @@ CallingConventionMatcher::CallingConventionMatcher() {
   conventions.push_back(cc);
 
 }
+
+} // namespace pharos
 
 /* Local Variables:   */
 /* mode: c++          */

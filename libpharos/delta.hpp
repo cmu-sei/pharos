@@ -1,9 +1,11 @@
-// Copyright 2015 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Delta_H
 #define Pharos_Delta_H
 
 #include "enums.hpp"
+
+namespace pharos {
 
 // Our confidence in the correctness of the stack delta.  This is a strict ordering from least
 // confident to most confident.  Comparisons of the form (confidence <= DeltaConfident) are
@@ -12,8 +14,9 @@ enum GenericConfidence {
   ConfidenceNone,
   ConfidenceWrong,
   ConfidenceGuess,
+  ConfidenceMissing,
   ConfidenceConfident,
-  ConfidenceUser,  
+  ConfidenceUser,
   ConfidenceCertain,
   ConfidenceUnspecified
 };
@@ -56,6 +59,8 @@ public:
 };
 
 typedef std::map<rose_addr_t, StackDelta> StackDeltaMap;
+
+} // namespace pharos
 
 #endif
 /* Local Variables:   */
