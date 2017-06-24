@@ -1,6 +1,4 @@
----
 # Pharos Static Analysis Framework
----
 
 The Pharos static analysis framework is a project of the Software
 Engineering Institute at Carnegie Mellon University.  The framework is
@@ -29,9 +27,7 @@ binary static analysis researchers, please feel free to contact Cory
 Cohen <cfc@cert.org> with questions you may have about this work.  I
 may be unable to respond in a timely manner, but I will do my best.
 
----
 # Pharos Static Analysis Tools
----
 
 ## APIAnalyzer
 

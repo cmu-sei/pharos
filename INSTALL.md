@@ -1,3 +1,5 @@
+# Building and Installing
+
 This file describes how to build and install the Pharos static
 analysis framework tools.
 
@@ -22,9 +24,7 @@ Building Pharos requires a C++11 compliant compiler.  If you attempt
 to build Pharos (successfully or not) we'd like to hear about you
 experiences, and may be able to help with various build issues.
 
----
 # Dependencies
----
 
 First several important dependencies must be built or installed,
 including:
@@ -51,7 +51,8 @@ and install all components.
 
 You can build Boost using these commands:
 
-```$ mkdir boost
+```
+$ mkdir boost
 $ cd boost
 $ wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.bz2
 $ tar -xzvf boost_1_64_0.tar.bz2
@@ -71,7 +72,8 @@ update CMake or patch patch it by hand.
 You may be able to muddle through with the standard operating system
 packages under certain (unknown) circumstances.
 
-```$ sudo yum install boost boost-devel
+```
+$ sudo yum install boost boost-devel
 $ sudo apt install libboost-dev libboost-all-dev
 ```
 
@@ -81,7 +83,8 @@ YAML-cpp is also a C++ library, and has the same C++11 ABI compability
 concerns.  We're usually building off a fairly current git checkout of
 the yaml-cpp repository.  We build yaml-cpp using commands like these:
 
-```$ git clone https://github.com/jbeder/yaml-cpp.git yaml
+```
+$ git clone https://github.com/jbeder/yaml-cpp.git yaml
 $ mkdir yaml/build
 $ cd yaml/build
 $ cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
@@ -91,7 +94,8 @@ $ make -j4 install
 
 Or you can try installing the standard opeating system distribution:
 
-```$ sudo yum install yaml-cpp yaml-cpp-devel
+```
+$ sudo yum install yaml-cpp yaml-cpp-devel
 $ sudo apt install libyaml-cpp0.5v5 libyaml-cpp-dev
 ```
 
@@ -107,7 +111,8 @@ After going to the Yices website (https://yices.csl.rsi.com/) and
 obtaining version ONE of the Linux 64-bit executable dsitribution, you
 can install YICES using the following commands:
 
-```$ cd /usr/local
+```
+$ cd /usr/local
 $ sudo tar -xzvf yices-1.0.40-x86_64-unknown-linux-gnu-static-gmp.tar.gz
 ```
 
@@ -130,7 +135,8 @@ rose-develop, so be sure to fetch the "development" version of ROSE.
 
 You can obtain the latest version of ROSE from:
 
-```$ git clone https://github.com/rose-compiler/rose-develop rose
+```
+$ git clone https://github.com/rose-compiler/rose-develop rose
 ```
 
 Which has a reasonable chance of working or only having minor issues.
@@ -138,7 +144,8 @@ If you want to be conservative, and use the version of ROSE that was
 known to compile with the latest major commit to the Pharos
 repository, you can checkout this commit:
 
-```$ git checkout 8c8aebc30e9295f89ad4dfee8fe741c26e7e3353
+```
+$ git checkout 8c8aebc30e9295f89ad4dfee8fe741c26e7e3353
 ```
 
 You may also be able to distribution packages from the ROSE website,
@@ -151,24 +158,25 @@ flags option to specify C++11 is required for ABI compatibility with
 Pharos and other libraries.  We use a configure command very similar
 to this one:
 
-```$ ./build
+```
+$ ./build
 $ mkdir release
 $ cd release
-$ ../configure --prefix=/usr/local --with-java=no \
-  --with-yices=/usr/local/yices-1.0.40 --enable-languages=binaries \
-  --without-doxygen --enable-projects-directory \
+$ ../configure --prefix=/usr/local --with-java=no --without-doxygen \
+  --enable-languages=binaries --enable-projects-directory \
   --disable-tutorial-directory --disable-boost-version-check \
   --with-boost=/usr/local CXXFLAGS=-std=c++11 --with-yaml=/usr/local
 ```
 
 You will want to add --enable-static if you want to build Pharos tools
-statically later.  Boost and YAML are not really optional, although
-YICES might be (untested).  Disabling Java, doxygen, and the
-tutorials, but enabling binaries and projects is related to generating
-a minimal and therefore faster build, so those confuration options
-should be optional.  To build use:
+statically later.  Boost and YAML are not optional.  If you've chosen
+to build with YICES, add "--with-yices=/usr/local/yices-1.0.40".
+Disabling Java, doxygen, and the tutorials, but enabling binaries and
+projects is related to generating a minimal and therefore faster
+build, so those confuration options should be optional.  To build use:
 
-```$ make -j4
+```
+$ make -j4
 ```
 
 ROSE can consume a fair amount of RAM and CPU power during the build,
@@ -177,7 +185,8 @@ or old hardware.  Be patient and go have lunch. :-)
 
 To install ROSE, run:
 
-```$ sudo make -j4 install
+```
+$ sudo make -j4 install
 ```
 
 ## XSB
@@ -195,7 +204,8 @@ with the XSB develoeprs that need to be applied to the XSB
 distribution to function properly with the Pharos tools.  Apply those
 patches with the following command:
 
-```$ svn checkout https://sourceforge.net/p/xsb/src/HEAD/tree/ XSB
+```
+$ svn checkout https://sourceforge.net/p/xsb/src/HEAD/tree/ XSB
 $ svn checkout -r 9046
 $ patch -p1 /path/to/pharos/xsb.patch
 ```
@@ -203,8 +213,9 @@ $ patch -p1 /path/to/pharos/xsb.patch
 The build procedure for XSB is documented in their distribution, but
 the produce is roughly:
 
-```$ cd XSB/build
-$ ./configure
+```
+$ cd XSB/build
+$ ./configure --prefix=/usr/local
 $ ./makexsb
 $ sudo ./makexsb install
 ```
@@ -212,7 +223,8 @@ $ sudo ./makexsb install
 There's an unexplained installation error in XSB that we've had to
 hack around with the following command:
 
-```$ sudo touch /usr/local/xsb-3.7.0/syslib/sysinitrc
+```
+$ sudo touch /usr/local/xsb-3.7.0/syslib/sysinitrc
 ```
 
 ## SQLLite
@@ -222,18 +234,18 @@ standard operating system distribution of SQLLite.  Because the
 SQLLite interface is not C++11 depdendent the ABI concerns do not
 apply to this package.
 
-```$ sudo yum install sqlite sqlite-devel
+```
+$ sudo yum install sqlite sqlite-devel
 $ sudo apt-get install libsqlite3-0 libsqlite3-dev 
 ```
----
 # Building Pharos
----
 
 If all of the dependencies have been built and properly installed,
 building Pharos should be pretty easy.  We use the standard CMake
 approach which boils down to:
 
-```$ mkdir build
+```
+$ mkdir build
 $ cd build
 $ cmake ..
 $ make -j4
@@ -247,16 +259,16 @@ If you want to run tests to ensure that your configuration has been
 properly and is producing results identical to ours, you can run
 tests with the following command:
 
-```$ ctest -j4
+```
+$ ctest -j4
 ```
 
----
 # Installing Pharos
----
 
 Installing should also be easy.  Simply type:
 
-```$ make intall
+```
+$ make intall
 ```
 
 The software installs into /usr/local by default, but can be
