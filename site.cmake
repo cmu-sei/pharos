@@ -1,4 +1,4 @@
-# This file is the site.cmake for the public release 
+# This file is the site.cmake for the public release
 # It provides hints about what needs to be set to build Pharos
 
 # Specify the paths to important packages.
@@ -20,7 +20,9 @@ endif()
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O1 -g -Wno-misleading-indentation")
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb3 -Wno-misleading-indentation")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s -Wno-misleading-indentation")
-set(CMAKE_CXX_FLAGS "-O3 -s -Wno-misleading-indentation")
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif()
 
 # Optional (if you want stack tracebacks during debugging)
 # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -rdynamic")

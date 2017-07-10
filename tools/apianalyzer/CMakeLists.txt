@@ -2,8 +2,11 @@ link_libraries(pharos)
 
 add_executable(apianalyzer apianalyzer.cpp)
 install(TARGETS apianalyzer DESTINATION bin)
-install(FILES sig.json DESTINATION share/pharos/apianalyzer
-  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/sig.json)
+  install(FILES sig.json DESTINATION share/pharos/apianalyzer
+    PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+endif()
 
 #add_executable(apigraphgen apigraphgen.cpp)
 

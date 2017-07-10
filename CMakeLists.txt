@@ -80,5 +80,5 @@ add_subdirectory(apidb)
 add_subdirectory(typedb)
 
 install(DIRECTORY configs DESTINATION share/pharos)
-install(FILES README.txt COPYRIGHT.txt LICENSE.txt DESTINATION share/doc/pharos
+install(FILES README.md COPYRIGHT.md LICENSE.md DESTINATION share/doc/pharos
   PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
