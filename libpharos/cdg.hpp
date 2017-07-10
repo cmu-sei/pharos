@@ -4,8 +4,6 @@
 #define Pharos_CDG_H
 
 #include <rose.h>
-// For Rose::BinaryAnalysis::Dominance
-#include <BinaryDominance.h>
 
 #include "misc.hpp"
 #include <boost/range/adaptor/transformed.hpp>
@@ -23,10 +21,12 @@ class CDG {
   ControlFlowGraph cfg;
   std::map<SgAsmBlock *, CFGVertex> block_to_vertex;
   SgAsmFunction *func;
-  // The immediate strict dominance vector of control flow graph vertexes.
-  Rose::BinaryAnalysis::Dominance::RelationMap<ControlFlowGraph> imm_dom;
-  // The immediate strict post-dominance vector of control flow graph vertexes.
-  Rose::BinaryAnalysis::Dominance::RelationMap<ControlFlowGraph> imm_post_dom;
+
+  using DomVec = std::vector<CFGVertex>;
+  // The immediate strict dominance graph of control flow graph vertexes.
+  DomVec imm_dom;
+  // The immediate strict post-dominance graph of control flow graph vertexes.
+  DomVec imm_post_dom;
 
   // Initialize "block dependencies".
   void initialize_block_dependencies();
@@ -72,7 +72,7 @@ class CDG {
 
  private:
   static bool dominance_helper(
-    const Rose::BinaryAnalysis::Dominance::RelationMap<ControlFlowGraph> & map,
+    const DomVec & map,
     const CFGVertex &a, const CFGVertex &b);
 };
 

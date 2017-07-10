@@ -5,11 +5,16 @@
 #include "util.hpp"
 #include "funcs.hpp"
 
+#include <boost/graph/dominator_tree.hpp>
+#include <boost/graph/reverse_graph.hpp>
+
 namespace pharos {
+
+#define NULL_VERTEX boost::graph_traits<ControlFlowGraph>::null_vertex()
+using DomIdx = typename boost::property_map<ControlFlowGraph, boost::vertex_index_t>::type;
 
 CDG::CDG(FunctionDescriptor *f) {
   Rose::BinaryAnalysis::ControlFlow cfg_analysis;
-  Rose::BinaryAnalysis::Dominance dom_analysis;
 
   // Save a copy of the SgAsmFunction.
   func = f->get_func();
@@ -46,7 +51,10 @@ CDG::CDG(FunctionDescriptor *f) {
   // improve performance by deferring it's computation until someone asks a dominance question.
 
   // Build the immediate-dominator array
-  imm_dom = dom_analysis.build_idom_relation_from_cfg<ControlFlowGraph>(cfg, entry);
+  auto idx = DomIdx(get(boost::vertex_index, cfg));
+  imm_dom = DomVec(num_vertices(cfg), NULL_VERTEX);
+  auto dom_map = make_iterator_property_map(imm_dom.begin(), idx);
+  lengauer_tarjan_dominator_tree(cfg, entry, dom_map);
 
   // Dominance analysis failed
   // We won't have a correct dominance analysis
@@ -56,7 +64,41 @@ CDG::CDG(FunctionDescriptor *f) {
   }
 
   // Build the immediate-post-dominator array.
-  imm_post_dom = dom_analysis.build_postdom_relation_from_cfg<ControlFlowGraph>(cfg, entry);
+  auto retblocks = cfg_analysis.return_blocks(cfg, entry);
+  switch (retblocks.size()) {
+   case 0:
+    imm_post_dom = DomVec(num_vertices(cfg), NULL_VERTEX);
+    break;
+   case 1:
+    {
+      // This function has one exit block
+      auto rev_cfg = make_reverse_graph(cfg);
+      auto post_idx = DomIdx(get(boost::vertex_index, rev_cfg));
+      imm_post_dom = DomVec(num_vertices(rev_cfg), NULL_VERTEX);
+      auto post_map = make_iterator_property_map(imm_post_dom.begin(), post_idx);
+      lengauer_tarjan_dominator_tree(rev_cfg, retblocks[0], post_map);
+    }
+    break;
+   default:
+    {
+      // This function has multiple exit blocks.
+      ControlFlowGraph copy = cfg;
+      auto unique_exit = add_vertex(copy);
+      for (auto v : retblocks) {
+        add_edge(v, unique_exit, copy);
+      }
+      auto rev_cfg = make_reverse_graph(cfg);
+      auto post_idx = DomIdx(get(boost::vertex_index, rev_cfg));
+      imm_post_dom = DomVec(num_vertices(rev_cfg), NULL_VERTEX);
+      auto post_map = make_iterator_property_map(imm_post_dom.begin(), post_idx);
+      lengauer_tarjan_dominator_tree(rev_cfg, retblocks[0], post_map);
+      for (auto & v : imm_post_dom) {
+        if (v == unique_exit) {
+          v = NULL_VERTEX;
+        }
+      }
+    }
+  }
 
   // Post-dominance analysis failed
   // We won't have a correct dominance analysis
@@ -69,12 +111,10 @@ CDG::CDG(FunctionDescriptor *f) {
   // dumpControlDependencies();
 }
 
-#define NULL_VERTEX boost::graph_traits<ControlFlowGraph>::null_vertex()
-
 // A helper routine to evaluate the immediate (or post) dominance map recursively, turning an
 // immediate result into an overall result.  The return value is whether A dominates B.
 bool CDG::dominance_helper(
-  const Rose::BinaryAnalysis::Dominance::RelationMap<ControlFlowGraph> & map,
+  const DomVec & map,
   const CFGVertex &a, const CFGVertex &b)
 {
   // This at() call will throw an exception if b is not in the map.
@@ -293,7 +333,7 @@ void CDG::dump_dominance_maps() const
   }
 
   OINFO << "Post-Dominance Map contains:" << LEND;
-  for (size_t v = 0; v < imm_post_dom.size(); ++v) {
+  for (size_t v = 0; v < imm_post_dom.size() - 1; ++v) {
     const CFGVertex& t = imm_post_dom[v];
     rose_addr_t addr1 = 0;
     rose_addr_t addr2 = 0;
