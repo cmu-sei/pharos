@@ -24,6 +24,16 @@ Building Pharos requires a C++11 compliant compiler.  If you attempt
 to build Pharos (successfully or not) we'd like to hear about you
 experiences, and may be able to help with various build issues.
 
+# Build Script and Docker Container
+
+A script that will attempt to download, build, and install the Pharos
+dependencies is located in scripts/build.bash.  There is also a
+Dockerfile in the root directory that can be used to build a Docker
+image with:
+```
+$ docker build -t pharos .
+```
+
 # Dependencies
 
 First several important dependencies must be built or installed,
