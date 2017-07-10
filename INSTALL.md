@@ -1,7 +1,7 @@
 # Building and Installing
 
 This file describes how to build and install the Pharos static
-analysis framework tools.
+binary analysis framework tools.
 
 The primary difficulty involved in building the Pharos framework is an
 unfortunate C++11 application binary interface (ABI) compatibility
@@ -55,7 +55,8 @@ You can build Boost using these commands:
 $ mkdir boost
 $ cd boost
 $ wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.bz2
-$ tar -xzvf boost_1_64_0.tar.bz2
+$ tar -xjvf boost_1_64_0.tar.bz2
+$ cd boost_1_64_0
 $ ./bootstrap.sh --prefix=/usr/local
 $ ./b2 clean
 $ ./b2 -j4 --without-python toolset=gcc cxxflags="-std=c++11" install
@@ -69,12 +70,18 @@ you might update CMake first.  CMake version 3.5 supports Boost
 version 1.61, and if your Boost version is newer, you'll need to
 update CMake or patch patch it by hand.
 
+An alternative is to use an older distribution of boost.  Much of our
+testing has been done using version 1.60.
+
 You may be able to muddle through with the standard operating system
 packages under certain (unknown) circumstances.
 
 ```
 $ sudo yum install boost boost-devel
+-- or --
 $ sudo apt install libboost-dev libboost-all-dev
+-- or --
+$ sudo zypper install boost-devel
 ```
 
 ## yaml-cpp
@@ -92,11 +99,14 @@ $ make -j4
 $ make -j4 install
 ```
 
-Or you can try installing the standard opeating system distribution:
+Or you can try installing the standard operating system distribution:
 
 ```
 $ sudo yum install yaml-cpp yaml-cpp-devel
+--or--
 $ sudo apt install libyaml-cpp0.5v5 libyaml-cpp-dev
+--or--
+$ sudo zypper install yaml-cpp-devel
 ```
 
 ## YICES
@@ -120,7 +130,7 @@ Recent GCC versions enable -fPIE by default but the Yices 1.0.40
 static library was compiled long ago without -fPIE, which makes the
 library incompatible with the default compilation options of recent
 GCC versions.  If you build with YICES on newer compilers, you may
-need to disbale -fPIE.
+need to disable -fPIE.
 
 There are no standard YICES operating system packages, so if they are
 desired, they must be built.
@@ -159,11 +169,13 @@ Pharos and other libraries.  We use a configure command very similar
 to this one:
 
 ```
+$ cd rose
 $ ./build
 $ mkdir release
 $ cd release
-$ ../configure --prefix=/usr/local --with-java=no --without-doxygen \
-  --enable-languages=binaries --enable-projects-directory \
+$ ../configure --prefix=/usr/local --with-java=no \
+  --with-yices=/usr/local/yices-1.0.40 --enable-languages=binaries \
+  --without-doxygen --enable-projects-directory \
   --disable-tutorial-directory --disable-boost-version-check \
   --with-boost=/usr/local CXXFLAGS=-std=c++11 --with-yaml=/usr/local
 ```
@@ -200,22 +212,23 @@ branch.
 
 
 Additionally, there are some minor patches that are still outstanding
-with the XSB develoeprs that need to be applied to the XSB
+with the XSB developers that need to be applied to the XSB
 distribution to function properly with the Pharos tools.  Apply those
 patches with the following command:
 
 ```
-$ svn checkout https://sourceforge.net/p/xsb/src/HEAD/tree/ XSB
-$ svn checkout -r 9046
-$ patch -p1 /path/to/pharos/xsb.patch
+$ svn checkout https://svn.code.sf.net/p/xsb/src/trunk/XSB XSB
+$ cd XSB
+$ svn update -r 9046
+$ patch -p2 < /path/to/pharos/xsb.patch
 ```
 
 The build procedure for XSB is documented in their distribution, but
 the produce is roughly:
 
 ```
-$ cd XSB/build
-$ ./configure --prefix=/usr/local
+$ cd build
+$ ./configure
 $ ./makexsb
 $ sudo ./makexsb install
 ```
@@ -236,7 +249,10 @@ apply to this package.
 
 ```
 $ sudo yum install sqlite sqlite-devel
+-- or --
 $ sudo apt-get install libsqlite3-0 libsqlite3-dev 
+-- or --
+$ sudo zypper install sqlite3-devel
 ```
 # Building Pharos
 
@@ -245,6 +261,7 @@ building Pharos should be pretty easy.  We use the standard CMake
 approach which boils down to:
 
 ```
+$ cd pharos
 $ mkdir build
 $ cd build
 $ cmake ..
@@ -268,7 +285,7 @@ $ ctest -j4
 Installing should also be easy.  Simply type:
 
 ```
-$ make intall
+$ make install
 ```
 
 The software installs into /usr/local by default, but can be

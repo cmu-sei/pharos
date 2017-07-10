@@ -1,11 +1,11 @@
-# Pharos Static Analysis Framework
+# Pharos Static Binary Analysis Framework
 
-The Pharos static analysis framework is a project of the Software
-Engineering Institute at Carnegie Mellon University.  The framework is
-designed to facilitate the automated analysis of binary programs.  It
-uses the ROSE compiler infrastructure developed by Lawrence Livermore
-National Laboratory for disassembly, control flow analysis,
-instruction semantics, and more.
+The Pharos static binary analysis framework is a project of the
+Software Engineering Institute at Carnegie Mellon University.  The
+framework is designed to facilitate the automated analysis of binary
+programs.  It uses the ROSE compiler infrastructure developed by
+Lawrence Livermore National Laboratory for disassembly, control flow
+analysis, instruction semantics, and more.
 
 The current distribution in is a substantial update to the previous
 version, and is part of an ongoing process to release more of the
@@ -27,7 +27,7 @@ binary static analysis researchers, please feel free to contact Cory
 Cohen <cfc@cert.org> with questions you may have about this work.  I
 may be unable to respond in a timely manner, but I will do my best.
 
-# Pharos Static Analysis Tools
+# Pharos Static Binary Analysis Tools
 
 ## APIAnalyzer
 
