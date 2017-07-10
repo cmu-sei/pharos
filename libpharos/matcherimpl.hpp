@@ -1,9 +1,9 @@
-// Copyright 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Michael Duggan
 
-#ifndef _MATCHERIMPL_HPP_
-#define _MATCHERIMPL_HPP_
+#ifndef Pharos_MATCHERIMPL_HPP_
+#define Pharos_MATCHERIMPL_HPP_
 
 #include <utility>
 #include <type_traits>
@@ -28,24 +28,24 @@ struct Indices {
 // Create an Indices of size n starting at 0
 // Inductive step: get the indices of the next step
 template <size_t n>
-struct _MakeIndices {
-  using type = typename _MakeIndices<n - 1>::type::next;
+struct MakeIndices_ {
+  using type = typename MakeIndices_<n - 1>::type::next;
 };
 
 // Base case: empty indices
 template <>
-struct _MakeIndices<0> {
+struct MakeIndices_<0> {
   using type = Indices<>;
 };
 
 
 // Adds offset to the integers in the Indices<> in Seq.
 template <size_t offset, typename Seq>
-struct _ApplyOffset;
+struct ApplyOffset_;
 
-// Does the work for _ApplyOffset
+// Does the work for ApplyOffset_
 template <size_t offset, size_t... idx>
-struct _ApplyOffset<offset, Indices<idx...>> {
+struct ApplyOffset_<offset, Indices<idx...>> {
   using type = Indices<(idx + offset)...>;
 };
 
@@ -55,20 +55,20 @@ struct _ApplyOffset<offset, Indices<idx...>> {
 // MakeIndices<3> == Indices<0, 1, 2>
 // MakeIndices<3, 2> == Indices<2, 3, 4>
 template <size_t size, size_t offset = 0>
-using MakeIndices = typename _ApplyOffset<
-  offset, typename _MakeIndices<size>::type>::type;
+using MakeIndices = typename ApplyOffset_<
+  offset, typename MakeIndices_<size>::type>::type;
 
 
-// _PackGet returns the idx'th type in Arg, Args...
+// PackGet_ returns the idx'th type in Arg, Args...
 // Inductive step: recurse on Args...
 template <size_t idx, typename Arg, typename... Args>
-struct _PackGet {
-  using type = typename _PackGet<idx - 1, Args...>::type;
+struct PackGet_ {
+  using type = typename PackGet_<idx - 1, Args...>::type;
 };
 
 // Base case: return the zero'th type, Arg
 template <typename Arg, typename... Args>
-struct _PackGet<0, Arg, Args...> {
+struct PackGet_<0, Arg, Args...> {
   using type = Arg;
 };
 
@@ -78,21 +78,21 @@ struct _PackGet<0, Arg, Args...> {
 // PackGet<1, A, B, C> == B
 // PackGet<2, A, B, C> == C
 template <size_t idx, typename... Args>
-using PackGet = typename _PackGet<idx, Args...>::type;
+using PackGet = typename PackGet_<idx, Args...>::type;
 
 // Return the n'th arg in a set of arguments, whose type is T
 // Inductive step: recurse on get()
 template <typename T, size_t n, typename Arg, typename... Args>
-struct _PackGetValue {
+struct PackGetValue_ {
   static constexpr T && get(Arg &&, Args &&... args) noexcept {
     return std::forward<T>(
-      _PackGetValue<T, n - 1, Args...>::get(std::forward<Args>(args)...));
+      PackGetValue_<T, n - 1, Args...>::get(std::forward<Args>(args)...));
   }
 };
 
 // Base case: return the argument
 template <typename T, typename... Args>
-struct _PackGetValue<T, 0, T, Args...> {
+struct PackGetValue_<T, 0, T, Args...> {
   static constexpr T && get(T && arg, Args &&...) noexcept {
     return std::forward<T>(arg);
   }
@@ -105,7 +105,7 @@ struct _PackGetValue<T, 0, T, Args...> {
 template <size_t n, typename... Args>
 constexpr PackGet<n, Args...> &
 pack_get(Args &&... args) noexcept {
-  using GetValue = _PackGetValue<PackGet<n, Args...>, n, Args...>;
+  using GetValue = PackGetValue_<PackGet<n, Args...>, n, Args...>;
   return GetValue::get(std::forward<Args>(args)...);
 }
 
@@ -150,7 +150,7 @@ struct IndexedMatcher<Matcher, Indices<idx...>> : Matcher {
 // Right.  The Matcher is either the left matcher or the right matcher, depending on the
 // booleant 'left' argument.
 template <bool left, typename Matcher, typename Left, typename... Right>
-struct _Wrapper {
+struct Wrapper_ {
   static constexpr auto left_args = detail::CountRef<Left>::value;
   static constexpr auto right_args = detail::CountRef<Types<Right...>>::value;
   using left_idx = detail::MakeIndices<left_args>;
@@ -159,9 +159,9 @@ struct _Wrapper {
                               typename std::conditional<left, left_idx, right_idx>::type>;
 };
 
-// User-friendly version of _Wrapper::type
+// User-friendly version of Wrapper_::type
 template <bool left, typename Matcher, typename Left, typename... Right>
-using Wrapper = typename _Wrapper<left, Matcher, Left, Right...>::type;
+using Wrapper = typename Wrapper_<left, Matcher, Left, Right...>::type;
 
 // A left wrapper is an IndexedMatcher that matches the Ref arguments for Left
 template <typename Matcher, typename Left>
@@ -270,7 +270,7 @@ using NodeListMatcher = detail::NodeListMatcher<0, T...>;
 } // namespace matcher
 } // namespace pharos
 
-#endif  // _MATCHERIMPL_HPP_
+#endif  // Pharos_MATCHERIMPL_HPP_
 
 /* Local Variables:   */
 /* mode: c++          */

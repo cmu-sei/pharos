@@ -1,7 +1,7 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
-#ifndef _APISIG_H_
-#define _APISIG_H_
+#ifndef Pharos_APISIG_H_
+#define Pharos_APISIG_H_
 
 #include <iostream>
 #include <fstream>
@@ -237,4 +237,4 @@ public:
 
 } // namespace pharos
 
-#endif
+#endif  // Pharos_APISIG_H_

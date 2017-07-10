@@ -2,8 +2,8 @@
 
 // Author: Michael Duggan
 
-#ifndef _MATCHER_HPP_
-#define _MATCHER_HPP_
+#ifndef Pharos_MATCHER_HPP_
+#define Pharos_MATCHER_HPP_
 
 #include <rose.h>
 #include <cstddef>
@@ -566,7 +566,7 @@ struct OpMatcher<Or<T1, T2...>> :
 } // namespace matcher
 } // namespace pharos
 
-#endif  // _MATCHER_HPP_
+#endif  // Pharos_MATCHER_HPP_
 
 /* Local Variables:   */
 /* mode: c++          */

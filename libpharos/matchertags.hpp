@@ -1,9 +1,9 @@
-// Copyright 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Michael Duggan
 
-#ifndef _MATCHERTAGS_HPP_
-#define _MATCHERTAGS_HPP_
+#ifndef Pharos_MATCHERTAGS_HPP_
+#define Pharos_MATCHERTAGS_HPP_
 
 // This file contains base tag and tag/type manipulation definitions for use by matcher.hpp.
 
@@ -131,56 +131,56 @@ struct HasType<S, T, Rest...> :
 template <typename S, typename... Rest>
 struct HasType<S, Types<Rest...>> : HasType<S, Rest...> {};
 
-// _TypesInCommon determines what types are in common between A and B (with accumulator Acc)
+// TypesInCommon_ determines what types are in common between A and B (with accumulator Acc)
 template <typename A, typename B, typename Acc = Types<>>
-struct _TypesInCommon;
+struct TypesInCommon_;
 
 // Base case: If A has no types, there are no types left in common.  Return the accumulator.
 template <typename B, typename Acc>
-struct _TypesInCommon<Types<>, B, Acc> {
+struct TypesInCommon_<Types<>, B, Acc> {
   using type = Acc;
 };
 
 // Inductive step: If A has types, see if the first type in A is in B.  If so, add it to the
 // accumulator and recurse.  Otherwise, just recurse.
 template <typename T, typename... A, typename B, typename... Acc>
-struct _TypesInCommon<Types<T, A...>, B, Types<Acc...>> {
-  using type = typename _TypesInCommon<
+struct TypesInCommon_<Types<T, A...>, B, Types<Acc...>> {
+  using type = typename TypesInCommon_<
     Types<A...>, B, typename std::conditional<HasType<T, B>::value,
                                               Types<Acc..., T>,
                                               Types<Acc...>>::type>::type;
 };
 
-// _TypesInCommonN determines what types are in common between the Types<> argments to
-// _TypesInCommonN.
+// TypesInCommonN_ determines what types are in common between the Types<> argments to
+// TypesInCommonN_.
 template <typename... T>
-struct _TypesInCommonN;
+struct TypesInCommonN_;
 
-// The user-friendly version of _TypesInCommonN (doesn't require ::type)
+// The user-friendly version of TypesInCommonN_ (doesn't require ::type)
 template <typename... T>
-using TypesInCommon = typename _TypesInCommonN<T...>::type;
+using TypesInCommon = typename TypesInCommonN_<T...>::type;
 
 // Base case: if only one set of types is left, return it
 template <typename... T>
-struct _TypesInCommonN<Types<T...>> {
+struct TypesInCommonN_<Types<T...>> {
   using type = Types<T...>;
 };
 
 // Inductive case: Using the types in common between A and B, recurse on T.
 template <typename A, typename B, typename... T>
-struct _TypesInCommonN<A, B, T...> {
-  using type = TypesInCommon<typename _TypesInCommon<A, B>::type, T...>;
+struct TypesInCommonN_<A, B, T...> {
+  using type = TypesInCommon<typename TypesInCommon_<A, B>::type, T...>;
 };
 
 // Accumulate the Capture arguments of the tags T, storing them as Types<> arguments in the
 // accumulator Acc
 template <typename Acc, typename... T>
-struct _CommonCaptures;
+struct CommonCaptures_;
 
 // Base case: No more tags.  Calculate the types in common between the Types<> arguments in the
 // accumulator, wrap them up in a Captures<> and store that in type
 template <typename... Acc>
-struct _CommonCaptures<Types<Acc...>> {
+struct CommonCaptures_<Types<Acc...>> {
   // Get the types in common
   using common = TypesInCommon<Acc...>;
 
@@ -196,8 +196,8 @@ struct _CommonCaptures<Types<Acc...>> {
 
 // Inductive step: Accumulate the captures types of S, and recurse
 template <typename... Acc, typename S, typename... T>
-struct _CommonCaptures<Types<Acc...>, S, T...> :
-    _CommonCaptures<Types<Acc..., CapturedTypes<S>>, T...> {};
+struct CommonCaptures_<Types<Acc...>, S, T...> :
+    CommonCaptures_<Types<Acc..., CapturedTypes<S>>, T...> {};
 
 } // namespace detail
 
@@ -223,12 +223,12 @@ using CaptureValidFor = detail::HasType<T, typename CapturesOf<Tg>::types>;
 
 // Returns the capture types in common between the given set of tags
 template <typename... T>
-using CommonCaptures = typename detail::_CommonCaptures<detail::Types<>, T...>::type;
+using CommonCaptures = typename detail::CommonCaptures_<detail::Types<>, T...>::type;
 
 } // namespace matcher
 } // namespace pharos
 
-#endif // _MATCHERTAGS_HPP_
+#endif // Pharos_MATCHERTAGS_HPP_
 
 /* Local Variables:   */
 /* mode: c++          */

@@ -1,11 +1,11 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Jeff Gennari
 // Date: 2015-06-22
 // Version: 2.0
 
-#ifndef _APIGRAPH_H_
-#define _APIGRAPH_H_
+#ifndef Pharos_APIGRAPH_H_
+#define Pharos_APIGRAPH_H_
 
 #include <rose.h>
 #include <boost/graph/depth_first_search.hpp>
@@ -860,4 +860,4 @@ class ApiSearchManager {
 
 } // namespace pharos
 
-#endif
+#endif  // Pharos_APIGRAPH_H_

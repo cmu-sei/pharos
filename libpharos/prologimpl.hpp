@@ -232,15 +232,15 @@ struct Index {
 };
 
 template <std::size_t N>
-struct _MakeSeq {
-  using type = typename _MakeSeq<N - 1>::type::next;
+struct MakeSeq_ {
+  using type = typename MakeSeq_<N - 1>::type::next;
 };
 template<>
-struct _MakeSeq<0> {
+struct MakeSeq_<0> {
   using type = Index<>;
 };
 template <std::size_t N>
-using MakeSeq = typename _MakeSeq<N>::type;
+using MakeSeq = typename MakeSeq_<N>::type;
 
 template <typename T, typename F>
 class capture_impl

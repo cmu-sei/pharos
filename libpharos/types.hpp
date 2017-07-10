@@ -1,8 +1,8 @@
 // Copyright 2016-2017 Carnegie Mellon University.  See LICENSE file for terms.
 // Author: Jeff Gennari
 
-#ifndef _Type_Descriptor_H
-#define _Type_Descriptor_H
+#ifndef Pharos_Type_Descriptor_H
+#define Pharos_Type_Descriptor_H
 
 #include <vector>
 #include <rose.h>
@@ -629,4 +629,4 @@ class TypeSolver {
 
 } // namespace pharos
 
-#endif
+#endif  // Pharos_Type_Descriptor_H

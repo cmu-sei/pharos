@@ -1,7 +1,7 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
-#ifndef _PDG_H
-#define _PDG_H
+#ifndef Pharos_PDG_H
+#define Pharos_PDG_H
 #include <sstream>
 
 // Forward declaration for circular include problems.
@@ -102,7 +102,8 @@ public:
 
 } // namespace pharos
 
-#endif
+#endif  // Pharos_PDG_H
+
 /* Local Variables:   */
 /* mode: c++          */
 /* fill-column:    95 */
