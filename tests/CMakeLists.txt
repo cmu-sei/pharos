@@ -1,0 +1,6 @@
+set(testconfig_file "${CMAKE_CURRENT_BINARY_DIR}/testconfig.yaml")
+set(TESTCONFIG_FILE ${testconfig_file} PARENT_SCOPE)
+set(TESTCONFIG_SWITCH --config "${testconfig_file}" PARENT_SCOPE)
+find_package(XSB REQUIRED)
+message("-- Making ${testconfig_file}")
+configure_file(testconfig.yaml.in "${testconfig_file}")

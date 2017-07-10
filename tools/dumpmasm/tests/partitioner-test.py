@@ -42,6 +42,9 @@ def run_test(args):
     testname = args.testcase[0]
 
     options = ["--format=csv"]
+    options.append("--no-site-file")
+    options.append("--no-user-file")
+    options.append("--config=%s" % os.path.join(args.build_dir, "tests", "testconfig.yaml"))
 
     tool_path = os.path.join(args.build_dir, "tools", "dumpmasm", "dumpmasm")
 

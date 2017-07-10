@@ -65,7 +65,8 @@ find_package(Git)
 
 # Global testing parameters
 enable_testing()
-set(PHAROS_TEST_OPS --no-site-file --no-user-file --library ${CMAKE_SOURCE_DIR})
+add_subdirectory(tests)
+set(PHAROS_TEST_OPS --no-site-file --no-user-file ${TESTCONFIG_SWITCH})
 set(CTEST_TEST_TIMEOUT 300)     # 5 minutes
 
 # Add pod building

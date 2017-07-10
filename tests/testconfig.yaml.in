@@ -1,0 +1,4 @@
+pharos:
+  library: @CMAKE_SOURCE_DIR@
+  prolog_dir: @XSB_INSTALL_DIR@
+

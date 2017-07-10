@@ -158,6 +158,9 @@ def run_ooanalyzer_test(args):
     update_rules(args)
 
     options = []
+    options.append("--no-site-file")
+    options.append("--no-user-file")
+    options.append("--config=%s" % os.path.join(args.build_dir, "tests", "testconfig.yaml"))
     options.append("--verbose=4")
     options.append("--report")
     options.append("--json=%s" % test_output_path(args) + ".json")
