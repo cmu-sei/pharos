@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <stdio.h>
 #include <iostream>
@@ -234,20 +234,20 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_HANDLE_THUNK_IN_MIDDLE) {
 
   EXPECT_EQ(memset_str, vertex_info.api_name);
 
-  EXPECT_EQ(boost::out_degree(memset_vtx,*cfg),1);
+  EXPECT_EQ(boost::out_degree(memset_vtx,*cfg),ApiCfg::degree_size_type(1));
   std::pair<ApiCfgOutEdgeIter, ApiCfgOutEdgeIter> oei = boost::out_edges(memset_vtx,*cfg);
   ApiCfgEdge tgt_edge = *(oei.first);
   ApiCfgVertex tgt_vtx = boost::target(tgt_edge, *cfg);
   const ApiVertexInfo& tgt_info = (*cfg)[tgt_vtx];
 
-  EXPECT_EQ(boost::in_degree(memset_vtx,*cfg),1);
+  EXPECT_EQ(boost::in_degree(memset_vtx,*cfg),ApiCfg::degree_size_type(1));
   std::pair<ApiCfgInEdgeIter, ApiCfgInEdgeIter> iei = boost::in_edges(memset_vtx,*cfg);
   ApiCfgEdge src_edge = *(iei.first);
   ApiCfgVertex src_vtx = boost::source(src_edge, *cfg);
   const ApiVertexInfo& src_info = (*cfg)[src_vtx];
 
-  EXPECT_EQ(src_info.block->get_address(),0x0040113A);
-  EXPECT_EQ(tgt_info.block->get_address(),0x0040117C);
+  EXPECT_EQ(src_info.block->get_address(),0x0040113Au);
+  EXPECT_EQ(tgt_info.block->get_address(),0x0040117Cu);
 }
 
 // *****************************************************************************
@@ -447,13 +447,13 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_MERGE_MIDDLE) {
     break;
   }
   const ApiVertexInfo & prev_info = (*cfg)[prev];
-  EXPECT_EQ(prev_info.block->get_address(), 0x00401877);
+  EXPECT_EQ(prev_info.block->get_address(), 0x00401877u);
 
   size_t merged_size = boost::num_vertices(*cfg);
 
   // The merge should insert four new vertices
 
-  EXPECT_EQ(merged_size-old_size,4);//expected_size_after_merge, merged_size);
+  EXPECT_EQ(merged_size-old_size,4u);//expected_size_after_merge, merged_size);
 }
 
 // *****************************************************************************
@@ -639,7 +639,7 @@ TEST_F(ApiAnalyzerApiVertexInfoTest, TEST_VALID_CALL_TARGET) {
 
   ApiCfgVertex call_vtx = c->GetVertexByAddr(callv_ea);
   const ApiVertexInfo &vi = (*cfg)[call_vtx];
-  ASSERT_EQ(vi.target_address, 0x00401550);
+  ASSERT_EQ(vi.target_address, 0x00401550u);
 }
 
 // *****************************************************************************
@@ -761,8 +761,8 @@ TEST_F(ApiAnalyzertSearchManagerTest, TEST_SHOULD_HANDLE_MULTIPLE_SAME_SIG_MATCH
     if (ri->match_component_start==0x00401300) addr--;
     if (ri->match_component_start==0x00401580) addr--;
   }
-  EXPECT_EQ(count,3);
-  EXPECT_EQ(addr,0);
+  EXPECT_EQ(count,3u);
+  EXPECT_EQ(addr,0u);
 }
 
 // *****************************************************************************
@@ -794,13 +794,13 @@ TEST_F(ApiAnalyzertSearchManagerTest, TEST_SHOULD_FIND_ONE_API_SIG) {
 
   EXPECT_TRUE(r);
 
-  EXPECT_EQ(results.size(),1);
+  EXPECT_EQ(results.size(),ApiSearchResultVector::size_type(1));
 
   ApiSearchResult res = *(results.begin());
 
-  EXPECT_EQ(res.match_component_start, 0x0401B15);
-  EXPECT_EQ(res.search_tree.size(), 1);
-  EXPECT_EQ(res.search_tree.at(0).block->get_address(),0x0401B15);
+  EXPECT_EQ(res.match_component_start, 0x0401B15u);
+  EXPECT_EQ(res.search_tree.size(), decltype(res.search_tree.size())(1));
+  EXPECT_EQ(res.search_tree.at(0).block->get_address(),0x0401B15u);
 
 }
 
@@ -938,14 +938,7 @@ int main(int argc, char **argv) {
     GFATAL << "Unable to analyze file (no executable content found)." << LEND;
     return EXIT_FAILURE;
   }
-
-  // Load a config file overriding parts of the analysis.
-  if (vm.count("imports")) {
-    std::string config_file = vm["imports"].as<std::string>();
-    GINFO << "Loading analysis configuration file: " <<  config_file << LEND;
-    ds.read_config(config_file);
-  }
-  // Load stack deltas from config files for imports.
+  // Resolve imports, load API data, etc.
   ds.resolve_imports();
 
   BottomUpAnalyzer bua(&ds, vm);

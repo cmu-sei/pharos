@@ -1,6 +1,0 @@
-#!/bin/bash
-
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-source "$DIR/../helper.bash" "$DIR"
-
-$XSB --noprompt -p -e "[rulerun],assert(debuggingEnabled),run('${1}'),halt."

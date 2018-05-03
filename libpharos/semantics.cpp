@@ -1,4 +1,4 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/format.hpp>
 
@@ -210,10 +210,7 @@ bool operator<(const SymbolicValue& a, const SymbolicValue& b) {
 
   try {
     TreeNodePtr lt = InternalNode::create(1, ULT_OP, aexpr, bexpr);
-    if (lt->isNumber()) {
-      if (lt->toInt() == 1) return true;
-      else return false;
-    }
+    if (lt->isNumber() && lt->nBits() <= 64 && lt->toInt() == 1) return true;
 
     //typedef Rose::BinaryAnalysis::YicesSolver YicesSolver;
     //YicesSolver solver;
@@ -420,7 +417,7 @@ SymbolicValue::createOptionalMerge(const BaseSValuePtr& other,
 #ifndef USE_ROSE_SYMVALUE_MERGE
                                    UNUSED
 #endif
-                                   SMTSolver* solver) const {
+                                   const SmtSolverPtr & solver) const {
 
   SymbolicValuePtr sother;
   if (!other) {
@@ -439,8 +436,14 @@ SymbolicValue::createOptionalMerge(const BaseSValuePtr& other,
 
   // The BaseMergerPtr is really a CERTMergerPtr.
   const CERTMergerPtr& cert_merger = merger.dynamicCast<CERTMerger>();
+  // More unexpected differences between list memory and map memory.
+  // If there's no CERT merger (because we're using the list memory model) call the standard merge routine.
+  if (!cert_merger) {
+    return ParentSValue::createOptionalMerge(other, merger, solver);
+  }
+
   // This condition is currently set in SymbolicRegisterState::merge() and
-  // SymbolicMemoryState::merge().  It should really be a single value, but there's two being
+  // SymbolicMemoryMapState::merge().  It should really be a single value, but there's two being
   // generated currently.  Also it should express the condition that lead to the current value
   // versus the other value, but right now it's just an newly created incomplete variable.
   SymbolicValuePtr condition = cert_merger->condition;
@@ -537,12 +540,17 @@ AbstractAccess::AbstractAccess(bool b, RegisterDescriptor r,
 }
 
 std::string AbstractAccess::str() const {
-  if (is_reg()) return reg_name();
-  else if (is_mem()) {
-    std::string a = memory_address->str();
-    return "[" + a + "]";
+  if (value) {
+    std::string v = value->str();
+    if (is_reg()) {
+      return reg_name() + " -> " + v;
+    }
+    else if (is_mem()) {
+      std::string a = memory_address->str();
+      return a + " -> " + v;
+    }
   }
-  else return std::string("INVALID");
+  return std::string("INVALID");
 }
 
 void AbstractAccess::print(std::ostream &o) const {
@@ -561,8 +569,10 @@ void AbstractAccess::set_latest_writers(SymbolicStatePtr& state) {
   // Set the modifiers based on inspecting the current abstract access and the passed state.
   // We're converting from a Sawyer container of rose_addr_t to an InsnSet as well, because
   // that's more convenient in our code.
-  if (isMemReference) {
-    SymbolicMemoryStatePtr mstate = state->get_memory_state();
+
+  // Hackish workaround for list based memory.   What should we really be doing?
+  if (isMemReference && state->is_map_based()) {
+    const SymbolicMemoryMapStatePtr& mstate = SymbolicMemoryMapState::promote(state->memoryState());
     MemoryCellPtr cell = mstate->findCell(memory_address);
     // This happens when the expression is an ITE or the program accesses unspecified
     // addresses.   The latter probably means that the analysis is bad, but we can't
@@ -606,13 +616,15 @@ namespace SymbolicExpr {
 using namespace pharos;
 
   TreeNodePtr
-  IteSimplifier::rewrite(InternalNode *inode) const
+  IteSimplifier::rewrite(InternalNode *inode, const SmtSolverPtr & solver) const
   {
     // Is the condition known?
     LeafNodePtr cond_node = inode->child(0)->isLeafNode();
     if (cond_node!=NULL && cond_node->isNumber()) {
       ASSERT_require(1==cond_node->nBits());
-      return cond_node->toInt() ? inode->child(1) : inode->child(2);
+
+      bool condition = ! (cond_node->bits().isAllClear());
+      return condition ? inode->child(1) : inode->child(2);
     }
 
     // Are both operands the same? Then the condition doesn't matter
@@ -620,7 +632,6 @@ using namespace pharos;
       return inode->child(1);
 
     // Are they both extracts of the same offsets?
-    SMTSolver *solver = NULL; // FIXME
     InternalNodePtr in1 = inode->child(1)->isInteriorNode();
     InternalNodePtr in2 = inode->child(2)->isInteriorNode();
     if (// Both nodes must be non-NULL (InternalNodes)
@@ -657,10 +668,8 @@ using namespace pharos;
   //     (ite[8] i133304[1] (extract[8] 0x00000000[32] 0x00000008[32] RC_of_0x41159F[32]) 0x00[8]))}
 
   TreeNodePtr
-  ConcatSimplifier::rewrite(InternalNode *inode) const
+  ConcatSimplifier::rewrite(InternalNode *inode, const SmtSolverPtr & solver) const
   {
-    SMTSolver *solver = NULL; // FIXME
-
     Ptr condition;
     bool matches_ite = true;
     Nodes value1;
@@ -721,7 +730,7 @@ using namespace pharos;
   }
 
   TreeNodePtr
-  AddSimplifier::rewrite(InternalNode *inode) const
+  AddSimplifier::rewrite(InternalNode *inode, const SmtSolverPtr & solver) const
   {
     if (inode->nChildren() == 2) {
       InternalNodePtr ite1 = inode->child(0)->isInteriorNode();
@@ -832,12 +841,113 @@ using namespace pharos;
       return LeafNode::createInteger(inode->nBits(), 0, inode->comment());
     if (children.size()==1)
       return children[0];
-    return InternalNode::create(inode->nBits(), OP_ADD, children, inode->comment());
+    return InternalNode::create(inode->nBits(), OP_ADD, children, solver, inode->comment());
   }
 
 } // namespace SymbolicExpr
 } // namespace BinaryAnalysis
 } // namespace rose
+
+// Hacky patches for mayEqual().  Something very similar should be coming upstream in ROSE
+// before long, since these were changes were provided.  The goal is to get better answers for
+// memory aliasing analysis when a solver is not provided.
+bool Rose::BinaryAnalysis::SymbolicExpr::Interior::mayEqual(
+  const TreeNodePtr &other,
+  const SmtSolverPtr &solver/*NULL*/)
+{
+  STRACE << "Interior::mayEqual() this=" << *this << LEND;
+  STRACE << "Interior::mayEqual() other=" << *other << LEND;
+  STRACE << "Interior::mayEqual() solver=" << (solver ? "NOT" : "") << "NULL" << LEND;
+
+  using Sawyer::SharedPointer;
+
+  // Fast comparison of literally the same expression pointer.
+  if (this == getRawPointer(other)) return true;
+
+  // The first special case involves addition.  Two addition operations can be proven not to
+  // alias if and only if thay are of the form v+x and v+y, where x!=y.
+  if (op_ == OP_ADD) {
+    LeafPtr leafother = other->isLeafNode();
+    InteriorPtr intother = other->isInteriorNode();
+    // If other is a leaf variable or an interior add operation, we may be able to prove that
+    // the expressions are NOT equal.
+    if ((leafother && leafother->isVariable()) || (intother && intother->op_ == OP_ADD)) {
+      // The constant extractor is smart enough to handle all TreeNode cases.
+      AddConstantExtractor tace = AddConstantExtractor(TreeNodePtr(this));
+      AddConstantExtractor oace = AddConstantExtractor(other);
+      STRACE << "Comparing variables " << *tace.variable_portion()
+             << " to " << *oace.variable_portion() << LEND;
+      STRACE << "Comparing constants " << tace.constant_portion()
+             << " to " << oace.constant_portion() << LEND;
+      if (tace.variable_portion()->isEquivalentTo(oace.variable_portion()) &&
+          tace.constant_portion() != oace.constant_portion()) {
+        STRACE << "Expressions may NOT alias!" << LEND;
+        return false;
+      }
+      // All other cases are still undecided and should fall through to other logic.
+    }
+  }
+
+  // Additional tests for inequality can be added here.
+
+  // Equivalent expressions must be equal, and therefore may be equal.  This is probably faster
+  // than using an SMT solver.  It also serves as the naive approach for arbitrary epxressions
+  // when an SMT solver is not available.
+  if (isEquivalentTo(other)) return true;
+
+  // It is difficult to prove that complex expressions are equal or not equal.  Ask the solver
+  // to find a solution where they are equal.  If the solver finds a solution, then obviously
+  // they can be equal.  If the solver can't prove the assertion, we want to assume that they
+  // can be equal.  Thus only if the solver can prove that they can not be equal do we have
+  // really anything to return here.
+  if (solver) {
+    Ptr assertion = makeEq(sharedFromThis(), other, solver);
+    if (SmtSolver::SAT_NO==solver->satisfiable(assertion)) return false;
+
+    // This test is only meaningful if we want to add logic to do something different for
+    // unproven expressions, since we're about to unconditionally return true anyway.
+    // if (SmtSolver::SAT_YES==solver->satisfiable(assertion)) return true;
+  }
+
+  // Complex expressions are assumed to be equal until it proven that they may not be equal.
+  return true;
+}
+
+bool Rose::BinaryAnalysis::SymbolicExpr::Leaf::mayEqual(
+  const TreeNodePtr &other,
+  const SmtSolverPtr &solver/*NULL*/)
+{
+  STRACE << "Leaf::mayEqual() this=" << *this << LEND;
+  STRACE << "Leaf::mayEqual() other=" << *other << LEND;
+  STRACE << "Leaf::mayEqual() solver=" << (solver ? "NOT" : "") << "NULL" << LEND;
+
+  using Sawyer::SharedPointer;
+
+  // Fast comparison of literally the same expression pointer.
+  if (this == getRawPointer(other)) return true;
+
+  // If the other expression is an interior node, use the interior code instead.  It's
+  // important to implement it this way in case the complexity of Interior::mayEqual()
+  // increases, while this routine is essentially correct and complete as implemented.
+  InteriorPtr intother = other->isInteriorNode();
+  if (intother) return intother->mayEqual(TreeNodePtr(this), solver);
+
+  LeafPtr leafother = other->isLeafNode();
+  // If both expressions are constant leaf nodes, we can reach a conclusion without a solver.
+  if (isNumber() && leafother->isNumber()) {
+    // Two constants of different sizes cannot be equal.  Faster than bits.compare().
+    if (nBits_ != leafother->nBits_) return false;
+    // If the bits match, they _are_ equal.
+    if (0 == bits_.compare(leafother->bits_)) return true;
+    // If the bits don't match, they are _not_ equal.
+    return false;
+  }
+
+  // The only remaining case is that one of the leaf nodes is a variable so they may be equal
+  // (or must be equal if the variables happened to match but that shouldn't happen since the
+  // pointers already don't match).
+  return true;
+}
 
 /* Local Variables:   */
 /* mode: c++          */

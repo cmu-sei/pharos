@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Jeff Gennari
 // Date: 2015-06-22
@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
+
+#include <boost/filesystem.hpp>
 
 #include <libpharos/pdg.hpp>
 #include <libpharos/misc.hpp>
@@ -22,11 +24,7 @@
 
 using namespace pharos;
 
-// Controls whether we're reporting timing.
-namespace pharos { extern bool global_timing; }
-
-// The global CERT message facility.  This may change.
-Sawyer::Message::Facility glog("APIA");
+using Path = boost::filesystem::path;
 
 const std::string VERSION  = "2.0.06";
 
@@ -61,31 +59,29 @@ static int apianalyzer_main(int argc, char* argv[]) {
   apiod.add(csod);
   ProgOptVarMap vm = parse_cert_options(argc, argv, apiod);
 
-  // This is a bit hackish right now.  I should probably expose the
-  // whole var map globally, but that would have greater dependencies
-  // than I want to think about right now.
-  if (vm.count("timing")) {
-    global_timing = true;
-  }
-
-  // the sig file is required if not just doing graphviz
-
+  // Locate and open the signature fiel to make sure it's valid.
   std::string sig_file;
-
-  if (0==vm.count("sig_file")) {
-    if (0==vm.count("graphviz")) {
-      Usage();
-      return -1;
-    } else
-    {
-      OINFO << "No sig file specified, just doing graphviz generation" << LEND;
-    }
-  }
-  else
-  {
+  if (vm.count("sig_file")) {
     sig_file = vm["sig_file"].as<std::string>();
   }
+  else {
+    // Get the path to the lib (share) directory.
+    Path libdir = get_library_path();
 
+    // Default to apianalyzer/sig.json if there's no config.
+    Path sigpath = libdir / "apianalyzer/sig.json";
+    // But if there's a configuration value
+    auto cfgpath = vm.config().path_get("signature_file");
+    if (cfgpath && !cfgpath.Scalar().empty()) {
+      sigpath = cfgpath.Scalar();
+      // If the path in the config file was relative make it relative to the lib directory.
+      if (!sigpath.has_root_directory()) {
+        sigpath = libdir / sigpath;
+      }
+    }
+    // Convert the resulting path back into a string.
+    sig_file = sigpath.string();
+  }
 
   ApiSigManager *sig_manager = new ApiSigManager(new ApiJsonSigParser());
   if (sig_manager == NULL) {
@@ -205,14 +201,7 @@ static int apianalyzer_main(int argc, char* argv[]) {
     GFATAL << "Unable to analyze file (no executable content found)." << LEND;
     return EXIT_FAILURE;
   }
-
-  // Load a config file overriding parts of the analysis.
-  if (vm.count("imports")) {
-    std::string config_file = vm["imports"].as<std::string>();
-    GINFO << "Loading analysis configuration file: " <<  config_file << LEND;
-    ds.read_config(config_file);
-  }
-  // Load stack deltas from config files for imports.
+  // Resolve imports, load API data, etc.
   ds.resolve_imports();
 
   // Build PDGs
@@ -269,6 +258,6 @@ static int apianalyzer_main(int argc, char* argv[]) {
 }
 
 int main(int argc, char* argv[]) {
-  return pharos_main(apianalyzer_main, argc, argv);
+  return pharos_main("APIA", apianalyzer_main, argc, argv);
 }
 

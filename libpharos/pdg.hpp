@@ -80,6 +80,7 @@ protected:
 public:
 
   PDG(FunctionDescriptor* f, spTracker* sp_tracker);
+  //~PDG();
 
   // Only export the usedef analysis read-only.
   const DUAnalysis& get_usedef() const { return du; }

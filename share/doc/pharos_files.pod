@@ -1,0 +1,21 @@
+=item F<${PHAROS_ROOT}/share/pharos/apidb/pharos-apidb.sqlite>
+
+The main API database.  This database contains parameter information
+for many standard Windows API calls.
+
+=item F<${PHAROS_ROOT}/share/pharos/apidb/pharos-api-additions.json>
+
+Some overrides for the API database.  The intention is for all of
+these to be subsumed by the main API database in time.
+
+=item F<${PHAROS_ROOT}/share/pharos/typedb/types.json>
+
+The type database.  This JSON file contains information about how type
+names map to low-level types.
+
+=item F<${PHAROS_ROOT}/share/pharos/configs>
+
+The old API database.  This is more complete than the data in the
+sqlite API database, but only contains information about the number of
+parameters in function calls, rather than including information about
+parameter types and names.

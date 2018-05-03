@@ -1,6 +1,7 @@
 link_libraries(pharos)
 add_executable(dumpmasm dumpmasm.cpp)
 install(TARGETS dumpmasm DESTINATION bin)
+build_pharos_pod(dumpmasm-man dumpmasm.pod 1)
 
 # Tests
 

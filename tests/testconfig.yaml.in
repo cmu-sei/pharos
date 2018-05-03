@@ -1,4 +1,4 @@
 pharos:
-  library: @CMAKE_SOURCE_DIR@
+  library: @CMAKE_SOURCE_DIR@/share
   prolog_dir: @XSB_INSTALL_DIR@
 

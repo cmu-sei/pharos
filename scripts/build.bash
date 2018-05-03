@@ -5,7 +5,7 @@ set -ex
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # sudo apt-get -y update
-# sudo apt-get -y install build-essential wget flex ghostscript bzip2 git subversion automake libtool bison python libncurses5-dev vim-common libsqlite3-0 libsqlite3-dev 
+# sudo apt-get -y install build-essential wget flex ghostscript bzip2 git subversion automake libtool bison python libncurses5-dev vim-common libsqlite3-0 libsqlite3-dev
 
 # CMake
 cd $DIR
@@ -42,6 +42,18 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
 make -j4
 sudo make -j4 install
 
+# Z3
+cd $DIR
+test -d z3 && rm -rf z3
+git clone https://github.com/Z3Prover/z3.git z3
+cd rose
+git checkout b81165167304c20e28bc42549c94399d70c8ae65
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=/use/local -DCMAKE_INSTALL_LIBDIR=lib ..
+make -j4
+sudo make -j4 install
+
 # ROSE
 cd $DIR
 
@@ -50,7 +62,7 @@ sudo ldconfig
 test -d rose && rm -rf rose
 git clone https://github.com/rose-compiler/rose-develop rose
 cd rose
-git checkout 8c8aebc30e9295f89ad4dfee8fe741c26e7e3353
+git checkout d3eaef2ad21687c294827d4471f2b0163af86978
 
 ./build
 mkdir release
@@ -61,21 +73,6 @@ cd release
   --with-boost=/usr/local CXXFLAGS=-std=c++11 --with-yaml=/usr/local
 make -j4
 sudo make -j4 install
-
-# XSB
-cd $DIR
-
-test -d XSB && sudo rm -rf XSB
-svn checkout -r 9046 https://svn.code.sf.net/p/xsb/src/trunk XSB
-cd XSB
-patch -p1 < $DIR/../xsb.patch
-
-cd XSB/build
-sudo ./configure --prefix=/usr/local
-sudo ./makexsb
-sudo ./makexsb install
-
-sudo touch /usr/local/xsb-3.7.0/syslib/sysinitrc.P
 
 # SQLLite
 
@@ -98,3 +95,7 @@ cd build
 cmake ../..
 make -j4
 sudo make install
+
+# Reclaim space if argument specified.  Probably a good idea for
+# Docker images, not such a good idea otherwise.
+test "$1" = "-reclaim" && rm -rf $(cd $DIR/.. && pwd)

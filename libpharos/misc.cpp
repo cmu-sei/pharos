@@ -1,4 +1,4 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 // For timing our execution.
 #include <time.h>
@@ -16,6 +16,7 @@
 #include "util.hpp"
 #include "matcher.hpp"
 #include "semantics.hpp"
+#include "descriptors.hpp"
 
 #include <boost/algorithm/string.hpp> // for starts_with
 #include <boost/optional/optional_io.hpp>
@@ -37,6 +38,22 @@ using Rose::BinaryAnalysis::BinaryLoader;
 using Rose::BinaryAnalysis::SymbolicExpr::OP_ADD;
 using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
 
+GLogWrapper glog;
+
+void GLogWrapper::set_name(std::string const & name)
+{
+  if (!glog_) {
+    glog_ = make_unique<Sawyer::Message::Facility>(name);
+  } else {
+    glog_->renameStreams(name);
+  }
+}
+
+void set_glog_name(std::string const & name)
+{
+  glog.set_name(name);
+}
+
 TreeNodePtr operator+(const TreeNodePtr & a, int64_t b)
 {
   constexpr auto bbits = sizeof(b) * CHAR_BIT;
@@ -48,7 +65,8 @@ TreeNodePtr operator+(const TreeNodePtr & a, int64_t b)
                     Sawyer::Container::BitVector::BitRange::baseSize(0, bbits));
     }
     auto c = LeafNode::createConstant(bv);
-    return InternalNode::create(a->nBits(), OP_ADD, a, c);
+    return InternalNode::create(a->nBits(), OP_ADD, a, c,
+                                Rose::BinaryAnalysis::SmtSolverPtr());
   }
   return LeafNode::createInteger(bbits, b);
 }
@@ -89,15 +107,6 @@ std::string addr_str(rose_addr_t addr) {
 using namespace Sawyer::Message::Common;
 
 typedef std::vector<rose_addr_t> AddrVector;
-
-// This ought to be a method on Register Descriptor...
-bool RegisterDescriptorLtCmp(const RegisterDescriptor a, const RegisterDescriptor b) {
-  if (a.get_major() == b.get_major()) {
-    if (a.get_major() == x86_regclass_flags)
-      return a.get_offset() < b.get_offset();
-    else return a.get_minor() < b.get_minor();
-  } else return a.get_major() < b.get_major();
-}
 
 void customize_message_facility(const ProgOptVarMap& vm, Sawyer::Message::Facility facility, std::string name) {
   // Create a sink associated with standard output.
@@ -173,6 +182,118 @@ bool insn_is_control_flow(const SgAsmx86Instruction* insn) {
   else if (insn->get_kind() == x86_farcall) return true;
   else if (insn->get_kind() >= x86_ja && insn->get_kind() <= x86_js) return true;
   else return false;
+}
+
+bool insn_is_nop(const SgAsmx86Instruction* insn) {
+  // The function is a response to poor performance and accuracy problems in
+  // SageInterface::isNOP().  We should really attempt to create an exhaustive list and handle
+  // this issue comprehensively including prefix bytes and other odditities.  The immediate
+  // goal was to produce correct answers for some important cases like "lea ecx, [ecx+0]", and
+  // eliminate the performance problem in isNOP().
+
+  const SgUnsignedCharList& bytes = insn->get_raw_bytes();
+  size_t size = bytes.size();
+  if (size < 1) return false;
+
+  //   44 lea       ebx, [ebx+0]          ; BYTES  8D9B00000000
+  //  143 lea       ecx, [ecx+0]          ; BYTES  8D4900
+  //   24 lea       esp, [esp+0]          ; BYTES  8D642400
+  //   45 lea       esp, [esp+0]          ; BYTES  8DA42400000000
+  // 3086 mov       edi, edi              ; BYTES  8BFF
+  //    2 nop                             ; BYTES  90
+
+  // Perhaps there's a fancy C++11 way to do this efficicently.  In the mean time, this will
+  // get the job done without having to think about it too hard, and it will be very efficient
+  // as well.  Whether it will continute to scale well for maintenance is a unclear, but there
+  // is a good chance that we'll continue to need "code" to prevent the list from growing very
+  // large.  Until we know more, I deem this a reasonable approach.
+  switch (bytes.at(0)) {
+    // mov reg, reg 8BFF
+   case 0x8b:
+    if (size < 2) return false;
+    switch (bytes.at(1)) {
+     case 0xff: return true;
+    }
+    return false;
+      // lea ...
+   case 0x8d:
+      if (size < 2) return false;
+    switch (bytes.at(1)) {
+      // one byte displacements?
+     case 0x49:
+      if (size < 3) return false;
+      switch (bytes.at(2)) {
+       case 0x00: return true;
+      }
+      return false;
+      // two byte displacements?
+     case 0x64:
+      if (size < 3) return false;
+      switch (bytes.at(2)) {
+       case 0x24:
+        if (size < 4) return false;
+        switch (bytes.at(3)) {
+         case 0x00: return true;
+        }
+        return false;
+      }
+      return false;
+      // four byte displacements?
+     case 0xA4:
+      if (size < 3) return false;
+      switch (bytes.at(2)) {
+       case 0x24:
+        if (size < 4) return false;
+        switch (bytes.at(3)) {
+         case 0x00:
+          if (size < 5) return false;
+          switch (bytes.at(4)) {
+           case 0x00:
+            if (size < 6) return false;
+            switch (bytes.at(5)) {
+             case 0x00:
+              if (size < 7) return false;
+              switch (bytes.at(6)) {
+               case 0x00: return true;
+              }
+              return false;
+            }
+            return false;
+          }
+          return false;
+        }
+        return false;
+      }
+      return false;
+      // four byte displacements?
+     case 0x9B:
+      if (size < 3) return false;
+      switch (bytes.at(2)) {
+       case 0x00:
+        if (size < 4) return false;
+        switch (bytes.at(3)) {
+         case 0x00:
+          if (size < 5) return false;
+          switch (bytes.at(4)) {
+           case 0x00:
+            if (size < 6) return false;
+            switch (bytes.at(5)) {
+             case 0x00: return true;
+            }
+            return false;
+          }
+          return false;
+        }
+        return false;
+      }
+      return false;
+    }
+    return false;
+    // xchg eax, eax
+   case 0x90:
+    return true;
+  }
+  return false;
 }
 
 // Get the fallthru address.  This should be one of the successors for every intruction except
@@ -322,7 +443,7 @@ std::string insn_get_generic_category(SgAsmInstruction *insn) {
       if (mnemonic[1] == 'm') // EMMS
         result = "FLT";
       else if (mnemonic[1] == 'n') // ENTER
-        result = "BR";
+        result = "XFER"; // initially I picked BR, but it's really like (push ebp;sub esp,#) XFER+MATH (see LEAVE too)
       else // EXTRACTPS
         result = "SIMD";
       break;
@@ -395,7 +516,7 @@ std::string insn_get_generic_category(SgAsmInstruction *insn) {
             if (mnemonic.size() == 3)
               result = "MATH"; // LEA
             else
-              result = "BR"; // LEAVE
+              result = "XFER"; // LEAVE ; initially I picked BR but it's really like (mov esp,ebp;pop ebp) XFER+XFER? (see ENTER too)
         }
       }
       else if (mnemonic[1] == 'g')
@@ -687,6 +808,20 @@ const SgAsmInstruction* last_insn_in_block(const SgAsmBlock* bb) {
   return last_insn;
 }
 
+const SgAsmInstruction* first_insn_in_block(const SgAsmBlock* bb) {
+  const SgAsmStatementPtrList & insns = bb->get_statementList();
+  if (insns.size() < 1) return NULL;
+  const SgAsmInstruction *first_insn = isSgAsmInstruction(insns[0]);
+  return first_insn;
+}
+
+const SgAsmX86Instruction* first_x86insn_in_block(const SgAsmBlock* bb) {
+  const SgAsmStatementPtrList & insns = bb->get_statementList();
+  if (insns.size() < 1) return NULL;
+  const SgAsmX86Instruction *first_insn = isSgAsmX86Instruction(insns[0]);
+  return first_insn;
+}
+
 const SgAsmX86Instruction* last_x86insn_in_block(const SgAsmBlock* bb) {
   const SgAsmStatementPtrList & insns = bb->get_statementList();
   if (insns.size() < 1) return NULL;
@@ -795,7 +930,7 @@ AddConstantExtractor::AddConstantExtractor(const TreeNodePtr& tn) {
   LeafNodePtr lp = tn->isLeafNode();
   if (lp) {
     // If this is a constant, insert as a null variable portion with single-value constant set
-    if (lp->isNumber()) {
+    if (lp->isNumber() && lp->nBits() <= 64) {
       int64_t val = IntegerOps::signExtend2(lp->toInt(), lp->nBits(), 8*sizeof(int64_t));
       data.emplace(std::make_pair(TreeNodePtr(), constset_t{val}));
       return;

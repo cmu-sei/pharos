@@ -61,6 +61,11 @@ class BlockAnalysis {
   // The address of this block.  Duplicated here for convenience.
   rose_addr_t address;
 
+  // Record the accesses, dependencies, and global memory accesses for the instruction.
+  void record_dependencies(SgAsmX86Instruction *insn, const SymbolicStatePtr& cstate);
+  // Check to see if the jump/call isntruction goes in invalid code.
+  bool check_for_invalid_code(SgAsmX86Instruction *insn, size_t i);
+
 public:
   // We should probably make more of these members private once the API has settled down a
   // little bit.
@@ -112,12 +117,12 @@ public:
   std::string address_string() const { return boost::str(boost::format("0x%08X") % address); }
 
   void check_for_bad_code();
-  LimitCode analyze();
+  LimitCode analyze(bool with_context = true);
 
   LimitCode evaluate();
 
   void handle_stack_delta(SgAsmBlock* bb, SgAsmx86Instruction* insn,
-                          SymbolicStatePtr& before_state);
+                          SymbolicStatePtr& before_state, bool downgrade = false);
 
 };
 
@@ -149,6 +154,9 @@ protected:
 
   // A resource limit status code to let us know how soving the flow equation went.
   LimitCode status;
+
+  // Are we doing the new list-based memory thing that's more rigorous?
+  bool rigor;
 
   // ==================================================================================
   // Data produced during analysis
@@ -226,9 +234,9 @@ protected:
 
   // Create BlockAnalysis objects for each basic block in the function.
   void create_blocks();
-  // Remove bad blocks, and those with no predecessors from the CFG.
-  void cleanup_cfg();
 
+  // // add properties to the boost graph for edge path conditions
+  // void add_edge_conditions();
   LimitCode loop_over_cfg();
   bool process_block_with_limit(CFGVertex vertex);
   SymbolicStatePtr merge_predecessors(CFGVertex vertex);
@@ -251,6 +259,7 @@ protected:
   void add_dependency_pair(SgAsmx86Instruction* i1, SgAsmx86Instruction* i2, AbstractAccess access);
 
   // This is the main function that drives most of the work...
+  LimitCode analyze_basic_blocks_independently();
   LimitCode solve_flow_equation_iteratively();
 
   // Update the bad blocks set.
@@ -268,6 +277,13 @@ protected:
   }
 
 public:
+
+  // Remove bad blocks, and those with no predecessors from the CFG.
+  //
+  // JSG parameterized this so we can call it independently of setting the primary CFG.
+  void cleanup_cfg(ControlFlowGraph &cfg) const;
+
+  const BlockAnalysisMap& get_block_analysis() const;
 
   const std::map<TreeNode*, TreeNodePtr>& get_unique_treenodes() const { return unique_treenodes_; }
 

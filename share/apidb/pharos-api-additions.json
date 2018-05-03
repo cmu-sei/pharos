@@ -1,0 +1,1098 @@
+{ "config": { "exports": [
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "EncodePointer",
+  "display_name": "EncodePointer",
+  "convention": "stdcall",
+  "parameters": [
+     {"name": "Ptr", "type": "PVOID", "inout": "in"}
+  ],
+  "type": "PVOID"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_encode_pointer",
+  "display_name": "_encode_pointer",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "Ptr", "type": "PVOID", "inout": "in"}
+  ],
+  "type": "PVOID"
+},
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "DecodePointer",
+  "display_name": "DecodePointer",
+  "convention": "stdcall",
+  "parameters": [
+     {"name": "Ptr", "type": "PVOID", "inout": "in"}
+  ],
+  "type": "PVOID"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_decode_pointer",
+  "display_name": "_decode_pointer",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "Ptr", "type": "PVOID", "inout": "in"}
+  ],
+  "type": "PVOID"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_exit",
+  "display_name": "_exit",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "status", "type": "int const", "inout": "in"}
+  ],
+  "type": "VOID"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_exit",
+  "display_name": "_exit",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "status", "type": "int const", "inout": "in"}
+  ],
+  "type": "VOID"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "exit",
+  "display_name": "exit",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "status", "type": "int const", "inout": "in"}
+  ],
+  "type": "VOID"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "exit",
+  "display_name": "exit",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "status", "type": "int const", "inout": "in"}
+  ],
+  "type": "VOID"
+},
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "ExitProcess",
+  "display_name": "ExitProcess",
+  "convention": "stdcall",
+  "parameters": [
+     {"name": "uExitCode", "type": "UINT", "inout": "in"}
+  ],
+  "type": "VOID"
+},
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "HeapAlloc",
+  "display_name": "HeapAlloc",
+  "convention": "stdcall",
+  "parameters": [
+     {"name": "hHeap", "type": "HANDLE", "inout": "in"},
+     {"name": "dwFlags", "type": "DWORD", "inout": "in"},
+     {"name": "dwBytes", "type": "SIZE_T", "inout": "in"}
+  ],
+  "type": "LPVOID"
+},
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "HeapReAlloc",
+  "display_name": "HeapReAlloc",
+  "convention": "stdcall",
+  "parameters": [
+     {"name": "hHeap", "type": "HANDLE", "inout": "in"},
+     {"name": "dwFlags", "type": "DWORD", "inout": "in"},
+     {"name": "lpMem", "type": "LPVOID", "inout": "in"},
+     {"name": "dwBytes", "type": "SIZE_T", "inout": "in"}
+  ],
+  "type": "LPVOID"
+},
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "HeapSize",
+  "display_name": "HeapSize",
+  "convention": "stdcall",
+  "parameters": [
+     {"name": "hHeap", "type": "HANDLE", "inout": "in"},
+     {"name": "dwFlags", "type": "DWORD", "inout": "in"},
+     {"name": "lpMem", "type": "LPCVOID", "inout": "in"}
+  ],
+  "type": "SIZE_T"
+},
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "InitializeCriticalSection",
+  "display_name": "InitializeCriticalSection",
+  "convention": "stdcall",
+  "parameters": [
+     {"name": "lpCriticalSection", "type": "LPCRITICAL_SECTION", "inout": "out"}
+  ],
+  "type": "void"
+},
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "EnterCriticalSection",
+  "display_name": "EnterCriticalSection",
+  "convention": "stdcall",
+  "parameters": [
+     {"name": "lpCriticalSection", "type": "LPCRITICAL_SECTION", "inout": "inout"}
+  ],
+  "type": "void"
+},
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "LeaveCriticalSection",
+  "display_name": "LeaveCriticalSection",
+  "convention": "stdcall",
+  "parameters": [
+     {"name": "lpCriticalSection", "type": "LPCRITICAL_SECTION", "inout": "inout"}
+  ],
+  "type": "void"
+},
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "DeleteCriticalSection",
+  "display_name": "DeleteCriticalSection",
+  "convention": "stdcall",
+  "parameters": [
+     {"name": "lpCriticalSection", "type": "LPCRITICAL_SECTION", "inout": "inout"}
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCP90D.DLL",
+  "export_name": "??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@P6AAAV01@AAV01@@Z@Z",
+  "display_name": "",
+  "convention": "thiscall",
+  "parameters": [
+     {"name": "arg0", "type": "func *", "inout": "in"}
+  ],
+  "type": "class std::basic_ostream<char, struct std::char_traits<char> >"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "__p___initenv",
+  "display_name": "__p___initenv",
+  "convention": "cdecl",
+  "parameters": [],
+  "ordinal": 425,
+  "type": "char ***"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "printf",
+  "display_name": "printf",
+  "convention": "cdecl",
+  "cmt": "Really varargs, but we can't handle that yet.",
+  "parameters": [],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "printf",
+  "display_name": "printf",
+  "convention": "cdecl",
+  "cmt": "Really varargs, but we can't handle that yet.",
+  "parameters": [],
+  "type": "int"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_purecall",
+  "display_name": "_purecall",
+  "convention": "cdecl",
+  "parameters": [],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_purecall",
+  "display_name": "_purecall",
+  "convention": "cdecl",
+  "parameters": [],
+  "type": "int"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "__dllonexit",
+  "display_name": "__dllonexit",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "func", "type": "_onexit_t", "inout": "in"},
+     {"name": "pbegin", "type": "_PVFV **", "inout": "in"},
+     {"name": "pend", "type": "_PVFV **", "inout": "in"}
+  ],
+  "type": "_onexit_t"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "__dllonexit",
+  "display_name": "__dllonexit",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "func", "type": "_onexit_t", "inout": "in"},
+     {"name": "pbegin", "type": "_PVFV **", "inout": "in"},
+     {"name": "pend", "type": "_PVFV **", "inout": "in"}
+  ],
+  "type": "_onexit_t"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "__dllonexit",
+  "display_name": "__dllonexit",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "func", "type": "_onexit_t", "inout": "in"},
+     {"name": "pbegin", "type": "_PVFV **", "inout": "in"},
+     {"name": "pend", "type": "_PVFV **", "inout": "in"}
+  ],
+  "type": "_onexit_t"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_onexit",
+  "display_name": "_onexit",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "func", "type": "_onexit_t", "inout": "in"}
+  ],
+  "type": "_onexit_t"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_onexit",
+  "display_name": "_onexit",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "func", "type": "_onexit_t", "inout": "in"}
+  ],
+  "type": "_onexit_t"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_onexit",
+  "display_name": "_onexit",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "func", "type": "_onexit_t", "inout": "in"}
+  ],
+  "type": "_onexit_t"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_cexit",
+  "display_name": "_cexit",
+  "convention": "cdecl",
+  "parameters": [],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_cexit",
+  "display_name": "_cexit",
+  "convention": "cdecl",
+  "parameters": [],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_cexit",
+  "display_name": "_cexit",
+  "convention": "cdecl",
+  "parameters": [],
+  "type": "void"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_amsg_exit",
+  "display_name": "_amsg_exit",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "rterrnum", "type": "int", "inout": "in"}
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_amsg_exit",
+  "display_name": "_amsg_exit",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "rterrnum", "type": "int", "inout": "in"}
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_amsg_exit",
+  "display_name": "_amsg_exit",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "rterrnum", "type": "int", "inout": "in"}
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "__p__fmode",
+  "display_name": "__p__fmode",
+  "convention": "cdecl",
+  "parameters": [],
+  "ordinal": 0,
+  "type": "errno_t"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "__p__fmode",
+  "display_name": "__p__fmode",
+  "convention": "cdecl",
+  "parameters": [],
+  "ordinal": 437,
+  "type": "errno_t"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_fmode",
+  "display_name": "_fmode",
+  "convention": "#var",
+  "parameters": [],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_fmode",
+  "display_name": "_fmode",
+  "convention": "#var",
+  "parameters": [],
+  "type": "int"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "__p__commode",
+  "display_name": "__p__commode",
+  "convention": "cdecl",
+  "parameters": [],
+  "ordinal": 0,
+  "type": "errno_t"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "__p__commode",
+  "display_name": "__p__commode",
+  "convention": "cdecl",
+  "parameters": [],
+  "ordinal": 430,
+  "type": "errno_t"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_commode",
+  "display_name": "_commode",
+  "convention": "#var",
+  "parameters": [],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_commode",
+  "display_name": "_commode",
+  "convention": "#var",
+  "parameters": [],
+  "type": "int"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "__initenv",
+  "display_name": "__initenv",
+  "convention": "#var",
+  "parameters": [],
+  "type": "char ***"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "__initenv",
+  "display_name": "__initenv",
+  "convention": "#var",
+  "parameters": [],
+  "type": "char ***"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_initterm",
+  "display_name": "_initterm",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "_Argc", "type": "int *", "inout": "inout"},
+     {"name": "_Argv", "type": "char ***", "inout": "inout"},
+     {"name": "_Env", "type": "char ***", "inout": "inout"},
+     {"name": "_DoWildCard", "type": "int", "inout": "in"},
+     {"name": "_StartInfo", "type": "_startupinfo *", "inout": "in"}
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_initterm",
+  "display_name": "_initterm",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "_Argc", "type": "int *", "inout": "inout"},
+     {"name": "_Argv", "type": "char ***", "inout": "inout"},
+     {"name": "_Env", "type": "char ***", "inout": "inout"},
+     {"name": "_DoWildCard", "type": "int", "inout": "in"},
+     {"name": "_StartInfo", "type": "_startupinfo *", "inout": "in"}
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_initterm",
+  "display_name": "_initterm",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "_Argc", "type": "int *", "inout": "inout"},
+     {"name": "_Argv", "type": "char ***", "inout": "inout"},
+     {"name": "_Env", "type": "char ***", "inout": "inout"},
+     {"name": "_DoWildCard", "type": "int", "inout": "in"},
+     {"name": "_StartInfo", "type": "_startupinfo *", "inout": "in"}
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_initterm_e",
+  "display_name": "_initterm_e",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "arg0", "type": "PVFV *", "inout": "in"},
+     {"name": "arg1", "type": "PVFV *", "inout": "in"},
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_initterm_e",
+  "display_name": "_initterm_e",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "arg0", "type": "PVFV *", "inout": "in"},
+     {"name": "arg1", "type": "PVFV *", "inout": "in"},
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_initterm_e",
+  "display_name": "_initterm_e",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "arg0", "type": "PVFV *", "inout": "in"},
+     {"name": "arg1", "type": "PVFV *", "inout": "in"},
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "__getmainargs",
+  "display_name": "__getmainargs",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "_Argc", "type": "int *", "inout": "inout"},
+     {"name": "_Argv", "type": "char ***", "inout": "inout"},
+     {"name": "_Env", "type": "char ***", "inout": "inout"},
+     {"name": "_DoWildCard", "type": "int", "inout": "in"},
+     {"name": "_StartInfo", "type": "_startupinfo *", "inout": "in"}
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "__getmainargs",
+  "display_name": "__getmainargs",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "_Argc", "type": "int *", "inout": "inout"},
+     {"name": "_Argv", "type": "char ***", "inout": "inout"},
+     {"name": "_Env", "type": "char ***", "inout": "inout"},
+     {"name": "_DoWildCard", "type": "int", "inout": "in"},
+     {"name": "_StartInfo", "type": "_startupinfo *", "inout": "in"}
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "__getmainargs",
+  "display_name": "__getmainargs",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "_Argc", "type": "int *", "inout": "inout"},
+     {"name": "_Argv", "type": "char ***", "inout": "inout"},
+     {"name": "_Env", "type": "char ***", "inout": "inout"},
+     {"name": "_DoWildCard", "type": "int", "inout": "in"},
+     {"name": "_StartInfo", "type": "_startupinfo *", "inout": "in"}
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_acmdln",
+  "display_name": "_acmdln",
+  "convention": "#var",
+  "parameters": [],
+  "type": "char *"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_get_fmode",
+  "display_name": "_get_fmode",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "pmode", "type": "int *", "inout": "out"}
+  ],
+  "ordinal": 634,
+  "type": "errno_t"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_CrtSetCheckCount",
+  "display_name": "_CrtSetCheckCount",
+  "convention": "cdecl",
+  "cmt": "Undocumented internal CRT function.  Wild guess.",
+  "parameters": [
+     {"name": "arg0", "type": "int", "inout": "in"},
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_CrtSetCheckCount",
+  "display_name": "_CrtSetCheckCount",
+  "convention": "cdecl",
+  "cmt": "Undocumented internal CRT function.  Wild guess.",
+  "parameters": [
+     {"name": "arg0", "type": "int", "inout": "in"},
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_CrtDbgReportW",
+  "display_name": "_CrtDebugReportW",
+  "convention": "cdecl",
+  "cmt": "Appears to be varargs which we can't handle.",
+  "parameters": [
+     {"name": "reportType", "type": "int", "inout": "in"},
+     {"name": "filename", "type": "const wchar_t *", "inout": "in"},
+     {"name": "linenumber", "type": "int", "inout": "in"},
+     {"name": "moduleName", "type": "const wchar_t *", "inout": "in"},
+     {"name": "format", "type": "const wchar_t *", "inout": "in"}
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_CrtDbgReportW",
+  "display_name": "_CrtDebugReportW",
+  "convention": "cdecl",
+  "cmt": "Appears to be varargs which we can't handle.",
+  "parameters": [
+     {"name": "reportType", "type": "int", "inout": "in"},
+     {"name": "filename", "type": "const wchar_t *", "inout": "in"},
+     {"name": "linenumber", "type": "int", "inout": "in"},
+     {"name": "moduleName", "type": "const wchar_t *", "inout": "in"},
+     {"name": "format", "type": "const wchar_t *", "inout": "in"}
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_CRT_RTC_INITW",
+  "display_name": "_CRT_RTC_INITW",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "res0", "type": "void *", "inout": "in"},
+     {"name": "res1", "type": "void **", "inout": "in"},
+     {"name": "res2", "type": "int", "inout": "in"},
+     {"name": "res3", "type": "int", "inout": "in"},
+     {"name": "res4", "type": "int", "inout": "in"}
+  ],
+  "type": "RTC_error_fnW"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_CRT_RTC_INITW",
+  "display_name": "_CRT_RTC_INITW",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "res0", "type": "void *", "inout": "in"},
+     {"name": "res1", "type": "void **", "inout": "in"},
+     {"name": "res2", "type": "int", "inout": "in"},
+     {"name": "res3", "type": "int", "inout": "in"},
+     {"name": "res4", "type": "int", "inout": "in"}
+  ],
+  "type": "RTC_error_fnW"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_crt_debugger_hook",
+  "display_name": "_crt_debugger_hook",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "_Reserved", "type": "int", "inout": "in"}
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_crt_debugger_hook",
+  "display_name": "_crt_debugger_hook",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "_Reserved", "type": "int", "inout": "in"}
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_crt_debugger_hook",
+  "display_name": "_crt_debugger_hook",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "_Reserved", "type": "int", "inout": "in"}
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_configthreadlocale",
+  "display_name": "_configthreadlocale",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "type", "type": "int", "inout": "in"}
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_configthreadlocale",
+  "display_name": "_configthreadlocale",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "type", "type": "int", "inout": "in"}
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_configthreadlocale",
+  "display_name": "_configthreadlocale",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "type", "type": "int", "inout": "in"}
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "__set_app_type",
+  "display_name": "__set_app_type",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "at", "type": "int", "inout": "in"},
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "__set_app_type",
+  "display_name": "__set_app_type",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "at", "type": "int", "inout": "in"},
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "__set_app_type",
+  "display_name": "__set_app_type",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "at", "type": "int", "inout": "in"},
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "__setusermatherr",
+  "display_name": "__setusermatherr",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "pf", "type": "_HANDLE_MATH_ERROR", "inout": "in"},
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "__setusermatherr",
+  "display_name": "__setusermatherr",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "pf", "type": "_HANDLE_MATH_ERROR", "inout": "in"},
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "__setusermatherr",
+  "display_name": "__setusermatherr",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "pf", "type": "_HANDLE_MATH_ERROR", "inout": "in"},
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_adjust_fdiv",
+  "display_name": "_adjust_fdiv",
+  "convention": "cdecl",
+  "parameters": [],
+  "type": "void"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_controlfp_s",
+  "display_name": "_controlfp_s",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "currentControl", "type": "unsigned int*", "inout": "in"},
+     {"name": "newControl", "type": "unsigned int", "inout": "in"},
+     {"name": "mask", "type": "unsigned int", "inout": "in"}
+  ],
+  "type": "errno_t"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_controlfp_s",
+  "display_name": "_controlfp_s",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "currentControl", "type": "unsigned int*", "inout": "in"},
+     {"name": "newControl", "type": "unsigned int", "inout": "in"},
+     {"name": "mask", "type": "unsigned int", "inout": "in"}
+  ],
+  "type": "errno_t"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_controlfp_s",
+  "display_name": "_controlfp_s",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "currentControl", "type": "unsigned int*", "inout": "in"},
+     {"name": "newControl", "type": "unsigned int", "inout": "in"},
+     {"name": "mask", "type": "unsigned int", "inout": "in"}
+  ],
+  "type": "errno_t"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_lock",
+  "display_name": "_lock",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "locknum", "type": "int", "inout": "in"},
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_lock",
+  "display_name": "_lock",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "locknum", "type": "int", "inout": "in"},
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_lock",
+  "display_name": "_lock",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "locknum", "type": "int", "inout": "in"},
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_unlock",
+  "display_name": "_unlock",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "locknum", "type": "int", "inout": "in"},
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_unlock",
+  "display_name": "_unlock",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "locknum", "type": "int", "inout": "in"},
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_unlock",
+  "display_name": "_unlock",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "locknum", "type": "int", "inout": "in"},
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "__CxxFrameHandler3",
+  "display_name": "__CxxFrameHandler3",
+  "cmt": "Maybe.  Reliable information is scarce.",
+  "convention": "fastcall",
+  "parameters": [
+     {"name": "pExcept", "type": "EHExceptionRecord *", "inout": "in"}
+  ],
+  "type": "EXCEPTION_DISPOSITION"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "__CxxFrameHandler3",
+  "display_name": "__CxxFrameHandler3",
+  "cmt": "Maybe.  Reliable information is scarce.",
+  "convention": "fastcall",
+  "parameters": [
+     {"name": "pExcept", "type": "EHExceptionRecord *", "inout": "in"}
+  ],
+  "type": "EXCEPTION_DISPOSITION"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_XcptFilter",
+  "display_name": "_Xcptfilter",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "xcptnum", "type": "unsigned long", "inout": "in"},
+     {"name": "pxcptinfoptrs", "type": "PEXCEPTION_POINTERS", "inout": "in"}
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_XcptFilter",
+  "display_name": "_Xcptfilter",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "xcptnum", "type": "unsigned long", "inout": "in"},
+     {"name": "pxcptinfoptrs", "type": "PEXCEPTION_POINTERS", "inout": "in"}
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_XcptFilter",
+  "display_name": "_Xcptfilter",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "xcptnum", "type": "unsigned long", "inout": "in"},
+     {"name": "pxcptinfoptrs", "type": "PEXCEPTION_POINTERS", "inout": "in"}
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_except_handler4_common",
+  "display_name": "_except_handler4_common",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "arg0", "type": "unsigned long", "inout": "in"},
+     {"name": "arg1", "type": "unsigned long", "inout": "in"},
+     {"name": "arg2", "type": "unsigned long", "inout": "in"},
+     {"name": "arg3", "type": "unsigned long", "inout": "in"},
+     {"name": "func", "type": "char *", "inout": "in"},
+     {"name": "cookie", "type": "unsigned long", "inout": "in"}
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_except_handler4_common",
+  "display_name": "_except_handler4_common",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "arg0", "type": "unsigned long", "inout": "in"},
+     {"name": "arg1", "type": "unsigned long", "inout": "in"},
+     {"name": "arg2", "type": "unsigned long", "inout": "in"},
+     {"name": "arg3", "type": "unsigned long", "inout": "in"},
+     {"name": "func", "type": "char *", "inout": "in"},
+     {"name": "cookie", "type": "unsigned long", "inout": "in"}
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_except_handler4_common",
+  "display_name": "_except_handler4_common",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "arg0", "type": "unsigned long", "inout": "in"},
+     {"name": "arg1", "type": "unsigned long", "inout": "in"},
+     {"name": "arg2", "type": "unsigned long", "inout": "in"},
+     {"name": "arg3", "type": "unsigned long", "inout": "in"},
+     {"name": "func", "type": "char *", "inout": "in"},
+     {"name": "cookie", "type": "unsigned long", "inout": "in"}
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "rand",
+  "display_name": "rand",
+  "convention": "cdecl",
+  "parameters": [],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "rand",
+  "display_name": "rand",
+  "convention": "cdecl",
+  "parameters": [],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "rand",
+  "display_name": "rand",
+  "convention": "cdecl",
+  "parameters": [],
+  "type": "int"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "memcpy",
+  "display_name": "memcpy",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "dest", "type": "void *", "inout": "in"},
+     {"name": "src", "type": "void *", "inout": "in"},
+     {"name": "count", "type": "size_t", "inout": "in"}
+  ],
+  "type": "void *"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "memset",
+  "display_name": "memset",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "dest", "type": "void *", "inout": "out"},
+     {"name": "c", "type": "int", "inout": "in"},
+     {"name": "count", "type": "size_t", "inout": "in"}
+  ],
+  "type": "void *"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "memmove",
+  "display_name": "memmove",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "dest", "type": "void *", "inout": "in"},
+     {"name": "src", "type": "void *", "inout": "in"},
+     {"name": "count", "type": "size_t", "inout": "in"}
+  ],
+  "type": "void *"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "strlen",
+  "display_name": "strlen",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "str", "type": "const char *", "inout": "in"}
+  ],
+  "type": "size_t"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "strlen",
+  "display_name": "strlen",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "str", "type": "const char *", "inout": "in"}
+  ],
+  "type": "size_t"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_ismbblead",
+  "display_name": "_ismbblead",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "c", "type": "unsigned int", "inout": "in"}
+  ],
+  "type": "int"
+},
+{
+  "dll": "MSVCR90D.DLL",
+  "export_name": "_invoke_watson",
+  "display_name": "_invoke_watson",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "expression", "type": "wchar_t const* const", "inout": "in"},
+     {"name": "function_name", "type": "wchar_t const* const", "inout": "in"},
+     {"name": "file_name", "type": "wchar_t const* const", "inout": "in"},
+     {"name": "line_number", "type": "unsigned int const", "inout": "in"},
+     {"name": "reserved", "type": "uintptr_t const ", "inout": "in"}
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100D.DLL",
+  "export_name": "_invoke_watson",
+  "display_name": "_invoke_watson",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "expression", "type": "wchar_t const* const", "inout": "in"},
+     {"name": "function_name", "type": "wchar_t const* const", "inout": "in"},
+     {"name": "file_name", "type": "wchar_t const* const", "inout": "in"},
+     {"name": "line_number", "type": "unsigned int const", "inout": "in"},
+     {"name": "reserved", "type": "uintptr_t const ", "inout": "in"}
+  ],
+  "type": "void"
+},
+{
+  "dll": "MSVCR100.DLL",
+  "export_name": "_invoke_watson",
+  "display_name": "_invoke_watson",
+  "convention": "cdecl",
+  "parameters": [
+     {"name": "expression", "type": "wchar_t const* const", "inout": "in"},
+     {"name": "function_name", "type": "wchar_t const* const", "inout": "in"},
+     {"name": "file_name", "type": "wchar_t const* const", "inout": "in"},
+     {"name": "line_number", "type": "unsigned int const", "inout": "in"},
+     {"name": "reserved", "type": "uintptr_t const ", "inout": "in"}
+  ],
+  "type": "void"
+}
+]}}

@@ -29,6 +29,8 @@ typedef std::set<ImportDescriptor*> ImportDescriptorSet;
 namespace pharos {
 
 class ImportDescriptor {
+  static constexpr auto unknown_name = "*INVALID*";
+
   // The address of the import descriptor.  This can be NULL or invalid if the import
   // descriptor has not been found yet.
   rose_addr_t address;
@@ -74,8 +76,8 @@ class ImportDescriptor {
   ImportDescriptor() {
     address = 0;
     item = NULL;
-    name = "INVALID";
-    dll = "INVALID";
+    name = unknown_name;
+    dll = unknown_name;
     ordinal = 0;
     new_method = false;
     delete_method = false;
@@ -88,6 +90,8 @@ class ImportDescriptor {
   ImportDescriptor(std::string d, SgAsmPEImportItem *i);
 
   CallTargetSet get_callers() const { return callers; }
+  bool is_name_valid() const { return name != unknown_name; }
+  bool is_dll_valid() const { return dll != unknown_name; }
   const std::string & get_name() const { return name; }
   size_t get_ordinal() const { return ordinal; }
   const std::string & get_dll_name() const { return dll; }
@@ -156,9 +160,9 @@ class ImportDescriptorMap: public std::map<rose_addr_t, ImportDescriptor> {
   }
 
   // Find the one descriptor matching a specific DLL and name?
-  ImportDescriptor* find_name(std::string dll, std::string name);
+  ImportDescriptor* find_name(const std::string & dll, const std::string & name);
   // Find all descriptors with a given name.
-  ImportDescriptorSet find_name(std::string name);
+  ImportDescriptorSet find_name(const std::string & name);
 };
 
 } // namespace pharos

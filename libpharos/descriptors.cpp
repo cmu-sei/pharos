@@ -16,6 +16,7 @@
 #include "pdg.hpp"
 #include "apidb.hpp"
 #include "partitioner.hpp"
+#include "vftable.hpp"
 
 namespace pharos {
 
@@ -24,9 +25,6 @@ DescriptorSet* global_descriptor_set = NULL;
 // This is called by all the DescriptorSet::DescriptorSet() constructors.
 void DescriptorSet::init()
 {
-  auto lv = vm.get<std::string>("library", "pharos.library");
-  lib_path = lv ? *lv : get_default_libdir();
-
   apidb = APIDictionary::create_standard(vm);
 }
 
@@ -210,6 +208,11 @@ DescriptorSet::DescriptorSet(const ProgOptVarMap& povm, SgAsmFunction *func) : v
 DescriptorSet::~DescriptorSet() {
   if (engine != NULL) delete engine;
   if (sp_tracker != NULL) delete sp_tracker;
+  // We own the pointers for the virtual tables (use smart pointers instead?)
+  for (auto&& p : vftables) { delete p.second; }
+  vftables.clear();
+  for (auto&& p : vbtables) { delete p.second; }
+  vbtables.clear();
 }
 
 void DescriptorSet::add_function_descriptor(rose_addr_t addr, FunctionDescriptor && fd)
@@ -217,8 +220,8 @@ void DescriptorSet::add_function_descriptor(rose_addr_t addr, FunctionDescriptor
   if (apidb) {
     // If the address of this function has an API DB entry, incorporate it here.
     auto apidef = apidb->get_api_definition(addr);
-    if (apidef) {
-      fd.set_api(*apidef);
+    if (!apidef.empty()) {
+      fd.set_api(*apidef[0]);
     }
   }
   auto & loc = function_descriptors[addr];
@@ -304,21 +307,16 @@ rose_addr_t DescriptorSet::read_addr(rose_addr_t addr) {
   return naddr;
 }
 
+// TODO - Cory says the proper way to do this is to call get_partitioner() on the
+// global_descriptor_set and then call instructionProvider[address]
 SgAsmInstruction* DescriptorSet::get_insn(rose_addr_t addr) const {
   AddrInsnMap::const_iterator finder = insn_map.find(addr);
   if (finder == insn_map.end()) return NULL;
   return (*finder).second;
 }
 
-const RegisterDictionary* DescriptorSet::get_regdict() {
-  // Partitioner 1.
-  if (!engine) {
-    return RegisterDictionary::dictionary_pentium4();
-  }
-  // Partitioner 2.
-  else {
-    return partitioner.instructionProvider().registerDictionary();
-  }
+const RegisterDictionary DescriptorSet::get_regdict() {
+  return RegisterDictionary(partitioner.instructionProvider().registerDictionary());
 }
 
 void DescriptorSet::add_insn(rose_addr_t addr, SgAsmInstruction* insn) {
@@ -491,10 +489,18 @@ void DescriptorSet::dump(std::ostream &o) const {
 }
 
 void DescriptorSet::resolve_imports() {
+  // Use the old fashioned config file if requested.
+  auto import_config_file = vm.get<std::string>("imports", "pharos.json_config");
+  if (import_config_file) {
+    read_config(*import_config_file);
+  }
 
   // For each import in our file...
   for (auto & pair : import_descriptors) {
     ImportDescriptor &id = pair.second;
+    if (!id.is_dll_valid()) {
+      continue;
+    }
     auto root = id.get_dll_root();
     GDEBUG << "Resolving imports for: " << id << " in DLL root: " << root << LEND;
     // If the user specified a delta in the user config file, we don't need to load a delta
@@ -504,12 +510,15 @@ void DescriptorSet::resolve_imports() {
     if (isd.confidence == ConfidenceUser)
       continue;
 
-    auto fdesc = apidb->get_api_definition(root, id.get_name());
-    if (!fdesc && id.get_ordinal() != 0) {
+    APIDefinitionList fdesc;
+    if (id.is_name_valid()) {
+      fdesc = apidb->get_api_definition(root, id.get_name());
+    }
+    if (fdesc.empty() && id.get_ordinal() != 0) {
       fdesc = apidb->get_api_definition(root, id.get_ordinal());
     }
-    if (fdesc) {
-      std::unique_ptr<ImportDescriptor> dll_id(new ImportDescriptor(*fdesc));
+    if (!fdesc.empty()) {
+      std::unique_ptr<ImportDescriptor> dll_id(new ImportDescriptor(*fdesc[0]));
       id.merge_export_descriptor(dll_id.get());
     } else {
       GWARN << "No stack delta information for: " << id.get_best_name() << LEND;
@@ -525,14 +534,7 @@ void DescriptorSet::resolve_imports() {
   }
 
   // Now update the connections...  I'm not sure if this is really needed or not.
-  //update_connections();
-}
-
-void DescriptorSet::read_config() {
-  auto import_config_file = vm.get<std::string>("imports", "pharos.json_config");
-  if (import_config_file) {
-    read_config(*import_config_file);
-  }
+  update_connections();
 }
 
 void DescriptorSet::read_config(std::string filename) {
@@ -572,7 +574,7 @@ void DescriptorSet::read_config(std::string filename) {
 
   // Imports.
   for (ptree::value_type & v : config_tree.get_child("config.imports")) {
-    std::string name = to_lower(v.first.data());
+    std::string name = v.first.data();
     GTRACE << "IMPORT:" << name << LEND;
     ImportNameMap::iterator ifinder = import_names.find(name);
     ImportDescriptor* id;
@@ -747,51 +749,41 @@ DescriptorSet::get_fd_from_insn(const SgAsmInstruction *insn)
 }
 
 // Find a general purpose register in an semi-architecture independent way.
-const RegisterDescriptor*
+RegisterDescriptor
 DescriptorSet::get_arch_reg(const std::string & name) const
 {
-  const RegisterDictionary* regdict;
-  // Partitioner 1.
-  if (!engine) {
-    regdict = RegisterDictionary::dictionary_pentium4();
-  }
-  // Partitioner 2.
-  else {
-    regdict = partitioner.instructionProvider().registerDictionary();
-  }
+  RegisterDictionary regdict(partitioner.instructionProvider().registerDictionary());
 
   // Wow.  Horrible embarassing hack.   We'll need to think about this much harder.
   // 64-bit
   if (name.size() > 1 and name[0] == 'e' and arch_bytes == 8) {
     std::string large_name = name;
     large_name[0] = 'r';
-    return regdict->lookup(large_name);
+    return regdict.lookup(large_name);
   }
   // 32-bit (and assorted other failure cases)...
-  else {
-    return regdict->lookup(name);
-  }
+  return regdict.lookup(name);
 }
 
 // Find the stack pointer register in an architecture independent way.
-const RegisterDescriptor
+RegisterDescriptor
 DescriptorSet::get_stack_reg() const
 {
   // Partitioner 1
   if (!engine) {
-    return *get_arch_reg("esp");
+    return get_arch_reg("esp");
   }
   // Partitioner 2.
   return partitioner.instructionProvider().stackPointerRegister();
 }
 
 // Find the instruction pointer register in an architecture independent way.
-const RegisterDescriptor
+RegisterDescriptor
 DescriptorSet::get_ip_reg() const
 {
   // Partitioner 1
   if (!engine) {
-    return *get_arch_reg("eip");
+    return get_arch_reg("eip");
   }
   // Partitioner 2.
   return partitioner.instructionProvider().instructionPointerRegister();

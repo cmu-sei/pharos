@@ -78,8 +78,40 @@ void read_config_addr_set(const std::string & key, const boost::property_tree::p
 void write_config_addr_set(const std::string & key, boost::property_tree::ptree* tree,
                            CallTargetSet &tset);
 
+// Forward declaration of object-oriented analysis data structure.
+class ThisCallMethod;
 
 class FunctionDescriptor {
+
+public:
+  // only fn2hash really cares about these particular hashes, so instead of wasting memory
+  // keeping them in the FunctionDescriptor, we'll generate them only if explicitly requested
+  // by passing in this classs to populate, and return them in there:
+  class ExtraFunctionHashData {
+  public:
+    std::string mnemonics; // concatenated mnemonics
+    std::string mnemcats; // concatenated mnemonic categories
+
+    std::string mnemonic_hash; // variant of EHASH but only mnemonics (no operands) instead of insn bytes
+    std::string mnemonic_category_hash; // variant of PHASH but only mnemonic categories
+    std::string mnemonic_count_hash; // hash of the ordered mnemonic/count pairs
+    std::string mnemonic_category_count_hash; // hash of the orderend mnemcat/count pairs
+
+    std::map< std::string, uint32_t > mnemonic_counts;
+    std::map< std::string, uint32_t > mnemonic_category_counts;
+
+    std::vector< rose_addr_t > basic_block_addrs; // added in flow order (take len to get # bbs)
+    std::vector< std::pair< rose_addr_t, rose_addr_t > > cfg_edges; // from->to pairs of bb addrs (empty if only 1 bb?)
+    class BasicBlockHashData {
+    public:
+      //rose_addr_t addr; // eh, get addr from list above or map below
+      std::string pic;
+      std::string cpic;
+      std::vector< std::string > mnemonics; // in insn order (take len to see how many insn in bb)
+      std::vector< std::string > mnemonic_categories; // in insn order (take len to see how many insn in bb)
+    };
+    std::map< rose_addr_t, BasicBlockHashData > basic_block_hash_data;
+  };
 
 private:
 
@@ -122,6 +154,9 @@ private:
   // The list of possible stack variables. Stored as a pointer vector
   StackVariablePtrList stack_vars;
 
+  // A pointer to the OO analysis of this method.
+  ThisCallMethod* oo_properties;
+
   // Did the user request that this function be excluded?
   bool excluded;
 
@@ -153,19 +188,12 @@ private:
   // by get_pic_bytes() or get_pic_hash() by compute_func_bytes().
   std::string pic_bytes;
   std::string pic_hash;
+  std::list< uint32_t > pic_offsets; // the offsets of the PICed out bytes, so Yara sigs can be generted w/ this data
 
   std::string composite_pic_hash; // variant of PIC w/ no control flow insn, basic blocks hashed and func hashed by hashing those ordered hashes (ASCII values)...
 
-  std::string mnemonic_hash; // variant of EHASH but only mnemonics
-  std::string mnemonic_category_hash; // variant of PHASH but only mnemonics categories
-  std::string mnemonic_count_hash; // hash of the ordered mnemonic/count pairs
-  std::string mnemonic_category_count_hash; // hash of the orderend mnemcat/count pairs
-
-  std::map< std::string, uint32_t > mnemonic_counts;
-  std::map< std::string, uint32_t > mnemonic_category_counts;
-
   // might as well collect some fn level stats:
-  unsigned int num_blocks;
+  unsigned int num_blocks; // basic blocks, that is
   unsigned int num_blocks_in_cfg;
   unsigned int num_instructions;
   unsigned int num_bytes;
@@ -225,11 +253,6 @@ private:
   // target_func, which is corrected in update_connections().
   void update_target_address();
 
-  // Compute the exact & PIC bytes & hashes simultaneously, since they're so similar.
-  void compute_function_hashes();
-  // older variant that isn't quite right:
-  void old_compute_function_bytes();
-
   // Walk the reads in the function, and identify reads of stack parameters.  Only called while
   // generating the PDG.
   void update_stack_parameters();
@@ -239,6 +262,8 @@ private:
   void update_register_parameters();
 
   void update_stack_variables();
+
+  void update_global_variables();
 
   void analyze_type_information(const DUAnalysis& du);
 
@@ -340,6 +365,9 @@ public:
   // Return the list of outgoing calls.
   const CallDescriptorSet& get_outgoing_calls() const { return outgoing_calls; }
 
+  ThisCallMethod* get_oo_properties() { return oo_properties; }
+  void set_oo_properties(ThisCallMethod* tcm) { oo_properties = tcm; }
+
   // Add a caller to the list of functions that call this function.
   void add_caller(rose_addr_t addr) { callers.insert(addr); }
   // Return the list of addresses that call this function.  Wes defined this to return a copy
@@ -354,13 +382,19 @@ public:
 
   void set_returns_this_pointer(bool r) { returns_this_pointer = r; }
   bool get_returns_this_pointer() const { return returns_this_pointer; }
+  void set_never_returns(bool n) { never_returns = n; }
   bool get_never_returns() const { return never_returns; }
 
   // return the computed PDG for this function
   PDG * get_pdg(spTracker *sp = NULL);
+  void free_pdg();
 
   // Get the number of stack delta analysis failures.
   size_t get_stack_analysis_failures() const { return stack_analysis_failures; }
+
+  // Compute the exact & PIC bytes & hashes simultaneously.  If extra pointer is not null,
+  // compute extra hash types and return in that struct.
+  void compute_function_hashes(ExtraFunctionHashData *extra=NULL);
 
   // Get the weighted PDG hash.
   std::string get_pdg_hash(unsigned int num_hash_funcs = 4);
@@ -373,20 +407,13 @@ public:
   const std::string& get_exact_hash();
   // The bytes of the function in the order described by the function hashing specification,
   // with the non position independent parts replaced with zeros.  This is the value hashed to
-  // produce the PIC hash.  Currently, this code is faulty and only vaguely resembles the
-  // correct PIC hash algorithm.
+  // produce the PIC hash.
   const std::string& get_pic_bytes();
-  // Get something vaugely like the PIC hash.
+  const std::list< uint32_t > & get_pic_offsets(); // which bytes in the PIC bytes were PICed out?
+  // Get the PIC hash.
   const std::string& get_pic_hash();
-
+  // Get the CPIC (tries to account for simple CFG changes):
   const std::string& get_composite_pic_hash();
-  const std::string& get_mnemonic_hash();
-  const std::string& get_mnemonic_category_hash();
-  const std::string& get_mnemonic_count_hash();
-  const std::string& get_mnemonic_category_count_hash();
-
-  const std::map< std::string, uint32_t >& get_mnemonic_counts();
-  const std::map< std::string, uint32_t >& get_mnemonic_category_counts();
 
   inline unsigned int get_num_blocks() { return num_blocks; };
   inline unsigned int get_num_blocks_in_cfg() { return num_blocks_in_cfg; };
@@ -395,7 +422,8 @@ public:
 
   // A couple of methods that perhaps should be on the function, but we'll put it on the
   // function descriptor for now.
-  CFG& get_cfg();
+  CFG& get_rose_cfg();
+  CFG& get_pharos_cfg();
   Rose::BinaryAnalysis::ControlFlow& get_cfg_analyzer();
   BlockSet& get_return_blocks();
   SgAsmInstruction* get_insn(const rose_addr_t) const;

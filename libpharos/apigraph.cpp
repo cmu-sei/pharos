@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Jeff Gennari
 // Date: 2015-06-22
@@ -743,7 +743,7 @@ void ApiSearchExecutor::UpdateApiMatchTable(rose_addr_t caller, rose_addr_t call
 
   GDEBUG << "Updating returns" << LEND;
 
-  const RegisterDescriptor* eax_reg = global_descriptor_set->get_arch_reg("eax");
+  RegisterDescriptor eax_reg = global_descriptor_set->get_arch_reg("eax");
   const ParamVector& cd_rets = cd->get_parameters().get_returns();
 
   for (ApiParamMatchPair & match_pair : state_.match_table) {
@@ -878,7 +878,7 @@ bool ApiSearchExecutor::EvaluateApiMatchTable(const ApiSigFunc &sig_func,
 
     GDEBUG << "Checking retn value: " << sig_func.retval.name << LEND;
 
-    const RegisterDescriptor* eax_reg = global_descriptor_set->get_arch_reg("eax");
+    RegisterDescriptor eax_reg = global_descriptor_set->get_arch_reg("eax");
     const ParamVector& cd_rets = cd->get_parameters().get_returns();
 
     const ApiParamMatchTableIter & ret_entry = state_.match_table.find(sig_func.retval.name);
@@ -1012,7 +1012,7 @@ bool ApiSearchExecutor::Search(ApiSig &sig, ApiSearchResultVector *result_list )
         }
         if (startv == NULL_VERTEX) {
 
-          OWARN << "Could not find starting vertex in "
+          GWARN << "Could not find starting vertex in "
                 << addr_str(start_comp->GetEntryAddr()) << LEND;
 
           worklist.erase(workitem);
@@ -1543,7 +1543,7 @@ bool ApiVertexInfo::ContainsAddress(const rose_addr_t addr) const {
 void ApiCfgComponent::Initialize(FunctionDescriptor &fd, AddrSet &api_calls, XrefMap &xrefs) {
 
   // Build the information for this CFG
-  CFG &src = fd.get_cfg();
+  CFG &src = fd.get_pharos_cfg();
   cfg_ = new ApiCfg();
 
   typedef boost::graph_traits<CFG>::vertex_descriptor CfgVertex;

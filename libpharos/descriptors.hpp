@@ -36,6 +36,13 @@ namespace pharos {
 typedef std::map<size_t, ImportDescriptor*> ImportVariableMap;
 typedef std::map<rose_addr_t, SgAsmInstruction*> AddrInsnMap;
 
+// Forward declarations of the virtual table classes to simplify include order.
+class VirtualFunctionTable;
+class VirtualBaseTable;
+// Maps of addresses to the virtual function tables and virtual base tables.
+typedef std::map<rose_addr_t, VirtualFunctionTable*> VFTableAddrMap;
+typedef std::map<rose_addr_t, VirtualBaseTable*> VBTableAddrMap;
+
 class DescriptorSet: public AstPreOrderTraversal
 {
 
@@ -45,6 +52,8 @@ class DescriptorSet: public AstPreOrderTraversal
   ImportVariableMap import_variables;
   GlobalMemoryDescriptorMap global_descriptors;
   CallingConventionMatcher calling_conventions;
+  VFTableAddrMap vftables;
+  VBTableAddrMap vbtables;
 
   // These don't really belong here, but I want reading the program image to be globally
   // accessible, so this is the most convenient place for right now.
@@ -55,9 +64,6 @@ class DescriptorSet: public AstPreOrderTraversal
 
   // Arguments supplied to this descriptor set
   const ProgOptVarMap& vm;
-
-  // The path to the objdigger library configuration directory.
-  boost::filesystem::path lib_path;
 
   // The Function call graph of this program.
   FCG function_call_graph;
@@ -114,7 +120,6 @@ public:
   }
 
   // Read and write from property tree config files.
-  void read_config();
   void read_config(std::string filename);
   void write_config(std::string filename);
 
@@ -126,15 +131,15 @@ public:
   FunctionDescriptorMap& get_func_map() { return function_descriptors; }
   ImportDescriptorMap& get_import_map() { return import_descriptors; }
   GlobalMemoryDescriptorMap& get_global_map() { return global_descriptors; }
+  VFTableAddrMap& get_vftables() { return vftables; }
+  VBTableAddrMap& get_vbtables() { return vbtables; }
+
   const CallingConventionMatcher& get_calling_conventions() const { return calling_conventions; }
   // Ensure that all imports in import_descriptors are also in import_variables.
   void add_import(ImportDescriptor id);
 
   FunctionDescriptorMap::iterator func_begin() { return function_descriptors.begin(); }
   FunctionDescriptorMap::iterator func_end() { return function_descriptors.end(); }
-
-  // Allow others to benefit from our efforts on figuring out the correct library path.
-  const boost::filesystem::path & get_library_path() const { return lib_path; }
 
   // return a filtered iterator using a supplied predicate
   CallDescriptorMap::filtered_iterator calls_filter_begin(CallDescMapPredicate predicate) {
@@ -168,7 +173,7 @@ public:
   // Here's how you can get access to the new Partitioner 2 engine (maybe)...
   P2::Engine* get_engine() { return engine; }
   P2::Partitioner& get_partitioner() { return partitioner; }
-  const RegisterDictionary* get_regdict();
+  const RegisterDictionary get_regdict();
 
   // These should really be on the MemoryMap...  and are a complete mess by current standards.
   // They should be accessible from the P2::Partitioner once we commit to that approach.
@@ -191,10 +196,10 @@ public:
   size_t get_arch_bits() const { return arch_bytes * 8; }
 
   // Find a general purpose register in an semi-architecture independent way.
-  const RegisterDescriptor* get_arch_reg(const std::string & name) const;
+  RegisterDescriptor get_arch_reg(const std::string & name) const;
   // Find the stack pointer or instruction pointer register in an architecture independent way.
-  const RegisterDescriptor get_stack_reg() const;
-  const RegisterDescriptor get_ip_reg() const;
+  RegisterDescriptor get_stack_reg() const;
+  RegisterDescriptor get_ip_reg() const;
 
 };
 

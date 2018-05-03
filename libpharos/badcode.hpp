@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_BadCode_H
 #define Pharos_BadCode_H
@@ -98,7 +98,7 @@ public:
     SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::instance();
     size_t arch_bits = global_descriptor_set->get_arch_bits();
     DispatcherPtr dispatcher = RoseDispatcherX86::instance(rops, arch_bits, NULL);
-    const RegisterDescriptor& eiprd = dispatcher->findRegister("eip", arch_bits);
+    RegisterDescriptor eiprd = dispatcher->findRegister("eip", arch_bits);
 
     for (size_t q = 0; q < insns.size(); q++) {
       SgAsmX86Instruction *curInsn = isSgAsmX86Instruction(insns[q]);

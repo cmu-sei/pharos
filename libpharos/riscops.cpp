@@ -1,4 +1,4 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "riscops.hpp"
 #include "masm.hpp"
@@ -10,7 +10,8 @@ namespace pharos {
 // SymbolicRiscOperatorsPtr everywhere.  And it doesn't consume dozen of gigabytes of RAM. :-)
 SymbolicRiscOperatorsPtr global_rops;
 
-SymbolicRiscOperators::SymbolicRiscOperators(const SymbolicValuePtr& aprotoval_, SMTSolver* asolver_):
+SymbolicRiscOperators::SymbolicRiscOperators(const SymbolicValuePtr& aprotoval_,
+                                             const SmtSolverPtr & asolver_):
   SymRiscOperators(aprotoval_, asolver_) {
   name("CERT");
   computingDefiners(TRACK_LATEST_DEFINER);
@@ -21,7 +22,8 @@ SymbolicRiscOperators::SymbolicRiscOperators(const SymbolicValuePtr& aprotoval_,
 }
 
 // Standard ROSE constructor must take custom types to ensure promotion.
-SymbolicRiscOperators::SymbolicRiscOperators(const SymbolicStatePtr& state_, SMTSolver* asolver_):
+SymbolicRiscOperators::SymbolicRiscOperators(const SymbolicStatePtr& state_,
+                                             const SmtSolverPtr & asolver_):
   SymRiscOperators(state_, asolver_) {
   name("CERT");
   computingDefiners(TRACK_LATEST_DEFINER);
@@ -36,7 +38,7 @@ SymbolicRiscOperators::SymbolicRiscOperators(const SymbolicStatePtr& state_, SMT
 //==============================================================================================
 
 // Things that Cory thinks should be proxied through to the memory and register classes.
-SymbolicValuePtr SymbolicRiscOperators::read_register(const RegisterDescriptor &reg) {
+SymbolicValuePtr SymbolicRiscOperators::read_register(RegisterDescriptor reg) {
   STRACE << "RiscOps::read_register(): " << LEND;
   return get_sstate()->read_register(reg);
 }
@@ -59,7 +61,7 @@ void SymbolicRiscOperators::startInstruction(SgAsmInstruction *insn) {
   SymRiscOperators::startInstruction(insn);
 }
 
-BaseSValuePtr SymbolicRiscOperators::readRegister(const RegisterDescriptor &reg) {
+BaseSValuePtr SymbolicRiscOperators::readRegister(RegisterDescriptor reg) {
   STRACE << "RiscOps::readRegister() reg=" << unparseX86Register(reg, NULL) << LEND;
 
   // Call the standard ROSE implementation of readRegister().
@@ -85,7 +87,7 @@ BaseSValuePtr SymbolicRiscOperators::readRegister(const RegisterDescriptor &reg)
   return bv;
 }
 
-void SymbolicRiscOperators::writeRegister(const RegisterDescriptor &reg, const BaseSValuePtr &v) {
+void SymbolicRiscOperators::writeRegister(RegisterDescriptor reg, const BaseSValuePtr &v) {
   STRACE << "RiscOps::writeRegister() reg=" << unparseX86Register(reg, NULL) << " value=" << *v << LEND;
 
   // Call the standard ROSE implementation of writeRegister().
@@ -110,7 +112,7 @@ void SymbolicRiscOperators::writeRegister(const RegisterDescriptor &reg, const B
   }
 }
 
-BaseSValuePtr SymbolicRiscOperators::readMemory(const RegisterDescriptor &segreg,
+BaseSValuePtr SymbolicRiscOperators::readMemory(RegisterDescriptor segreg,
                                                 const BaseSValuePtr &addr,
                                                 const BaseSValuePtr &dflt,
                                                 const BaseSValuePtr &cond) {
@@ -154,7 +156,7 @@ BaseSValuePtr SymbolicRiscOperators::readMemory(const RegisterDescriptor &segreg
   // including reads of imports and reads of constant initialized data.  This has to be in
   // RiscOps and not the MemoryState because we want to handle full size (not byte size) reads.
   for (const TreeNodePtr& tn : saddr->get_possible_values()) {
-    if (tn->isNumber()) {
+    if (tn->isNumber() && tn->nBits() <= 64) {
       rose_addr_t known_addr = tn->toInt();
       ImportDescriptor *id = global_descriptor_set->get_import(known_addr);
       // Handle the special case of reading an import descriptor!  Let's mock this up so that
@@ -190,7 +192,12 @@ BaseSValuePtr SymbolicRiscOperators::readMemory(const RegisterDescriptor &segreg
         // Create a new variable for the global value. A new abstract variable is needed
         // because the global can change throughout the program
         SymbolicValuePtr sv = SymbolicValue::constant_instance(tn->nBits(), known_addr);
-        initialize_memory(sv, gmd->get_value());
+
+        // JSG is updating creation of global values to contain a set of values.
+        std::vector<SymbolicValuePtr> global_vals = gmd->get_values();
+        for (auto gv : global_vals) {
+          initialize_memory(sv, gv);
+        }
       }
     }
   }
@@ -210,7 +217,7 @@ BaseSValuePtr SymbolicRiscOperators::readMemory(const RegisterDescriptor &segreg
   return retval;
 }
 
-void SymbolicRiscOperators::writeMemory(UNUSED const RegisterDescriptor &segreg,
+void SymbolicRiscOperators::writeMemory(UNUSED RegisterDescriptor segreg,
                                         const BaseSValuePtr &addr,
                                         const BaseSValuePtr &data,
                                         const BaseSValuePtr &cond) {
@@ -240,7 +247,7 @@ void SymbolicRiscOperators::writeMemory(UNUSED const RegisterDescriptor &segreg,
   // overwrites).  This makes more sense here, but it might actually be cleaner back in defuse
   // where it was before Cory moved it here.
   for (const TreeNodePtr& tn : saddr->get_possible_values()) {
-    if (tn->isNumber()) {
+    if (tn->isNumber() && tn->nBits() <= 64) {
       rose_addr_t known_addr = tn->toInt();
       ImportDescriptor *id = global_descriptor_set->get_import(known_addr);
       if (id != NULL) {
@@ -273,10 +280,15 @@ void SymbolicRiscOperators::initialize_memory(const SymbolicValuePtr &addr,
   // the original value written rather than a concatenation of byte extractions.
 
   size_t nbits = data->get_width();
-  assert(8==nbits || 16==nbits || 32==nbits || 64==nbits);
+  if (nbits % 8 != 0) {
+    size_t old_width = nbits;
+    nbits = (nbits/8) * 8;
+    GERROR << "Unable to initialize " << old_width << " bits of memory correctly, "
+           << "initializing " << nbits << " instead." << LEND;
+  }
   size_t nbytes = nbits/8;
   SymbolicStatePtr sstate = SymbolicState::promote(currentState());
-  SymbolicMemoryStatePtr mem = SymbolicMemoryState::promote(sstate->memoryState());
+  BaseMemoryStatePtr mem = sstate->memoryState();
   for (size_t bytenum=0; bytenum<nbits/8; ++bytenum) {
     size_t byteOffset = ByteOrder::ORDER_MSB==mem->get_byteOrder() ? nbytes-(bytenum+1) : bytenum;
     SymbolicValuePtr byte_dflt = SymbolicValue::promote(extract(data, 8*byteOffset, 8*byteOffset+8));
@@ -295,7 +307,7 @@ void SymbolicRiscOperators::initialize_memory(const SymbolicValuePtr &addr,
 // but instead of creating new values in the state, it returns an invalid symbolic value to
 // indicate that the value doesn't exist.  Yes, this another copy of the code from ROSE.  :-(
 // This one is hacked so that we read only _read_ memory without writing to it.
-SymbolicValuePtr SymbolicRiscOperators::read_memory(const SymbolicMemoryState* mem,
+SymbolicValuePtr SymbolicRiscOperators::read_memory(const SymbolicMemoryMapState* mem,
                                                     const SymbolicValuePtr &address,
                                                     const size_t nbits) {
   STRACE << "RiscOps::read_memory(address, " << nbits << "):" << LEND;
@@ -312,7 +324,7 @@ SymbolicValuePtr SymbolicRiscOperators::read_memory(const SymbolicMemoryState* m
   // SEI added the mods set.
   InsnSet mods;
 
-  // SEI upgraded to our SymbolicState and SymbolicMemoryState here...
+  // SEI upgraded to our SymbolicState and SymbolicMemoryMapState here...
   for (size_t bytenum=0; bytenum<nbits/8; ++bytenum) {
     BaseSValuePtr byte_addr = add(address, number_(address->get_width(), bytenum));
     // SEI changed the type of byte_value.
@@ -365,11 +377,17 @@ BaseSValuePtr SymbolicRiscOperators::or_(const BaseSValuePtr &a_, const BaseSVal
   SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::or_(a_, b_));
 
   // Any register OR'd with 0xFFFFFFFF is really just "mov reg, 0xFFFFFFFF"
-  if (a_->is_number() && 0xFFFFFFFF == a_->get_number()) {
-    retval->set_defining_instructions(a->get_defining_instructions());
+  if (a_->is_number()) {
+    LeafNodePtr alp = a->get_expression()->isLeafNode();
+    if (alp && alp->bits().isAllSet()) {
+      retval->set_defining_instructions(a->get_defining_instructions());
+    }
   }
-  else if (b_->is_number() && 0xFFFFFFFF == b_->get_number()) {
-    retval->set_defining_instructions(b->get_defining_instructions());
+  else if (b_->is_number()) {
+    LeafNodePtr blp = b->get_expression()->isLeafNode();
+    if (blp && blp->bits().isAllSet()) {
+      retval->set_defining_instructions(b->get_defining_instructions());
+    }
   }
 
   if (STRACE) {

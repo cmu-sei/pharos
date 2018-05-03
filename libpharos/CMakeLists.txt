@@ -5,20 +5,21 @@ set(PHAROS_SOURCES
   apisig.cpp
   calls.cpp
   cdg.cpp
-  class.cpp
   config.cpp
   convention.cpp
   defuse.cpp
   demangle.cpp
+  demangle_json.cpp
   descriptors.cpp
   funcs.cpp
   globals.cpp
   imports.cpp
-  jsonoo.cpp
+  ir.cpp
+  json.cpp
+  oojson_exporter.cpp
   limit.cpp
   masm.cpp
   md5.cpp
-  member.cpp
   method.cpp
   misc.cpp
   ooanalyzer.cpp
@@ -41,6 +42,12 @@ set(PHAROS_SOURCES
   vcall.cpp
   vftable.cpp
   xsb.cpp
+  ooelement.cpp
+  ooclass.cpp
+  oomember.cpp
+  oomethod.cpp
+  oovftable.cpp
+  path.cpp
   PHAROS_REVISION.ii
   config.yaml.ii
   )
@@ -60,12 +67,15 @@ configure_file(xsb_types.hpp.in xsb_types.hpp)
 configure_file(build.hpp.in build.hpp)
 
 # Create pharos library
-add_library(pharos STATIC ${PHAROS_SOURCES} ${XSB_OBJ})
-target_link_libraries(pharos PUBLIC Threads::Threads Boost::chrono Boost::timer)
-target_link_libraries(pharos INTERFACE
+add_library(pharos SHARED ${PHAROS_SOURCES} ${XSB_OBJECT_FILE})
+target_link_libraries(pharos PUBLIC
+  Threads::Threads Boost::chrono Boost::timer ${CMAKE_DL_LIBS}
   Rose::Rose SQLite::SQLite ${CURSES_LIBRARIES})
-# XSB include dirs
-target_include_directories(pharos PRIVATE ${XSB_INCLUDE_DIRS})
+target_include_directories(pharos PRIVATE
+  ${XSB_INCLUDE_DIRS}
+  $<TARGET_PROPERTY:SQLite::SQLite,INTERFACE_INCLUDE_DIRECTORIES>)
+
+
 # curses and Rose include dirs
 target_include_directories(pharos SYSTEM PUBLIC
   ${CURSES_INCLUDE_DIRS}
@@ -84,7 +94,9 @@ install(TARGETS pharos EXPORT libpharos DESTINATION lib)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} DESTINATION include
   FILES_MATCHING PATTERN "*.hpp")
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} DESTINATION include
-  FILES_MATCHING PATTERN "*.hpp")
+  FILES_MATCHING
+  PATTERN "*.hpp"
+  PATTERN "build.hpp" EXCLUDE)
 install(EXPORT libpharos DESTINATION lib/cmake/libpharos
   EXPORT_LINK_INTERFACE_LIBRARIES)
 

@@ -2,6 +2,7 @@
 
 #include <cerrno>
 #include <locale>
+#include <stdexcept>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -98,6 +99,28 @@ void dump_hex(char *buff, size_t len) {
     char b[50];
     sprintf(b,"%.2x",(uint8_t)buff[a]);
     std::cout << b;
+  }
+}
+
+Version::Version(const std::string & s)
+{
+  std::istringstream ver(s);
+  unsigned n;
+  while (ver >> n) {
+    version.push_back(n);
+    char sep;
+    if (!(ver >> sep)) {
+      break;
+    }
+    if (sep != '.') {
+      throw std::runtime_error("Illegal version string: " + s);
+    }
+  }
+  if (!ver.eof()) {
+    throw std::runtime_error("Illegal version string: " + s);
+  }
+  while (!version.empty() && version.back() == 0) {
+    version.pop_back();
   }
 }
 

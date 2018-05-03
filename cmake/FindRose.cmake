@@ -1,14 +1,23 @@
 set(_ROSE_SEARCHES)
 
-find_package(Yices)
+find_package(Z3)
+if (NOT Z3_FOUND)
+  include(BuildZ3)
+  message(FATAL_ERROR "Should not get here")
+endif()
+if (Z3_VERSION AND (Z3_VERSION VERSION_LESS 4.6))
+  message(WARNING "Foud Z3 version ${Z3_VERSION}, needed 4.6")
+  include(BuildZ3)
+endif()
 
 set(Boost_USE_MULTITHREADED on)
 find_package(Boost 1.60.0 REQUIRED
   COMPONENTS system thread program_options iostreams filesystem regex wave)
+if (NOT Boost_FOUND OR (Boost_VERSION LESS 1.60))
+  message(FATAL_ERROR "Could not find a usable version of boost")
+endif()
 
-find_package(yaml-cpp 0.5.3 PATHS ${yaml-cpp_ROOT}
-  NO_DEFAULT_PATH PATH_SUFFIXES lib/cmake cmake)
-find_package(yaml-cpp 0.5.3 REQUIRED PATH_SUFFIXES lib/cmake cmake)
+find_package(YamlCpp 0.6 REQUIRED)
 
 find_package(Threads)
 
@@ -18,47 +27,41 @@ if(ROSE_ROOT)
   list(APPEND _ROSE_SEARCHES _ROSE_SEARCH_ROOT)
 endif()
 
-if(ROSE_STATIC)
-  set(ROSE_NAMES librose.a)
-elseif(ROSE_DYNAMIC)
-  set(ROSE_NAMES librose.so)
-else()
-  set(ROSE_NAMES rose)
-endif()
+set(ROSE_NAMES librose.so)
 
 # Normal search.
 set(_ROSE_SEARCH_NORMAL)
-list(APPEND _ROSE_SEARCH _ROSE_SEARCH_NORMAL)
+list(APPEND _ROSE_SEARCHES _ROSE_SEARCH_NORMAL)
 
 foreach(search ${_ROSE_SEARCHES})
   find_path(ROSE_INCLUDE_DIR NAMES rose.h ${${search}} PATH_SUFFIXES include/rose)
+  if(NOT ROSE_LIBRARY)
+    find_library(ROSE_LIBRARY NAMES ${ROSE_NAMES} ${${search}} PATH_SUFFIXES lib)
+  endif()
+  find_program(ROSE_CONFIG NAMES rose-config ${${search}} PATH_SUFFIXES bin)
 endforeach()
 
-if(NOT ROSE_LIBRARY)
-  foreach(search ${_ROSE_SEARCHES})
-    find_library(ROSE_LIBRARY NAMES ${ROSE_NAMES} ${${search}} PATH_SUFFIXES lib)
-  endforeach()
+set(ROSE_VERSION)
+if(ROSE_CONFIG)
+  execute_process(
+    COMMAND ${ROSE_CONFIG} -V
+    ERROR_VARIABLE out
+    RESULT_VARIABLE res)
+  if (NOT res EQUAL 0)
+    message(FATAL_ERROR "Cannot run ${ROSE_CONFIG} -V")
+  endif()
+  string(REGEX REPLACE "[ \n\t]+$" "" ROSE_VERSION "${out}")
 endif()
 
-if(ROSE_STATIC)
-  foreach(search ${_ROSE_SEARCHES})
-    find_library(ROSE_HPDF_LIBRARY NAMES libhpdf.a ${${search}} PATH_SUFFIXES lib)
-  endforeach()
-  find_library(ROSE_GCRYPT_LIBRARY NAMES libgcrypt.a)
-  find_library(ROSE_GPGERROR_LIBRARY NAMES libgpg-error.a)
-  set(ROSE_STATIC_LIBS ${ROSE_GCRYPT_LIBRARY} ${ROSE_GPGERROR_LIBRARY} ${ROSE_HPDF_LIBRARY})
-  set(_ROSE_STATIC_LIB_VARS ROSE_GCRYPT_LIBRARY ROSE_GPGERROR_LIBRARY ROSE_HPDF_LIBRARY)
-endif()
-
-unset(ROSE_NAMES)
-
-mark_as_advanced(ROSE_LIBRARY ROSE_INCLUDE_DIR)
+mark_as_advanced(ROSE_LIBRARY ROSE_INCLUDE_DIR ROSE_CONFIG)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(ROSE DEFAULT_MSG
-  ROSE_INCLUDE_DIR ROSE_LIBRARY ${_ROSE_STATIC_LIB_VARS})
+find_package_handle_standard_args(ROSE
+  VERSION_VAR ROSE_VERSION
+  REQUIRED_VARS ROSE_INCLUDE_DIR ROSE_LIBRARY)
 
 if(ROSE_FOUND)
+
   set(ROSE_INCLUDE_DIRS ${ROSE_INCLUDE_DIR})
 
   if(NOT ROSE_LIBRARIES)
@@ -68,12 +71,12 @@ if(ROSE_FOUND)
   if(NOT TARGET Rose::Rose)
     add_library(Rose::Rose UNKNOWN IMPORTED)
     set_property(TARGET Rose::Rose PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-      ${ROSE_INCLUDE_DIR} ${YICES_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${YAML_CPP_INCLUDE_DIR})
+      ${ROSE_INCLUDE_DIR} ${Z3_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${YAML_CPP_INCLUDE_DIR})
     set_property(TARGET Rose::Rose PROPERTY INTERFACE_SYSTEM_INCLUDE_DIRECTORIES
-      ${ROSE_INCLUDE_DIR} ${YICES_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${YAML_CPP_INCLUDE_DIR})
+      ${ROSE_INCLUDE_DIR} ${Z3_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${YAML_CPP_INCLUDE_DIR})
     set_property(TARGET Rose::Rose PROPERTY IMPORTED_LOCATION ${ROSE_LIBRARY})
     set_property(TARGET Rose::Rose PROPERTY INTERFACE_LINK_LIBRARIES
-      ${ROSE_STATIC_LIBS} ${Boost_LIBRARIES} ${YICES_LIBRARIES}
-      ${YAML_CPP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+      ${ROSE_STATIC_LIBS} ${Boost_LIBRARIES} ${Z3_LIBRARIES}
+      ${YAML_CPP_LIBRARY} ${CMAKE_DL_LIBS} Threads::Threads)
   endif()
 endif()

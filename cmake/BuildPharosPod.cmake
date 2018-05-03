@@ -1,10 +1,11 @@
 # Add a target that builds and installs a POD file as a man page
 
-set(POD_BUILD "${CMAKE_SOURCE_DIR}/doc/build_pod.cmake")
+set(POD_BUILD "${CMAKE_SOURCE_DIR}/share/doc/build_pod.cmake")
 set(POD_DEPENDS
-  "${CMAKE_SOURCE_DIR}/doc/pharos_env.pod"
-  "${CMAKE_SOURCE_DIR}/doc/pharos_files.pod"
-  "${CMAKE_SOURCE_DIR}/doc/pharos_options.pod")
+  "${CMAKE_SOURCE_DIR}/share/doc/pharos_env.pod"
+  "${CMAKE_SOURCE_DIR}/share/doc/pharos_files.pod"
+  "${CMAKE_SOURCE_DIR}/share/doc/pharos_opts.pod"
+  "${CMAKE_SOURCE_DIR}/share/doc/pharos_options.pod")
 
 function(build_pharos_pod target podfile section)
   get_filename_component(BASENAME "${podfile}" NAME_WE)
@@ -16,7 +17,7 @@ function(build_pharos_pod target podfile section)
   set(POD_MAN "${CMAKE_CURRENT_BINARY_DIR}/${BASENAME}.${section}")
   add_custom_command(
     OUTPUT "${BUILT_POD}"
-    COMMAND ${CMAKE_COMMAND} "-DPOD_DIR=${CMAKE_SOURCE_DIR}/doc"
+    COMMAND ${CMAKE_COMMAND} "-DPOD_DIR=${CMAKE_SOURCE_DIR}/share/doc"
     "-DPOD_SOURCE=${podfile}"
     "-DPOD_DEST=${BUILT_POD}" -P "${POD_BUILD}"
     MAIN_DEPENDENCY "${podfile}"

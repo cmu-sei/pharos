@@ -161,14 +161,14 @@ def read_config(args):
     # cleanware flag than a name though).
     #parser.add_option("-n", "--exclude-name", help="regexp values to filter out functions that have names that match, can specify multiple times (default: %default)", action="append", type="string", dest="exclude_names", default=[r'^_.*',r'^\?.*',r'^unknown_libname.*',r'^j_.*',r'^\$LN.*'])
     # for now, can specify csv files w/ funcs to skip:
-    parser.add_option("-X", "--blacklist", help="specify a file filled with csv data to filter out functions that are in it from the rest of the processing (eg: cleanware csv data, can use -X multiple times, but don't use wildcards to read in multiple blacklist files, probably won't work)", type="string", dest="blacklist", action="append", default=[])
+    parser.add_option("-X", "--blacklist", help="specify a file filled with csv data to filter out functions that are in it from the rest of the processing (eg: cleanware csv data, note that you can use -X multiple times, but don't use wildcards to read in multiple blacklist files as that probably won't work)", type="string", dest="blacklist", action="append", default=[])
 
     parser.add_option("-T", "--hashtype", help="hash type to use for fn hash comparisons (" + ",".join(hashtypes) + "; default %default)", type="string", dest="hashtype", default=defaulthash)
 
-    parser.add_option("-M", "--matrix", help="show matrix of files and phashes (default)", action="store_true", dest="matrix", default=False)
+    parser.add_option("-M", "--matrix", help="show text matrix of files and hashes (default)", action="store_true", dest="matrix", default=False)
     parser.add_option("-c", "--compact", help="compact the output a bit (when appropriate)", action="store_true", dest="compact", default=False)
-    parser.add_option("-H", "--histogram", help="show histogram of # files per # phashes (NOT IMPLEMENTED YET)", action="store_true", dest="histogram", default=False)
-    parser.add_option("-G", "--graph", help="show graph of files and phashes (requires NetworkX, matplotlib, scipy, and numpy, NOT IMPLEMENTED YET)", action="store_true", dest="graph", default=False)
+    parser.add_option("-H", "--histogram", help="show histogram of # files per # hashes (NOT IMPLEMENTED YET)", action="store_true", dest="histogram", default=False)
+    parser.add_option("-G", "--graph", help="show graph of files and hashes (requires NetworkX, matplotlib, scipy, and numpy, NOT IMPLEMENTED YET)", action="store_true", dest="graph", default=False)
     parser.add_option("-F", "--faces", help="show chernoff faces of fn2hash data ala our malfaces R module (requires scikit-learn, matplotlib, scipy, and numpy, NOT IMPLEMENTED YET)", action="store_true", dest="faces", default=False)
 
     global options

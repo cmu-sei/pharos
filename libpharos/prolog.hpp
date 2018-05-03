@@ -8,6 +8,7 @@
 #include "prologimpl.hpp"
 #include "descriptors.hpp"
 #include <boost/filesystem.hpp>
+#include <Sawyer/Message.h>
 
 namespace pharos {
 namespace prolog {
@@ -120,6 +121,13 @@ class Session {
   }
 
  private:
+  static int prolog_log_base(bool newline);
+  static int prolog_log() {
+    return prolog_log_base(false);
+  }
+  static int prolog_logln() {
+    return prolog_log_base(true);
+  }
   std::shared_ptr<impl::Session> session;
   Path default_rule_dir;
 };

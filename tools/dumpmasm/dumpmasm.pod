@@ -1,0 +1,95 @@
+=pod
+
+=head1 NAME
+
+B<dumpmasm> - Dump assembly listing using Pharos partitioner
+
+=head1 SYNOPSIS
+
+dumpmasm [--hex-bytes=NUMBER] [--basic-block-lines] [--format=STRING]
+  [--reasons] [...Pharos options...] EXECUTABLE_FILE
+
+dumpmasm --help
+
+dumpmasm --rose-version
+
+@PHAROS_OPTS_POD@ 
+
+=head1 DESCRIPTION
+
+B<dumpmasm> does stuff.
+
+=head1 OPTIONS
+
+=head2 B<dumpmasm> OPTIONS
+
+The following options are specific to the B<dumpmasm> program.
+
+=over 4
+
+=item B<--hex-bytes>=I<NUMBER>, B<-h>=I<NUMBER>
+
+number of hex bytes to show per instruction
+
+=item B<--basic-block-lines>, B<-l>
+
+split basic blocks with lines
+
+=item B<--format=STRING>, B<-l>
+
+write output in specified format
+
+=item B<--reasons>, B<-r>
+
+split basic blocks with lines
+
+=back
+
+@PHAROS_OPTIONS_POD@
+
+=head1 EXAMPLES
+
+Put examples here.
+
+=head1 ENVIRONMENT
+
+=over 4
+
+@PHAROS_ENV_POD@
+
+=back
+
+=head1 FILES
+
+=over 4 
+
+@PHAROS_FILES_POD@
+
+=back
+
+=head1 NOTES
+
+This program was one of these first ROSE programs written by the SEI
+and it has not been updated properly to the latest version of ROSE.
+It may contain bugs as a result of the tool evolution.
+
+=head1 AUTHOR
+
+Written by the Software Engineering Institute at Carnegie Mellon
+University.  The primary author was Cory Cohen.
+
+=head1 COPYRIGHT
+
+Copyright 2018 Carnegie Mellon University.  All rights reserved.  This
+software is licensed under a "BSD" license.  Please see I<LICENSE.txt>
+for details.
+
+=for comment
+head1 SEE ALSO
+
+=cut
+
+Local Variables:
+mode:text
+indent-tabs-mode:nil
+End:

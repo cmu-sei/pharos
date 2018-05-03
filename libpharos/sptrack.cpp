@@ -123,7 +123,7 @@ std::vector<int> getParameterCombinations(SgAsmBlock *block, InsnIntPairVector &
 
   int bytesPushed = 0;
   for (int x = bbf_ins.size()-1; x >= 0; x--) {
-    SgAsmx86Instruction *ins = isSgAsmx86Instruction(bbf_ins[x]);
+    SgAsmx86Instruction *ins = isSgAsmX86Instruction(bbf_ins[x]);
     if (!ins || ins->get_kind() != x86_push) {
       if (bytesPushed > 0) {
         int prev = 0;
@@ -137,8 +137,8 @@ std::vector<int> getParameterCombinations(SgAsmBlock *block, InsnIntPairVector &
       rops->get_state()->set_operators(rops);
       size_t arch_bits = global_descriptor_set->get_arch_bits();
       DispatcherPtr dispatcher = RoseDispatcherX86::instance(entry_rops, arch_bits, NULL);
-      const RegisterDescriptor& esp_rd = global_descriptor_set->get_stack_reg();
-      const RegisterDescriptor& eip_rd = global_descriptor_set->get_ip_reg();
+      RegisterDescriptor esp_rd = global_descriptor_set->get_stack_reg();
+      RegisterDescriptor eip_rd = global_descriptor_set->get_ip_reg();
       entry_rops->writeRegister(esp_rd, entry_rops->number_(arch_bits, 0));
       entry_rops->writeRegister(eip_rd, entry_rops->number_(arch_bits, ins->get_address()));
       dispatcher->processInstruction(ins);
@@ -187,7 +187,7 @@ ParameterMap getParameterPushers(Block2IntPairMap &spBeforeAfterBlock,
     int parambytes = 0;
 
     do {
-      callins = isSgAsmx86Instruction(bbf_ins[c]);
+      callins = isSgAsmX86Instruction(bbf_ins[c]);
       c--;
       if (callins && callins->get_kind() == x86_call)
         break;
@@ -245,7 +245,7 @@ int getCleanupSize(BlockSet &ret_blocks) {
   SgAsmBlock *bb = *(ret_blocks.begin());
   SgAsmStatementPtrList & bbf_ins = bb->get_statementList();
   for (int b = bbf_ins.size()-1; b >= 0; b--) {
-    SgAsmx86Instruction *retins = isSgAsmx86Instruction(bbf_ins[b]);
+    SgAsmx86Instruction *retins = isSgAsmX86Instruction(bbf_ins[b]);
     if (!retins || retins->get_kind() != x86_ret) continue;
     SgAsmExpressionPtrList &ops = retins->get_operandList()->get_operands();
     if (ops.size() > 0 && isSgAsmIntegerValueExpression(ops[0])) {
@@ -527,8 +527,8 @@ Insn2IntMap solveConstraintProblem(FunctionDescriptor *fd,
             if (endsWithCall.find(bb) != endsWithCall.end()) {
               SgAsmStatementPtrList & bbf_ins = bb->get_statementList();
 
-              assert(bbf_ins.size() > 0 && isSgAsmx86Instruction(bbf_ins[bbf_ins.size()-1])->get_kind() == x86_call);
-              SgAsmx86Instruction *call = isSgAsmx86Instruction(bbf_ins[bbf_ins.size()-1]);
+              assert(bbf_ins.size() > 0 && isSgAsmX86Instruction(bbf_ins[bbf_ins.size()-1])->get_kind() == x86_call);
+              SgAsmx86Instruction *call = isSgAsmX86Instruction(bbf_ins[bbf_ins.size()-1]);
               ret[call] = delta;
             }
           }
@@ -576,7 +576,7 @@ bool getCallerCleanupSize(SgAsmBlock *blockAfterCall, int *cleanupsize) {
   if (blockAfterCall) {
     SgAsmStatementPtrList & next_ins = isSgAsmBlock(blockAfterCall)->get_statementList();
     for (size_t q = 0; q < next_ins.size(); q++) {
-      SgAsmx86Instruction *ni = isSgAsmx86Instruction(next_ins[q]);
+      SgAsmx86Instruction *ni = isSgAsmX86Instruction(next_ins[q]);
       if (!ni) continue;
       if (ni->get_kind() == x86_add) {
         SgAsmExpressionPtrList &ops = ni->get_operandList()->get_operands();
@@ -585,7 +585,7 @@ bool getCallerCleanupSize(SgAsmBlock *blockAfterCall, int *cleanupsize) {
             isSgAsmIntegerValueExpression(ops[1])) {
 
           if (q+1 < next_ins.size() &&
-              isSgAsmx86Instruction(next_ins[q+1])->get_kind() == x86_ret)
+              isSgAsmX86Instruction(next_ins[q+1])->get_kind() == x86_ret)
             return false;
 
           *cleanupsize = isSgAsmIntegerValueExpression(ops[1])->get_absolute_value();
@@ -628,7 +628,7 @@ Insn2IntMap spTracker::getStackDepthAfterCalls(FunctionDescriptor* fd) {
 
     for (size_t y = 0; y < bbf_ins.size(); y++) {
       try {
-        SgAsmx86Instruction *ins = isSgAsmx86Instruction(bbf_ins[y]);
+        SgAsmx86Instruction *ins = isSgAsmX86Instruction(bbf_ins[y]);
         if (!ins) break;
 
         hasValidInstructions = true;
@@ -703,7 +703,7 @@ Insn2IntMap spTracker::getStackDepthAfterCalls(FunctionDescriptor* fd) {
             if (nextblock) {
               SgAsmStatementPtrList & next_ins = isSgAsmBlock(nextblock)->get_statementList();
               for (size_t q = 0; q < next_ins.size(); q++) {
-                SgAsmx86Instruction *ni = isSgAsmx86Instruction(next_ins[q]);
+                SgAsmx86Instruction *ni = isSgAsmX86Instruction(next_ins[q]);
                 if (!ni) continue;
                 if (ni->get_kind() == x86_add) {
                   SgAsmExpressionPtrList &ops = ni->get_operandList()->get_operands();
@@ -712,7 +712,7 @@ Insn2IntMap spTracker::getStackDepthAfterCalls(FunctionDescriptor* fd) {
                       isSgAsmIntegerValueExpression(ops[1])) {
 
                     if (q+1 < next_ins.size() &&
-                        isSgAsmx86Instruction(next_ins[q+1])->get_kind() == x86_ret)
+                        isSgAsmX86Instruction(next_ins[q+1])->get_kind() == x86_ret)
                       continue;
 
                     cb.callerCleanupBytes = isSgAsmIntegerValueExpression(ops[1])->get_absolute_value();
@@ -856,7 +856,7 @@ bool spTracker::getBlockDeltas(FunctionDescriptor* fd,  SymbolicRiscOperators *r
     SgAsmx86Instruction *insn = NULL;
     for (size_t q = 0; q < ins_list.size(); q++) {
       try {
-        insn = isSgAsmx86Instruction(ins_list[q]);
+        insn = isSgAsmX86Instruction(ins_list[q]);
         if (insn == NULL) continue;
 
         // Evaluate the instruction

@@ -4,10 +4,13 @@
 #define Pharos_Utility_H
 
 #include <string>
+#include <sstream>
 #include <utility>
 #include <type_traits>
 #include <tuple>
 #include <memory>
+#include <vector>
+#include <initializer_list>
 
 // This file should be as minimal as possible to reduce circular inclusion pain.  If something
 // you want to add here requires additional ROSE headers, try adding it to misc instead.  If it
@@ -35,6 +38,43 @@ bool color_terminal();
 // interface if it returned a string and the user could choose to print it to std::cout, but
 // that's not how it was originally implemented. :-(
 void dump_hex(char *buff, size_t len);
+
+// Class for comparing version strings of the form N1.N2. ... .Nn, where Nx is an unsigned
+// integer.
+class Version {
+  std::vector<unsigned> version;
+ public:
+  Version(const std::string & s);
+  Version(std::initializer_list<unsigned> list) : version(list) {}
+  bool operator== (const Version & other) const {
+    return version == other.version;
+  }
+  bool operator!= (const Version & other) const {
+    return version != other.version;
+  }
+  bool operator< (const Version & other) const {
+    return version < other.version;
+  }
+  bool operator<= (const Version & other) const {
+    return version <= other.version;
+  }
+  bool operator> (const Version & other) const {
+    return version > other.version;
+  }
+  bool operator>= (const Version & other) const {
+    return version >= other.version;
+  }
+};
+
+// Invoke << and return a string with a && hack that correct for missing const qualifiers in
+// Robb's code.
+template<typename T>
+std::string
+to_string(T&& thing) {
+  std::ostringstream os;
+  os << std::forward<T>(thing);
+  return os.str();
+}
 
 // Accessor functions for pairs, accessing by type.  Given a pair std::pair<A, B>, tget<A> can
 // be used to get the first element, and tget<B> can be used to get the second element,

@@ -343,30 +343,6 @@ void p2c(const std::vector<T> & arg, xsb_term pt);
 template <typename T>
 void c2p(const std::vector<T> & arg, xsb_term pt);
 
-template <typename T>
-class Arg {
-  xsb_term pt;
- public:
-  Arg(int arg) : pt(impl::reg_term(arg + 1)) {}
-  bool is_var() const {
-    return impl::is_var(pt);
-  }
-  operator T() const {
-    T val;
-    p2c(val, pt);
-    return val;
-  }
-  Arg & operator=(const T & val) {
-    c2p(val, pt);
-    return *this;
-  }
-};
-
-template <typename T>
-Arg<T> arg(int a) {
-  return Arg<T>(a);
-}
-
 // Implementations
 template <typename T>
 void p2c(std::vector<T> & arg, xsb_term pt) {
@@ -512,7 +488,12 @@ Stream & term_to_stream(Stream & stream, xsb_term pt) {
     }
   } restore_flags = {stream, stream.flags()};
   if (impl::is_int(pt)) {
-    stream << std::hex << std::showbase << impl::p2c_int(pt);
+    int64_t sint = int64_t(impl::p2c_int(pt));
+    if (sint < 0) {
+      stream << '-';
+      sint = -sint;
+    }
+    stream << std::hex << std::showbase << sint;
     return stream;
   }
   if (impl::is_string(pt)) {
@@ -554,6 +535,45 @@ Stream & term_to_stream(Stream & stream, xsb_term pt) {
   }
   stream << "<unknown>";
   return stream;
+}
+
+template <typename T>
+class Arg {
+  xsb_term pt;
+ public:
+  Arg(int arg) : pt(impl::reg_term(arg + 1)) {}
+  bool is_var() const {
+    return impl::is_var(pt);
+  }
+  operator T() const {
+    T val;
+    p2c(val, pt);
+    return val;
+  }
+  Arg & operator=(const T & val) {
+    c2p(val, pt);
+    return *this;
+  }
+};
+
+template <>
+class Arg<void> {
+  xsb_term pt;
+ public:
+  Arg(int arg) : pt(impl::reg_term(arg + 1)) {}
+  bool is_var() const {
+    return impl::is_var(pt);
+  }
+  operator std::string() const {
+    std::ostringstream os;
+    term_to_stream(os, pt);
+    return os.str();
+  }
+};
+
+template <typename T>
+Arg<T> arg(int a) {
+  return Arg<T>(a);
 }
 
 class List {

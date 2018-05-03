@@ -1,0 +1,311 @@
+=pod
+
+=head1 NAME
+
+B<apianalyzer> - Searches for patterns of API usage in executables
+
+=head1 SYNOPSIS
+
+ apianalyzer [--allow-unknown] [--show-symbolic] [--calls=CALLSET_FILENAME] [--typedb=TYPEDB_FILENAME] [...Pharos options...] EXECUTABLE_FILE
+
+apianalyzer --help
+
+apianalyzer --rose-version
+
+@PHAROS_OPTS_POD@
+
+=head1 DESCRIPTION
+
+B<apianalyzer> does cool stuff.
+
+=head1 OPTIONS
+
+=head2 B<apianalyzer> OPTIONS
+
+The following options are specific to the B<apianalyzer> program.
+
+=over 4
+
+=item B<--sig_file>=I<SIG_FILE>, B<-S>=I<SIG_FILE>
+
+Specify the API signature file
+
+=item B<--graphviz>=I<GRAPHVIZ_FILE>, B<-G>=I<GRAPHVIZ_FILE>
+
+Specify the graphviz output file (for troubleshooting)
+
+=item B<--path>=I<STRING>, B<-P>=I<STRING>
+
+Set the search path output level (nopath, sigpath, fullpath)
+
+=item B<--format>=I<STRING>, B<-F>=I<STRING>
+
+Set output format: json or text
+
+=item B<--out_file>=I<FILE>, B<-O>=I<FILE>
+
+Set output file
+
+=item B<--category>=I<STRING>, B<-C>=I<STRING>
+
+Select signature categories for which to search
+
+=back
+
+@PHAROS_OPTIONS_POD@
+
+=head1 EXAMPLES
+
+ApiAnalyzer searches for behaviors expressed as a sequence of
+Microsoft Windows API function calls. To match a signature the
+sequence of API functions and data passed between API functions in an
+executable being analyzed must satisfy the requirements specified in a
+signature. Specifically, when an API signature match is reported, it
+means that API functions were found in the executable file under
+analysis in the order specified by the signature.
+
+The following is example demonstrates how to interpret ApiAnalyzer
+output:
+
+ $ ./bin/apianalyzer share/pharos/examples/ApiGraphTestProgram1.exe
+ ...
+ OPTI[INFO ]: Analyzing executable: ../tests/ApiAnalyzer/ApiGraphTestProgram1.exe
+ OPTI[INFO ]: Final configuration:
+ OPTI[INFO ]:  - Parsed /home/pharos/tools/apianalyzer/sig.json and loaded 48 signatures
+ OPTI[INFO ]:  - Writing output to screen
+ OPTI[INFO ]:  - Output format: 'TEXT'
+ OPTI[INFO ]:  - Display signature match name only
+ OPTI[INFO ]:  - Display all signature categories
+ ...
+ OPTI[INFO ]: Completed API graph generation with 20 functions
+ OPTI[INFO ]: Searching for API signatures
+ OPTI[INFO ]: -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ OPTI[INFO ]: Matched 7 signatures
+
+ Category: INFORMATIONAL
+ -----------------------
+ Found: TerminateSelf starting at address 0x00401C0C
+
+ Category: MALWARE
+ -----------------
+ Found: ReverseShellv1 starting at address 0x00401052
+ Found: ReverseShellv1 starting at address 0x00401352
+ Found: ReverseShellv1 starting at address 0x004015D2
+
+ Category: PROCESS_MANIPULATION
+ ------------------------------
+ Found: SpawnProcess starting at address 0x004010EC
+ Found: SpawnProcess starting at address 0x004013EC
+ Found: SpawnProcess starting at address 0x0040166C
+
+The first few lines of output explain the configuration options for
+this run. When run without any command line options, the default
+signature file is used (this is part of the core Pharos
+configuration). This file currently contains 48 behavioral
+signatures. The output format will be plain text and the matches will
+be abbreviated to only show the signature names.
+
+Each signature match is reported as "Found: [SIGNATURE] starting at
+address [ADDRESS]", where B<SIGNATURE> indicates the behavioral
+signature matched and B<ADDRESS> indicates the address in the
+executable where the match begins. For example the signature
+I<ReverseShellv1> was found three times at addresses 0x00401052,
+0x00401352, and 0x004015D2.
+
+Signature matches are broken into the following categories based on
+classes of behavior:
+
+=over 4
+
+=item B<MALWARE>
+
+Signatures in this category include behaviors that CERT malware analysts typically see in malicious code and/or behaviors that have few known non-malicious uses. Admittedly, this categorization is subjective.
+
+=item B<NETWORKING>
+
+Signatures in this category include behaviors related to computer networking, such as running a service and making an outbound network connection.
+
+=item B<PROCESS_MANIPULATION>
+
+Signatures that concern the creation, manipulation, and termination of Microdoft Windows processes.
+
+=item B<INFORMATIONAL>
+
+Signatures in this category include other miscellaneous behaviors that may help analysts understand what a program is doing.
+
+=back
+
+The amount of information displayed for a match is controlled via the
+path configuration option. The examples below demonstrate each path
+display option.
+
+=over 4
+
+=item I<nopath>
+
+Only show the name of the match; for example:
+
+ ReverseShellv1 starting at address 0x00401052
+
+=item I<sigpath>
+
+Dsplay the intermediate API calls included in the signature in the match; for example:
+
+ Found: ReverseShellv1 starting at address 0x00401052 Path: 0x00401052(KERNEL32.DLL!CREATEPIPE) -> 0x00401073(KERNEL32.DLL!CREATEPIPE) -> 0x004010EC(KERNEL32.DLL!CREATEPROCESSA)
+
+The path should be read left to right, where '->' indicates the order of API function calls.
+
+=item I<fullpath>
+
+Display all the intermediate API calls from the start of the match to
+its end (Note that the call to GetStartupInfoA is not part of the
+ReverseShellv1 signature); for example:
+
+ Found: ReverseShellv1 starting at address 0x00401052 Path: 0x00401052(KERNEL32.DLL!CREATEPIPE) -> 0x00401073(KERNEL32.DLL!CREATEPIPE) -> 0x0040108E(KERNEL32.DLL!GETSTARTUPINFOA) -> 0x004010EC(KERNEL32.DLL!CREATEPROCESSA)
+
+=back
+
+The format option configures how ApiAnalyzer output is
+formatted. There are two options: structured JSON or unstructured
+text. Regardless of format, the data is the same. If no format is
+specified, then output is displayed as unstructured text (as shown
+above).
+
+=head1 ENVIRONMENT
+
+=over 4
+
+@PHAROS_ENV_POD@
+
+=back
+
+=head1 SIGNATURES
+
+There are currently 48 signatures defined in the default API signature
+file. ApiAnalyzer signatures are written in JSON format with the
+following schema:
+
+ "Sig":{
+  "Name": "SIGNATURE_NAME",
+  "Description": "DESCRIPTION",
+  "Category": "CATEGORY",
+  "Pattern":[{
+  "API":"API_NAME",
+   "Args":[{ "Name":"PARAM_NAME", "Index":#, "Type":"IN|OUT" }],
+   "Retn":{ "Name":"RETN_VAL_NAME" }
+  }]
+ }
+
+The signature fields are defined as follows:
+
+=over 4
+
+=item B<Name>
+
+The name of the signature. This is the label reported as a signature match if the behavior is found.
+
+=item B<Description>
+
+A description of the signature.
+
+=item B<Category>
+
+The signature category. When defined, each signature must specify exactly one category per signature.
+
+=item B<Pattern>
+
+The sequences of API function calls. The order of API functions is
+indicated by their order in the pattern. For example a pattern
+C<"Pattern":[{"API":"FUNC1"}, {"API":"FUNC2"}]> would be processed as
+find FUNC1 first, then find FUNC2 in that order. The sequence of API
+functions that make up the signature.
+
+=back
+
+Each API function in the pattern has the following sections:
+
+=over 8
+
+=item B<API>
+
+The name of the API. The name has the following format: DLL!FUNCTION,
+that is the name of the DLL and the API function are separated by a
+'!' character. Both the DLL name and function name are required to
+specify an API function. This is because the combination of DLL name
+and function name uniquely identify an imported API function (i.e. a
+library function provided by Microsoft Windows).
+
+=item B<Args>
+
+The list of arguments for the API function. Arguments are labels that
+bind data to one or more API functions. If omitted, then arguments
+passed to the API function are not considered when evaluating a match.
+
+If an argument is specified, then it must include the following:
+
+=back
+
+=over 12
+
+=item B<Name>
+
+The label for this argument. A text label is a string that uniquely
+identifies the argument in the signature for matching evaluation
+purposes.
+
+=item B<Index>
+
+The position of the argument in the parameter list supplied to the API
+function. This argument is a number indicating parameter list position
+starting at 0.
+
+=item B<IN or OUT>
+
+An indication whether the argument is written-to or read- from by the
+API function. Output parameters (OUT) are modified by the API
+function, input parameters (IN) are read but not modified by the API
+function. In terms of the signature, an argument must be designated as
+either IN or OUT to identify when a value is preserved or
+overwritten. Failure to properly identify IN/OUT variables correctly
+will lead to erroneous results.
+
+=item B<Retn>
+
+The return value for this API Function. Like arguments, return values are used to bind data values to API functions. Return values are not required. If no return value is specified, then the return value of the function is not considered when evaluating a match.
+
+=back
+
+Note that signature elements are not case sensitive.
+
+=head1 FILES
+
+=over 4
+
+@PHAROS_FILES_POD@
+
+=back
+
+
+=for compiled
+head1 NOTES
+
+=head1 AUTHOR
+
+Written by the Software Engineering Institute at Carnegie Mellon
+University.  The primary author was Jeffrey Gennari.
+
+=head1 COPYRIGHT
+
+Copyright 2018 Carnegie Mellon University.  All rights reserved.  This
+software is licensed under a "BSD" license.  Please see I<LICENSE.txt>
+for details.
+
+=for comment
+head1 SEE ALSO
+
+=cut
+
+Local Variables:
+mode:text
+indent-tabs-mode:nil
+End:

@@ -1,4 +1,4 @@
-// Copyright 2015, 2016, 2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/format.hpp>
 #include <boost/optional.hpp>
@@ -19,8 +19,10 @@
 #include "util.hpp"
 #include "misc.hpp"
 #include "stkvar.hpp"
-
+#include "method.hpp"
 #include "masm.hpp"
+
+#include <boost/graph/iteration_macros.hpp>
 
 namespace P2 = Rose::BinaryAnalysis::Partitioner2;
 namespace BA = Rose::BinaryAnalysis;
@@ -120,6 +122,7 @@ void write_config_addr_set(const std::string & key, boost::property_tree::ptree*
 FunctionDescriptor::FunctionDescriptor() {
   address = 0;
   pdg = NULL;
+  oo_properties = NULL;
   func = NULL;
   // p2func, how to properly initialize a "NULL" one?
   stack_delta = StackDelta(0, ConfidenceNone);
@@ -184,6 +187,7 @@ FunctionDescriptor::FunctionDescriptor(SgAsmFunction* f) : func(f) {
     address = 0;
   }
   pdg = NULL;
+  oo_properties = NULL;
   target_func = NULL;
   target_address = 0;
   new_method = false;
@@ -217,23 +221,17 @@ FunctionDescriptor::~FunctionDescriptor() {
     pdg_cached = false;
   }
 
+  // Free the oo_properties (ThisCallMethod) data structure.
+  if (oo_properties != NULL) {
+    delete oo_properties;
+  }
+
   // free the list of stack variables
   for (StackVariablePtrList::iterator it = stack_vars.begin() ; it != stack_vars.end(); ++it) {
      delete *it;
      *it = NULL;
   }
   stack_vars.clear();
-}
-
-
-void FunctionDescriptor::add_stack_variable(StackVariable *stkvar) {
-
-  // Add the stack variable in offset order
-  std::vector<StackVariable*>::iterator pos = std::lower_bound(stack_vars.begin(),
-                                                               stack_vars.end(),
-                                                               stkvar,
-                                                               [](StackVariable* s1, StackVariable* s2){ return s1->offset()>s2->offset();});
-  stack_vars.insert(pos, stkvar);
 }
 
 void FunctionDescriptor::set_address(rose_addr_t addr)
@@ -256,42 +254,6 @@ void FunctionDescriptor::set_address(rose_addr_t addr)
   }
 }
 
-// add a new stack variable to the list. Notably the abstract access is stored to provide
-// access to the value written and the memory address
-// void FunctionDescriptor::add_stack_variable(SgAsmX86Instruction *i, const AbstractAccess &aa) {
-
-//    SymbolicValuePtr mem = aa.memory_address;
-//    SymbolicValuePtr val = aa.value;
-
-//    AddConstantExtractor cex = AddConstantExtractor(mem->get_expression());
-//    size_t size = val->get_expression()->nBits();
-
-//    StackVariable *var = new StackVariable(cex.constant_portion(), size, aa);
-
-//    if (var != NULL) {
-//       if (i != NULL) {
-//          var->add_usage(i); // save the usage instruction for this variable
-//       }
-//       stack_vars.push_back(var);
-//    }
-// }
-
-// Lookup a stack variable by its offset
-StackVariable* FunctionDescriptor::get_stack_variable(int64_t offset) const {
-
-   unsigned int i = 0;
-   while (i < stack_vars.size()) {
-      StackVariable *sv = stack_vars.at(i);
-
-      // JSG think that looking up by offset is sufficient. He is also hesitant
-      // to make this a map because he worries that offset will *not* be unique
-      if (offset == sv->offset()) {
-         return sv;
-      }
-      ++i;
-   }
-   return NULL;
-}
 
 // Get the name of the function.
 std::string FunctionDescriptor::get_name() const {
@@ -322,7 +284,13 @@ void FunctionDescriptor::set_name(const std::string& name) {
 void FunctionDescriptor::set_api(const APIDefinition& fdata) {
   stack_delta = StackDelta(fdata.stackdelta, ConfidenceUser);
   // Get the calling convention from the API database.
-  std::string convention = "__" + fdata.calling_convention;
+  std::string convention;
+  if (fdata.calling_convention.empty()) {
+    // This is a hack.  The ApiDB should probably never have an empty calling convention.
+    convention = "__stdcall";
+  } else {
+    convention = "__" + fdata.calling_convention;
+  }
   const CallingConventionMatcher& matcher = global_descriptor_set->get_calling_conventions();
   size_t arch_bits = global_descriptor_set->get_arch_bits();
   const CallingConvention* cc = matcher.find(arch_bits, convention);
@@ -330,12 +298,17 @@ void FunctionDescriptor::set_api(const APIDefinition& fdata) {
   if (cc != NULL) {
     calling_conventions.push_back(cc);
   }
+  // #var is a calling convention that marks global variables. Don't complain about it.
+  else if (fdata.calling_convention != "#var") {
+    GWARN << "Unrecognized " << arch_bits << "-bit calling convention: " << convention
+          << " for function " << fdata.display_name << LEND;
+  }
 
   // Now fill in the parameters dta structure.
   parameters.set_calling_convention(cc);
 
   // Just wildly assume that EAX/RAX was the return the value. We can do better. :-(
-  const RegisterDescriptor* eax = global_descriptor_set->get_arch_reg("eax");
+  RegisterDescriptor eax = global_descriptor_set->get_arch_reg("eax");
 
   // We can now detect whether the API intends to return a value, and what type of that return
   // value is.  The EAX register is still a scratch register regardless of whether there's a
@@ -354,12 +327,26 @@ void FunctionDescriptor::set_api(const APIDefinition& fdata) {
     rpd->direction = ParameterDefinition::DIRECTION_OUT;
   }
 
+  // Handle the "this" pointer for the __thiscall convention
+  if (cc && convention == "__thiscall") {
+    auto thisreg = cc->get_this_register();
+    auto thisparam = parameters.create_reg_parameter(
+      thisreg, SymbolicValuePtr(), nullptr, SymbolicValuePtr());
+    thisparam->name = "this";
+  }
+
   // Create some arbitrary stack parameters.
   size_t arch_bytes = global_descriptor_set->get_arch_bytes();
   size_t delta = fdata.parameters.size() * arch_bytes;
   assert(delta % arch_bytes == 0);
 
   stack_parameters = StackDelta(delta, ConfidenceUser);
+  if (cc && cc->get_stack_cleanup() == CallingConvention::CLEANUP_CALLEE) {
+    stack_delta = stack_parameters;
+  }
+  else {
+    stack_delta = StackDelta(0, ConfidenceUser);
+  }
 
   delta = 0;
   // Now fill in the additional details on each parameter.
@@ -655,7 +642,7 @@ void FunctionDescriptor::propagate_thunk_info() {
   }
 
   // The EAX register is still kind of magical in this code. :-(
-  const RegisterDescriptor* eaxrd = global_descriptor_set->get_arch_reg("eax");
+  RegisterDescriptor eaxrd = global_descriptor_set->get_arch_reg("eax");
 
   // Get the import descriptor for that address if there is one.
   ImportDescriptor* id = global_descriptor_set->get_import(taddr);
@@ -756,7 +743,8 @@ void FunctionDescriptor::update_stack_delta(StackDelta sd) {
 // Also omit control flow instructions, because they cannot use the stack directly. The
 // remainning instructions use the stack and are likely stack variables.
 void FunctionDescriptor::update_stack_variables() {
-   analyze_stack_variables(this);
+  StackVariableAnalyzer stkvar_analyzer(this);
+  stack_vars = stkvar_analyzer.analyze();
 }
 
 // How many bytes of the previous stack frame did we access as parameters?  This function has
@@ -964,10 +952,10 @@ void FunctionDescriptor::update_register_parameters() {
   // rather than based on pointer order, but sadly, that's inconvenient in C++. :-(
   if (cc == NULL) {
     for (const RegisterEvidenceMap::value_type& rpair : register_usage.parameter_registers) {
-      const RegisterDescriptor* rd = rpair.first;
+      RegisterDescriptor rd = rpair.first;
       // Read the symbolic value for the specified register from input state.
-      SymbolicValuePtr rpsv = input_state->read_register(*rd);
-      GDEBUG << "Adding reg parameter '" << unparseX86Register(*rd, NULL)
+      SymbolicValuePtr rpsv = input_state->read_register(rd);
+      GDEBUG << "Adding reg parameter '" << unparseX86Register(rd, NULL)
              << "' to unknown convention for " << address_string() << " sv=" << *rpsv << LEND;
       // The pointed_to field is probably always NULL for our current system, but there might
       // be a situation in which we would start populating these fields based on types in the
@@ -981,7 +969,7 @@ void FunctionDescriptor::update_register_parameters() {
 
   // For cases in which we know the calling convention, the source code order matters, so
   // process the parameters in the order specified in the calling convention.
-  for (const RegisterDescriptor* rd : cc->get_reg_params()) {
+  for (RegisterDescriptor rd : cc->get_reg_params()) {
     RegisterEvidenceMap::iterator reg_finder = register_usage.parameter_registers.find(rd);
     if (reg_finder == register_usage.parameter_registers.end()) {
       GDEBUG << "But the register wasn't actually used by the function." << LEND;
@@ -989,13 +977,13 @@ void FunctionDescriptor::update_register_parameters() {
       // situation is that the calling convention says that there's a parameter, but we haven't
       // actually used it.
       // parameters.create_reg_parameter(rd, rpsv, NULL);
-      GDEBUG << "Unused reg parameter '" << unparseX86Register(*rd, NULL)
+      GDEBUG << "Unused reg parameter '" << unparseX86Register(rd, NULL)
              << "' to convention " << cc->get_name() << " for " << address_string() << LEND;
     }
     else {
-      SymbolicValuePtr rpsv = input_state->read_register(*rd);
+      SymbolicValuePtr rpsv = input_state->read_register(rd);
 
-      GDEBUG << "Adding reg parameter '" << unparseX86Register(*rd, NULL) << "' to convention "
+      GDEBUG << "Adding reg parameter '" << unparseX86Register(rd, NULL) << "' to convention "
              << cc->get_name() << " for " << address_string() << " sv=" << *rpsv << LEND;
       const SgAsmInstruction* insn = reg_finder->second;
       // Same pointed_to behavior as mentioned above.
@@ -1036,13 +1024,13 @@ void FunctionDescriptor::update_return_values() {
     return;
   }
   else {
-    const RegisterDescriptor* retval_reg = cc->get_retval_register();
-    if (retval_reg == NULL) {
+    RegisterDescriptor retval_reg = cc->get_retval_register();
+    if (!retval_reg.is_valid()) {
       GERROR << "Calling conventions that don't return in registers is unsupported." << LEND;
       return;
     }
 
-    SymbolicValuePtr retval = output_state->read_register(*retval_reg);
+    SymbolicValuePtr retval = output_state->read_register(retval_reg);
     if (!retval) {
       GERROR << "No value for return register in output state?" << LEND;
       return;
@@ -1112,37 +1100,61 @@ PDG * FunctionDescriptor::get_pdg(spTracker *sp) {
     propagate_thunk_info();
   }
   else {
-    // Analyze our calling convention.  Must be AFTER we've marked the PDG as cached, because
-    // analyzing the calling convention will attempt to recurse into get_pdg().
-    register_usage.analyze(this);
-
-    // Now that we know what our register usage was, determine our calling conventions.
-    const CallingConventionMatcher& matcher = global_descriptor_set->get_calling_conventions();
-    calling_conventions = matcher.match(this);
-
-    // Pick the most appropriate calling convention (the first one), and set it in the
-    // ParameterList object.  If we didn't match any calling conventions, leave the convention
-    // field set to NULL, which means that the calling convention is unrecognized, and that
-    // the parameters and return values will contain all inputs and output of the function.
-    if (calling_conventions.size() != 0) {
-      // Get the first matching calling convention.  They should all be valid interpretations for
-      // this function, and we've ordered the calling conventions such that the more useful or
-      // interesting ones preceed the less useful ones.
-      const CallingConvention* cc = *(calling_conventions.begin());
-
-      // This is the only place we should be calling set_calling_convention().
-      parameters.set_calling_convention(cc);
+    // This is a pretty horrible hack, but the alternative is to go fix tail call optimization
+    // (where calls at the end of the function are replaced by a jump).  And that's a _much_
+    // bigger change than I want to tackle right now.  And, I need delete to work properly in
+    // the mean time.  This code can probably be remove once we've properly grafted the basic
+    // blocks from the jump into the function during analysis.
+    if (is_delete_method()) {
+      // First force the convention to cdecl...
+      const CallingConventionMatcher& matcher = global_descriptor_set->get_calling_conventions();
+      size_t arch_bits = global_descriptor_set->get_arch_bits();
+      const CallingConvention* cdecl = matcher.find(arch_bits, "__cdecl");
+      parameters.set_calling_convention(cdecl);
+      // Then force a single stack parameter.
+      size_t arch_bytes = global_descriptor_set->get_arch_bytes();
+      stack_parameters = StackDelta(arch_bytes, ConfidenceUser);
+      ParameterDefinition* pd = parameters.create_stack_parameter(arch_bytes);
+      assert(pd);
+      pd->name = "p";
+      pd->type = "void *";
     }
+    else {
+      // Analyze our calling convention.  Must be AFTER we've marked the PDG as cached, because
+      // analyzing the calling convention will attempt to recurse into get_pdg().
+      register_usage.analyze(this);
 
-    // Assume that registers always preceed all parameters (always true on Intel platforms?), and
-    // create the register parameters.
-    update_register_parameters();
+      // Now that we know what our register usage was, determine our calling conventions.
+      const CallingConventionMatcher& matcher = global_descriptor_set->get_calling_conventions();
+      calling_conventions = matcher.match(this);
 
-    // Now create stack parameters based on how many bytes of the previous frame we accessed.
-    update_stack_parameters();
+      // Pick the most appropriate calling convention (the first one), and set it in the
+      // ParameterList object.  If we didn't match any calling conventions, leave the convention
+      // field set to NULL, which means that the calling convention is unrecognized, and that
+      // the parameters and return values will contain all inputs and output of the function.
+      if (calling_conventions.size() != 0) {
+        // Get the first matching calling convention.  They should all be valid interpretations for
+        // this function, and we've ordered the calling conventions such that the more useful or
+        // interesting ones preceed the less useful ones.
+        const CallingConvention* cc = *(calling_conventions.begin());
+
+        // This is the only place we should be calling set_calling_convention().
+        parameters.set_calling_convention(cc);
+      }
+
+      // Assume that registers always preceed all parameters (always true on Intel platforms?), and
+      // create the register parameters.
+      update_register_parameters();
+
+      // Now create stack parameters based on how many bytes of the previous frame we accessed.
+      update_stack_parameters();
+    }
 
     // Create the set of stack variables
     update_stack_variables();
+
+    // Update the global variables based on accesses in this function
+    update_global_variables();
 
     // Use the calling convention to determine which changed registers were intentionally changed
     // (return values) and which were just scratch registers.  If no calling convention has been
@@ -1158,6 +1170,49 @@ PDG * FunctionDescriptor::get_pdg(spTracker *sp) {
   }
 
   return pdg;
+}
+
+// Update global variables used in this function
+void FunctionDescriptor::update_global_variables() {
+
+  const DUAnalysis& du = pdg->get_usedef();
+  for (auto& global_pair : global_descriptor_set->get_global_map())  {
+
+    GlobalMemoryDescriptor& global_var = global_pair.second;
+    const std::vector<SymbolicValuePtr>& global_vals = global_var.get_values();
+
+    for (auto global_insn : global_var.get_writes()) {
+
+      access_filters::aa_range global_writes = du.get_mem_writes(isSgAsmX86Instruction(global_insn));
+      if (std::begin(global_writes) != std::end(global_writes)) {
+        for (const AbstractAccess &global_write_aa : global_writes) {
+          if (global_write_aa.value) {
+
+            SymbolicValuePtr gwsv = global_write_aa.value;
+            auto gvi = std::find_if(global_vals.begin(),
+                                    global_vals.end(),
+                                    [gwsv](SymbolicValuePtr sv)
+                                    { return sv->can_be_equal(gwsv); });
+
+            if (gvi == global_vals.end()) {
+              // when a global is written, add a new symbolic value (if needed)
+              global_var.add_value(global_write_aa.value);
+            }
+            // regardless, add the write
+            global_var.add_write(global_insn, global_write_aa.size);
+          }
+        }
+      }
+
+      // Whether or not a read can result in a new symbolic value is unclear
+    }
+  }
+}
+
+void FunctionDescriptor::free_pdg() {
+  pdg_cached = false;
+  delete pdg;
+  pdg = 0;
 }
 
 // Get the PDG hash for the function.  This turns out to be really expensive -- like half the
@@ -1197,85 +1252,27 @@ bool is_mem(const SgAsmExpression *exp) {
   else return false;
 }
 
-// This is NOT a PIC hash we've traditionally defined it.  For each instruction, this code does
-// one of two things: it includes the only first opcode byte if there are "addresses" in the
-// instruction, or it includes all of the opcode bytes.  It does not replace the address
-// components of the instructions with zeros as the original algorithm did.  It also doesn't
-// enforce address order as rigidly, excludes data, etc.  It was included in the current state
-// simply because it was an attractive alternative to the PDG hash implementation above.
-void FunctionDescriptor::old_compute_function_bytes() {
-  // Clear any existing values in the strings.
-  exact_bytes.clear();
-  pic_bytes.clear();
-
-  // For each block and instruction...
-  SgAsmStatementPtrList& bb_list = func->get_statementList();
-  for (size_t x = 0; x < bb_list.size(); x++) {
-    SgAsmBlock *block = isSgAsmBlock(bb_list[x]);
-    if (!block) continue;
-    SgAsmStatementPtrList & ins_list = block->get_statementList();
-    for (size_t y = 0; y < ins_list.size(); y++) {
-      SgAsmX86Instruction *insn = isSgAsmX86Instruction(ins_list[y]);
-      if (!insn) continue;
-
-      // Get the raw bytes...
-      SgUnsignedCharList bytes = insn->get_raw_bytes();
-      if (bytes.size() == 0) continue;
-
-      // Just append all of the bytes to exact_bytes.
-      exact_bytes.insert(exact_bytes.end(), bytes.begin(), bytes.end());
-
-      // For the PIC bytes, it's more complicated...
-
-      // Whether we've found address bytes...
-      bool possibleAddress = false;
-
-      // Examine the operands.
-      SgAsmExpressionPtrList &ops = insn->get_operandList()->get_operands();
-      for (unsigned int z = 0; z < ops.size(); z++) {
-        if (is_mem(ops[z])) {
-          possibleAddress = true;
-          break;
-        }
-      }
-
-      // If we've found addresses, only include the first byte, because that's easy.  We
-      // should really be doing somethign very different here.
-      if (possibleAddress) {
-        pic_bytes.push_back(bytes[0]);
-        STRACE << "ADDR: " << debug_instruction(insn) << LEND;
-      }
-      // If there were no addreses, it's safe to append all of the instruction bytes.
-      else {
-        pic_bytes.insert(pic_bytes.end(), bytes.begin(), bytes.end());
-      }
-    }
-  }
-}
-
-// A variant closer to the Uberflirt EHASH/PHASH stuff, plus some other hash types.  Here's the
-// basic gist:
+// A function hash variant close to the Uberflirt EHASH/PHASH stuff, plus a new Composite PIC
+// hash, and some "extra" hash types if requested.  Here's the basic gist:
 //
-// iterate over basic blocks in flow order (is that really needed/desired here? I think so for ehash)
+// iterate over basic blocks in flow order (a consistent logical ordering)
 //   iterate over instructions in block
-//     add mnemonic to block mnems & inc count for mnemonic
-//       include operand type(s)?  Or separate hash for those too?
-//     add mnemonic category to block mnemcats & inc count for mnemcat
-//       include operand type(s)?  Or separate hash for those too?
 //     add raw bytes to block ebytes
-//     if jmp/call
-//       ignore this completely for phash?  thought about nulling out but ignoring better because different bit size jmps can be "equivalent"
+//     if extra
+//       save mnemonic & mnemonic category info
+//     if jmp/call/ret
+//       ignore this completely for CPIC
 //     else
-//       look for integers in program range (more checks?) & replace w/ 00
-//     add (modified) bytes to pbytes
-//   calc md5 of block ebytes & pbytes
-//   calc md5 of block mnemonics
-//     with and/or without jmp/call?
-//   calc md5 of block mnemcats
-// sort all block ehash(?) & phash values
-// concat & generate fn level ehash(?) & phash (should ehash just be bytes in flow order?)
-void FunctionDescriptor::compute_function_hashes() {
-  hashes_calculated = true; // might want to set this first to prevent multiple error messages fromt he same function when something isn't right?
+//       look for integers operands in program range (more checks?) & replace w/ 00
+//     add exact bytes to ebytes
+//     add (modified) bytes to pbytes & cpicbytes
+//   calc md5 of block cpicbytes
+// md5 ebytes & pbytes
+// sort all block cpic hash values, concat & hash to generate fn level CPIC
+//
+// TODO: replace x86 specific stuff w/ code that will work w/ other ISAs, should we ever start supporting those...
+void FunctionDescriptor::compute_function_hashes(ExtraFunctionHashData *extra) {
+  hashes_calculated = true; // might want to set this first to prevent multiple error messages from the same function when something isn't right?
 
   // should really do these elsewhere, but this is good for now:
   num_blocks = 0;
@@ -1283,7 +1280,13 @@ void FunctionDescriptor::compute_function_hashes() {
   num_instructions = 0;
   num_bytes = 0;
 
-  CFG cfg = cfg_analyzer.build_block_cfg_from_ast<CFG>(func);
+  // Should I be using get_pharos_cfg() here to theoretically filter out bad stuff and fixup
+  // things?  I suspect "probably" is the answer...and if I do should I also store off the
+  // number of basic blocks different too (like I did for the blocks in the cfg vs not)?
+  // Not sure yet.
+  //CFG cfg = cfg_analyzer.build_block_cfg_from_ast<CFG>(func);
+  //CFG cfg = get_pharos_cfg(); // fn2hash doesn't do the pdg building, so this call dies w/ an assert!
+  CFG cfg = get_rose_cfg();
   CFGVertex entry_vertex = 0;
   std::vector<CFGVertex> cfgblocks = cfg_analyzer.flow_order(cfg, entry_vertex);
   // ODEBUG produces too much in objdigger test output, so let's use trace for this:
@@ -1309,35 +1312,43 @@ void FunctionDescriptor::compute_function_hashes() {
   num_blocks = func->get_statementList().size();
   num_blocks_in_cfg = cfgblocks.size();
 
-  std::set< std::string > bbpics; // basic block PIC hashes for composite calc
+  //std::set< std::string > bbcpics; // basic block PIC hashes for composite calc (no dupes)
+  std::multiset< std::string > bbcpics; // basic block cPIC hashes for fn composite PIC calc (keep dupes)
 
-  std::string mnemonics; // concatenated mnemonics
-  std::string mnemcats; // concatenated mnemonic categories
+  // moved these to "extra"
+  //std::string mnemonics; // concatenated mnemonics
+  //std::string mnemcats; // concatenated mnemonic categories
 
-  // would like to output some debugging disassembly:
-  //const auto partitioner = global_descriptor_set->get_partitioner();
-  //auto unparser = global_descriptor_set->get_partitioner().insnUnparser();
-  // change settings on Unparser w/ newer api?
-  // using cerr until I figure out an "appropriate" or at least acceptable debug stream to use for this.
-  // actually, probably better to build up a string that then gets dumped to cerr or SDEBUG later on
+  // would like to output some debugging disassembly, build up a string that then gets dumped
+  // to an appropriate output stream later:
   std::ostringstream dbg_disasm;
   dbg_disasm << "Debug Disassembly of Function " << display_name << " (" << addr_str(address) << ")"
              << std::endl;
 
+  std::vector< rose_addr_t > bbaddrs;
+
+  // iterate over all basic blocks in the function:
   for (size_t x = 0; x < num_blocks_in_cfg; x++) {
     SgAsmBlock *bb = get(boost::vertex_name, cfg, cfgblocks[x]);
-    std::string bbpicbytes;
+
+    std::string bbcpicbytes; // CPIC bytes (no control flow insns)
+    std::string bbpicbytes; // PIC bytes (control flow insns included)
+    uint32_t bbicnt = 0; // this basic block instruction count
+    std::vector< std::string > bbmnemonics;
+    std::vector< std::string > bbmnemcats;
+
     if (bb == NULL) {
       // Is this even possible?
-      OWARN << "CFB NULL basic block found in control flow for function: "
-            << address_string() << LEND;
+      OERROR << "CFB NULL basic block found in control flow for function: "
+             << address_string() << LEND;
       continue;
     }
     else {
       dbg_disasm << "\t; --- bb start ---" << std::endl; // show start of basic block
-      // iterate over the instructions
+      // iterate over the instructions in the basic block:
       SgAsmStatementPtrList & ins_list = bb->get_statementList();
-      num_instructions += ins_list.size();
+      bbicnt = ins_list.size();
+      num_instructions += bbicnt;
       for (size_t y = 0; y < ins_list.size(); y++) {
         SgAsmX86Instruction *insn = isSgAsmX86Instruction(ins_list[y]);
         if (!insn) { // is this possible?
@@ -1353,13 +1364,10 @@ void FunctionDescriptor::compute_function_hashes() {
           continue;
         }
 
-        // okay place for debugging dumping the diassembly?
-#if 1
-        // simple way:
-        //global_descriptor_set->get_partitioner().insnUnparser()->settings() = BA::Unparser::Settings::full();
-        //std::string insnDisasm = global_descriptor_set->get_partitioner().unparse(insn);
-        // sadly the above convenience unparser is not handling lea instructions correctly, but
-        // our debug_instruction code does:
+        // okay place for debugging dumping the diassembly?  Tried to use ROSE's "unparser" but
+        // sadly the convenience unparser is not handling lea instructions correctly, but our
+        // debug_instruction code does (will revisit using the paritioner's unparser at some
+        // point):
         std::string insnDisasm = debug_instruction(insn,17);
         dbg_disasm
           //<< addr_str(insn->get_address()) << " "
@@ -1368,19 +1376,11 @@ void FunctionDescriptor::compute_function_hashes() {
           //<< "\t; EBYTES: " << MyHex(bytes)
           //<< std::endl
           ;
-        //<< std::endl;
-#else // more complex method in later versions of ROSE than our 1/31/17 build:
-        std::ostringstream insnDisasm;
-        //std::string insnDisasm = (*unparser)(partitioner,(SgAsmInstruction*)insn);
-        //global_descriptor_set->get_partitioner().unparse(insnDisasm,insn);
-        unparser->unparse(insnDisasm,partitioner,insn);
-        dbg_disasm << insnDisasm.str() << std::endl;
-#endif // 0
 
         // Just append all of the bytes to exact_bytes.
         exact_bytes.insert(exact_bytes.end(), bytes.begin(), bytes.end());
 
-        // For the PIC bytes & hashes, it's more complicated...
+        // For the various PIC bytes & hashes, it's more complicated...
 
         std::vector< bool > wildcard(bytes.size(),false);
         // need to traverse the AST for operands lookng for "appropriate" wilcard candidates:
@@ -1473,11 +1473,14 @@ void FunctionDescriptor::compute_function_hashes() {
             sz -= 8;
           } while (sz >= 8);
         }
+
         // okay, now know what to NULL out, so do it:
         for (size_t i = 0; i < bytes.size(); ++i) {
           if (wildcard[i]) {
             bytes[i] = 0;
             ++numnulls;
+            // save offsets so yara gen can use pic_bytes + offsets to wildcard correct bytes
+            pic_offsets.push_back(pic_bytes.size() + i);
           }
         }
 
@@ -1506,64 +1509,107 @@ void FunctionDescriptor::compute_function_hashes() {
         // this part I can leave it on there, but for the category determination I'll strip it
         // out (in insn_get_generic_category).  There may be other prefixes that I should deal
         // with too, but ignoring for now...
+        std::string mnemcat = insn_get_generic_category(insn);
 
         //SDEBUG << addr_str(insn->get_address()) << " " << mnemonic << LEND;
         //dbg_disasm << "\t; MNEMONIC: " << mnemonic;
         dbg_disasm << ", MNEM: " << mnemonic;
-        mnemonics += mnemonic;
-        if (mnemonic_counts.count(mnemonic) > 0)
-          mnemonic_counts[mnemonic] += 1;
-        else
-          mnemonic_counts[mnemonic] = 1;
-
-        std::string mnemcat = insn_get_generic_category(insn);
         //SDEBUG << addr_str(insn->get_address()) << " " << mnemcat << LEND;
         dbg_disasm << ", CAT: " << mnemcat << std::endl;
-        mnemcats += mnemcat;
-        if (mnemonic_category_counts.count(mnemcat) > 0)
-          mnemonic_category_counts[mnemcat] += 1;
-        else
-          mnemonic_category_counts[mnemcat] = 1;
+
+        bbmnemonics.push_back(mnemonic);
+        bbmnemcats.push_back(mnemcat);
+        if (extra) {
+          extra->mnemonics += mnemonic;
+          if (extra->mnemonic_counts.count(mnemonic) > 0)
+            extra->mnemonic_counts[mnemonic] += 1;
+          else
+            extra->mnemonic_counts[mnemonic] = 1;
+
+          extra->mnemcats += mnemcat;
+          if (extra->mnemonic_category_counts.count(mnemcat) > 0)
+            extra->mnemonic_category_counts[mnemcat] += 1;
+          else
+            extra->mnemonic_category_counts[mnemcat] = 1;
+        }
 
         // Composite PIC Hash has no control flow instructions at all, and will be calculated
         // by the hashes of the basic blocks sorted & concatenated, then that value hashed.
         if (!insn_is_control_flow(insn))
         {
-          bbpicbytes.insert(bbpicbytes.end(),bytes.begin(), bytes.end());
+          bbcpicbytes.insert(bbcpicbytes.end(),bytes.begin(), bytes.end());
         }
+        bbpicbytes.insert(bbpicbytes.end(),bytes.begin(), bytes.end());
         //SDEBUG << dbg_disasm.str() << LEND;
         SINFO << dbg_disasm.str() << LEND;
         dbg_disasm.clear();
         dbg_disasm.str("");
       }
-      // bb insns done, calc pic hash for block
+      // bb insns done, calc (c)pic hash(es) for block
+      std::string bbcpic = get_string_md5(bbcpicbytes);
       std::string bbpic = get_string_md5(bbpicbytes);
-      SDEBUG << "basic block @" << addr_str(bb->get_address()) << " has pic hash " << bbpic << LEND;
-      bbpics.insert(bbpic);
+      SDEBUG << "basic block @" << addr_str(bb->get_address()) << " has pic hash " << bbpic
+             << " and (c)pic hash " << bbcpic << LEND;
+      bbcpics.insert(bbcpic); // used to calc fn cpic later
+      if (extra) {
+        bbaddrs.push_back(bb->get_address());
+        ExtraFunctionHashData::BasicBlockHashData bbdat;
+        bbdat.pic = bbpic;
+        bbdat.cpic = bbcpic;
+        bbdat.mnemonics = bbmnemonics;
+        bbdat.mnemonic_categories = bbmnemcats;
+        // we only do this once per bb, so it's not in the map yet:
+        extra->basic_block_hash_data[bb->get_address()] = bbdat;
+        //extra->basic_block_hash_data.insert(std::pair< rose_addr_t, ExtraFunctionHashData::BasicBlockHashData > (bb->get_address(),bbdat));
+      }
     }
   }
   // bbs all processed, calc fn hashes
   exact_hash = get_string_md5(exact_bytes);
   pic_hash = get_string_md5(pic_bytes);
-  std::string bbpicsconcat;
-  for (auto const& bbpic: bbpics) {
-    bbpicsconcat += bbpic;
+  std::string bbcpicsconcat;
+  for (auto const& bbcpic: bbcpics) {
+    bbcpicsconcat += bbcpic;
   }
-  //OINFO << bbpicsconcat << LEND;
-  composite_pic_hash = get_string_md5(bbpicsconcat);
-  mnemonic_hash = get_string_md5(mnemonics);
-  mnemonic_category_hash = get_string_md5(mnemcats);
-  std::string mnemonic_counts_str;
-  for (auto const& mnemcount: mnemonic_counts) {
-    mnemonic_counts_str += mnemcount.first + std::to_string(mnemcount.second);
+  //OINFO << bbcpicsconcat << LEND;
+  composite_pic_hash = get_string_md5(bbcpicsconcat);
+
+  if (extra) {
+    OTRACE << "calculating 'extra' hashes" << LEND;
+    extra->mnemonic_hash = get_string_md5(extra->mnemonics);
+    extra->mnemonic_category_hash = get_string_md5(extra->mnemcats);
+    std::string mnemonic_counts_str;
+    for (auto const& mnemcount: extra->mnemonic_counts) {
+      mnemonic_counts_str += mnemcount.first + std::to_string(mnemcount.second);
+    }
+    extra->mnemonic_count_hash = get_string_md5(mnemonic_counts_str);
+    std::string mnemonic_category_counts_str;
+    for (auto const& mnemcatcount: extra->mnemonic_category_counts) {
+      mnemonic_category_counts_str += mnemcatcount.first + std::to_string(mnemcatcount.second);
+    }
+    extra->mnemonic_category_count_hash = get_string_md5(mnemonic_category_counts_str);
+    // add bb stuff here too
+    extra->basic_block_addrs = bbaddrs;
+    // iterate over CFG to get edge data:
+    BGL_FORALL_EDGES(edge, cfg, CFG) {
+      CFGVertex src_vtx = boost::source(edge, cfg);
+      SgAsmBlock *src_bb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, src_vtx));
+      CFGVertex tgt_vtx = boost::target(edge, cfg);
+      SgAsmBlock *tgt_bb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, tgt_vtx));
+      std::pair< rose_addr_t, rose_addr_t > aedge; // will this be init to 0,0?
+      if (src_bb)
+        aedge.first = src_bb->get_address();
+      if (tgt_bb)
+        aedge.second = tgt_bb->get_address();
+      extra->cfg_edges.push_back(aedge);
+      OTRACE << "adding edge to cfg_edges: " << aedge.first << "->" << aedge.second << LEND;
+    }
   }
-  mnemonic_count_hash = get_string_md5(mnemonic_counts_str);
-  std::string mnemonic_category_counts_str;
-  for (auto const& mnemcatcount: mnemonic_category_counts) {
-    mnemonic_category_counts_str += mnemcatcount.first + std::to_string(mnemcatcount.second);
-  }
-  mnemonic_category_count_hash = get_string_md5(mnemonic_category_counts_str);
 }
+
+// The mnemonic and mnemonic category related hashes used to be computed above and stored on
+// the FD, but really only fn2hash cares about them so silly to always compute them and save
+// the data on the object, just generate them on the fly when fn2hash asks now
 
 const std::string& FunctionDescriptor::get_exact_bytes() {
   // If the bytes haven't been computed already, do so now.
@@ -1583,6 +1629,12 @@ const std::string& FunctionDescriptor::get_pic_bytes() {
   return pic_bytes;
 }
 
+const std::list< uint32_t > & FunctionDescriptor::get_pic_offsets() {
+  // If the bytes haven't been computed already, do so now.
+  if (!hashes_calculated) compute_function_hashes();
+  return pic_offsets;
+}
+
 const std::string& FunctionDescriptor::get_pic_hash() {
   // If the bytes haven't been computed already, do so now.
   if (!hashes_calculated) compute_function_hashes();
@@ -1595,44 +1647,26 @@ const std::string& FunctionDescriptor::get_composite_pic_hash() {
   return composite_pic_hash;
 }
 
-const std::string& FunctionDescriptor::get_mnemonic_hash() {
-  // If the bytes haven't been computed already, do so now.
-  if (!hashes_calculated) compute_function_hashes();
-  return mnemonic_hash;
+// TODO: note that this appears to be modifying the "rose cfg" we store in place due to the
+// references being used here, in get_rose_cfg and in du.cleanup_cfg, so after calling this I
+// believe that both of these functions will return the same "pharos cfg" (although if this one
+// is called again it'll attempt to do the cleanup again)...is this what was intended?  Also,
+// get_rose_cfg() caches, is there a reason this one doesnt'?
+CFG& FunctionDescriptor::get_pharos_cfg() {
+
+  assert(pdg!=NULL);
+
+  CFG& cfg = get_rose_cfg();
+
+  // The real magic here is "fixing" the CFG on demand. Note that get_cfg() returns the stock
+  // rose CFG
+  const DUAnalysis& du = pdg->get_usedef();
+  du.cleanup_cfg(cfg);
+
+  return cfg;
 }
 
-const std::string& FunctionDescriptor::get_mnemonic_category_hash() {
-  // If the bytes haven't been computed already, do so now.
-  if (!hashes_calculated) compute_function_hashes();
-  return mnemonic_category_hash;
-}
-
-const std::string& FunctionDescriptor::get_mnemonic_count_hash() {
-  // If the bytes haven't been computed already, do so now.
-  if (!hashes_calculated) compute_function_hashes();
-  return mnemonic_count_hash;
-}
-
-const std::string& FunctionDescriptor::get_mnemonic_category_count_hash() {
-  // If the bytes haven't been computed already, do so now.
-  if (!hashes_calculated) compute_function_hashes();
-  return mnemonic_category_count_hash;
-}
-
-const std::map< std::string, uint32_t >& FunctionDescriptor::get_mnemonic_counts() {
-  // If the bytes haven't been computed already, do so now.
-  if (!hashes_calculated) compute_function_hashes();
-  return mnemonic_counts;
-}
-
-const std::map< std::string, uint32_t >& FunctionDescriptor::get_mnemonic_category_counts() {
-  // If the bytes haven't been computed already, do so now.
-  if (!hashes_calculated) compute_function_hashes();
-  return mnemonic_category_counts;
-}
-
-
-CFG& FunctionDescriptor::get_cfg() {
+CFG& FunctionDescriptor::get_rose_cfg() {
   // If we've already done the work, just return the answer.
   if (control_flow_graph_cached) return control_flow_graph;
   // Otherwise, we have to do it now.
@@ -1674,6 +1708,7 @@ SgAsmInstruction* FunctionDescriptor::get_insn(const rose_addr_t addr) const {
   return NULL;
 }
 
+// TODO: need an architecture agnostic version of this if we ever support non-x86 stuff
 // explicit sorting of instructions by address using a map:
 X86InsnVector FunctionDescriptor::get_insns_addr_order() const {
   // TODO: do this once & cache on object?  Also, should there be another variant for "only
@@ -1738,7 +1773,7 @@ BlockSet& FunctionDescriptor::get_return_blocks() {
   // If we've already done the work, just return the answer.
   if (return_blocks_cached) return return_blocks;
   // Otherwise, we have to do it now.
-  CFG& cfg = get_cfg();
+  CFG& cfg = get_rose_cfg();
 
   std::vector<CFGVertex> retblocks = Rose::BinaryAnalysis::ControlFlow().return_blocks(cfg, 0);
   for (size_t x = 0; x < retblocks.size(); x++) {
@@ -1843,9 +1878,14 @@ ImportDescriptor* FunctionDescriptor::follow_thunks_id(bool* endless) {
 
 // return a string w/ a masm-ish disassembly of this function descriptor:
 std::string FunctionDescriptor::disasm() const {
-  const auto partitioner = global_descriptor_set->get_partitioner();
+  // TODO: apparently I started adding this function and ended up outputting the disassembly in
+  // debug statements in compute_function_hashes() instead because I was already walking the
+  // functions, chunks, and instructions and inspecting the bytes there...  Should probably
+  // actually implement that functionality here instead/additionally at some point?  Or for
+  // now, could call debug_function from masm.cpp I suppose...better than an empty answer
+  // should anyone use this...
 
-  return "";
+  return debug_function(func,17,true,true);
 }
 
 } // namespace pharos

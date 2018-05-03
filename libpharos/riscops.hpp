@@ -1,4 +1,4 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_RiscOps_H
 #define Pharos_RiscOps_H
@@ -8,7 +8,7 @@
 
 namespace pharos {
 
-typedef Rose::BinaryAnalysis::SMTSolver SMTSolver;
+typedef Rose::BinaryAnalysis::SmtSolverPtr SmtSolverPtr;
 
 typedef Semantics2::SymbolicSemantics::RiscOperators SymRiscOperators;
 typedef Semantics2::SymbolicSemantics::RiscOperatorsPtr SymRiscOperatorsPtr;
@@ -52,23 +52,30 @@ protected:
   // instance().
 
   // Standard ROSE constructor must take custom types to ensure promotion.
-  explicit SymbolicRiscOperators(const SymbolicValuePtr& aprotoval_, SMTSolver* asolver_ = NULL);
+  explicit SymbolicRiscOperators(const SymbolicValuePtr& aprotoval_,
+                                 const SmtSolverPtr & asolver);
 
   // Standard ROSE constructor must take custom types to ensure promotion.
-  explicit SymbolicRiscOperators(const SymbolicStatePtr& state_, SMTSolver* asolver_ = NULL);
+  explicit SymbolicRiscOperators(const SymbolicStatePtr& state_,
+                                 const SmtSolverPtr & asolver);
 
 public:
 
   // Instance() methods must take custom types to ensure promotion.
   static SymbolicRiscOperatorsPtr instance(const SymbolicValuePtr& protoval_,
-                                           SMTSolver* solver_ = NULL) {
-    SymbolicRiscOperatorsPtr ptr = SymbolicRiscOperatorsPtr(new SymbolicRiscOperators(protoval_, solver_));
+                                           const SmtSolverPtr & solver_ = SmtSolverPtr())
+  {
+    SymbolicRiscOperatorsPtr ptr = SymbolicRiscOperatorsPtr(
+      new SymbolicRiscOperators(protoval_, solver_));
     return ptr;
   }
 
   // Instance() methods must take custom types to ensure promotion.
-  static SymbolicRiscOperatorsPtr instance(const SymbolicStatePtr& state_, SMTSolver* solver_ = NULL) {
-    SymbolicRiscOperatorsPtr ptr = SymbolicRiscOperatorsPtr(new SymbolicRiscOperators(state_, solver_));
+  static SymbolicRiscOperatorsPtr instance(const SymbolicStatePtr& state_,
+                                           const SmtSolverPtr & solver_ = SmtSolverPtr())
+  {
+    SymbolicRiscOperatorsPtr ptr = SymbolicRiscOperatorsPtr(
+      new SymbolicRiscOperators(state_, solver_));
     return ptr;
   }
 
@@ -76,15 +83,17 @@ public:
   // it's ok to pass a BaseStatePtr in the TestSemantics jig... I guess we'll promote, and
   // assert if we didn't get the right kind of state?  Long term we should really support other
   // arbitrary states.
-  static SymbolicRiscOperatorsPtr instance(const BaseStatePtr& state_, SMTSolver* solver_ = NULL) {
+  static SymbolicRiscOperatorsPtr instance(const BaseStatePtr& state_,
+                                           const SmtSolverPtr & solver_ = SmtSolverPtr())
+  {
     SymbolicStatePtr sstate = SymbolicState::promote(state_);
     SymbolicRiscOperatorsPtr ptr = SymbolicRiscOperatorsPtr(new SymbolicRiscOperators(sstate, solver_));
     return ptr;
   }
 
   // Default constructors are a CERT addition.
-  static SymbolicRiscOperatorsPtr instance(SMTSolver* solver_ = NULL) {
-    SymbolicMemoryStatePtr mstate = SymbolicMemoryState::instance();
+  static SymbolicRiscOperatorsPtr instance(const SmtSolverPtr & solver_ = SmtSolverPtr()) {
+    SymbolicMemoryMapStatePtr mstate = SymbolicMemoryMapState::instance();
     SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance();
     SymbolicStatePtr state = SymbolicState::instance(rstate, mstate);
     SymbolicRiscOperatorsPtr ptr = SymbolicRiscOperatorsPtr(new SymbolicRiscOperators(state, solver_));
@@ -99,13 +108,17 @@ public:
   }
 
   virtual BaseRiscOperatorsPtr create(const BaseSValuePtr &aprotoval_,
-                                      SMTSolver *asolver_ = NULL) const ROSE_OVERRIDE {
+                                      const SmtSolverPtr &asolver_ = SmtSolverPtr())
+    const ROSE_OVERRIDE
+  {
     STRACE << "RiscOps::create(protoval, solver)" << LEND;
     return instance(SymbolicValue::promote(aprotoval_), asolver_);
   }
 
   virtual BaseRiscOperatorsPtr create(const BaseStatePtr &state_,
-                                      SMTSolver *asolver_= NULL) const ROSE_OVERRIDE {
+                                      const SmtSolverPtr &asolver_= SmtSolverPtr())
+    const ROSE_OVERRIDE
+  {
     STRACE << "RiscOps::create(state, solver)" << LEND;
     return instance(SymbolicState::promote(state_), asolver_);
   }
@@ -113,14 +126,14 @@ public:
   // Overridden to clear our abstract access vectors.
   virtual void startInstruction(SgAsmInstruction *insn) ROSE_OVERRIDE;
 
-  virtual BaseSValuePtr readRegister(const RegisterDescriptor &reg) ROSE_OVERRIDE;
+  virtual BaseSValuePtr readRegister(RegisterDescriptor reg) ROSE_OVERRIDE;
 
-  virtual void writeRegister(const RegisterDescriptor &reg, const BaseSValuePtr &a) ROSE_OVERRIDE;
+  virtual void writeRegister(RegisterDescriptor reg, const BaseSValuePtr &a) ROSE_OVERRIDE;
 
-  virtual BaseSValuePtr readMemory(const RegisterDescriptor &segreg, const BaseSValuePtr &addr,
+  virtual BaseSValuePtr readMemory(RegisterDescriptor segreg, const BaseSValuePtr &addr,
                                    const BaseSValuePtr &dflt, const BaseSValuePtr &cond) ROSE_OVERRIDE;
 
-  virtual void writeMemory(const RegisterDescriptor &segreg, const BaseSValuePtr &addr,
+  virtual void writeMemory(RegisterDescriptor segreg, const BaseSValuePtr &addr,
                            const BaseSValuePtr &data, const BaseSValuePtr &cond) ROSE_OVERRIDE;
 
   // -----------------------------------------------------------------------------------------
@@ -182,10 +195,10 @@ public:
   }
 
   // This is Cory's interface, and it's probably half-baked.
-  SymbolicValuePtr read_register(const RegisterDescriptor &reg);
+  SymbolicValuePtr read_register(RegisterDescriptor reg);
 
   // CERT needs a rational interface read memory. :-)
-  SymbolicValuePtr read_memory(const SymbolicMemoryState* state,
+  SymbolicValuePtr read_memory(const SymbolicMemoryMapState* state,
                                const SymbolicValuePtr& addr, const size_t nbits);
 
   // New API by Cory to initialize memory.

@@ -2,6 +2,7 @@ link_libraries(pharos)
 
 add_executable(apianalyzer apianalyzer.cpp)
 install(TARGETS apianalyzer DESTINATION bin)
+build_pharos_pod(apianalyzer-man apianalyzer.pod 1)
 
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/sig.json)
   install(FILES sig.json DESTINATION share/pharos/apianalyzer

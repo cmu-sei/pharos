@@ -5,7 +5,7 @@ pharos:
   library:
   prolog_dir: 
   prolog_rules_dir:
-  apidb: [ apidb/pharos-win7.sqlite, configs ]
+  apidb: [ apidb/pharos-api-additions.json, apidb/pharos-apidb.sqlite ]
   timeout: 900.0
   relative_timeout: 20.0
   partitioner_timeout: 300.0
@@ -19,7 +19,9 @@ pharos:
 # application specific overrides, based on the executable name
 application:
   apianalyzer:
+    signature_file: "apianalyzer/sig.json"
   apianalyzer-static:
+    signature_file: "apianalyzer/sig.json"
   objdigger:
   objdigger-static:
   fn2yara:

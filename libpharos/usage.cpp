@@ -1,6 +1,11 @@
 // Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/format.hpp>
+#include <boost/range/adaptor/map.hpp>
+#include <boost/graph/visitors.hpp>
+#include <boost/graph/breadth_first_search.hpp>
+#include <boost/graph/graph_utility.hpp>
+#include <boost/graph/filtered_graph.hpp>
 
 #include <rose.h>
 
@@ -9,12 +14,9 @@
 #include "pdg.hpp"
 #include "usage.hpp"
 #include "method.hpp"
-#include "member.hpp"
+#include "cdg.hpp"
 
 namespace pharos {
-
-// A global map of object uses.  Populated in analyze_functions_for_object_uses().
-ObjectUseMap object_uses;
 
 template<> char const* EnumStrings<AllocType>::data[] = {
   "Unknown",
@@ -50,7 +52,6 @@ ThisPtrUsage::ThisPtrUsage(FunctionDescriptor* f, SymbolicValuePtr tptr,
                            ThisCallMethod* tcm, SgAsmInstruction* call_insn) {
   assert(tptr);
   this_ptr = tptr;
-  ctor = NULL;
 
   fd = f;
   assert(fd != NULL);
@@ -60,151 +61,8 @@ ThisPtrUsage::ThisPtrUsage(FunctionDescriptor* f, SymbolicValuePtr tptr,
   alloc_size = 0;
   alloc_insn = NULL;
 
-  // New way of handling methods.  Use a set instead of a vector, but keep the first one
-  // separately, so we can guess at constructors.
-  first_method = tcm;
   add_method(tcm, call_insn);
   analyze_alloc();
-}
-
-// Report a unique identifier for this usage in a human readable way.
-std::string ThisPtrUsage::identifier() const {
-  // The this-pointer is a machine readable identifier (symbolic value), but it doesn't help
-  // a human identify where the object instance is in the program.  The allocation address
-  // would be the best human readable identifier, since it also identifies a specific object
-  // instance, but sadly we haven't always identified an allocation instruction, so we'll
-  // also report the function that the object occurs in.
-  if (alloc_insn != NULL) {
-    return boost::str(boost::format("allocated at 0x%08X") % alloc_insn->get_address());
-  }
-  else {
-    return boost::str(boost::format("in function 0x%08X") % fd->get_address());
-  }
-}
-
-// This verison is old.  It probably makes more sense to call through ObjectUse::debug() now.
-void ThisPtrUsage::debug_methods() const {
-  // There were several copies of this code, each a little different.  This seems to be the
-  // combination of the best attributes.
-  if (GDEBUG) {
-    GDEBUG << "Methods sharing a this-pointer=" << *(this_ptr) << " :";
-    for (const ThisCallMethod* tcm : methods) {
-      GDEBUG << "  " << tcm->address_string();
-    }
-    GDEBUG << LEND;
-  }
-}
-
-void ThisPtrUsage::debug() const {
-  GDEBUG << " thisptr=" << *(this_ptr->get_expression());
-
-  //GDEBUG << " alloc=" << Enum2Str(alloc_type) << " { ";
-  GDEBUG << " { ";
-
-  for (const ThisCallMethod* tcm : methods) {
-    GDEBUG << tcm->address_string() << " ";
-  }
-  GDEBUG << "}";
-}
-
-void ThisPtrUsage::pick_ctor() {
-  // A list of possible constructors in the this-pointer usage.
-  ThisCallMethodSet ctors;
-
-  // Try picking the constructor by looking at the methods set.
-  for (ThisCallMethod* tcm : methods) {
-    // If this one could be a constructor, add it to the set.
-    if (tcm->is_constructor()) ctors.insert(tcm);
-  }
-
-  // One (and only one) constructor is what we expected.  Set the ctor to that method.
-  if (ctors.size() == 1) {
-    ThisCallMethod* new_ctor = *ctors.begin();
-    // Jeff Gennari recommended this additional test, and it turns out that in every case
-    // where it's true in the test suite, something else has gone wrong, so we're not going
-    // to return a ctor in this case, since it seems to be more wrong than right.  Now that
-    // there's a proper dominance rule, this is probably not needed (or correct).
-    if (new_ctor != first_method) {
-      GWARN << "The apparent constructor was not the first method called. ctor="
-            << new_ctor->address_string() << " fm=" << first_method->address_string() << LEND;
-    }
-    else {
-      ctor = new_ctor;
-    }
-  }
-  // This is a pretty common condition when we've admitted many things that are not really
-  // __thiscall to methods list.  Once we've tightened down the calling convention code some
-  // more, we should probably turn this into a warning.  But right now, it's just annoying
-  // with lots of spew about being unable to find constructors from __fastcall functions.
-  else if (ctors.size() == 0) {
-    if (GDEBUG) {
-      GDEBUG << "Unable to choose constructor for ThisPtrUsage " << identifier() << ":" << LEND;
-      for (ThisCallMethod* tcm : methods) {
-        GDEBUG << "  Called method: " << tcm->address_string() << LEND;
-      }
-    }
-  }
-  // This is an uncommon condition in which we have multiple methods that return the object
-  // pointer.  It appears to be encountered mostly in library IOstreams.  Cory hopes that
-  // with better future handling of passed parameters, these warnings will eventually go
-  // away.  Right now, pick the first method as passed to the ThisPtrUsage, which Cory would
-  // like to remove entirely. :-(
-  else {
-    GWARN << "Conflicting data on which method is a constructor, choices were:" << LEND;
-    for (ThisCallMethod* tcm : ctors) {
-      // Hackishly pick the old style first_method if we can't decide.
-      if (tcm == first_method) {
-        ctor = tcm;
-        GWARN << "  Chosen constructor: " << tcm->address_string() << LEND;
-      }
-      else {
-        GWARN << "  Possible constructor: " << tcm->address_string() << LEND;
-      }
-    }
-  }
-}
-
-// Object oriented methods which are dominated by other object oriented methods can not be
-// constructors.  This should be a rigously sound rule, even if methods or constructors are
-// inlined.  The only place where we have any doubts about this rule is highly optimized reuse
-// of stack local objects where there's actually two object instances, but we can't tell
-// because the compiler has gotten fancy and reused the memory from an earlier object instance
-// in a way that results in the same symbolic value.  It's unclear if this is possible, but it
-// should certainly be rare.
-void ThisPtrUsage::apply_constructor_dominance_rule() {
-  // We're going to need the CDG for this function to answer dominance questions.
-  PDG* pdg = fd->get_pdg();
-  if (pdg == NULL) return;
-
-  // This is a poorly performing way to do this.  A better way would involve a work queue and
-  // consider each pair only once, and remove a method on every dominance test.  But this is
-  // easier, and will produce the same result, just with a longer run time.
-  for (MethodEvidenceMap::value_type& opair : method_evidence) {
-    SgAsmX86Instruction* outer_insn = isSgAsmX86Instruction(opair.first);
-    if (outer_insn == NULL) continue;
-    ThisCallMethod* otcm = *(opair.second.begin());
-    for (MethodEvidenceMap::value_type& ipair : method_evidence) {
-      SgAsmX86Instruction* inner_insn = isSgAsmX86Instruction(ipair.first);
-      if (inner_insn == NULL) continue;
-
-      // Don't ask if instructions dominate themselves...
-      if (inner_insn == outer_insn) continue;
-
-      // Does the outer instruction dominate the inner instruction?  If it does, then none of
-      // the inner instructions methods can be constructors...  This should really call dominates()
-      // once we're passing tests again...
-      if (pdg->get_cdg().post_dominates(inner_insn, outer_insn)) {
-        GDEBUG << "Insn: " << debug_instruction(outer_insn) << " dominates "
-               << debug_instruction(inner_insn) << LEND;
-        for (ThisCallMethod* tcm : ipair.second) {
-          GDEBUG << "Method " << tcm->address_string()
-                 << " cannot be a constructor because it is dominated by "
-                 << otcm->address_string() << LEND;
-          tcm->set_constructor(false, ConfidenceConfident);
-        }
-      }
-    }
-  }
 }
 
 // Analyze the allocation type and location of this-pointers.
@@ -225,9 +83,13 @@ void ThisPtrUsage::analyze_alloc() {
   else if (type == UnknownMem) {
     // This code is really a function of get_memory_type() still being broken.
     // If we're not a constant address (global), skip this function.
-    if (!this_ptr->is_number()) return;
+    if (!this_ptr->is_number() || this_ptr->get_width() > 64) return;
     // This is a bit hackish, but also reject obviously invalid constants.
     size_t num = this_ptr->get_number();
+    // Here's a place where we're having the age old debate about how to tell what is an
+    // address with absolutely no context.  Cory still likes consistency.  Others have
+    // suggested that we should be using the memory map despite all of it's flaws...
+    // if (!global_descriptor_set->memory_in_image(num)) return;
     if (num < 0x10000 || num > 0x7FFFFFFF) return;
     // Otherwise, we look like a legit global address?
     alloc_type = AllocGlobal;
@@ -322,34 +184,184 @@ ObjectUse::ObjectUse(FunctionDescriptor* f) {
   analyze_object_uses();
 }
 
-void ObjectUse::apply_constructor_dominance_rule() {
-  // For each reference, apply the constructor dominance rule to the this-pointer usage.
-  // This must occur after we've analyzed all of the object uses in the function, because
-  // it's comparing found calls against each other.
+using VertexFound = std::runtime_error;
 
-  // This method is very wrong, and completely unecessary in the Prolog version, so it needed
-  // to be moved from the constructor into this method so it could be called after the prolog
-  // exporting occurred.
-  for (ThisPtrUsageMap::value_type& rpair : references) {
-    rpair.second.apply_constructor_dominance_rule();
+// Use a fancy std bidirectional thingie instead?
+typedef std::map<SgAsmInstruction*, CFGVertex> InsnVertexMap;
+typedef std::map<CFGVertex, SgAsmInstruction*> VertexInsnMap;
+
+class CallOrderVisitor: public boost::default_bfs_visitor {
+ public:
+  InsnVertexMap call2vertex;
+  VertexInsnMap vertex2call;
+  // The current start vertex (so we don't match ourself).
+  CFGVertex current;
+  CallOrderVisitor() { }
+  template < typename Graph >
+  void discover_vertex(CFGVertex v, const Graph & g UNUSED) const {
+    // Don't match ourself.
+    if (v == current) {
+      //const SgAsmInstruction* i = vertex2call.at(v);
+      //OINFO << "Instruction " << addr_str(i->get_address()) << " ignored." << LEND;
+      return;
+    }
+    // But if we match one of the other call instructions, we're done, so throw!
+    if (vertex2call.find(v) != vertex2call.end()) {
+      const SgAsmInstruction* call_insn = vertex2call.at(v);
+      const SgAsmInstruction* curr_insn = vertex2call.at(current);
+      GDEBUG << "Address " << addr_str(curr_insn->get_address())
+             << " was disproven by address " << addr_str(call_insn->get_address()) << LEND;
+      throw VertexFound("found");
+    }
+  }
+  // Add an instruction to the bidirectional map.
+  void add(SgAsmInstruction* i, CFGVertex v) {
+    call2vertex[i] = v;
+    vertex2call[v] = i;
+  }
+};
+
+class NonReturningCFGFilter {
+ public:
+  std::set<CFGEdge> non_returning_edges;
+  template <typename Graph>
+  void add_vertex(Graph& cfg, CFGVertex v) {
+    for (const CFGEdge& e: cfg_out_edges(cfg, v)) {
+      non_returning_edges.insert(e);
+    }
+  }
+  bool operator()(const CFGEdge& e) const {
+    return(non_returning_edges.find(e) == non_returning_edges.end());
+  }
+};
+
+void ObjectUse::update_ctor_dtor() const {
+  // For each this-pointer... (since there can be multiple objects in a single function)
+  for (const ThisPtrUsage& tpu : boost::adaptors::values(references)) {
+    // A this-pointer usage (tpu) describes a particular object instance, including which
+    // methods are called using the this pointer.
+    tpu.update_ctor_dtor();
   }
 }
 
-void ObjectUse::debug() const {
-  for (const ThisPtrUsageMap::value_type& rpair : references) {
-    const ThisPtrUsage& tpu = rpair.second;
-    GDEBUG << "OU: " << fd->address_string() << " ";
-    tpu.debug();
-    GDEBUG << LEND;
+// A new Prolog mode method to update the constructor/destructor booleans in the ThisCallMethod
+// based on whether there are other function calls that come before or after the method.
+void ThisPtrUsage::update_ctor_dtor() const {
+  // =====================================================================================
+  // Step 1. The key of the method evidence map is the call instruction that called the
+  // method on the this-pointer.  Look through the CFG finding the vertex numbers for each of
+  // the calls and add them to the CallOrderVisitor.
+
+  NonReturningCFGFilter nrf;
+  CallOrderVisitor cov;
+
+  // How many more vertices do we need to find?
+  size_t remaining = method_evidence.size();
+  // If there are no method calls to find, we're done.
+  if (remaining == 0) return;
+
+  // Get the control flow graph.
+  CFG& cfg = fd->get_rose_cfg();
+
+  // For each vertex in the control flow graph.
+  for (const CFGVertex& vertex : cfg_vertices(cfg)) {
+    // Get the last instruction in the basic block.
+    SgAsmBlock *bb = get(boost::vertex_name, cfg, vertex);
+    const SgAsmInstruction* lastinsn = last_insn_in_block(bb);
+    const SgAsmx86Instruction* lastxinsn = isSgAsmX86Instruction(lastinsn);
+
+    // If the instruction is a call
+    if (lastxinsn && insn_is_call(lastxinsn)) {
+      // Get the call descriptor
+      const CallDescriptor* cd = global_descriptor_set->get_call(lastinsn->get_address());
+      // If the call never returns, add it to the list of non-returning vertices.
+      if (cd && cd->get_never_returns()) {
+        //OINFO << "Adding vertex to non-returning hash list..." << LEND;
+        nrf.add_vertex(cfg, vertex);
+      }
+    }
+
+    // See if it's one of the methods that we're looking for.
+    for (const MethodEvidenceMap::value_type& mpair : method_evidence) {
+      SgAsmInstruction* callinsn = mpair.first;
+      if (lastinsn == callinsn) {
+        //OINFO << "Adding insn to map: " << addr_str(callinsn->get_address()) << LEND;
+        // Add the vertex to the vector of interesting call vertices.
+        cov.add(callinsn, vertex);
+        // We've found another...
+        remaining--;
+        // There's no point in looking through more method evidence since we found it.
+        break;
+      }
+    }
+
+    // If we've found them all we're done.
+    if (remaining == 0) break;
+  }
+
+  // If we didn't find them all, that's very unexpected.
+  if (remaining != 0) {
+    GERROR << "We did not find all the CFG vertices in " << fd->address_string() << LEND;
+  }
+
+  // =====================================================================================
+  // Step 2. For each method called update the constructor/destructor facts.
+
+  // For each call instruction...
+  for (const MethodEvidenceMap::value_type& mpair : method_evidence) {
+    SgAsmInstruction* callinsn = mpair.first;
+    CFGVertex s = cov.call2vertex[callinsn];
+    //OINFO << "Considering call insn: " << addr_str(callinsn->get_address()) << LEND;
+    // For each method called by that instruction... (usually just one)
+    for (ThisCallMethod* tcm : mpair.second) {
+      //OINFO << "Considering method: " << tcm->address_string() << LEND;
+      // If we still think that we're possibly a constructor...
+      if (tcm->no_calls_before) {
+        //OINFO << "Method " << tcm->address_string() << " is a possible constructor." << LEND;
+        try {
+          // Mark our starting vertex and then do a breadth first search for one of the other
+          // calls.  Reverse the graph because we want to search backwards in the CFG.
+          cov.current = s;
+          boost::filtered_graph<CFG, NonReturningCFGFilter> filtered_graph(cfg, nrf);
+          auto reversed_graph = boost::make_reverse_graph(filtered_graph);
+          boost::breadth_first_search(reversed_graph, s, visitor(cov));
+        }
+        // If the search threw VertexFound, there's another call before this method, so we're
+        // not a constructor.   Update the ThisCallMethod to reflect this.
+        catch (VertexFound) {
+          GINFO << "Method " << tcm->address_string() << " is NOT a constructor because "
+                << "of the call at " << addr_str(callinsn->get_address()) << LEND;
+          // Mark the method as not a constructor.
+          tcm->no_calls_before = false;
+        }
+      }
+
+      // If we still think that we're possibly a destructor...
+      if (tcm->no_calls_after) {
+        //OINFO << "Method " << tcm->address_string() << " is a possible destructor." << LEND;
+        try {
+          // Mark our starting vertex and then do a breadth first search for one of the other
+          cov.current = s;
+          boost::filtered_graph<CFG, NonReturningCFGFilter> filtered_graph(cfg, nrf);
+          boost::breadth_first_search(filtered_graph, s, visitor(cov));
+        }
+        // If the search threw VertexFound, there's another call after this method, so we're
+        // not a destructor.   Update the ThisCallMethod to reflect this.
+        catch (VertexFound) {
+          GINFO << "Method " << tcm->address_string() << " is NOT a destructor because "
+                << "of the call at " << addr_str(callinsn->get_address()) << LEND;
+          // Mark the method as not a destructor.
+          tcm->no_calls_after = false;
+        }
+      }
+    }
   }
 }
 
 // Analyze the function and populate the references member with information about each
 // this-pointer use in the function.  The approach is to use our knowledge about which methods
-// are object oriented, by calling follow_oo_thunks(), to identify the symbolic variables in
-// the this-pointer location (ECX) at the time of the call.  Therefore this routine must follow
-// the find_this_call_methods() analysis pass, and after this routine we should have a
-// reasonable set of this-pointers in references.
+// are object oriented, by calling follow_oo_thunks(), which requires that we've set the
+// oo_properties member on the function descriptor already.
 void ObjectUse::analyze_object_uses() {
   for (CallDescriptor* cd : fd->get_outgoing_calls()) {
     // The the value in the this-pointer location (ECX) before the call.
@@ -375,7 +387,6 @@ void ObjectUse::analyze_object_uses() {
       // If we don't create a new entry for the this-pointer.
       if (finder == references.end()) {
         GDEBUG << "Adding ref this_ptr=" << *this_ptr << LEND;
-        if (GDEBUG) tcm->debug();
         references.insert(ThisPtrUsageMap::value_type(hash,
           ThisPtrUsage(fd, this_ptr, tcm, cd->get_insn())));
       }

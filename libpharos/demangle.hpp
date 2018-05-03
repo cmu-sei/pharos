@@ -2,22 +2,31 @@
 #define Pharos_Demangle_H
 
 #include <string>
+#include <stdexcept>
+#include <memory>
+#include <vector>
+
+namespace demangle {
 
 // Thrown for errors encountered while demangling names.
-class DemanglerError : public std::runtime_error {
+class Error : public std::runtime_error {
  public:
   using std::runtime_error::runtime_error;
 };
 
 enum class SymbolType {
   Unspecified,
-  Namespace,
   StaticClassMember,
   GlobalObject,
   GlobalFunction,
   ClassMethod,
   GlobalThing1,
-  GlobalThing2
+  GlobalThing2,
+  String,
+  VtorDisp,
+  StaticGuard,
+  MethodThunk,
+  HexSymbol
 };
 
 enum class Scope {
@@ -92,37 +101,43 @@ class DemangledType {
   std::string str_simple_type(bool match = false) const;
   std::string str_template_parameters(bool match = false) const;
   std::string str_function_arguments(bool match = false) const;
-  std::string str_class_name(bool match = false) const;
+  std::string str_array(bool match = false) const;
+  std::string const & get_pname() const;
 
  public:
 
   // Laziness. :-(
-  std::string str_name_qualifiers(const FullyQualifiedName& the_name, bool match = false) const;
+  std::string str_name_qualifiers(const FullyQualifiedName& the_name, bool match,
+                                  bool except_last = false) const;
 
-  bool is_const;
-  bool is_volatile;
-  bool is_reference;
-  bool is_pointer;
+  bool is_const = false;
+  bool is_volatile = false;
+  bool is_reference = false;
+  bool is_pointer = false;
+  bool is_array = false;
+
+  // Array dimensions
+  std::vector<uint64_t> dimensions;
 
   // Hacky thing for complex types that can't get rendered any better than putting them inside
   // a pair of single quotes.  e.g. ?X@??Y@@9@9 demangles to "`Y'::X".  The extra quotes aren't
   // present if this is the outermost symbol, but are if it's part of a namespace? ...
-  bool is_embedded;
+  bool is_embedded = false;
 
   // Currently used for signaling between functions, but might be useful in general.
-  bool is_func;
+  bool is_func = false;
 
   // Poorly understood features involving storage classes, see update_storage_class()...
-  bool is_based;
-  bool is_member;
+  bool is_based = false;
+  bool is_member = false;
 
   // This really just means that we were a term in a fully qualified
   // name.  We can't actually tell from the demangling whether we were
-  bool is_namespace;
+  bool is_namespace = false;
 
   // True if the namespace is anonymous.  The simple_type string then contains the unique
   // identifier name that's not typically shown for anonymous namespaces.
-  bool is_anonymous;
+  bool is_anonymous = false;
 
   // This is handled horribly by Microsoft, and equally horribly by me.  I want to think some
   // more about the correct approach after I know more about the other $$ cases.  For this
@@ -130,17 +145,21 @@ class DemangledType {
   // reference to a type (although we may still need come custom outputing to avoid getting a
   // space between the references.)  Or maybe is_reference, is_pointer, and is_refref should be
   // an enum?  Apparently the correct name for this is "rvalue reference"?
-  bool is_refref;
+  bool is_refref = false;
 
   // Enum controlling how to interpret this type.
   // 1=namespace, 2=static class member, 3=global object, 4=global function, 5=class method
-  SymbolType symbol_type;
+  SymbolType symbol_type = SymbolType::Unspecified;
 
   // Really an enum: 0=near, 1=far, 2=huge
-  Distance distance;
+  Distance distance = Distance::Unspecified;
 
-  // Really an enum: 0=segment relative, 1=absolute (64-bit mode), 2=__based (64-bit mode)
-  int pointer_base;
+  bool ptr64 = false;
+  bool unaligned = false;
+  bool restrict = false;
+
+  bool is_gc = false;
+  bool is_pin = false;
 
   // The type pointed to or referenced.
   DemangledTypePtr inner_type;
@@ -158,29 +177,27 @@ class DemangledType {
   FullyQualifiedName name;
 
   // I'm not sure that I've named this correctly.  Set by symbol types 6 & 7.
-  DemangledTypePtr com_interface;
+  FullyQualifiedName com_interface;
 
   // If the class was templated, these are the parameters.
   DemangledTemplate template_parameters;
 
   // Scope (private, protected, public) of class method. Only applicable to class methods.
-  Scope scope;
+  Scope scope = Scope::Unspecified;
 
   // Class method property (static, virtual, thunk). Only applicable to class methods.
-  MethodProperty method_property;
+  MethodProperty method_property = MethodProperty::Unspecified;
 
   // Will eventually be looked up in Pharos calling convention map and
   // be a pointer to an actual calling convention object.
   std::string calling_convention;
 
   // Was this symbol exported?
-  bool is_exported;
+  bool is_exported = false;
 
-  // Names and name like things...
-  bool is_ctor;
-  bool is_dtor;
-  std::string method_name;
-  FullyQualifiedName class_name;
+  // Ctors and dtors
+  bool is_ctor = false;
+  bool is_dtor = false;
 
   // The fully qualified name of a exported variable.   Names are still messy. :-(
   FullyQualifiedName instance_name;
@@ -192,20 +209,41 @@ class DemangledType {
   FunctionArgs args;
 
   // And then the really obscure values (like parameters for RTTI data structures).
-  int64_t n1;
-  int64_t n2;
-  int64_t n3;
-  int64_t n4;
+  int64_t n1 = 0;
+  int64_t n2 = 0;
+  int64_t n3 = 0;
+  int64_t n4 = 0;
 
-  DemangledType();
+  // extern "C" (which shouldn't be mangled, but Microsoft)
+  bool extern_c = false;
+
+  DemangledType() = default;
+  DemangledType(const DemangledType & other) = default;
+  DemangledType(DemangledType && other) = default;
+  ~DemangledType() = default;
+  DemangledType & operator=(const DemangledType & other) = default;
+  DemangledType & operator=(DemangledType && other) = default;
+
+  DemangledType(std::string && simple_name) : simple_type(std::move(simple_name)) {}
+  DemangledType(std::string const & simple_name) : simple_type(simple_name) {}
+  DemangledType(char const * simple_name) : simple_type(simple_name) {}
+
   std::string get_class_name() const;
   std::string get_method_name() const;
   std::string str(bool match = false, bool is_retval = false) const;
   void debug_type(bool match = false, size_t indent = 0, std::string label = "") const;
+
+  template <typename T>
+  void add_name(T && n) {
+    name.push_back(std::make_shared<DemangledType>(std::forward<T>(n)));
+  }
 };
 
 // Main entry point to demangler
 DemangledTypePtr visual_studio_demangle(const std::string & mangled, bool debug = false);
+
+} // namespace demangle
+
 
 #endif
 

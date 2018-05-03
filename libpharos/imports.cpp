@@ -42,7 +42,7 @@ ImportDescriptor::ImportDescriptor(std::string d, SgAsmPEImportItem *i) {
     name = iname;
   }
   else {
-    name = "INVALID";
+    name = unknown_name;
   }
   dll = d;
   ordinal = item->get_ordinal();
@@ -64,11 +64,11 @@ std::string ImportDescriptor::get_dll_root() const {
 void ImportDescriptor::read_config(const boost::property_tree::ptree& tree) {
   // The new way of loading import data!
   auto fdata = global_descriptor_set->apidb->get_api_definition(dll, name);
-  if (fdata) {
+  if (!fdata.empty()) {
     GTRACE << "Found API " << get_best_name() << " in API database." << LEND;
-    name = fdata->get_name();
-    dll = fdata->dll_name;
-    ordinal = fdata->ordinal;
+    name = fdata[0]->get_name();
+    dll = fdata[0]->dll_name;
+    ordinal = fdata[0]->ordinal;
   }
   else {
     // The import name and DLL.  I'm uncertain about when we would need to override this.
@@ -105,9 +105,9 @@ void ImportDescriptor::read_config(const boost::property_tree::ptree& tree) {
   // with the answer from the JSON mockup of the API database.  This is not in the correct
   // order long term, but is muddled up in our need to load both because the API database isn't
   // complete yet.  The user config file should override the database once it's complete.
-  if (fdata) {
+  if (!fdata.empty()) {
     GTRACE << "Calling set_api() for " << get_best_name() << LEND;
-    function_descriptor.set_api(*fdata);
+    function_descriptor.set_api(*fdata[0]);
   }
 
   // Callers needs to be copied from elsewhere.
@@ -156,9 +156,9 @@ void ImportDescriptor::merge_export_descriptor(ImportDescriptor* did) {
 
   // Probably the most important case, where the input file tried to be sneaky and import by
   // ordinal, but we've figured out what the corrsponding name is?
-  if (name == "INVALID") name = did->get_name();
+  if (!is_name_valid()) name = did->get_name();
   // Not possible because we must have a DLL name in the input file and have reached here?
-  if (dll == "INVALID") dll = did->get_dll_name();
+  if (!is_dll_valid()) dll = did->get_dll_name();
   // Pretty common, but not very useful?  (We now know the ordinal that was not specified?)
   if (ordinal == 0) ordinal = did->get_ordinal();
 
@@ -168,22 +168,22 @@ void ImportDescriptor::merge_export_descriptor(ImportDescriptor* did) {
 
 std::string ImportDescriptor::get_normalized_name() const {
   // Return the name if we have one.
-  if (name != "INVALID") {
-    return to_lower(dll) + ":" + to_lower(name);
+  if (is_name_valid()) {
+    return to_lower(dll) + ":" + name;
   }
   // Then try by ordinal.
   if (ordinal != 0) {
     return to_lower(dll) + ":" + str(boost::format("%d") % ordinal);;
   }
   // Fall back to the name, even if it's invalid.
-  return to_lower(dll) + ":" + to_lower(name);
+  return to_lower(dll) + ":" + name;
 }
 
 // Report the "best available" name.  This is the case sensitive version of the name if it
 // exists, and the ordinal pseudo-name if it doesn't.
 std::string ImportDescriptor::get_best_name() const {
   // Return the name if we have one.
-  if (name != "INVALID") {
+  if (is_name_valid()) {
     return dll + ":" + name;
   }
   // Then try by ordinal.
@@ -227,8 +227,10 @@ void ImportDescriptor::validate(std::ostream &o) {
     o << "No callers for " << *this << LEND;
 }
 
-ImportDescriptor* ImportDescriptorMap::find_name(std::string dll, std::string name) {
-  std::string normed = to_lower(dll) + ":" + to_lower(name);
+ImportDescriptor* ImportDescriptorMap::find_name(const std::string & dll,
+                                                 const std::string & name)
+{
+  std::string normed = to_lower(dll) + ":" + name;
 
   for (ImportDescriptorMap::value_type& pair : *this) {
     ImportDescriptor& id = pair.second;
@@ -239,13 +241,12 @@ ImportDescriptor* ImportDescriptorMap::find_name(std::string dll, std::string na
   return NULL;
 }
 
-ImportDescriptorSet ImportDescriptorMap::find_name(std::string name) {
+ImportDescriptorSet ImportDescriptorMap::find_name(const std::string & name) {
   ImportDescriptorSet ids;
-  std::string lname = to_lower(name);
 
   for (ImportDescriptorMap::value_type& pair : *this) {
     ImportDescriptor& id = pair.second;
-    if (to_lower(id.get_name()) == lname) {
+    if (id.get_name() == name) {
       ids.insert(&id);
     }
   }

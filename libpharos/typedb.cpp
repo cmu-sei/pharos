@@ -109,7 +109,7 @@ bool handle_node(DB & db, const YAML::Node & node, DB::handle_error_t handle)
     {
       auto path = Path(node.Scalar());
       if (!path.has_root_directory()) {
-        path = get_default_libdir() / path;
+        path = get_library_path() / path;
       }
       if (is_directory(path)) {
         // Assume the directory contains per-DLL json files
@@ -449,7 +449,7 @@ boost::optional<T> interpret(const TreeNodePtr & tn);
 template <>
 boost::optional<uint64_t> interpret<uint64_t>(const TreeNodePtr & tn)
 {
-  if (tn && tn->isNumber()) {
+  if (tn && tn->isNumber() && tn->nBits() <= 64) {
     return tn->toInt();
   }
   return boost::none;
@@ -543,7 +543,7 @@ boost::optional<std::string> Value::as_string(bool wide) const
   }
   const String * s = dynamic_cast<const String *>(type.get());
   auto & exp = node->get_expression();
-  if (exp && exp->isNumber() && exp->toInt() == 0) {
+  if (exp && exp->isNumber() && exp->isLeafNode()->bits().isAllClear()) {
     return boost::none;
   } else if (memory) {
     if (s->get_string_type() == String::WCHAR ||
@@ -592,7 +592,7 @@ bool Value::is_nullptr() const
 {
   if (node && (is_pointer() || is_string())) {
     auto & exp = node->get_expression();
-    return exp && exp->isNumber() && exp->toInt() == 0;
+    return exp && exp->isNumber() && exp->isLeafNode()->bits().isAllClear();
   }
   return false;
 }
@@ -608,7 +608,7 @@ Value Value::dereference() const
     return t->get_value(node, memory);
   }
   auto & exp = node->get_expression();
-  if (exp && exp->isNumber() && exp->toInt() == 0) {
+  if (exp && exp->isNumber() && exp->isLeafNode()->bits().isAllClear()) {
     throw IllegalConversion("Cannot dereference NULL");
   }
   if (!memory) {

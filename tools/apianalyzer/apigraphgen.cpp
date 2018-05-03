@@ -24,9 +24,6 @@
 
 using namespace pharos;
 
-// Controls whether we're reporting timing.
-namespace pharos { extern bool global_timing; }
-
 // The global CERT message facility.  This may change.
 Sawyer::Message::Facility glog("APIG");
 
@@ -57,13 +54,6 @@ int main(int argc, char* argv[]) {
   SgAsmInterpretation* interp = get_interpretation(vm);
   if (interp == NULL) return 1;
 
-  // This is a bit hackish right now.  I should probably expose the
-  // whole var map globally, but that would have greater dependencies
-  // than I want to think about right now.
-  if (vm.count("timing")) {
-    global_timing = true;
-  }
-
   std::ostringstream file_name;
   file_name << vm["graphviz"].as<std::string>();
   std::string gv_file = file_name.str();
@@ -72,13 +62,7 @@ int main(int argc, char* argv[]) {
 
   // Find calls, functions, and imports.
   DescriptorSet ds(interp, &vm);
-  // Load a config file overriding parts of the analysis.
-  if (vm.count("imports")) {
-    std::string config_file = vm["imports"].as<std::string>();
-    GINFO << "Loading analysis configuration file: " <<  config_file << LEND;
-    ds.read_config(config_file);
-  }
-  // Load stack deltas from config files for imports.
+  // Resolve imports, load API data, etc.
   ds.resolve_imports();
 
   // Build PDGs

@@ -1,4 +1,4 @@
-// Copyright 2016-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016 Carnegie Mellon University.  See LICENSE file for terms.
 // Author: Jeff Gennari
 
 #ifndef Pharos_Type_Descriptor_H
@@ -24,14 +24,15 @@ const size_t BitwidthTop = SIZE_MAX;
 
 // The "top" of the type name lattice really means that we know
 // nothing about type name; i.e. it is unknown
-const std::string TypenameTop = "<unknown>";
+const std::string TypenameTop = "top";
+
+const std::string TypenameBottom = "bottom";
 
 // The bottom of the bitwidth lattice. The smallest size possible is
 // 0. Again, not a proper lattice
 const size_t BitwidthBottom = 0;
 
 } // namespace types
-
 
 // A type descriptor is a representation of a type lattice. Among the things
 // captured by the type descriptor are whether or not a type is a pointer, its
@@ -48,6 +49,11 @@ class TypeDescriptor {
 
   // Signedness (signed or unsigned) is the other
   types::Signedness signedness_;
+
+  // Indicates whether this type a pointer to an object
+  types::Objectness objectness_;
+
+  std::vector<std::string> candidate_typenames_;
 
   // This is the human readable type name. Should this be a lattice unto itself
   std::string type_name_;
@@ -80,16 +86,17 @@ class TypeDescriptor {
 
   ~TypeDescriptor();
 
-  void to_facts(TreeNodePtr tn, std::shared_ptr<prolog::Session> session);
-
   std::string to_string();
 
-  void set_name(std::string n) {
-    type_name_ = n;
-  }
-  std::string get_name() const {
-    return type_name_;
-  }
+  void set_type_name(std::vector<std::string> candidates);
+
+  void set_type_name(std::string n);
+
+  std::string get_type_name() const;
+
+  const std::vector<std::string>& get_candidate_type_names();
+
+  void bottom_name();
 
   // TypeDescriptor properties
 
@@ -99,27 +106,40 @@ class TypeDescriptor {
   void is_pointer();
   void not_pointer();
   void bottom_pointer();
-
+  void top_pointer();
   types::Pointerness Pointerness() const;
 
   void is_signed();
   void not_signed();
   void bottom_signed();
+  void top_signed();
   types::Signedness Signedness() const;
+
+  void is_object();
+  void not_object();
+  void bottom_object();
+  void top_object();
+  types::Objectness Objectness() const;
+
+  bool type_unknown() const;
 
 }; // TypeDescriptor
 
-   // shared pointer to a TypeDescriptor
+// shared pointer to a TypeDescriptor
 typedef boost::shared_ptr< TypeDescriptor > TypeDescriptorPtr;
 
 // Utility functions to fetch type descriptors from tree nodes. Note
 // that this method will create a default type descriptor if one isn't
-// found
+// found. These functions are meant to be the primary way to access
+// type descriptors.
 TypeDescriptorPtr fetch_type_descriptor(TreeNodePtr tnp);
+TypeDescriptorPtr fetch_type_descriptor(SymbolicValuePtr val);
 
 // returns true if a tree node has a type descriptor
 bool has_type_descriptor(TreeNodePtr tnp);
 
+// emit type-relevant facts for a tree node
+void to_facts(TreeNodePtr tn, std::shared_ptr<prolog::Session> session);
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 //
@@ -517,8 +537,8 @@ class OperationContext {
   // Analyze the operations by selecting and executing the strategy based on RISC
   // operator
   void assert_operation_fact(Rose::BinaryAnalysis::SymbolicExpr::Operator op,
-                             InternalNodePtr tnp,
-                             std::shared_ptr<prolog::Session> session);
+                               InternalNodePtr tnp,
+                               std::shared_ptr<prolog::Session> session);
 
 
   // Print asserted operation facts to a string stream. Each strategy must know how to
@@ -566,7 +586,11 @@ class TypeSolver {
 
   void update_typename();
 
+  const std::string select_typename(std::vector<std::string>& candidates);
+
   void update_signedness();
+
+  void update_objectness();
 
   void recursively_assert_facts(TreeNodePtr tnp);
 
@@ -584,12 +608,24 @@ class TypeSolver {
   // Assert facts for immediate values
   void assert_value_facts(TreeNodePtr tnp);
 
+  // assert facts about types
+  void assert_type_facts(typedb::TypeRef& ref);
+
   // assert facts concerning the size of tree nodes. The format of this fact is
   // (bitwidth HASH SIZE)
   void assert_bitwidth_fact(TreeNodePtr tnp);
 
   // Assert facts for function calls. These are tied to calls, not tree nodes
-  void assert_function_call_facts(const CallDescriptor *cd);
+  void assert_function_call_parameter_facts(const CallDescriptor *cd);
+
+  // Assert facts for global variables
+  void assert_global_variable_facts();
+
+  void assert_function_call_facts();
+
+  void assert_local_variable_facts();
+
+  void assert_objectness_facts(const CallDescriptor *cd);
 
   // Assert facts for function calls. These are tied to calls, not tree nodes
   void assert_api_facts(const CallDescriptor *cd);

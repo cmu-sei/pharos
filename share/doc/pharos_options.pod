@@ -1,0 +1,218 @@
+=head2 PHAROS OPTIONS
+
+The following options are common to most pharos tools.
+
+=over 4
+
+=item B<--help>, B<-h>
+
+Output program option help information and exit.
+
+=item B<--verbose>=I<NUMBER>, B<-v>=I<NUMBER>
+
+Set the verbosity of logging, 1-14.  (Default: 3) Level one is
+additional warnings.  Level two is informational messages about
+analysis progress.  Level three is the coarsest level of debugging.
+Level four enables warnings during the analysis of functions.  Higher
+numbers result in additional debugging messages.
+
+=item B<--batch>, B<-b>
+
+Suppress terminal-based magic in output, such as colors, progress
+bars, etc.
+
+=item B<--allow-64bit>
+
+Allow the analysis of 64-bit executables.  This option is currently
+required as a "safety switch" to ensure that the user knows that
+64-bit analysis has been tested less thoroughly than 32-bit analysis.
+
+=item B<--include-func>=I<ADDRESS> B<-i>=I<ADDRESS>,
+
+When analyzing an executable, only consider functions at location
+I<ADDRESS>, which should be a hexadecimal number.  This option can be
+specified multiple times.
+
+=item B<--exclude-func>=I<ADDRESS>, B<-e>=I<ADDRESS>
+
+When analyzing an executable, specifically do not consider any
+function at location I<ADDRESS>, which should be a hexadecimal number.
+This option can be specified multiple times.
+
+=item B<--config>=I<PHAROS_CONFIG_FILE>, B<-C>=I<PHAROS_CONFIG_FILE>
+
+Read configuration options from I<PHAROS_CONFIG_FILE> after reading
+config options from the usual locations.  The usual locations are
+C<I<$PHAROS_ROOT>/etc/pharos.yaml>, from any file contained
+in the C<PHAROS_CONFIG> environment variable, and from
+C<~/.pharos.yaml>.  This option can be specified multiple times.
+
+=item B<--dump-config>
+
+After reading and merging configuration files, output the resulting
+configuration information to stdout, then exit.
+
+=item B<--no-user-file>
+
+Do not read C<~/.pharos.yaml> when determining configuration options.
+
+=item B<--no-site-file>
+
+Do not read C<I<$PHAROS_ROOT>/etc/pharos.yaml> when
+determining configuration options.
+
+=item B<--apidb>=I<APIDB_FILE>
+
+Use the specified SQLite database or JSON file in I<APIDB_FILE> as a
+repository of API and type information.  This is a repeatable option,
+with earlier files searched before later ones.  The built-in databases
+will be checked after these.
+
+=item B<--library>=I<DIR>, B<-l>=I<DIR>
+
+Set the primary location that Pharos programs look for configuration
+and API data.  This option also controls the default location of the
+XSB installation.
+
+=item B<--timeout>=I<TIMEOUT>
+
+Set the absolute defuse timeout in seconds.  (Default: 900 seconds)
+
+=item B<--reltimeout>=I<TIMEOUT>
+
+Set the relative defuse timeout in seconds.  (Default: 20 seconds)
+
+=item B<--ptimeout>=I<TIMEOUT>
+
+Set the absolute partitioner timeout in seconds.  (Default: 300 seconds)
+
+=item B<--preltimeout>=I<TIMEOUT>
+
+Set the relative partitioner timeout in seconds.  (Default: 300 seconds)
+
+=item B<--maxmem>=I<MEMSIZE>
+
+Set the absolute maximum memory usage in megabytes.  (Default: 40000 MiB)
+
+=item B<--relmaxmem>=I<MEMSIZE>
+
+Set the relative maximum memory usage in megabytes.  (Default: 1000 MiB)
+
+=item B<--blockcounterlimit>=I<NUMBER>
+
+Set the number of instructions a basic block may have before analysis
+on it is stopped.  (Default: 3000)
+
+=item B<--funccounterlimit>=I<NUMBER>
+
+Set the number of blocks a function may have before analysis on it is
+stopped.  (Default: 3000)
+
+=item B<--imports>=I<IMPORT_CONFIG_FILE>, B<-I>=I<IMPORT_CONFIG_FILE>
+
+To be documented.
+
+=item B<--analyze-types>
+
+Enable an experimental pass that assigns types to symbolic values.
+This features is disabled by default.
+
+=item B<--type-file>=I<FILE>
+
+Jeff Gennari's something.
+
+=item B<--file>=I<EXECUTABLE_FILE>, B<-f>=I<EXECUTABLE_FILE>
+
+Provides an alternative way to specify the executable to be analyzed
+instead of using positional parameters.
+
+=back
+
+=head2 ROSE OPTIONS
+
+These options are common to most Pharos tools, and configure
+components present in ROSE, such as the function partitioner.
+
+=over 4
+
+=item B<--serialize>=I<SERIALIZED_FILE>
+
+Causes the results of the function partitioning step (including
+disassembly) to be serialized to or from a file.  If
+I<SERIALIZED_FILE> does not exit, the file will be written after the
+function partitioning step completes.  If I<SERIALIZED_FILE> does
+exist, it will be read instead of the usual function partitioning
+analysis.  Because reading from a serialized file is usually much
+faster than performing the analysis, this option can be used to reduce
+processing times on files that are analyzed multiple times.
+
+=item B<--ignore-serialize-version>
+
+Process the file specified by B<--serialize>, even if the version
+number of ROSE has changed since the serialization file was created.
+By default, the Pharos tools will refuse to load files with mismatched
+versions.  Because the version number is currently just a commit hash
+and not a true version number for the serialization file format, this
+option can be used to avoid needlessly regenerating serialization
+files.  The recommended course of action is to remove the
+serialization file and regenerate it with B<--serialize>.
+
+=item B<--stockpart>
+
+Use the stock (built into ROSE) version of the partitioner.  This will
+generally give less complete results, but will also take less time to
+process the file.  The Pharos customized partitioner sometimes takes
+very much longer than the stock ROSE partitioner, so this option can
+be used to speed analysis if accuracy is not the top priority.  This
+option can also be used to troubleshoot problems in either partitioner
+by comparing the results from each.
+
+=item B<--no-semantics>
+
+Disable semantic analysis during partitioning.  By default the
+function partitioner performs a limited semantic analysis to determine
+which branches are never taken and propagate constants in limited
+contexts.  This analysis typically increases the accuracy of the
+disassembly and function partitioning.  These improvements are the
+most dramatic when the analyzed executable contains assembly level
+control flow obfuscations.  This analysis pass also increases the time
+required to perform function partitioning.  Usually the increase is
+reasonably small, but it can sometimes take a very long time.
+
+=item B<--pdebug>
+
+Enable debugging messages from the function partitioner.
+
+=item B<--no-executable-entry>
+
+Do B<not> automatically mark the segment containing the program entry
+point as an executable segment.  By default Pharos tools will respect
+the segment permissions in the analyzed executable file header except
+that it will always mark the segment containing the program entry
+point as executable.  When this option is specified and the segment
+is not marked as executable in the file header, very little code is
+likely to be found in the program.  Specifying this option will more
+accurately reflect the file header segment permissions however.
+
+=item B<--mark-executable>
+
+Mark B<all> segments in the analyzed executable as possibly containing
+code.  In other words, set the executable bit on all segments, even if
+they are not set in the executable file header.  This option is
+sometimes required for malformed executables that set their segment
+permissions dynamically at run time.  Using this option in cases were
+the segments are not correctly marked executable will reveal
+additional legitimate code, but in the more usual cases will just
+result in additional incorrect code detection.
+
+=item B<--log>=I<LOG_CONTROL_STRING>
+
+Use I<LOG_CONTROL_STRING> to determine what log messages are output.
+These strings are documented in the Sawyer C++ library documentation,
+under C<Message::Facilities::control()>.
+
+=item B<--rose-version>
+
+Output the version of ROSE that the program was compiled against, and exit.
+
+=back

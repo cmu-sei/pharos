@@ -1,0 +1,265 @@
+=pod
+
+=head1 NAME
+
+B<fn2hash> - Function hashing and code similarity
+
+=head1 SYNOPSIS
+
+fn2hash [--min-instructions=NUMBER] [--basic-blocks]
+  [...Pharos options...] EXECUTABLE_FILE
+
+fn2hash --help
+
+fn2hash --rose-version
+
+@PHAROS_OPTS_POD@
+
+=head1 DESCRIPTION
+
+B<fn2hash> calculates various function hashes for the functions in a
+program and dumps the data to stdout in the following CSV format:
+
+  filemd5,fn_addr,num_basic_blocks,num_basic_blocks_in_cfg,num_instructions,num_bytes,exact_hash,pic_hash,composite_pic_hash,mnemonic_hash,mnemonic_count_hash,mnemonic_category_hash,mnemonic_category_counts_hash,mnemonic_count_string,mnemonic_category_count_string[,opt_basic_block_data,opt_bb_cfg]
+
+where those columns are:
+
+=over 4
+
+=item B<filemd5>
+
+The md5 sum of the input file
+
+=item B<fn_addr>
+
+The address of this function
+
+=item B<num_basic_blocks>
+
+The number of basic blocks that comprise the function.
+
+=item B<num_basic_blocks_in_cfg>
+
+The number of those basic blocks that are actually in the control flow graph
+of the function.
+
+=item B<num_instructions>
+
+The number of instructions in the function.
+
+=item B<num_bytes>
+
+The number of bytes that make up the instructions in the function.
+
+=item B<exact_hash>
+
+The md5 of the bytes of the function concatenated in flow order.
+
+=item B<pic_hash>
+
+Basically the same as the B<exact_hash>, but address references (except local
+relative ones) are replaced with 0 values before hashing.  The goal is to
+account for functions that are effectively exactly identical except for
+references to locations in memory (other functions, imports, global data
+addresses, etc) that might change with occurances in different programs.
+
+=item B<composite_pic_hash>
+
+A variant of the B<pic_hash> that does not include bytes for control flow
+related instructions, and the hash is computed by computing the md5 of each
+basic block separately (minus the control flow related bytes), and those basic
+block md5s are ordered and concatenated, and that resulting string is hashed
+(md5).  The goal is to account for minor differences in output at compile
+time, like for instance the compiler deciding to use B<jz> instead of B<jnz>
+and reordering the otherwise identical basic blocks because of that.
+
+=item B<mnemonic_hash>
+
+Like the B<exact_hash> but instead of concatenating the bytes of the
+instructions to hash, the mnemonics for the instructions are concatenated
+instead (without operands) and hashed.
+
+=item B<mnemonic_count_hash>
+
+This is a hash of a vector of ordered pairs of mnemonics and the number of
+occurances of that mnemonic in the function.
+
+=item B<mnemonic_category_hash>
+
+Like the B<mnemonic_hash> but the mnemonics are mapped to a smaller set of
+categories instead.  The categories are:
+
+=over 4
+
+=item XFER
+
+Data transfer insns (eg: B<mov, push, xchg>).
+
+=item MATH
+
+Arithmetic insns (eg: B<add, sub, lea>).
+
+=item LOGIC
+
+Bitwise operations (eg: B<and, or, not, xor, shl, ror>).
+
+=item CMP
+
+Comparison insns (eg: B<test, cmp>).
+
+=item BR
+
+Branching insns (eg: B<jmp, jcc, call>).
+
+=item FLT
+
+Floating point insns (eg: B<fadd, fmul, fld>).
+
+=item SIMD
+
+SIMD (MMX/SSE* related) insn (eg: B<addps, mulss, psadbw>).
+
+=item CRYPTO
+
+Insn to aid in cryptography (AES and SHA) calculations (eg: B<aesdec, sha256rnds2>).
+
+=item VMM
+
+Virtual Machine Monitory (hypervisor) related insns.
+
+=item SYS
+
+Various "system" level and privileged insns (eg: B<int, sysenter>).
+
+=item STR
+
+String related functions (eg: B<movsb>).
+
+=item I/O
+
+Port related insn (eg: B<in, out, insb, outsb>).
+
+=item UNCAT
+
+Any insns that haven't been assigned to one of the above categories.
+
+=back
+
+=item B<mnemonic_category_counts_hash>
+
+Like B<mnemonic_count_hash> but using the mnemonic categories instead of mnemonics.
+
+=item B<mnemonic_count_string>
+
+The actual vector used in B<mnemonic_count_hash>.
+
+=item B<mnemonic_category_count_string>
+
+The actual vector used in B<mnemonic_category_count_hash>.
+
+=item B<opt_basic_block_data>
+
+Metadata about each basic block in the function, formatted like so:
+
+B<addr1:numinsn:PIC:CPIC:mnem1^mnemcat1;mnem2^mnemcat2;mnem3^mnemcat3...|addr2...>
+
+For each block that is starting address for the basic block, followed by
+number of instructions in it, the PIC hash of just that block, the CPIC
+(composite PIC variant, so no control flow insns included) hash of that block,
+and the mnemonic and mnemonic category for each insn in the block (in order).
+
+=item B<opt_bb_cfg>
+
+This describes the edges of the control flow graph of the basic blocks for
+this function with the format like so:
+
+B<addr1;addr2:addr3;addr4:...>
+
+Each address pair is an edge in the CFG, the addresses are the starting
+addresses of the basic blocks in each edge (so in the above the block starting
+at B<addr1> can flow into the block starting at B<addr2> and BB @ B<addr3> can
+flow into BB @ B<addr4>).  Note that if there is only one basic block in the
+function, this data will be blank.
+
+=back
+
+Note that since the file md5 is the first column in the output, that the
+fn2hash output for multiple files can be combined easily, if desired.  Might
+be convenient for working with data from related sets of files.
+
+=head1 OPTIONS
+
+=head2 B<fn2hash> OPTIONS
+
+The following options are specific to the B<fn2hash> program.
+
+=over 4
+
+=item B<--min-instructions>=I<NUMBER>, B<-m>=I<NUMBER>
+
+Minimum number of instructions needed to output data for a function, so
+functions below this instruction count will not appear in the output.
+
+=item B<--basic-blocks>, B<-B>
+
+The -B option adds basic block data over two new fields, the first
+with basic block individual data, the 2nd with the edges of the
+function control flow graph, formatted like so:
+
+B<addr1:numinsn:PIC:CPIC:mnem1^mnemcat1;mnem2^mnemcat2;mnem3^mnemcat3...|addr2...,addr1;addr2:addr3;addr4:...>
+
+=back
+
+@PHAROS_OPTIONS_POD@
+
+=head1 EXAMPLES
+
+ $ fn2hash --stockpart --no-semantics win7_calc.exe > win7_calc.fn2hash.txt
+ $ head -1 win7_calc.fn2hash.txt
+ 4884DA7754823B44CCC2B2106F21146E,0x01008224,1,1,21,69,CFD5A2DF19316F69A807F2367ABFCBA5,811CD12E227C10CBE2ADB732931501E6,7070816E8824A5F766514DF097116CA0,4D2B434465BDF383942B42741E8F1DC8,0F1AAB02191C4668636547A5831189B9,FE16AC851108686F79AE7D87D7657FC9,1CDFB73D257FD528F84A7A814F8A7DC4,lea:2;mov:8;push:7;ret:1;sub:1;xor:2,BR:1;CMP:0;CRYPTO:0;FLT:0;I/O:0;LOGIC:2;MATH:3;SIMD:0;STR:0;SYS:0;UNCAT:0;VMM:0;XFER:15
+
+ $ fn2hash --stockpart --no-semantics --basic-blocks win7_notepad.exe > win7_notepad.fn2hash.bb.txt
+ $ head -1 win7_notepad.fn2hash.bb.txt
+ D378BFFB70923139D6A4F546864AA61C,0x01001A1C,7,7,18,65,A562FD870B67FC000127C12F49E5E7C2,A6FBBC535603F677F583A35FA10DE110,8921780BD9C87E695E9E7CE3DDE33B6A,1BD428F17891810BD2C982E9B9DF707C,D51785E497384B55824C6C955DB88ADF,E1189108FBF68D0D3D64D2A6AB7519B2,E47D43BC800656F4C09A129C16E08DF7,and:2;call:2;jmp:2;jne:2;mov:3;pop:1;push:3;ret:1;test:2,BR:7;CMP:2;CRYPTO:0;FLT:0;I/O:0;LOGIC:2;MATH:0;SIMD:0;STR:0;SYS:0;UNCAT:0;VMM:0;XFER:7,0x01001A1C:5:8F03F2D8F6BFD6D7A42DC0F1C935603D:16E0F2043DF7744C9C30B1BCBF39B0F3:mov^XFER;push^XFER;mov^XFER;test^CMP;jne^BR|0x01004758:2:E6E780A558372BAF91D62338913B8A05:44C29EDB103A2872F519AD0C9A0FDAAA:push^XFER;call^BR|0x0100475B:1:12C3EBBDA814F751A0EBE967631BABC8:D41D8CD98F00B204E9800998ECF8427E:jmp^BR|0x01001A30:3:6BA715EF1F46F070D0DDAB2E9CCFF205:58BF243D163773DD10787D45C47F3AFF:mov^XFER;test^CMP;jne^BR|0x01004760:2:E6E780A558372BAF91D62338913B8A05:44C29EDB103A2872F519AD0C9A0FDAAA:push^XFER;call^BR|0x01004763:1:12C3EBBDA814F751A0EBE967631BABC8:D41D8CD98F00B204E9800998ECF8427E:jmp^BR|0x01001A3D:4:EC14AECC3183D0580323903A69C819ED:756399D2C641162B57379AAA59D9364A:and^LOGIC;and^LOGIC;pop^XFER;ret^BR,0x01001A1C;0x01001A30:0x01001A1C;0x01004758:0x01001A30;0x01001A3D:0x01001A30;0x01004760:0x01004758;0x0100475B:0x0100475B;0x01001A30:0x01004760;0x01004763:0x01004763;0x01001A3D
+
+
+=head1 ENVIRONMENT
+
+=over 4
+
+@PHAROS_ENV_POD@
+
+=back
+
+=head1 FILES
+
+=over 4 
+
+@PHAROS_FILES_POD@
+
+=back
+
+=for compiled
+head1 NOTES
+
+=head1 AUTHOR
+
+Written by the Software Engineering Institute at Carnegie Mellon
+University.  The primary author was Charles Hines.
+
+=head1 COPYRIGHT
+
+Copyright 2018 Carnegie Mellon University.  All rights reserved.  This
+software is licensed under a "BSD" license.  Please see I<LICENSE.txt>
+for details.
+
+=head1 SEE ALSO
+
+See fse.py and possibly fn2yara.
+
+=cut
+
+Local Variables:
+mode:text
+indent-tabs-mode:nil
+End:

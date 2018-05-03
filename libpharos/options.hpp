@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Options_H
 #define Pharos_Options_H
@@ -82,18 +82,23 @@ ProgOptDesc cert_standard_options();
 // parse_cert_options should probably become a class at some point instead of a function
 ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od,
                                  const std::string & proghelptext = std::string());
+ProgOptVarMap parse_cert_options_generic(
+  int argc, char** argv, ProgOptDesc od, ProgPosOptDesc posopt,
+  const std::string & proghelptext = std::string());
+
 AddrSet option_addr_list(ProgOptVarMap& vm, const char *name);
 
 ProgOptVarMap& get_global_options_vm();
 
-boost::filesystem::path get_default_libdir();
+const boost::filesystem::path& get_library_path();
 
 #define PHAROS_PASS_EXCEPTIONS_ENV "PHAROS_PASS_EXCEPTIONS"
 
 extern int global_logging_fileno;
 
 typedef int (*main_func_ptr)(int argc, char** argv);
-int pharos_main(main_func_ptr fn, int argc, char **argv, int logging_fileno = STDOUT_FILENO);
+int pharos_main(std::string const & glog_name, main_func_ptr fn,
+                int argc, char **argv, int logging_fileno = STDOUT_FILENO);
 
 class BottomUpAnalyzer {
 

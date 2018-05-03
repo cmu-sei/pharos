@@ -6,27 +6,15 @@ B<callanalyzer> - Extract call sites and arguments from a binary
 
 =head1 SYNOPSIS
 
-  callanalyzer [--allow-unknown] [--show-symbolic]
-        [--calls=CALLSET_FILENAME] [--typedb=TYPEDB_FILENAME]
-        [--config=PHAROS_CONFIG_FILE] [--no-user-file]
-        [--no-site-file] [--dump-config]
-        [--imports=IMPORT_CONFIG_FILE] 
-        [--include-func=ADDRESS] [--exclude-func=ADDRESS]
-        [--log=LOG_CONTROL_STRING] [--batch] [--library=CONFIG_DIR]
-        [--apidb=APIDB_FILE] [--timeout=TIMEOUT]
-        [--reltimeout=TIMEOUT] [--ptimeout=TIMEOUT]
-        [--preltimeout=TIMEOUT] [--maxmem=MEMSIZE]
-        [--relmaxmem=MEMSIZE] [--blockcounterlimit=NUMBER]
-        [--funccounterlimit=NUMBER] [--verbose=NUMBER]
-        [--pconfig=PARTITIONER_CONFIG_FILE]
-        [--psearch=PARTITIONER_SEARCH_FILE]
-        [--dsearch=DISASSEMBLER_SEARCH_FILE] [--stockpart]
-        [--partitioner1] [--partitioner2] [--no-semantics] [--pdebug]
-        [--respect-protection] BINARY_FILENAME
+callanalyzer [--allow-unknown] [--show-symbolic]
+  [--calls=CALLSET_FILENAME] [--typedb=TYPEDB_FILENAME]
+  [...Pharos options...] EXECUTABLE_FILE
 
-  callanalyzer --help
+callanalyzer --help
 
-  callanalyzer --rose-version
+callanalyzer --rose-version
+
+@PHAROS_OPTS_POD@
 
 =head1 DESCRIPTION
 
@@ -171,6 +159,17 @@ parameters contains any non-abstract, non-unknown values.
 
 =for compiled
 head1 NOTES
+
+=head1 AUTHOR
+
+Written by the Software Engineering Institute at Carnegie Mellon
+University.  The primary author was Michael Duggan.
+
+=head1 COPYRIGHT
+
+Copyright 2018 Carnegie Mellon University.  All rights reserved.  This
+software is licensed under a "BSD" license.  Please see I<LICENSE.txt>
+for details.
 
 =for comment
 head1 SEE ALSO

@@ -1,4 +1,3 @@
-# In order to make static builds, set PHAROS_STATIC to true.
 # In order to make release or debug builds, set CMAKE_BUILD_TYPE to Release or Debug.
 # In order to change the install prefix, set CMAKE_INSTALL_PREFIX.
 
@@ -14,7 +13,7 @@ set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
   "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 
 include(AddCXXCompilerFlags)
-add_cxx_compiler_flags(-Wall -Wextra -Wshadow -Wstrict-aliasing)
+add_cxx_compiler_flags(-Wall -Wextra -Wshadow -Wstrict-aliasing -Wno-misleading-indentation)
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH true)
 
@@ -28,40 +27,36 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/local.cmake" OPTIONAL)
 
 set(ROSE_ROOT  "" CACHE PATH "The root directory of the ROSE library")
 set(BOOST_ROOT "" CACHE PATH "The root directory of the Boost installation")
-set(YICES_ROOT  "" CACHE PATH "The root directory of the YICES library")
-set(XSB_ROOT  "" CACHE PATH "The root directory of the XSB installation")
-set(XSB_ARCH  "x86_64-unknown-linux-gnu" CACHE STRING
-  "The architecture of the XSB installation")
-set(yaml-cpp_ROOT "" CACHE PATH "The root directory of the yaml-cpp installation")
-set(PHAROS_STATIC false CACHE BOOL "Whether to build statically")
+set(Z3_ROOT  "" CACHE PATH "The root directory of the Z3 installation")
+set(YAML_CPP_ROOT "" CACHE PATH "The root directory of the yaml-cpp installation")
 
-message("-- Using Build Type: ${CMAKE_BUILD_TYPE}")
+include("${CMAKE_CURRENT_SOURCE_DIR}/site.cmake" OPTIONAL)
+include("${CMAKE_CURRENT_SOURCE_DIR}/local.cmake" OPTIONAL)
 
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+message(STATUS "Using Build Type: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_CXX_EXTENSIONS off)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED on)
 set(THREADS_PREFER_PTHREAD_FLAG on)
 
-if(PHAROS_STATIC)
-  set(ROSE_STATIC true)
-  set(CRYPTOPP_STATIC true)
-  set(SQLITE_STATIC true)
-  set(YICES_STATIC true)
-  set(Boost_USE_STATIC_LIBS true)
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Xlinker -zmuldefs")
-endif()
-
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   set(PHAROS_RELEASE true)
 endif()
 
-
 # Rose
-find_package(Rose REQUIRED)
+find_package(Rose 0.9.10)
+if (NOT ROSE_FOUND)
+  include(BuildRose)
+  message(FATAL_ERROR "Should not get here")
+endif()
 
 # Find git
-find_package(Git)
+find_package(Git REQUIRED)
 
 # Global testing parameters
 enable_testing()
@@ -76,10 +71,10 @@ include(BuildPharosPod)
 add_subdirectory(libpharos)
 add_subdirectory(tools)
 add_subdirectory(gtest)
-add_subdirectory(prolog)
-add_subdirectory(apidb)
-add_subdirectory(typedb)
+add_subdirectory(share)
 
-install(DIRECTORY configs DESTINATION share/pharos)
 install(FILES README.md COPYRIGHT.md LICENSE.md DESTINATION share/doc/pharos
   PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+install(DIRECTORY "${XSB_INSTALL_DIR}/"
+  DESTINATION share/pharos/XSB
+  USE_SOURCE_PERMISSIONS)

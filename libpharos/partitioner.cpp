@@ -2,6 +2,11 @@
 
 #include <stdarg.h>
 #include <stdexcept>
+#include <fstream>
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
 
 #include <rose.h>
 
@@ -13,6 +18,10 @@
 #include "options.hpp"
 
 namespace pharos {
+
+namespace bfs = boost::filesystem;
+namespace bar = boost::archive;
+namespace bio = boost::iostreams;
 
 // ===============================================================================================
 // Partitioner2
@@ -32,15 +41,14 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine) 
   using time_point = std::chrono::time_point<clock>;
   using duration = std::chrono::duration<double>;
 
-  time_point start_ts = clock::now();
-
-  GINFO << "Using version two of function partitioner." << LEND;
-
   // Mark all segments in the program as executable.  This is important in environments such as
   // Windows, where the segments can easily have their permissions altered after loading.
   // Enabling this feature alone in the stock partitioner can cause bad things to happen --
   // such as the creation of very large basic blocks full of zero instructions.
-  // engine.memoryIsExecutable(true);
+  if (vm.count("mark-executable")) {
+    GINFO << "Marking all sections as executable during function partitioning." << LEND;
+    engine->memoryIsExecutable(true);
+  }
 
   // This change was required to fix an issue with incorrect computation of opaque predicates
   // that Cory is still trying to fully understand.
@@ -102,6 +110,31 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine) 
   // Load the specimen as raw data or an ELF or PE container.
   MemoryMap::Ptr map = engine->loadSpecimens(specimen_names);
 
+  // Get the interpretation.
+  SgAsmInterpretation* interp = engine->interpretation();
+
+  // Mark the entry point segment as executable (unless the user asked us not to).
+  if (vm.count("no-executable-entry") < 1 && interp) {
+    for (const SgAsmGenericHeader *fileHeader : interp->get_headers()->get_headers()) {
+      for (const rose_rva_t &rva : fileHeader->get_entry_rvas()) {
+        // Get the address of the entry point.
+        rose_addr_t va = rva.get_rva() + fileHeader->get_base_va();
+        // A constraint containing just the entry point address.
+        auto const & entry_seg = *map->at(va).segments().begin();
+        // The name of the segment that address is in.
+        const std::string & name = entry_seg.name();
+        // A predicate for all addresses in a segment with the same name.
+        NamePredicate name_constraint(name);
+        // The map constraint matching the predicate (all addresses in the segment).
+        auto data_segment = map->segmentPredicate(&name_constraint);
+        // Set ther permission to executable.
+        data_segment.changeAccess(MemoryMap::EXECUTABLE, 0);
+        GINFO << "Marked entry point address " << addr_str(va) << " in segment " << name
+              << " as executable." << LEND;
+      }
+    }
+  }
+
   // Create a partitioner that's tuned for a certain architecture, and then tune it even more
   // depending on our command-line.
   P2::Partitioner partitioner = engine->createPartitioner();
@@ -146,10 +179,66 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine) 
   //partitioner.memoryMap().dump(mlog[INFO]);
 
   // Run the partitioner
-  engine->runPartitioner(partitioner);
+  if (vm.count("serialize")) {
+    // Partitioner data is or will be serialized
+
+    // Try reading the serialized file, if it exists
+    bfs::path path(vm["serialize"].as<std::string>());
+    if (exists(path)) {
+      OINFO << "Reading serialized data from " << path << "." << LEND;
+      bfs::ifstream file(path);
+      bio::filtering_streambuf<bio::input> in;
+      in.push(bio::gzip_decompressor());
+      in.push(file);
+      bar::binary_iarchive ia(in);
+      std::string version;
+      ia >> version;
+      if (version != version_number()) {
+        if (vm.count("ignore-serialize-version")) {
+          GWARN << "Serialized data was from a different version of Rose."
+                << "  Loading anyway as requested." << LEND;
+          version = version_number();
+        } else {
+          GFATAL << "Serialized data was from a different version of Rose.  Exiting.\n"
+                 << "If you want to overwrite the file, remove the file " << path << '\n'
+                 << "If you want to ignore this, use the --ignore-serialize-version switch."
+                 << LEND;
+          exit(EXIT_FAILURE);
+        }
+      }
+      time_point start_ts = clock::now();
+      ia >> partitioner;
+      duration secs = clock::now() - start_ts;
+      OINFO << "Reading serialized data took " << secs.count() << " seconds." << LEND;
+    } else {
+      // No serialized data.  Write it instead.
+      time_point start_ts = clock::now();
+      engine->runPartitioner(partitioner);
+      time_point now = clock::now();
+      duration secs = now - start_ts;
+      start_ts = now;
+      OINFO << "Function partitioning took " << secs.count() << " seconds." << LEND;
+      OINFO << "Writing serialized data to " << path << "." << LEND;
+      bfs::ofstream file(path);
+      bio::filtering_streambuf<bio::output> out;
+      out.push(bio::gzip_compressor());
+      out.push(file);
+      bar::binary_oarchive oa(out);
+      oa << version_number();
+      oa << partitioner;
+      secs = clock::now() - start_ts;
+      OINFO << "Writing serialized data took " << secs.count() << " seconds." << LEND;
+    }
+  } else {
+    time_point start_ts = clock::now();
+    engine->runPartitioner(partitioner);
+    duration secs = clock::now() - start_ts;
+    OINFO << "Function partitioning took " << secs.count() << " seconds." << LEND;
+  }
+
   // Enable progress bars only if the output is to a terminal...
-  if (isatty(global_logging_fileno) && vm.count("batch") == 0) {
-    partitioner.enableProgressReports(true);
+  if (!isatty(global_logging_fileno) || vm.count("batch")) {
+    partitioner.progress(Rose::Progress::Ptr());
   }
 
   // This test may have been added because buildAst failed when the function list was empty.
@@ -169,7 +258,6 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine) 
   // Don't create new instructions after this point...
   // global_descriptor_set.instruction_provider->disableDisassembler();
 
-  SgAsmInterpretation* interp = engine->interpretation();
   if (interp == NULL) {
     OERROR << "Unable to obtain program interpretation." << LEND;
   }
@@ -186,10 +274,6 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine) 
     block->set_parent(interp);
     GTRACE << "done calling set_parent" << LEND;
   }
-
-  time_point end_ts = clock::now();
-  duration secs = end_ts - start_ts;
-  OINFO << "ROSE disassembly complete, " << secs.count() << " seconds elapsed." << LEND;
 
   return partitioner;
 }
@@ -596,6 +680,10 @@ CERTEngine::create_arbitrary_code(P2::Partitioner& partitioner) {
 
 void
 CERTEngine::runPartitionerRecursive(P2::Partitioner& partitioner) {
+  using clock = std::chrono::steady_clock;
+  using time_point = std::chrono::time_point<clock>;
+  using duration = std::chrono::duration<double>;
+
   // Make an effort to find at least one function that we can attach padding to.
   SgAsmInterpretation* interp = interpretation();
   if (interp) {
@@ -611,6 +699,8 @@ CERTEngine::runPartitionerRecursive(P2::Partitioner& partitioner) {
   if (pad_function) {
     GDEBUG << "Fallback pad function: " << addr_str(pad_function->address()) << LEND;
   }
+
+  time_point start_ts = clock::now();
 
   // Pass one.  Do all the "usual" things the partitioner does.  This includes following flow
   // control, creating functions from matched prologues, creating functions from data segment
@@ -631,6 +721,15 @@ CERTEngine::runPartitionerRecursive(P2::Partitioner& partitioner) {
 
   // From this point on, our behavior is too speculative to permit overlapping code.
   overlapping_code_detector->set_refusing(true);
+
+  duration secs = clock::now() - start_ts;
+  OINFO << "ROSE stock partitioning took " << secs.count() << " seconds." << LEND;
+  OINFO << "Long delays until the next time stamp are caused by the Pharos custom partitioning" << LEND;
+  OINFO << "algorithm and may be resolved by using the --stockpart option, but at the expense" << LEND;
+  OINFO << "of possibly less complete function detection.  Using --no-semantics may also help." << LEND;
+
+  // Disable these...
+  partitioner.functionPrologueMatchers().clear();
 
   GDEBUG << "Starting FIRST iteration!" << LEND;
 
@@ -657,6 +756,16 @@ CERTEngine::runPartitionerRecursive(P2::Partitioner& partitioner) {
   //OINFO << "Dumping partitioner config." << LEND;
   //std::ofstream dump("pdump2.txt");
   //partitioner.dumpCfg(dump);
+
+  // Now add the prologue matchers back, and analyze one more time.
+  // It unclear whether this helped much, but it's difficult for me to believe that it hurts.
+  partitioner.functionPrologueMatchers().push_back(P2::ModulesX86::MatchHotPatchPrologue::instance());
+  partitioner.functionPrologueMatchers().push_back(P2::ModulesX86::MatchStandardPrologue::instance());
+  partitioner.functionPrologueMatchers().push_back(P2::ModulesX86::MatchAbbreviatedPrologue::instance());
+  partitioner.functionPrologueMatchers().push_back(P2::ModulesX86::MatchEnterPrologue::instance());
+  partitioner.functionPrologueMatchers().push_back(P2::ModulesX86::MatchThunk::instance());
+
+  P2::Engine::runPartitionerRecursive(partitioner);
 
   GDEBUG << "Custom partitioner 2 pass complete." << LEND;
 }
@@ -1005,13 +1114,6 @@ ThunkDetacher::makeFunctions(P2::Partitioner &partitioner) {
 
 P2::Partitioner
 CERTEngine::createTunedPartitioner() {
-
-  // Nastily hardcode the i386 hardware architecture.  This is obtained correctly from
-  // the PE header or ELF container, but if the fiel being analyzed doesn't have a
-  // propoer container, then this has to be provided explicitly.  Since there's only one
-  // valid option currentl, it doesn't make sense to expose this as an additional command
-  // line parameter to the end user.
-  this->isaName("i386");
 
   //OINFO << "Creating custom partitioner!" << LEND;
   P2::Partitioner partitioner = P2::Engine::createTunedPartitioner();

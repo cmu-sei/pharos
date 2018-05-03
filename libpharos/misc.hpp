@@ -1,4 +1,4 @@
-// Copyright 2015, 2016, 2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Misc_H
 #define Pharos_Misc_H
@@ -93,7 +93,7 @@ class X86InsnCompare {
 typedef std::set<SgAsmx86Instruction*, X86InsnCompare> X86InsnSet;
 
 // An ordered list of register descriptors.
-typedef std::vector<const RegisterDescriptor*> RegisterVector;
+typedef std::vector<RegisterDescriptor> RegisterVector;
 
 // Limit the maximum number of parameters.  This is arbitrary and incorrect, but if we don't
 // limit it to some reasonable number, then we generate tons of error spew.  Some experience
@@ -102,29 +102,61 @@ typedef std::vector<const RegisterDescriptor*> RegisterVector;
 // parameter detection code always works.
 #define ARBITRARY_PARAM_LIMIT 60
 
-// An unordered set of register descriptors.  There's been a lot of flailing with respect to
-// register descriptors, sets, const, etc. In the end this is the approach that appears to work
-// best.
-class RegisterCompare {
-  public:
-  bool operator()(const RegisterDescriptor* x, const RegisterDescriptor* y)
-    const { return (*x < *y); }
+typedef std::set<RegisterDescriptor> RegisterSet;
+
+// Wrapper for ROSE's RegisterDictionary that returns RegisterDescriptors instead of
+// RegisterDescriptor pointers
+class RegisterDictionary {
+ private:
+  ::RegisterDictionary const * dict;
+ public:
+  RegisterDictionary(::RegisterDictionary const * d) : dict(d) {}
+
+  RegisterDictionary & operator=(::RegisterDictionary const * d) {
+    dict = d;
+    return *this;
+  }
+
+  RegisterDescriptor lookup(std::string const & name) const {
+    auto reg = dict->lookup(name);
+    return reg ? *reg : RegisterDescriptor();
+  }
+
+  operator ::RegisterDictionary const *() const {
+    return dict;
+  }
 };
 
-typedef std::set<const RegisterDescriptor*, RegisterCompare> RegisterSet;
+void set_glog_name(std::string const & name);
 
+// This wrapper object lets us defer naming the global logging facility as late as possible
+class GLogWrapper {
+ private:
+  std::unique_ptr<Sawyer::Message::Facility> glog_;
+ public:
+  void set_name(std::string const & name);
+  Sawyer::Message::Facility & operator()() {
+    if (!glog_) set_name("GLOG");
+    return *glog_;
+  }
+  template <typename T>
+  auto operator[](T && v)
+    -> decltype(std::declval<Sawyer::Message::Facility>()[std::forward<T>(v)]) {
+    return (*this)()[std::forward<T>(v)];
+  }
+};
 } // namespace pharos
 
 // The main program need to provide a global logging facility.
-extern Sawyer::Message::Facility glog;
-#define GCRAZY (glog[Sawyer::Message::DEBUG]) && glog[Sawyer::Message::DEBUG]
-#define GTRACE (glog[Sawyer::Message::TRACE]) && glog[Sawyer::Message::TRACE]
-#define GDEBUG (glog[Sawyer::Message::WHERE]) && glog[Sawyer::Message::WHERE]
-#define GMARCH (glog[Sawyer::Message::MARCH]) && glog[Sawyer::Message::MARCH]
-#define GINFO  (glog[Sawyer::Message::INFO])  && glog[Sawyer::Message::INFO]
-#define GWARN  (glog[Sawyer::Message::WARN])  && glog[Sawyer::Message::WARN]
-#define GERROR glog[Sawyer::Message::ERROR]
-#define GFATAL glog[Sawyer::Message::FATAL]
+namespace pharos { extern GLogWrapper glog; }
+#define GCRAZY (pharos::glog[Sawyer::Message::DEBUG]) && pharos::glog[Sawyer::Message::DEBUG]
+#define GTRACE (pharos::glog[Sawyer::Message::TRACE]) && pharos::glog[Sawyer::Message::TRACE]
+#define GDEBUG (pharos::glog[Sawyer::Message::WHERE]) && pharos::glog[Sawyer::Message::WHERE]
+#define GMARCH (pharos::glog[Sawyer::Message::MARCH]) && pharos::glog[Sawyer::Message::MARCH]
+#define GINFO  (pharos::glog[Sawyer::Message::INFO])  && pharos::glog[Sawyer::Message::INFO]
+#define GWARN  (pharos::glog[Sawyer::Message::WARN])  && pharos::glog[Sawyer::Message::WARN]
+#define GERROR pharos::glog[Sawyer::Message::ERROR]
+#define GFATAL pharos::glog[Sawyer::Message::FATAL]
 
 // The semantics module provides a logging facility as well.
 namespace pharos { extern Sawyer::Message::Facility slog; }
@@ -147,10 +179,13 @@ namespace pharos { extern Sawyer::Message::Facility slog; }
 #define MERROR mlog[Sawyer::Message::ERROR]
 #define MFATAL mlog[Sawyer::Message::FATAL]
 
+// For logging from prolog (pharos:log, pharos:logln)
+namespace pharos { namespace prolog { extern Sawyer::Message::Facility plog; } }
+
 namespace pharos {
 
 void backtrace(
-  Sawyer::Message::Facility & log = glog,
+  Sawyer::Message::Facility & log = glog(),
   Sawyer::Message::Importance level = Sawyer::Message::FATAL,
   int maxlen = 20);
 
@@ -168,9 +203,6 @@ namespace pharos {
 
 // This file should only be included once from the main program, since it's not really a
 // header.
-
-// Compare two RegisterDescriptors, ought to be on RegisterDescriptor
-bool RegisterDescriptorLtCmp(const RegisterDescriptor a, const RegisterDescriptor b);
 
 // Now shared between here (for Partitioner 1) and partitioner.cpp (for Partitioner 2).
 void customize_message_facility(const ProgOptVarMap& vm,
@@ -192,6 +224,9 @@ bool insn_is_branch(const SgAsmx86Instruction* insn);
 
 // All control flow instructions (calls, jumps, and conditional jumps).
 bool insn_is_control_flow(const SgAsmx86Instruction* insn);
+
+// Is the instruction an X86 nop?
+bool insn_is_nop(const SgAsmx86Instruction* insn);
 
 // Get the fallthru address of this instruction.
 rose_addr_t insn_get_fallthru(SgAsmInstruction* insn);

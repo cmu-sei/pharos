@@ -1,0 +1,191 @@
+=pod
+
+=head1 NAME
+
+B<ooanalyzer> - Automated recovery of C++ objects from binaries
+
+=head1 SYNOPSIS
+
+ooanalyzer --json=JSON_FILE [--new-method=ADDRESS] [--ignore-rtti]
+  [...Pharos options...] EXECUTABLE_FILE
+
+ooanalyzer --prolog-facts=PROLOG_FILE --prolog-results=PROLOG_FILE
+  [--prolog-debug] [--prolog-trace] [--prolog-low-level-tracing]
+  [...Pharos options...] EXECUTABLE_FILE
+
+ooanalyzer --help
+
+ooanalyzer --rose-version
+
+@PHAROS_OPTS_POD@
+
+=head1 DESCRIPTION
+
+B<OOAnalyzer> recovers object oriented constructs from the executable
+file being analyzed.  OOAnalyzer can recover the following kinds of
+information:
+
+=over 4
+
+=item * C++ classes
+
+=item * Association of methods with specific C++ classes
+
+=item * C++ class layout (member sizes and offsets)
+
+=item * Inheritance relationships between classes
+
+=item * Identification of constructors and destructors
+
+=item * Run Time Type Information (RTTI)
+
+=item * The resolution of virtual call to specific addresses
+
+=back
+
+OOAnalyzer adopts a new approach compared to it's predecessor
+Objdigger, which is to encode the logical rules constraining class and
+method relationships as Prolog rules.  OOAnalyzer first analyzes the
+executable to generate basic facts about the executable, and then uses
+Prolog to analyze those facts and recover object oriented constructs.
+
+=head1 OPTIONS
+
+=head2 B<OOAnalyzer> OPTIONS
+
+The following options are specific to the B<ooanalyzer> program.
+
+=over 4
+
+=item B<--json>=I<JSON_FILE>, B<-j>=I<JSON_FILE>
+
+Cause the primary machine-readable output of OOAnalyzer to be written
+to the specified JSON file.  This file will describe class member
+layout, the assignment of methods to classes, inheritance
+relationships between classes, special methods like constructors, and
+other object-oriented (OO) properties.  While the JSON file is human
+readable to some extent, the results are intended to be used in
+conjunction with the OOAnalyzer IDA plugin which will present an
+interactive representation of the recovered classes.  This option,
+B<--prolog-facts>, or B<--prolog-results> must be specified.
+
+=item B<--new-method>=I<ADDRESS>, B<-n>=I<ADDRESS>
+
+Mark a specific address as an implementation of the new()
+operator. Usually new() implementations are detected using a
+combination of import names and function hashes, but not all new()
+implementations are automatically recognized.  If no new
+implementations are detected, it can dramatically affect the detect of
+dynamically allocated objects.  This option may be specified multiple
+times.
+
+=item B<--ignore-rtti>
+
+Do not use Run Time Type Information (RTTI), even if it is present in
+the executable being analyzed.  Typically there's no reason to specify
+this option since using RTTI is almost always beneficial, but in some
+rare cases where the RTTI information is corrupt or misleading, it may
+be useful to disable it.  This option can also used to compare the
+accuracy of OOAnalyzer with and without the assistance of RTTI.
+
+=item B<--prolog-facts>=F<PROLOG_FILE>, B<-F>=F<PROLOG_FILE>
+
+Causes a number of factual observations about the analyzed program to
+be written in a Prolog format to the specified file name.  These facts
+are the input to the Prolog rule base that recovers the classes.  This
+option is primarily useful for debugging logic defects in the Prolog
+rules, but the file can also be parsed to obtain these facts for other
+uses.
+
+=item B<--prolog-results>=F<PROLOG_FILE>, B<-R>=F<PROLOG_FILE>
+
+Causes the object-oriented detections to be written to a Prolog file in
+the format that the Prolog rules produced before conversion to JSON
+format.  These results should be semantically equivalent to the JSON
+format, but might more convenient for certain uses.  In particular,
+they can be correlated with the Prolog reasoning rules much more
+easily.
+
+=item B<--prolog-debug>
+
+Enable a form of debugging that reports new conclusions reached by the
+Prolog rules as it reasons about the program.  This option can be very
+educational for understanding how OOAnalyzer reasons about the
+program, explores different possibilities, and handles contradictory
+data.
+
+=item B<--prolog-low-level-tracing>
+
+Enable debugging that is primarily used to troubleshoot problems in
+the XSB C interface.
+
+=back
+
+@PHAROS_OPTIONS_POD@
+
+=head1 EXAMPLES
+
+A typical invocation of OOAnalyzer to load the results into IDA Pro:
+
+  $ ooanalyzer --json=/tmp/output.json input.exe
+
+To explore the Prolog rules that control the object detections, this
+is a more typical command:
+
+  $ ooanalyzer -F=/tmp/facts.txt -R=/tmp/results.txt input.exe
+
+=head1 ENVIRONMENT
+
+=over 4
+
+@PHAROS_ENV_POD@
+
+=back
+
+=head1 FILES
+
+=over 4 
+
+@PHAROS_FILES_POD@
+
+=back
+
+=head1 NOTES
+
+OOAnalyzer is primarily targeted at executables compiled with
+Microsoft Visual Studio.  While it may recover object oriented
+constructs produced by other compilers, it has not been tested
+extensively with other compilers.
+
+OOAnalyzer has been tested primarily with 32-bit Windows executables.
+64-bit executables, and executables for other operating systems may
+work as well, but have not been tested extensively.
+
+=head1 AUTHOR
+
+Written by the Software Engineering Institute at Carnegie Mellon
+University.  The primary authors were Cory Cohen, Edward Schwartz, and
+Wesley Jin.
+
+=head1 COPYRIGHT
+
+Copyright 2018 Carnegie Mellon University.  All rights reserved.  This
+software is licensed under a "BSD" license.  Please see F<LICENSE.txt>
+for details.
+
+=head1 SEE ALSO
+
+The documentation for the OOAnalyzer IDA plugin is available from:
+
+=over 4
+
+man ooanalyzer-plugin
+
+=back
+
+=cut
+
+Local Variables:
+mode:text
+indent-tabs-mode:nil
+End:

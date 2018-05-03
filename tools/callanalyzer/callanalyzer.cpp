@@ -1,15 +1,13 @@
-// Copyright 2016, 2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Analyzes function call points in binaries, attempting to determine
 // their argument values.
 
 #include <libpharos/descriptors.hpp>
 #include <libpharos/typedb.hpp>
+#include <boost/range/combine.hpp>
 
 using namespace pharos;
-
-// The global CERT message facility.
-Sawyer::Message::Facility glog("CALA");
 
 // The CallAnalyzer message facility.
 Sawyer::Message::Facility clog("CLLA");
@@ -101,10 +99,7 @@ void CallFilter::from_stream(std::istream & stream)
 
 class CallAnalyzer : public BottomUpAnalyzer {
  private:
-  typedb::DB type_db;
-  const typedb::DB & db() const {
-    return type_db;
-  }
+  CallParamInfoBuilder builder;
 
   bool allow_unknown;
   bool show_raw;
@@ -115,7 +110,7 @@ class CallAnalyzer : public BottomUpAnalyzer {
 
  public:
   CallAnalyzer(DescriptorSet * ds_, ProgOptVarMap & vm_)
-    : BottomUpAnalyzer(ds_, vm_), type_db(typedb::DB::create_standard(vm_))
+    : BottomUpAnalyzer(ds_, vm_), builder(vm_)
   {
     allow_unknown = vm_["allow-unknown"].as<bool>();
     show_raw = vm_["show-symbolic"].as<bool>();
@@ -301,23 +296,18 @@ class CallAnalyzer : public BottomUpAnalyzer {
         wide = true;
       }
     }
-    const ParameterList & paramlist = call.get_parameters();
-    const ParamVector & params = paramlist.get_params();
-    auto & state = call.get_state();
+    CallParamInfo info = builder(call);
     std::vector<std::pair<const std::string *, typedb::Value>> pvalues;
     bool printable = false;
     auto tmp = out;
     out = nullptr;
-    for (const ParameterDefinition & param : params) {
-      auto value = param.get_value();
-      auto type = param.get_type();
-      auto tref = type.empty() ? std::make_shared<typedb::UnknownType>("<unknown>") :
-                  db().lookup(type);
-      auto v = tref->get_value(value, &*state);
+    for (auto vp : boost::combine(info.names(), info.values())) {
+      auto & name = get<0>(vp);
+      auto v = get<1>(vp);
       if (!printable && v) {
         printable = output_value(v, wide);
       }
-      pvalues.emplace_back(&param.get_name(), std::move(v));
+      pvalues.emplace_back(&name, std::move(v));
     }
     out = tmp;
     if (!allow_unknown && !printable) {
@@ -381,15 +371,8 @@ static int callanalyzer_main(int argc, char **argv)
     GFATAL << "Unable to analyze file (no executable content found)." << LEND;
     return EXIT_FAILURE;
   }
-  // Load a config file overriding parts of the analysis.
-  if (vm.count("imports")) {
-    std::string config_file = vm["imports"].as<std::string>();
-    OINFO << "Loading analysis configuration file: " <<  config_file << LEND;
-    ds.read_config(config_file);
-  } else {
-    // Load stack deltas from config files for imports.
-    ds.resolve_imports();
-  }
+  // Resolve imports, load API data, etc.
+  ds.resolve_imports();
 
   CallAnalyzer analyzer(&ds, vm);
   analyzer.analyze();
@@ -402,7 +385,7 @@ static int callanalyzer_main(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
-  return pharos_main(callanalyzer_main, argc, argv, STDERR_FILENO);
+  return pharos_main("CALA", callanalyzer_main, argc, argv, STDERR_FILENO);
 }
 
 /* Local Variables:   */

@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Convention_H
 #define Pharos_Convention_H
@@ -94,23 +94,24 @@ private:
   // The location of the "this" argument.
   ThisPointerLocation this_location;
 
-  // Dedicated register for "this" pointer when this_location is THIS_REGISTER. Returns the
-  // null pointer if the location is other than THIS_REGISTER or if the register is unknown,
-  // and sets the location to THIS_REGISTER when setting a register. When setting the register,
-  // a null pointer means that the "this" pointer is stored in a register but it is unknown
-  // which register that is.
-  const RegisterDescriptor *this_reg;
+  // Dedicated register for "this" pointer when this_location is THIS_REGISTER. Returns the an
+  // invalid register if the location is other than THIS_REGISTER or if the register is
+  // unknown, and sets the location to THIS_REGISTER when setting a register. When setting the
+  // register, a default-constructed value means that the "this" pointer is stored in a
+  // register but it is unknown which register that is.
+  RegisterDescriptor this_reg;
 
   // Location of return value.
   ReturnValueLocation retval_location;
 
-  // Dedicated register for return value when return_location is RETVAL_REGISTER.  Returns the
-  // null pointer if the location is other than RETVAL_REGISTER or if the register is unknown,
-  // and sets the location to RETVAL_REGISTER when setting a register.  When setting the
-  // register, a null pointer means that the return value is stored in a register but it is
-  // unknown which register that is.  This is insufficiently expressive.  Functions are allowed
-  // to return 8-byte structures in EDX:EAX, and floating point values in ST0.
-  const RegisterDescriptor *retval_reg;
+  // Dedicated register for return value when return_location is RETVAL_REGISTER.  Returns an
+  // invalid register if the location is other than RETVAL_REGISTER or if the register is
+  // unknown, and sets the location to RETVAL_REGISTER when setting a register.  When setting
+  // the register, a default constructed value means that the return value is stored in a
+  // register but it is unknown which register that is.  This is insufficiently expressive.
+  // Functions are allowed to return 8-byte structures in EDX:EAX, and floating point values in
+  // ST0.
+  RegisterDescriptor retval_reg;
 
   // Specifies how the stack is cleaned up.
   StackCleanup stack_cleanup;
@@ -171,11 +172,11 @@ public:
   ThisPointerLocation get_this_location() const { return this_location; }
   void set_this_location(ThisPointerLocation loc) { this_location = loc; }
 
-  const RegisterDescriptor* get_this_register() const {
-    if (this_location != THIS_REGISTER) return NULL;
+  RegisterDescriptor get_this_register() const {
+    if (this_location != THIS_REGISTER) return RegisterDescriptor();
     return this_reg;
   }
-  void set_this_register(const RegisterDescriptor *reg) {
+  void set_this_register(RegisterDescriptor reg) {
     this_location = THIS_REGISTER;
     this_reg = reg;
   }
@@ -183,11 +184,11 @@ public:
   ReturnValueLocation get_retval_location() const { return retval_location; }
   void set_retval_location(ReturnValueLocation loc) { retval_location = loc; }
 
-  const RegisterDescriptor* get_retval_register() const {
-    if (retval_location != RETVAL_REGISTER) return NULL;
+  RegisterDescriptor get_retval_register() const {
+    if (retval_location != RETVAL_REGISTER) return RegisterDescriptor();
     return retval_reg;
   }
-  void set_retval_register(const RegisterDescriptor *reg) {
+  void set_retval_register(RegisterDescriptor reg) {
     retval_location = RETVAL_REGISTER;
     retval_reg = reg;
   }
@@ -199,11 +200,11 @@ public:
   void set_stack_alignment(size_t alignment) { stack_alignment = alignment; }
 
   const RegisterVector& get_reg_params() const { return reg_params; }
-  void add_reg_param(const RegisterDescriptor *reg) { reg_params.push_back(reg); }
+  void add_reg_param(RegisterDescriptor reg) { reg_params.push_back(reg); }
 
   const RegisterSet& get_nonvolatile() const { return nonvolatile; }
-  void add_nonvolatile(const RegisterDictionary* dict, std::string name);
-  void add_nonvolatile(const RegisterDescriptor *rd);
+  void add_nonvolatile(const RegisterDictionary & dict, std::string name);
+  void add_nonvolatile(RegisterDescriptor rd);
   void add_nonvolatile(const RegisterSet& regs);
 
   // Write information about this calling convention to the debug log stream.
@@ -287,10 +288,10 @@ public:
   // the call.
   SymbolicValuePtr value_pointed_to;
 
-  // If this parameter was passed in a register, this pointer will be non-NULL and point to the
-  // appropriate register descriptor.  This should always match between the caller and the
-  // called function.
-  const RegisterDescriptor* reg;
+  // If this parameter was passed in a register, this value will be the appropriate register
+  // descriptor, otherwise it will be the default-constructed descriptor.  This should always
+  // match between the caller and the called function.
+  RegisterDescriptor reg;
 
   // If this parameter was passed on the stack, the delta to where the parameter is stored
   // relative to the return address of the call.  In practice this means that these values
@@ -340,10 +341,10 @@ public:
 
   // A form convenient for adding register parameters.
   ParameterDefinition(size_t c, const SymbolicValuePtr& v, std::string n, std::string t,
-                      const SgAsmInstruction* i, const RegisterDescriptor* r);
+                      const SgAsmInstruction* i, RegisterDescriptor r);
 
-  bool is_reg() const { return (reg != NULL); }
-  bool is_stack() const { return (reg == NULL); }
+  bool is_reg() const { return reg.is_valid(); }
+  bool is_stack() const { return reg.is_valid(); }
 
   size_t get_num() const { return num; }
   const std::string& get_name() const { return name; }
@@ -351,7 +352,7 @@ public:
   SymbolicValuePtr get_value() const { return value; }
   void set_stack_attributes(const SymbolicValuePtr& v, const SymbolicValuePtr& a, SgAsmInstruction* i, const SymbolicValuePtr& p);
   void set_reg_attributes(const SymbolicValuePtr& v, const SgAsmInstruction* i, const SymbolicValuePtr& p);
-  const RegisterDescriptor* get_register() const { return reg; }
+  RegisterDescriptor get_register() const { return reg; }
   size_t get_stack_delta() const { return stack_delta; }
   // Spew a description of the parameter to the log.
   void debug() const;
@@ -404,8 +405,8 @@ class ParameterList {
 
   // These should pre private to enforce the internal consistency of the object.
   ParameterDefinition* get_rw_stack_parameter(size_t delta);
-  ParameterDefinition* get_rw_reg_parameter(const RegisterDescriptor* rd);
-  ParameterDefinition* get_rw_return_reg(const RegisterDescriptor* rd);
+  ParameterDefinition* get_rw_reg_parameter(RegisterDescriptor rd);
+  ParameterDefinition* get_rw_return_reg(RegisterDescriptor rd);
 
 public:
   ParameterList() {
@@ -416,8 +417,8 @@ public:
 
   // Find a stack parameter at a specific stack delta.
   const ParameterDefinition* get_stack_parameter(size_t delta) const;
-  const ParameterDefinition* get_reg_parameter(const RegisterDescriptor* rd) const;
-  const ParameterDefinition* get_return_reg(const RegisterDescriptor* rd) const;
+  const ParameterDefinition* get_reg_parameter(RegisterDescriptor rd) const;
+  const ParameterDefinition* get_return_reg(RegisterDescriptor rd) const;
 
   const ParamVector& get_params() const { return params; }
 
@@ -441,11 +442,11 @@ public:
   // Find and create if needed the parameter at a specific stack delta.
   ParameterDefinition* create_stack_parameter(size_t delta);
   // Find and create if needed the parameter for a given register descriptor.
-  ParameterDefinition* create_reg_parameter(const RegisterDescriptor *r,
+  ParameterDefinition* create_reg_parameter(RegisterDescriptor r,
                                             const SymbolicValuePtr v,
                                             const SgAsmInstruction* i,
                                             const SymbolicValuePtr p);
-  ParameterDefinition* create_return_reg(const RegisterDescriptor *r,
+  ParameterDefinition* create_return_reg(RegisterDescriptor r,
                                          const SymbolicValuePtr v);
 
 
@@ -479,7 +480,7 @@ public:
 };
 typedef std::set<SavedRegister, SavedRegisterCompare> SavedRegisterSet;
 
-typedef std::map<const RegisterDescriptor*, const SgAsmInstruction*, RegisterCompare> RegisterEvidenceMap;
+typedef std::map<RegisterDescriptor, const SgAsmInstruction*> RegisterEvidenceMap;
 
 //===========================================================================================
 // Register usage
@@ -523,7 +524,7 @@ public:
 
   // Check whether a given instruction saves a register.  If so, add an entry to
   // saved_registers.
-  bool check_saved_register(SgAsmx86Instruction* insn, const RegisterDescriptor& reg);
+  bool check_saved_register(SgAsmx86Instruction* insn, RegisterDescriptor reg);
 
   // Return a parameter list object describing the parameters.
   ParameterList* make_parameter_list();
@@ -540,6 +541,7 @@ typedef std::vector<const CallingConvention*> CallingConventionPtrVector;
 class CallingConventionMatcher {
 private:
 
+  RegisterDictionary regdict;
   CallingConventionVector conventions;
 
 public:
@@ -549,6 +551,7 @@ public:
   // Write information about each calling convention to the debug log stream.
   void report() const;
 
+  const RegisterDictionary & get_regdict() { return regdict; }
   CallingConventionPtrVector match(FunctionDescriptor* fd,
                                    bool allow_unused_parameters = true) const;
 

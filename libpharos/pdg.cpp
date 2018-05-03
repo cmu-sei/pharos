@@ -10,12 +10,18 @@ PDG::PDG(FunctionDescriptor* f, spTracker *spt) : du(f, spt), cdg(f) {
   // (shouldn't) have been called.
   fd = f;
   assert(fd != NULL);
-  SgAsmFunction* func = fd->get_func();
+  UNUSED SgAsmFunction* func = fd->get_func();
   assert(func != NULL);
 
   // Get the control flow dependencies
   control_deps = cdg.getControlDependencies();
 }
+
+// This is a reminder to more fully understand where PDGs are created that are not freed.
+// Possibly a problem with the bottom up order sorting?
+//PDG::~PDG() {
+  //ODEBUG << "Deleting the PDG for " << fd->address_string() << LEND;
+//}
 
 // This is a convenience function for the situation in which you expect (know?) that there is
 // is a single memory read for an instruction.  It most cases, it finds the single memory read

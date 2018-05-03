@@ -7,17 +7,17 @@ programs.  It uses the ROSE compiler infrastructure developed by
 Lawrence Livermore National Laboratory for disassembly, control flow
 analysis, instruction semantics, and more.
 
-The current distribution in is a substantial update to the previous
+The current distribution is a substantial update to the previous
 version, and is part of an ongoing process to release more of the
-framework and tools publicly.  This release has a more generous BSD
-[license](LICENSE.md) than the previous release.  Carnegie Mellon
-University retains the [copyright](COPYRIGHT.md).
+framework and tools publicly.  This softare is released under a BSD
+[license](LICENSE.md).  Carnegie Mellon University retains the
+[copyright](COPYRIGHT.md).
 
 The Pharos framework is a research project, and the code is undergoing
 active development.  No warranties of fitness for any purpose are
 provided. While this release provides build instructions, unit tests,
 and some documentation, much work remains to be done.  We've tested a
-few select build configurations, but have not actively tested the
+few select build configurations, but we have not actively tested the
 portability of the source code. See the [installation
 instructions](INSTALL.md) for more details.
 
@@ -31,9 +31,9 @@ may be unable to respond in a timely manner, but I will do my best.
 
 ## APIAnalyzer
 
-ApAnalyzer is a tool for finding sequences of API calls with the
+ApiAnalyzer is a tool for finding sequences of API calls with the
 specified data and control relationships.  This capability is intended
-to be used to detect common operating system interaction parasigms
+to be used to detect common operating system interaction paradigms
 like opening a file, writing to it, and the closing it.
 
 ## OOAnalyzer
@@ -44,13 +44,13 @@ C++ Objects From Binaries Using Inter-Procedural Data-Flow Analysis"
 which was published at the ACM SIGPLAN on Program Protection and
 Reverse Engineering Workshop in 2014.  The tool identifies object
 members and methods by tracking object pointers between functions in
-the program.  This tool was previously named "Objdigger" and is the
+the program.  This tool was previously named "Objdigger" and is in the
 process of being renamed OOAnalyzer as part of a substantial redesign
 using Prolog rules to recover the object attributes.
 
 ## CallAnalyzer
 
-Callanalyzer is a tool for reporting the static parameters to API
+CallAnalyzer is a tool for reporting the static parameters to API
 calls in a binary program.  It is largely a demonstration of our
 current calling convention, parameter analysis, and type detection
 capabilities, although it also provides useful analysis of the code in
@@ -67,13 +67,14 @@ functions are are likely to have behavior in common.
 FN2Hash is tool for generating a variety of hashes and other
 descriptive properties for functions in an executable program.  Like
 FN2Yara it can be used to support binary similarity analysis, or
-provide features for machine learning algorithm.
+provide features for machine learning algorithms.
 
 ## DumpMASM
 
-DumpMASM is a tool for dumping diassembly listings from an executable
+DumpMASM is a tool for dumping disassembly listings from an executable
 using the Pharos framework in the same style as the other tools.  It
 has not been actively maintained, and you should consider using ROSE's
-standard recursiveDisassemble instead.
+standard recursiveDisassemble instead
+<http://rosecompiler.org/ROSE_HTML_Reference/rosetools.html>.
 
 

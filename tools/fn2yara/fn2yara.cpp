@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/algorithm/string.hpp>
 
@@ -15,9 +15,6 @@
 #define DEFAULT_MAX_BYTES 10000
 
 using namespace pharos;
-
-// The global CERT message facility.
-Sawyer::Message::Facility glog("Fn2YARA");
 
 namespace {
 
@@ -623,6 +620,7 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
   }
 };
 
+#if 0
 // useful for debugging
 void myterminate() {
   std::cerr << "myterminate called" << LEND;
@@ -639,6 +637,7 @@ void terminate_no_abort() {
   std::cerr << "terminate called, likely unhandled exception at cleanup, ignoring for now, bug will be fixed eventually" << LEND;
   _exit(99);
 }
+#endif
 
 int fn2yara_main(int argc, char **argv) {
   //std::set_terminate(myterminate);
@@ -654,12 +653,8 @@ int fn2yara_main(int argc, char **argv) {
     GFATAL << "Unable to analyze file (no executable content found)." << LEND;
     return EXIT_FAILURE;
   }
-  // Load a config file overriding parts of the analysis.
-  if (vm.count("imports")) {
-    std::string config_file = vm["imports"].as<std::string>();
-    GINFO << "Loading analysis configuration file: " <<  config_file << LEND;
-    ds.read_config(config_file);
-  }
+  // Resolve imports, load API data, etc.
+  // ds.resolve_imports();
 
   FnToYaraAnalyzer analyzer(&ds, vm);
   analyzer.analyze();
@@ -671,18 +666,7 @@ int fn2yara_main(int argc, char **argv) {
 
 int main(int argc, char **argv)
 {
-#if 1
-  return pharos_main(fn2yara_main, argc, argv);
-#else
-  int rc = pharos_main(fn2yara_main, argc, argv);
-  // attempt to work around a bug in ROSE at exit cleanup:
-  std::set_unexpected(myunexpected);
-  // that doesn't work we might hope in this instance, terminate still gets called instead of
-  // our unexpected handler, probably because of C++11 differences w/ throw specs, etc, so set
-  // our own special terminate handler instead until the bug in ROSE is fixed:
-  std::set_terminate(terminate_no_abort);
-  return rc;
-#endif
+  return pharos_main("Fn2YARA", fn2yara_main, argc, argv);
 }
 
 /* Local Variables:   */

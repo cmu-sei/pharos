@@ -2,13 +2,19 @@
 #include <string>
 #include <sstream>
 #include <cstdlib>
+#include <cstring>
+#include <algorithm>
 #include <boost/format.hpp>
+#include <boost/locale/encoding_utf.hpp>
 
 #include "demangle.hpp"
 
 // Perhaps we should eliminated the unused parameters (basically all match booleans to the
 // str_xxx functions).  Right now it's easier fo rthem all to match though...
 #define UNUSED __attribute__((unused))
+
+namespace demangle {
+namespace detail {
 
 // An alias to make it easier to construct namespace types.
 class Namespace : public DemangledType {
@@ -34,13 +40,14 @@ class VisualStudioDemangler
   char get_current_char();
   void advance_to_next_char();
 
-  void bad_code_msg(char c, std::string desc);
-  void general_error(std::string e);
+  [[noreturn]] void bad_code(char c, const std::string & desc);
+  [[noreturn]] void general_error(const std::string & e);
 
   // Given a stack and a position character, safely resolve and return the reference.
   DemangledTypePtr resolve_reference(ReferenceStack & stack, char poschar);
 
   DemangledTypePtr get_type(DemangledTypePtr t = DemangledTypePtr(), bool push = true);
+  DemangledTypePtr get_array_type(DemangledTypePtr & t, bool push = true);
   DemangledTypePtr & get_pointer_type(DemangledTypePtr & t, bool push = true);
   DemangledTypePtr & get_templated_type(DemangledTypePtr & t);
   DemangledTypePtr & get_templated_function_arg(DemangledTypePtr & t);
@@ -50,12 +57,14 @@ class VisualStudioDemangler
   DemangledTypePtr & get_function(DemangledTypePtr & t);
   DemangledTypePtr & get_storage_class(DemangledTypePtr & t);
   DemangledTypePtr & get_storage_class_modifiers(DemangledTypePtr & t);
+  DemangledTypePtr & get_managed_properties(DemangledTypePtr & t, int & cli_array);
   DemangledTypePtr & get_real_enum_type(DemangledTypePtr & t);
   DemangledTypePtr & get_rtti(DemangledTypePtr & t);
   DemangledTypePtr & process_return_storage_class(DemangledTypePtr & t);
   DemangledTypePtr & process_calling_convention(DemangledTypePtr & t);
   DemangledTypePtr & process_method_storage_class(DemangledTypePtr & t);
   DemangledTypePtr & get_special_name_code(DemangledTypePtr & t);
+  DemangledTypePtr & get_string(DemangledTypePtr & t);
   DemangledTypePtr get_anonymous_namespace();
 
   // Get symbol always allocates a new DemangledType.
@@ -75,7 +84,7 @@ class VisualStudioDemangler
   int64_t get_number();
 
   // Some helper functions to make debugging a little prettier.
-  void progress(std::string msg);
+  void progress(const std::string & msg);
   void stack_debug(ReferenceStack & stack, size_t position, const std::string & msg);
 
  public:
@@ -85,36 +94,37 @@ class VisualStudioDemangler
   DemangledTypePtr analyze();
 };
 
+} // namespace detail
+
 DemangledTypePtr visual_studio_demangle(const std::string & mangled, bool debug)
 {
-  VisualStudioDemangler demangler(mangled, debug);
+  detail::VisualStudioDemangler demangler(mangled, debug);
   return demangler.analyze();
 }
 
-DemangledType::DemangledType() {
-  is_const = false;
-  is_volatile = false;
-  is_reference = false;
-  is_pointer = false;
-  is_namespace = false;
-  is_func = false;
-  is_embedded = false;
-  is_refref = false;
-  is_anonymous = false;
-  is_based = false;
-  is_member = false;
-  symbol_type = SymbolType::Unspecified;
-  distance = Distance::Unspecified;
-  pointer_base = 0;
-  inner_type = NULL;
-  com_interface = NULL;
-
-  // Properties from function.
-  scope = Scope::Unspecified;
-  method_property = MethodProperty::Unspecified;
-  is_exported = false;
-  is_ctor = false;
-  is_dtor = false;
+std::string quote_string(const std::string & input)
+{
+  static auto special_chars = "\"\\\a\b\f\n\r\t\v";
+  static auto names = "\"\\abfnrtv";
+  std::string output;
+  output.reserve(input.size() + 2);
+  output.push_back('\"');
+  for (auto c : input) {
+    if (c == '\0') {
+      output.push_back('\\');
+      output.push_back('0');
+    } else {
+      auto pos = std::strchr(special_chars, c);
+      if (pos) {
+        output.push_back('\\');
+        output.push_back(*(names + (pos - special_chars)));
+      } else {
+        output.push_back(c);
+      }
+    }
+  }
+  output.push_back('\"');
+  return output;
 }
 
 void DemangledType::debug_type(bool match, size_t indent, std::string label) const {
@@ -135,15 +145,14 @@ void DemangledType::debug_type(bool match, size_t indent, std::string label) con
   if (retval) retval->debug_type(match, indent + 1, "RVal");
 
   size_t i = 0;
-  for (const auto & n : name) {
-    n->debug_type(match, indent + 1, boost::str(boost::format("Name %d") % i));
+  for (auto it = name.rbegin(); it != name.rend(); ++it) {
+    (*it)->debug_type(match, indent + 1, boost::str(boost::format("Name %d") % i));
     i++;
   }
 
-
   i = 0;
   for (const auto & p : template_parameters) {
-    if (p->type != NULL) {
+    if (p->type != nullptr) {
       p->type->debug_type(match, indent + 1, boost::str(boost::format("TPar %d") % i));
     }
     else {
@@ -175,6 +184,12 @@ bool DemangledType::is_func_ptr() const {
 std::string DemangledType::str_class_properties(bool match) const {
   std::ostringstream stream;
 
+  if (match && extern_c) {
+    stream << "extern \"C\" ";
+  }
+
+  if (match && method_property == MethodProperty::Thunk) stream << "[thunk]:";
+
   // I should convert these enums to use the enum stringifier...
   if (scope == Scope::Private) stream << "private: ";
   if (scope == Scope::Protected) stream << "protected: ";
@@ -182,8 +197,6 @@ std::string DemangledType::str_class_properties(bool match) const {
 
   if (method_property == MethodProperty::Static) stream << "static ";
   if (method_property == MethodProperty::Virtual) stream << "virtual ";
-  // The formatting of thunks is not correct.
-  if (match && method_property == MethodProperty::Thunk) stream << "thunk ";
   return stream.str();
 }
 
@@ -206,16 +219,20 @@ DemangledType::str_storage_properties(bool match, bool is_retval) const
   // mangled name codes it correctly as P/Q/R/S, so when we're not trying to match Visual
   // Studio, it's probably better to retain the qualifier.
   if (match && (is_pointer || is_reference || is_refref) && is_retval) {
-    if (pointer_base == 1) return "__ptr64 ";
+    if (ptr64) return "__ptr64 ";
     return "";
   }
 
-  if (pointer_base == 0 && !is_const && !is_volatile) return "";
+  if (!ptr64 && !is_const && !is_volatile) return "";
 
   std::ostringstream stream;
   if (is_const) stream << "const ";
   if (is_volatile) stream << "volatile ";
-  if (pointer_base == 1) stream << " __ptr64 ";
+  if (match && unaligned) stream << "__unaligned ";
+  if (match && ptr64) stream << "__ptr64 ";
+  if (match && restrict) stream << "__restrict ";
+  if (is_reference) stream << "& ";
+  if (is_refref) stream << "&& ";
   return stream.str();
 }
 
@@ -250,14 +267,12 @@ DemangledType::str_template_parameters(bool match) const
     DemangledTemplate::const_iterator pit;
     for (pit = template_parameters.begin(); pit != template_parameters.end(); pit++) {
       auto tp = *pit;
-      if (!tp) {
-        std::cerr << "Unexpectedly NULL template parameter!" << std::endl;
-      }
-      else {
+      auto next = pit + 1;
+      if (tp) {
         tpstr = tp->str(match);
         stream << tpstr;
       }
-      if ((pit+1) != template_parameters.end()) {
+      if (next != template_parameters.end() && *(next)) {
         if (!match) stream << ", ";
         else stream << ",";
       }
@@ -274,12 +289,20 @@ DemangledType::str_template_parameters(bool match) const
 }
 
 std::string
-DemangledType::str_name_qualifiers(const FullyQualifiedName& the_name, bool match) const
+DemangledType::str_name_qualifiers(const FullyQualifiedName& the_name, bool match,
+                                   bool except_last) const
 {
+  if (the_name.empty()) {
+    return std::string();
+  }
+
   std::ostringstream stream;
 
-  FullyQualifiedName::const_iterator nit;
-  for (nit = the_name.begin(); nit != the_name.end(); nit++) {
+  auto e = the_name.rend();
+  if (except_last) --e;
+  auto const b = the_name.rbegin();
+  for (auto nit = b; nit != e; ++nit) {
+    if (nit != b) stream << "::";
     auto & ndt = *nit;
     // Some names have things that require extra quotations...
     if (ndt->is_embedded) {
@@ -289,145 +312,79 @@ DemangledType::str_name_qualifiers(const FullyQualifiedName& the_name, bool matc
       // There's almost certainly a better way to do this.  Perhaps all types ought to remove
       // their own trailing spaces?
       if (rendered.size() > 1 && rendered.back() == ' ') {
-        rendered = rendered.substr(0, rendered.size() - 1);
+        rendered.pop_back();
       }
       stream << rendered;
       stream << "'";
     }
+    else if (ndt->is_ctor || ndt->is_dtor) {
+      if (ndt->is_dtor) {
+        stream << '~';
+      }
+      if (nit == the_name.rbegin()) {
+        stream << "ERRORNOCLASS";
+      } else if (match) {
+        stream << (*(std::prev(nit)))->str(match);
+      } else {
+        stream << (*(std::prev(nit)))->get_pname();
+      }
+      stream << ndt->str_template_parameters(match);
+    }
     else {
       stream << ndt->str(match);
     }
-    if ((nit+1) != the_name.end()) stream << "::";
   }
 
   return stream.str();
 }
 
-// This should eventually me merged with str_name_qualifiers().  The code should also get
-// shared between functions and non-functions, since there's a lot of similarity.  In summary,
-// there's a lot of cleanup needed here, but it's not related to my immediate problem.
-std::string
-DemangledType::str_class_name(bool match) const
-{
-  std::ostringstream stream;
-
-  const DemangledType* clsname = this;
-  if (is_ctor || is_dtor) {
-    stream << "::";
-    if (is_dtor) stream << "~";
-    if (template_parameters.size() != 0) {
-      clsname = &*template_parameters[template_parameters.size() - 1]->type;
-    }
-
-    size_t name_size = clsname->name.size();
-    if (name_size != 0) {
-      stream << clsname->name[name_size-1]->str(match);
-    }
-    else {
-      stream << "ERRORNOCLASS";
-    }
-  }
-  else if (method_name.size() != 0) {
-    // Some methods don't have class names (e.g. new and delete)...
-    if (clsname->name.size() > 0) {
-      stream << "::";
-    }
-    stream << method_name;
-
-    // And since we deferred outputting the return type for "operator <type>" earlier, we need
-    // to do it here...
-    if (method_name == "operator " && retval) {
-      stream << retval->str(match);
-    }
-  }
-
-  return stream.str();
-}
-
-// Public API to get the method name used by the OOAnalzyer.  This should get cleaned up so
-// that it just returns the method_name member.  It's very similar to str_class_name, but lacks
-// extra '::'s in the output.
+// Public API to get the method name used by the OOAnalzyer.
 std::string
 DemangledType::get_method_name() const
 {
-  std::ostringstream stream;
-
-  bool match = false;
-  const DemangledType* clsname = this;
-  if (is_ctor || is_dtor) {
-    if (is_dtor) stream << "~";
-    if (template_parameters.size() != 0) {
-      clsname = &*template_parameters[template_parameters.size() - 1]->type;
-    }
-
-    size_t name_size = clsname->name.size();
-    if (name_size != 0) {
-      stream << clsname->name[name_size-1]->str(match);
-    }
-    else {
-      stream << "ERRORNOCLASS";
-    }
+  if (name.empty() || !simple_type.empty()) {
+    return std::string();
   }
-  else if (method_name.size() != 0) {
-    stream << method_name;
+
+  std::ostringstream stream;
+  auto & method = name.front();
+  if (method->is_ctor || method->is_dtor) {
+    if (method->is_dtor) stream << "~";
+
+    if (name.size() < 2) {
+      stream << "ERRORNOCLASS";
+    } else {
+      stream << name[1]->get_pname();
+    }
   }
   else {
-    size_t name_size = clsname->name.size();
-    if (name_size != 0) {
-      stream << clsname->name[name_size-1]->str(match);
+    auto & mname = method->get_pname();
+    stream << mname;
+    if (retval && mname == "operator ") {
+      stream << retval->str();
     }
   }
 
   return stream.str();
 }
 
-// Public API to get class name used by the OOAnalzyer.  This has sort-of turned into a 'do
-// what oosolver needs' method. :-(
 std::string
 DemangledType::get_class_name() const
 {
-  std::ostringstream stream;
-
-  bool match = false;
-
-  // This is now largely a copy of str_name_qualifiers(), so it's the third version of that
-  // function. :-( This version needs to exclude the method name when it's a non-standard name.
-  size_t name_size = name.size();
-  if (name_size != 0) {
-    size_t pos = 0;
-    FullyQualifiedName::const_iterator nit;
-    for (nit = name.begin(); nit != name.end(); nit++) {
-      auto & ndt = *nit;
-      // Some names have things that require extra quotations...
-      if (ndt->is_embedded) {
-        stream << "`";
-        std::string rendered = ndt->str(match);
-        // Some nasty whitespace kludging here.  If the last character is a space, remove it.
-        // There's almost certainly a better way to do this.  Perhaps all types ought to remove
-        // their own trailing spaces?
-        if (rendered.size() > 1 && rendered.back() == ' ') {
-          rendered = rendered.substr(0, rendered.size() - 1);
-        }
-        stream << rendered;
-        // This quote is mismatched because Cory didn't want to cause problems for Prolog.
-        stream << "`";
-      }
-      else {
-        stream << ndt->str(match);
-      }
-      pos++;
-
-      // This is very confusing. :-( Currently the method name is in the fully qualified name
-      // if it's user-supplied name, and it's in method name if it's any of the special names
-      // except for constructors and destructors.  We didn't put the name in the method_name
-      // field for contructors and destructors because we didn't know the class name yet!
-      bool has_fake_name = (method_name.size() != 0 || is_ctor || is_dtor);
-      if ((pos+1) == name_size && !has_fake_name) break;
-
-      if ((nit+1) != name.end()) stream << "::";
-    }
+  if (symbol_type == SymbolType::GlobalThing2) {
+    return str_name_qualifiers(instance_name, false, true);
   }
+  return str_name_qualifiers(name, false, simple_type.empty());
+}
 
+std::string
+DemangledType::str_array(UNUSED bool match) const
+{
+  if (!is_array) return "";
+  std::ostringstream stream;
+  for (auto dim : dimensions) {
+    stream << '[' << dim << ']';
+  }
   return stream.str();
 }
 
@@ -435,8 +392,8 @@ std::string
 DemangledType::str_pointer_punctuation(UNUSED bool match) const
 {
   if (is_refref) return "&&";
-  if (is_pointer) return "*";
-  if (is_reference) return "&";
+  if (is_pointer) return is_gc ? "^" : "*";
+  if (is_reference) return is_gc ? "%" : "&";
   return "";
 }
 
@@ -453,6 +410,15 @@ DemangledType::str_simple_type(UNUSED bool match) const
   return stream.str();
 }
 
+std::string const &
+DemangledType::get_pname() const
+{
+  if (name.empty()) {
+    return simple_type;
+  }
+  return name.front()->get_pname();
+}
+
 std::string
 DemangledType::str(bool match, bool is_retval) const
 {
@@ -467,12 +433,18 @@ DemangledType::str(bool match, bool is_retval) const
     }
   }
 
+  if (symbol_type == SymbolType::HexSymbol) {
+    return simple_type;
+  }
+
   std::ostringstream stream;
+
   stream << str_class_properties(match);
 
   // Partially conversion from old code and partially simplification of this method.
-  if (symbol_type == SymbolType::GlobalFunction || symbol_type == SymbolType::ClassMethod) {
-
+  if (symbol_type == SymbolType::GlobalFunction || symbol_type == SymbolType::ClassMethod
+      || symbol_type == SymbolType::VtorDisp)
+  {
     stream << str_distance(match);
     // Guessing at formatting..
     if (is_exported) stream << "__declspec(dllexport)";
@@ -483,43 +455,64 @@ DemangledType::str(bool match, bool is_retval) const
     // method name, but is _NOT_ explicitly part of the type... :-( Increasingly it looks like
     // we should precompute where we want the retval to be rendered, and then emit it only
     // where we decided.
-    if (retval && method_name != "operator ") {
+    if (retval && get_pname() != "operator ") {
       std::string retstr;
       if (retval->is_func_ptr()) {
         retstr = retval->str(match, true);
-        //stream << "!";
         if (retstr.size() > 0) stream << retstr;
-        //stream << "!";
       }
       else {
         retstr = retval->str(match, true);
-        //stream << "!";
         if (retstr.size() > 0) stream << retstr << " ";
-        //stream << "!";
       }
     }
 
     stream << calling_convention << " ";
     stream << str_name_qualifiers(name, match);
-    // str_class_name() currently includes the fixes for moving the retval on "operator ".
-    stream << str_class_name(match);
+    if (retval && get_pname() == "operator ") {
+      stream << retval->str(match);
+    }
+    if (match && symbol_type == SymbolType::VtorDisp) {
+      stream << "`vtordisp{" << n1 << ',' << n2 << "}' ";
+    } else if (match && method_property == MethodProperty::Thunk) {
+      stream << "`adjustor{" << n2 << "}' ";
+    }
     stream << str_function_arguments(match);
-    stream << str_storage_properties(match);
 
-    if (retval && retval->is_func_ptr()) {
-      //stream << "|";
+    if (retval && retval->is_func_ptr() && get_pname() != "operator ") {
       stream << ")";
       // The name of the function is not present...
       stream << retval->inner_type->str_function_arguments(match);
       stream << retval->inner_type->str_storage_properties(match);
-      //stream << "|";
     }
+
+    stream << str_storage_properties(match);
 
     return stream.str();
   }
 
+  if (symbol_type == SymbolType::MethodThunk) {
+    stream << ' ' << calling_convention << ' ';
+    stream << str_name_qualifiers(name, match);
+    if (match) {
+      stream << '{' << n1 << ",{flat}}' }'";
+    }
+    return stream.str();
+  }
+
+  if (symbol_type == SymbolType::String) {
+    if (match) {
+      return simple_type;
+    }
+    stream << inner_type->str() << '[' << n1 << "] = " << quote_string(get_pname());
+    if (n1 > 32) {
+      stream << "...";
+    }
+    return stream.str();
+  }
+
   if (is_pointer || is_reference) {
-    if (inner_type == NULL) {
+    if (inner_type == nullptr) {
       std::cerr << "Unparse error: Inner type is not set for pointer or reference!" << std::endl;
     }
     else {
@@ -529,38 +522,45 @@ DemangledType::str(bool match, bool is_retval) const
         stream << inner_type->retval->str(match, true);
         // The calling convention is formatted differently...
         stream << " (" << inner_type->calling_convention;
+        if (inner_type->is_member) {
+          stream << ' ';
+        }
       }
-      else {
+      else if (!inner_type->is_member) {
         stream << inner_type->str(match) << " ";
       }
 
+      if (inner_type->is_member) {
+        stream << str_name_qualifiers(inner_type->name, match) << "::";
+      }
       stream << str_pointer_punctuation(match);
     }
+  } else if (is_func && inner_type) {
+    stream << inner_type->retval->str(match, true);
+    stream << ' ' << inner_type->calling_convention;
+    stream << inner_type->str_function_arguments(match);
   }
 
   stream << str_distance(match);
   stream << str_simple_type(match);
   stream << str_name_qualifiers(name, match);
+  stream << str_array(match);
   stream << str_template_parameters(match);
 
   // Ugly. :-( Move the space from after the storage keywords to before the keywords.
   std::string spstr = str_storage_properties(match, is_retval);
-  if (spstr.size() > 0) stream << " " << spstr.substr(0, spstr.size() - 1);
+  if (!spstr.empty()) {
+    spstr.pop_back();
+    stream << " " << spstr;
+  }
 
   // If the symbol is a global object or a static class member, the name of the object (not the
   // type) will be in the instance_name and not the ordinary name field.
-  if (symbol_type == SymbolType::GlobalObject || symbol_type == SymbolType::StaticClassMember ||
-      symbol_type == SymbolType::GlobalThing1 || symbol_type == SymbolType::GlobalThing2) {
+  if (symbol_type == SymbolType::GlobalObject || symbol_type == SymbolType::StaticClassMember
+      || symbol_type == SymbolType::GlobalThing1 || symbol_type == SymbolType::GlobalThing2)
+  {
     stream << " ";
     stream << str_name_qualifiers(instance_name, match);
-    if (symbol_type == SymbolType::GlobalThing1 || symbol_type == SymbolType::GlobalThing2) {
-      // This logic is messy.  GlobalThing1 sometimes has no method name, and therefore neeeds no
-      // ::, but is it really the case the GlobalThing1 _never_ has a method name?  Also related
-      // to str_class_name().
-      if (method_name.size() > 0) {
-        stream << "::" << method_name;
-      }
-    }
   }
 
   // This is kind of ugly and hackish...  It's the second half of the pointer to function
@@ -574,8 +574,27 @@ DemangledType::str(bool match, bool is_retval) const
     //stream << "|";
   }
 
-  if (com_interface != NULL) {
-    stream << "{for `" << com_interface->str(match) << "'}";
+  if (symbol_type == SymbolType::StaticGuard) {
+    if (!name.empty()) {
+      stream << "::";
+    }
+    stream << '{' << n1 << '}';
+    if (match) {
+      stream << '\'';
+    }
+  }
+
+  if (!com_interface.empty()) {
+    stream << "{for ";
+    auto i = com_interface.begin();
+    auto e = com_interface.end();
+    while (i != e) {
+      stream << '`' << (*i++)->str(match) << '\'';
+      if (i != e) {
+        stream << "s ";
+      }
+    }
+    stream << '}';
   }
 
   return stream.str();
@@ -590,16 +609,25 @@ DemangledTemplateParameter::DemangledTemplateParameter(int64_t c)
 {}
 
 std::string DemangledTemplateParameter::str(bool match) const {
-  if (type == NULL) {
-    return boost::str(boost::format("%d") % constant_value);
+  std::ostringstream stream;
+  if (type == nullptr) {
+    stream << constant_value;
   }
   else if (pointer) {
-    return boost::str(boost::format("std::addressof(%s)") % type->str(match));
+    if (type->symbol_type == SymbolType::ClassMethod
+        || (type->is_func && type->is_member))
+    {
+      stream << '{' << type->str(match) << ',' << constant_value << '}';
+    } else {
+      stream << "std::addressof(" << type->str(match) << ')';
+    }
   } else {
     return type->str(match);
   }
+  return stream.str();
 }
 
+namespace detail {
 
 VisualStudioDemangler::VisualStudioDemangler(const std::string & m, bool d)
   : mangled(m), debug(d), offset(0)
@@ -620,26 +648,24 @@ void VisualStudioDemangler::advance_to_next_char()
 char VisualStudioDemangler::get_current_char()
 {
   if (offset >= mangled.size()) {
-    error = "Attempt to read past end of mangled string.";
-    throw DemanglerError(error);
+    general_error("Attempt to read past end of mangled string.");
   }
   return mangled[offset];
 }
 
-void VisualStudioDemangler::bad_code_msg(char c, std::string desc)
+[[noreturn]] void VisualStudioDemangler::bad_code(char c, const std::string & desc)
 {
   error = boost::str(boost::format("Unrecognized %s code '%c' at offset %d") % desc % c % offset);
-  std::cerr << error << std::endl;
+  throw Error(error);
 }
 
-void VisualStudioDemangler::general_error(std::string e)
+[[noreturn]] void VisualStudioDemangler::general_error(const std::string & e)
 {
   error = e;
-  std::cerr << error << std::endl;
-  throw DemanglerError(error);
+  throw Error(error);
 }
 
-void VisualStudioDemangler::progress(std::string msg)
+void VisualStudioDemangler::progress(const std::string & msg)
 {
   if (debug) {
     std::cout << "Parsing " << msg << " at character '" << get_current_char()
@@ -694,8 +720,7 @@ DemangledTypePtr & VisualStudioDemangler::process_calling_convention(DemangledTy
    case 'L': t->is_exported = true;  t->calling_convention = "__unknown"; break;
    case 'M': t->is_exported = false; t->calling_convention = "__clrcall"; break;
    default:
-    bad_code_msg(c, "calling convention");
-    throw DemanglerError(error);
+    bad_code(c, "calling convention");
   }
 
   advance_to_next_char();
@@ -711,6 +736,47 @@ VisualStudioDemangler::update_simple_type(DemangledTypePtr & t, const std::strin
 }
 
 DemangledTypePtr &
+VisualStudioDemangler::get_managed_properties(DemangledTypePtr & t, int & cli_array)
+{
+  cli_array = 0;
+
+  char c = get_current_char();
+
+  if (c == '$') {
+    c = get_next_char();
+    switch (c) {
+     case 'A':
+      t->is_gc = true;
+      break;
+     case 'B': // __pin  BUG!!! Unimplemented!
+      t->is_pin = true;
+      break;
+     case '0': case '1': case '2':
+      {
+        // C++/CLI array
+        auto xdigit = [this](char d) -> int {
+                        if (d >= '0' && d <= '9')
+                          return (d - '0');
+                        else if (d >= 'a' && d <= 'f')
+                          return (d - 'a');
+                        else if (d >= 'A' && d <= 'F')
+                          return (d - 'A');
+                        else bad_code(d, "hex digit"); };
+        int val = xdigit(c) * 16;
+        c = get_next_char();
+        val += xdigit(c);
+        cli_array = val ? val : -1;
+      }
+      break;
+     default:
+      bad_code(c, "managed C++ property");
+    }
+    advance_to_next_char();
+  }
+  return t;
+}
+
+DemangledTypePtr &
 VisualStudioDemangler::get_storage_class_modifiers(DemangledTypePtr & t)
 {
   char c = get_current_char();
@@ -718,12 +784,31 @@ VisualStudioDemangler::get_storage_class_modifiers(DemangledTypePtr & t)
   // Type storage class modifiers.  These letters are currently non-overlapping with the
   // storage class and can occur zero or more times.  Technically it's probably invalid for
   // them to occur more than once each however.
-  while (c == 'E' || c == 'F' || c == 'I') {
+  bool cont = true;
+  while (cont) {
     progress("pointer storage class modifier");
-    if (c == 'E') t->pointer_base = 1; // <type> __ptr64
-    else if (c == 'F') {} // __unaligned <type>   BUG!!! Unimplemented!
-    else if (c == 'I') {} // <type> __restrict    BUG!!! Unimplemented!
-    c = get_next_char();
+    switch (c) {
+     case 'E':
+      t->ptr64 = true;        // <type> __ptr64
+      break;
+     case 'F':
+      t->unaligned = true;    // __unaligned <type>
+      break;
+     case 'G':
+      t->is_reference = true; // <type> &
+      break;
+     case 'H':
+      t->is_refref = true;   // <type> &&
+      break;
+     case 'I':
+      t->restrict = true;     // <type> __restrict
+      break;
+     default:
+      cont = false;
+    }
+    if (cont) {
+      c = get_next_char();
+    }
   }
 
   return t;
@@ -735,16 +820,25 @@ VisualStudioDemangler::get_pointer_type(DemangledTypePtr & t, bool push)
 {
   advance_to_next_char();
   get_storage_class_modifiers(t);
+  int handling_cli_array;
+  get_managed_properties(t, handling_cli_array);
 
   progress("pointer storage class");
   // Const and volatile for the thing being pointed to (or referenced).
   t->inner_type = std::make_shared<DemangledType>();
   get_storage_class(t->inner_type);
 
+  if (t->inner_type->is_member && !t->inner_type->is_based) {
+    get_fully_qualified_name(t->inner_type, push);
+  }
+
   // Hack (like undname).
   if (t->inner_type->is_func) {
     progress("function pointed to");
     get_function(t->inner_type);
+    // if (t->inner_type->is_member && !t->inner_type->is_based) {
+    //   t->inner_type->calling_convention = "__thiscall";
+    // }
   }
   else {
     progress("type pointed to");
@@ -759,6 +853,21 @@ VisualStudioDemangler::get_pointer_type(DemangledTypePtr & t, bool push)
     type_stack.push_back(t);
     stack_debug(type_stack, type_stack.size()-1, "type");
   }
+
+  if (handling_cli_array) {
+    auto at = std::make_shared<DemangledType>();
+    at->name.push_back(std::make_shared<Namespace>("array"));
+    at->name.push_back(std::make_shared<Namespace>("cli"));
+    at->template_parameters.push_back(
+      std::make_shared<DemangledTemplateParameter>(t->inner_type));
+    if (handling_cli_array > 1) {
+      at->template_parameters.push_back(
+        std::make_shared<DemangledTemplateParameter>(handling_cli_array));
+    }
+    t->inner_type = at;
+    t->is_gc = true;
+  }
+
   return t;
 }
 
@@ -776,11 +885,19 @@ DemangledTypePtr & VisualStudioDemangler::get_real_enum_type(DemangledTypePtr & 
    case '6': update_simple_type(rt, "long"); break;
    case '7': update_simple_type(rt, "unsigned long"); break;
    default:
-    bad_code_msg(c, "enum real type");
-    throw DemanglerError(error);
+    bad_code(c, "enum real type");
   }
 
   return t;
+}
+
+DemangledTypePtr VisualStudioDemangler::get_array_type(DemangledTypePtr & t, bool push) {
+  t->is_array = true;
+  auto num_dim = get_number();
+  for (decltype(num_dim) i = 0; i < num_dim; ++i) {
+    t->dimensions.push_back(uint64_t(get_number()));
+  }
+  return get_type(t, push);
 }
 
 // Return a demangled type, for a global variables, a return code, or a function argument.
@@ -857,10 +974,9 @@ DemangledTypePtr VisualStudioDemangler::get_type(DemangledTypePtr t, bool push) 
     }
     return t;
    case 'X': return update_simple_type(t, "void");
-   case 'Y': // cointerface
+   case 'Y': // array
     advance_to_next_char();
-    // BUG unhandled!
-    return t;
+    return get_array_type(t, push);
    case 'Z': return update_simple_type(t, "...");
    case '0': case '1': case '2': case '3': case '4':
    case '5': case '6': case '7': case '8': case '9':
@@ -870,7 +986,7 @@ DemangledTypePtr VisualStudioDemangler::get_type(DemangledTypePtr t, bool push) 
    case '_': // Extended simple types.
     c = get_next_char();
     switch(c) {
-     case '$': bad_code_msg(c, "_w64 prefix"); throw DemanglerError(error);
+     case '$': bad_code(c, "_w64 prefix");
      case 'D': update_simple_type(t, "__int8"); break;
      case 'E': update_simple_type(t, "unsigned __int8"); break;
      case 'F': update_simple_type(t, "__int16"); break;
@@ -882,13 +998,14 @@ DemangledTypePtr VisualStudioDemangler::get_type(DemangledTypePtr t, bool push) 
      case 'L': update_simple_type(t, "__int128"); break;
      case 'M': update_simple_type(t, "unsigned __int128"); break;
      case 'N': update_simple_type(t, "bool"); break;
-     case 'O': bad_code_msg(c, "unhandled array"); throw DemanglerError(error);
+     case 'O': bad_code(c, "unhandled array");
+     case 'S': update_simple_type(t, "char16_t"); break;
+     case 'U': update_simple_type(t, "char32_t"); break;
      case 'W': update_simple_type(t, "wchar_t"); break;
-     case 'X': bad_code_msg(c, "coclass"); throw DemanglerError(error);
-     case 'Y': bad_code_msg(c, "cointerface"); throw DemanglerError(error);
+     case 'X': bad_code(c, "coclass");
+     case 'Y': bad_code(c, "cointerface");
      default:
-      bad_code_msg(c, "extended '_' type");
-      throw DemanglerError(error);
+      bad_code(c, "extended '_' type");
     }
     // Apparently _X is a two character type, and two character types get pushed onto the stack.
     if (push) {
@@ -897,11 +1014,9 @@ DemangledTypePtr VisualStudioDemangler::get_type(DemangledTypePtr t, bool push) 
     }
     return t;
    case '?': // Documented at wikiversity as "type modifier, template parameter"
-    c = get_next_char();
-    bad_code_msg(c, "type? thing");
-    throw DemanglerError(error);
-    break;
-   // Documented at wikiversity as "type modifier, template parameter"
+    advance_to_next_char();
+    get_storage_class(t);
+    return get_type(t, push);
    case '$':
     c = get_next_char();
     // A second '$' (two in a row)...
@@ -918,13 +1033,29 @@ DemangledTypePtr VisualStudioDemangler::get_type(DemangledTypePtr t, bool push) 
         t->is_volatile = true;
         t->is_refref = true;
         return get_pointer_type(t, push);
+       case 'A':
+        t->is_func = true;
+        return get_pointer_type(t, push);
+       case 'B':
+        // Seems to be array type in template.  Next char should be 'Y'
+        advance_to_next_char();
+        return get_type(t, push);
        case 'C':
         advance_to_next_char();
         get_storage_class(t);
         return get_type(t, push);
+       case 'T':
+        advance_to_next_char();
+        t->name.push_back(std::make_shared<Namespace>("nullptr_t"));
+        t->name.push_back(std::make_shared<Namespace>("std"));
+        return t;
+       case 'V':
+       case 'Z':
+        // end of parameter pack.  Return null
+        advance_to_next_char();
+        return DemangledTypePtr();
        default:
-        bad_code_msg(c, "extended '$$' type");
-        throw DemanglerError(error);
+        bad_code(c, "extended '$$' type");
       }
     }
     // All characters after a single '$' are template parameters.
@@ -932,8 +1063,7 @@ DemangledTypePtr VisualStudioDemangler::get_type(DemangledTypePtr t, bool push) 
       return get_templated_function_arg(t);
     }
    default:
-    bad_code_msg(c, "type");
-    throw DemanglerError(error);
+    bad_code(c, "type");
   }
 }
 
@@ -949,112 +1079,193 @@ DemangledTypePtr & VisualStudioDemangler::get_special_name_code(DemangledTypePtr
   switch(c) {
    case '0': t->is_ctor = true; break;
    case '1': t->is_dtor = true; break;
-   case '2': t->method_name = "operator new"; break;
-   case '3': t->method_name = "operator delete"; break;
-   case '4': t->method_name = "operator="; break;
-   case '5': t->method_name = "operator>>"; break;
-   case '6': t->method_name = "operator<<"; break;
-   case '7': t->method_name = "operator!"; break;
-   case '8': t->method_name = "operator=="; break;
-   case '9': t->method_name = "operator!="; break;
-   case 'A': t->method_name = "operator[]"; break;
-   case 'B': t->method_name = "operator "; break; // missing logic?
-   case 'C': t->method_name = "operator->"; break;
-   case 'D': t->method_name = "operator*"; break;
-   case 'E': t->method_name = "operator++"; break;
-   case 'F': t->method_name = "operator--"; break;
-   case 'G': t->method_name = "operator-"; break;
-   case 'H': t->method_name = "operator+"; break;
-   case 'I': t->method_name = "operator&"; break;
-   case 'J': t->method_name = "operator->*"; break;
-   case 'K': t->method_name = "operator/"; break;
-   case 'L': t->method_name = "operator%"; break;
-   case 'M': t->method_name = "operator<"; break;
-   case 'N': t->method_name = "operator<="; break;
-   case 'O': t->method_name = "operator>"; break;
-   case 'P': t->method_name = "operator>="; break;
-   case 'Q': t->method_name = "operator,"; break;
-   case 'R': t->method_name = "operator()"; break;
-   case 'S': t->method_name = "operator~"; break;
-   case 'T': t->method_name = "operator^"; break;
-   case 'U': t->method_name = "operator|"; break;
-   case 'V': t->method_name = "operator&&"; break;
-   case 'W': t->method_name = "operator||"; break;
-   case 'X': t->method_name = "operator*="; break;
-   case 'Y': t->method_name = "operator+="; break;
-   case 'Z': t->method_name = "operator-="; break;
+   case '2': t->add_name("operator new"); break;
+   case '3': t->add_name("operator delete"); break;
+   case '4': t->add_name("operator="); break;
+   case '5': t->add_name("operator>>"); break;
+   case '6': t->add_name("operator<<"); break;
+   case '7': t->add_name("operator!"); break;
+   case '8': t->add_name("operator=="); break;
+   case '9': t->add_name("operator!="); break;
+   case 'A': t->add_name("operator[]"); break;
+   case 'B': t->add_name("operator "); break; // missing logic?
+   case 'C': t->add_name("operator->"); break;
+   case 'D': t->add_name("operator*"); break;
+   case 'E': t->add_name("operator++"); break;
+   case 'F': t->add_name("operator--"); break;
+   case 'G': t->add_name("operator-"); break;
+   case 'H': t->add_name("operator+"); break;
+   case 'I': t->add_name("operator&"); break;
+   case 'J': t->add_name("operator->*"); break;
+   case 'K': t->add_name("operator/"); break;
+   case 'L': t->add_name("operator%"); break;
+   case 'M': t->add_name("operator<"); break;
+   case 'N': t->add_name("operator<="); break;
+   case 'O': t->add_name("operator>"); break;
+   case 'P': t->add_name("operator>="); break;
+   case 'Q': t->add_name("operator,"); break;
+   case 'R': t->add_name("operator()"); break;
+   case 'S': t->add_name("operator~"); break;
+   case 'T': t->add_name("operator^"); break;
+   case 'U': t->add_name("operator|"); break;
+   case 'V': t->add_name("operator&&"); break;
+   case 'W': t->add_name("operator||"); break;
+   case 'X': t->add_name("operator*="); break;
+   case 'Y': t->add_name("operator+="); break;
+   case 'Z': t->add_name("operator-="); break;
    case '?': {
-     // I'm not certain that this code is actually begin used.  I should check once we're passing.
      auto embedded = get_symbol();
      embedded->is_embedded = true;
      if (debug) std::cout << "The fully embedded type was:" << embedded->str() << std::endl;
-     t->name.insert(t->name.begin(), std::move(embedded));
+     t->name.push_back(std::move(embedded));
      return t;
    }
    case '_':
     c = get_next_char();
     switch(c) {
-     case '0': t->method_name = "operator/="; break;
-     case '1': t->method_name = "operator%="; break;
-     case '2': t->method_name = "operator>>="; break;
-     case '3': t->method_name = "operator<<="; break;
-     case '4': t->method_name = "operator&="; break;
-     case '5': t->method_name = "operator|="; break;
-     case '6': t->method_name = "operator^="; break;
-     case '7': t->method_name = "`vftable'"; break;
-     case '8': t->method_name = "`vbtable'"; break;
-     case '9': t->method_name = "`vcall'"; break;
-     case 'A': t->method_name = "`typeof'"; break;
-     case 'B': t->method_name = "`local static guard'"; break;
-     case 'C': t->method_name = "`string'"; break; // missing logic?
-     case 'D': t->method_name = "`vbase destructor'"; break;
-     case 'E': t->method_name = "`vector deleting destructor'"; break;
-     case 'F': t->method_name = "`default constructor closure'"; break;
-     case 'G': t->method_name = "`scalar deleting destructor'"; break;
-     case 'H': t->method_name = "`vector constructor iterator'"; break;
-     case 'I': t->method_name = "`vector destructor iterator'"; break;
-     case 'J': t->method_name = "`vector vbase constructor iterator'"; break;
-     case 'K': t->method_name = "`virtual displacement map'"; break;
-     case 'L': t->method_name = "`eh vector constructor iterator'"; break;
-     case 'M': t->method_name = "`eh vector destructor iterator'"; break;
-     case 'N': t->method_name = "`eh vector vbase constructor iterator'"; break;
-     case 'O': t->method_name = "`copy constructor closure'"; break;
-     case 'P': t->method_name = "`udt returning'"; break;
+     case '0': t->add_name("operator/="); break;
+     case '1': t->add_name("operator%="); break;
+     case '2': t->add_name("operator>>="); break;
+     case '3': t->add_name("operator<<="); break;
+     case '4': t->add_name("operator&="); break;
+     case '5': t->add_name("operator|="); break;
+     case '6': t->add_name("operator^="); break;
+     case '7': t->add_name("`vftable'"); break;
+     case '8': t->add_name("`vbtable'"); break;
+     case '9': t->add_name("`vcall'"); break;
+     case 'A': t->add_name("`typeof'"); break;
+     case 'B': t->add_name("`local static guard'"); break;
+     case 'C': get_string(t);
+      return t;
+     case 'D': t->add_name("`vbase destructor'"); break;
+     case 'E': t->add_name("`vector deleting destructor'"); break;
+     case 'F': t->add_name("`default constructor closure'"); break;
+     case 'G': t->add_name("`scalar deleting destructor'"); break;
+     case 'H': t->add_name("`vector constructor iterator'"); break;
+     case 'I': t->add_name("`vector destructor iterator'"); break;
+     case 'J': t->add_name("`vector vbase constructor iterator'"); break;
+     case 'K': t->add_name("`virtual displacement map'"); break;
+     case 'L': t->add_name("`eh vector constructor iterator'"); break;
+     case 'M': t->add_name("`eh vector destructor iterator'"); break;
+     case 'N': t->add_name("`eh vector vbase constructor iterator'"); break;
+     case 'O': t->add_name("`copy constructor closure'"); break;
+     case 'P': t->add_name("`udt returning'"); break;
      case 'R': return get_rtti(t);
-     case 'S': t->method_name = "`local vftable'"; break;
-     case 'T': t->method_name = "`local vftable constructor closure'"; break;
-     case 'U': t->method_name = "operator new[]"; break;
-     case 'V': t->method_name = "operator delete[]"; break;
-     case 'X': t->method_name = "`placement delete closure'"; break;
-     case 'Y': t->method_name = "`placement delete[] closure'"; break;
+     case 'S': t->add_name("`local vftable'"); break;
+     case 'T': t->add_name("`local vftable constructor closure'"); break;
+     case 'U': t->add_name("operator new[]"); break;
+     case 'V': t->add_name("operator delete[]"); break;
+     case 'X': t->add_name("`placement delete closure'"); break;
+     case 'Y': t->add_name("`placement delete[] closure'"); break;
      case '_':
       c = get_next_char();
       switch(c) {
-       case 'A': t->method_name = "`managed vector constructor iterator'"; break;
-       case 'B': t->method_name = "`managed vector destructor iterator'"; break;
-       case 'C': t->method_name = "`eh vector copy constructor iterator'"; break;
-       case 'D': t->method_name = "`eh vector vbase copy constructor iterator'"; break;
-       case 'E': t->method_name = "`dynamic initializer'"; break;
-       case 'F': t->method_name = "`dynamic atexit destructor'"; break;
-       case 'G': t->method_name = "`vector copy constructor iterator'"; break;
-       case 'H': t->method_name = "`vector vbase copy constructor iterator'"; break;
-       case 'I': t->method_name = "`managed vector copy constructor iterator'"; break;
-       case 'J': t->method_name = "`local static thread guard'"; break;
+       case 'A': t->add_name("`managed vector constructor iterator'"); break;
+       case 'B': t->add_name("`managed vector destructor iterator'"); break;
+       case 'C': t->add_name("`eh vector copy constructor iterator'"); break;
+       case 'D': t->add_name("`eh vector vbase copy constructor iterator'"); break;
+       case 'E': t->add_name("`dynamic initializer'"); break;
+       case 'F': t->add_name("`dynamic atexit destructor'"); break;
+       case 'G': t->add_name("`vector copy constructor iterator'"); break;
+       case 'H': t->add_name("`vector vbase copy constructor iterator'"); break;
+       case 'I': t->add_name("`managed vector copy constructor iterator'"); break;
+       case 'J': t->add_name("`local static thread guard'"); break;
        default:
-        bad_code_msg(c, "special name '__')");
-        throw DemanglerError(error);
+        bad_code(c, "special name '__')");
       }
+      break;
      default:
-      bad_code_msg(c, "special name '_'");
-      throw DemanglerError(error);
+      bad_code(c, "special name '_'");
     }
     break;
+   case '@':
+    t->symbol_type = SymbolType::HexSymbol;
+    advance_to_next_char();
+    t->simple_type = get_literal();
+    return t;
    default:
-    bad_code_msg(c, "special name");
-    throw DemanglerError(error);
+    bad_code(c, "special name");
   }
 
   advance_to_next_char();
+  return t;
+}
+
+DemangledTypePtr & VisualStudioDemangler::get_string(DemangledTypePtr & t) {
+  char c = get_next_char();
+  if (c != '@') {
+    bad_code(c, "string constant");
+  }
+  c = get_next_char();
+  if (c != '_') {
+    bad_code(c, "string constant");
+  }
+  c = get_next_char();
+  bool multibyte = false;
+  switch (c) {
+   case '0': break;
+   case '1': multibyte = true; break;
+   default:
+    bad_code(c, "string constant");
+  }
+  advance_to_next_char();
+  auto real_len = get_number();
+  auto len = std::min(real_len, int64_t(multibyte ? 64 : 32));
+  UNUSED int64_t hash = get_number();
+  std::string result;
+  for (int64_t i = 0; i < len; ++i) {
+    char v;
+    c = get_current_char();
+    if (c == '@') {
+      break;
+    }
+    if (c == '?') {
+      c = get_next_char();
+      if (c == '$') {
+        // Hexadecimal byte
+        v = 0;
+        for (int j = 0; j < 2; ++j) {
+          c = get_next_char();
+          if (c < 'A' || c > 'P') {
+            bad_code(c, "character hex digit");
+          }
+          v = v * 16 + (c - 'A');
+        }
+      } else if (c >= '0' && c <= '9') {
+        // Special encodings
+        static char const * special = ",/\\:. \v\n'-";
+        v = special[c - '0'];
+      } else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+        v = c + 0x80;
+      } else {
+        bad_code(c, "string special char");
+      }
+    } else {
+      v = c;
+    }
+    result.push_back(v);
+    advance_to_next_char();
+  }
+
+  if (multibyte) {
+    std::basic_string<char16_t> wide;
+    for (size_t i = 0; i < result.size(); i += 2) {
+      char16_t c16 = result[i] * 0x100 + result[i + 1];
+      wide.push_back(c16);
+    }
+    result = boost::locale::conv::utf_to_utf<char>(wide);
+  }
+  if (result.back() == 0) {
+    result.pop_back();
+  }
+
+  t->symbol_type = SymbolType::String;
+  t->inner_type = std::make_shared<DemangledType>();
+  t->inner_type->simple_type = multibyte ? "char16_t" : "char";
+  t->simple_type = "`string'";
+  t->n1 = multibyte ? (real_len / 2) : real_len;
+  t->is_pointer = true;
+  t->add_name(std::move(result));
   return t;
 }
 
@@ -1071,7 +1282,7 @@ DemangledTypePtr & VisualStudioDemangler::get_rtti(DemangledTypePtr & t) {
     advance_to_next_char();
     // Why there's a return type for RTTI descriptor is a little unclear to me...
     get_return_type(t);
-    t->method_name = "`RTTI Type Descriptor'";
+    t->add_name("`RTTI Type Descriptor'");
     break;
    case '1': {
      advance_to_next_char();
@@ -1080,22 +1291,22 @@ DemangledTypePtr & VisualStudioDemangler::get_rtti(DemangledTypePtr & t) {
      t->n2 = get_number();
      t->n3 = get_number();
      t->n4 = get_number();
-     std::string location = boost::str(boost::format("(%d, %d, %d, %d)'") % t->n1 % t->n2 % t->n3 % t->n4);
-     t->method_name = "`RTTI Base Class Descriptor at " + location;
+     std::string location = boost::str(boost::format("(%d, %d, %d, %d)'")
+                                       % t->n1 % t->n2 % t->n3 % t->n4);
+     t->add_name("`RTTI Base Class Descriptor at " + location);
      break;
    }
    case '2':
     advance_to_next_char();
-    t->method_name = "`RTTI Base Class Array'"; break;
+    t->add_name("`RTTI Base Class Array'"); break;
    case '3':
     advance_to_next_char();
-    t->method_name = "`RTTI Class Hierarchy Descriptor'"; break;
+    t->add_name("`RTTI Class Hierarchy Descriptor'"); break;
    case '4':
     advance_to_next_char();
-    t->method_name = "`RTTI Complete Object Locator'"; break;
+    t->add_name("`RTTI Complete Object Locator'"); break;
    default:
-    bad_code_msg(c, "RTTI");
-    throw DemanglerError(error);
+    bad_code(c, "RTTI");
   }
 
   return t;
@@ -1110,10 +1321,10 @@ VisualStudioDemangler::update_storage_class(DemangledTypePtr & t, Distance dista
   t->is_const = is_const;
   t->is_volatile = is_volatile;
   t->is_func = is_func;
+  t->is_member = is_member;
 
   // Unused currently...
   t->is_based = is_based;
-  t->is_member = is_member;
 
   // Successfully consume this character code.
   advance_to_next_char();
@@ -1188,13 +1399,11 @@ DemangledTypePtr & VisualStudioDemangler::get_storage_class(DemangledTypePtr & t
      case 'C': return update_storage_class(t, Distance::Near, false, false, true,  true, true);
      case 'D': return update_storage_class(t, Distance::Far,  false, false, true,  true, true);
      default:
-      bad_code_msg(c, "extended storage class");
-      throw DemanglerError(error);
+      bad_code(c, "extended storage class");
     }
     break;
    default:
-    bad_code_msg(c, "storage class");
-    throw DemanglerError(error);
+    bad_code(c, "storage class");
   }
 
   advance_to_next_char();
@@ -1253,8 +1462,7 @@ DemangledTypePtr & VisualStudioDemangler::process_return_storage_class(Demangled
     t->is_volatile = true;
     break;
    default:
-    bad_code_msg(c, "return storage class");
-    throw DemanglerError(error);
+    bad_code(c, "return storage class");
   }
 
   advance_to_next_char();
@@ -1301,6 +1509,10 @@ DemangledTypePtr & VisualStudioDemangler::get_symbol_type(DemangledTypePtr & t)
     t->symbol_type = SymbolType::GlobalObject;
     return t;
 
+   case '5':
+    t->symbol_type = SymbolType::StaticGuard;
+    return t;
+
     // Every indication is that 6 and 7 demangle identically in the offical undname tool.
    case '6':
    case '7':
@@ -1343,9 +1555,51 @@ DemangledTypePtr & VisualStudioDemangler::get_symbol_type(DemangledTypePtr & t)
    case 'Y': t->symbol_type = SymbolType::GlobalFunction; t->distance = Distance::Near; return t;
    case 'Z': t->symbol_type = SymbolType::GlobalFunction; t->distance = Distance::Far; return t;
 
+   case '$':
+    c = get_current_char();
+    advance_to_next_char();
+    switch (c) {
+     case '0': update_method(t, Scope::Private, MethodProperty::Thunk, Distance::Near); break;
+     case '1': update_method(t, Scope::Private, MethodProperty::Thunk, Distance::Far); break;
+     case '2': update_method(t, Scope::Protected, MethodProperty::Thunk, Distance::Near); break;
+     case '3': update_method(t, Scope::Protected, MethodProperty::Thunk, Distance::Far); break;
+     case '4': update_method(t, Scope::Public, MethodProperty::Thunk, Distance::Near); break;
+     case '5': update_method(t, Scope::Public, MethodProperty::Thunk, Distance::Far); break;
+     case 'B':
+      t->method_property = MethodProperty::Thunk;
+      t->symbol_type = SymbolType::MethodThunk;
+      return t;
+     case '$':
+      // Prefix codes
+      c = get_current_char();
+      advance_to_next_char();
+      switch (c) {
+       case 'J':
+        {
+          t->extern_c = true;
+          // Ignore the next <number> - 1 characters
+          auto n = get_number() - 1;
+          for (int i = 0; i < n; ++i) {
+            advance_to_next_char();
+          }
+        }
+        break;
+       case 'F':
+       case 'H':
+        // Unknown.  No difference in undname output
+        break;
+       default:
+        bad_code(c, "symbol type prefix");
+      }
+      return get_symbol_type(t);
+     default:
+      bad_code(c, "extended symbol type");
+    }
+    t->symbol_type = SymbolType::VtorDisp;
+    return t;
+    break;
    default:
-    bad_code_msg(c, "symbol type");
-    throw DemanglerError(error);
+    bad_code(c, "symbol type");
   }
 }
 
@@ -1354,6 +1608,11 @@ DemangledTypePtr & VisualStudioDemangler::get_symbol_type(DemangledTypePtr & t)
 DemangledTypePtr & VisualStudioDemangler::process_method_storage_class(DemangledTypePtr & t)
 {
   get_storage_class_modifiers(t);
+  int handling_cli_array;
+  get_managed_properties(t, handling_cli_array);
+  if (handling_cli_array) {
+    general_error("unexpected cli array");
+  }
 
   char c = get_current_char();
   switch(c) {
@@ -1374,8 +1633,7 @@ DemangledTypePtr & VisualStudioDemangler::process_method_storage_class(Demangled
     t->is_volatile = true;
     break;
    default:
-    bad_code_msg(c, "method storage class");
-    throw DemanglerError(error);
+    bad_code(c, "method storage class");
   }
 
   advance_to_next_char();
@@ -1388,7 +1646,7 @@ void VisualStudioDemangler::get_symbol_start() {
   if (c != '?') {
     error = boost::str(boost::format("'%c' at position %d") % c % offset);
     error = "Expected '?' code at start of symbol, instead found character " + error;
-    throw DemanglerError(error);
+    throw Error(error);
   }
   progress("new symbol");
   advance_to_next_char();
@@ -1426,8 +1684,7 @@ DemangledTypePtr & VisualStudioDemangler::get_templated_function_arg(DemangledTy
    case 'G':
    case 'Q':
    default:
-    bad_code_msg(c, "templated function arg");
-    throw DemanglerError(error);
+    bad_code(c, "templated function arg");
   }
 
   // Hack thing to consume 0, D, F, G, & Q.
@@ -1453,12 +1710,11 @@ struct save_stack {
 } // unnamed namespace
 
 
-DemangledTypePtr & VisualStudioDemangler::get_templated_type(DemangledTypePtr & t)
+DemangledTypePtr & VisualStudioDemangler::get_templated_type(DemangledTypePtr & templated_type)
 {
   // The current character was the '$' when this method was called.
   char c = get_next_char();
   progress("templated symbol");
-  auto templated_type = std::make_shared<DemangledType>();
 
   // Whenever we start a new template, we start a new name stack.
   auto saved_name_stack = save_stack(name_stack);
@@ -1473,8 +1729,6 @@ DemangledTypePtr & VisualStudioDemangler::get_templated_type(DemangledTypePtr & 
     }
     else {
       get_special_name_code(templated_type);
-      // Very ugly and hackish...
-      templated_type->simple_type = templated_type->method_name;
     }
   }
   else {
@@ -1503,13 +1757,34 @@ DemangledTypePtr & VisualStudioDemangler::get_templated_type(DemangledTypePtr & 
         parameter = std::make_shared<DemangledTemplateParameter>(get_symbol());
         parameter->pointer = true;
         break;
+       case 'H':
+        advance_to_next_char();
+        progress("constant function pointer template parameter");
+        parameter = std::make_shared<DemangledTemplateParameter>(get_symbol());
+        parameter->pointer = true;
+        parameter->constant_value = get_number();
+        break;
+       case 'S':
+        // Empty non-type parameter pack.  Treat similar to $$V
+        advance_to_next_char();
+        progress("empty non-type parameter pack");
+        break;
        case '$':
-        offset--;
-        parameter = std::make_shared<DemangledTemplateParameter>(get_type());
+        {
+          // We'll interpret as a $$ type, but there could be any number of $s first.  So skip
+          // past the last $ and then go back two
+          auto pos = mangled.find_first_not_of('$', offset);
+          if (pos == std::string::npos) {
+            bad_code(c, "template argument");
+          }
+          offset = pos - 2;
+          if (auto type = get_type()) {
+            parameter = std::make_shared<DemangledTemplateParameter>(std::move(type));
+          }
+        }
         break;
        default:
-        bad_code_msg(c, "template argument");
-        throw DemanglerError(error);
+        bad_code(c, "template argument");
       }
     }
     else {
@@ -1525,10 +1800,7 @@ DemangledTypePtr & VisualStudioDemangler::get_templated_type(DemangledTypePtr & 
   // Advance past the '@' that marked the end of the template parameters.
   advance_to_next_char();
 
-  // Record the templated type in the name of the current type.
-  t->name.insert(t->name.begin(), std::move(templated_type));
-
-  return t;
+  return templated_type;
 }
 
 
@@ -1549,9 +1821,9 @@ DemangledTypePtr & VisualStudioDemangler::get_fully_qualified_name(
       if (c == '$') {
         auto tt = std::make_shared<DemangledType>();
         get_templated_type(tt);
-        t->name.insert(t->name.begin(), tt);
+        t->name.push_back(tt);
         if (pushing) {
-          name_stack.push_back(tt);
+          name_stack.push_back(std::move(tt));
           stack_debug(name_stack, name_stack.size()-1, "name");
         }
       }
@@ -1560,53 +1832,41 @@ DemangledTypePtr & VisualStudioDemangler::get_fully_qualified_name(
         // it's not the first term it's a numbered namespace?  This seems like more evidence
         // that the parsing of the first term is definitely a different routine than the
         // namespace terms in a fully qualified name...   Perhaps some code cleanup is needed?
-        if (first) {
-          get_special_name_code(t);
+        if (first || get_current_char() == '?') {
+          auto tt = std::make_shared<DemangledType>();
+          tt = get_special_name_code(tt);
+          if (tt->symbol_type != t->symbol_type) {
+            return t = std::move(tt);
+          }
+          t->name.push_back(std::move(tt));
         }
         else {
-          // ?? inside a namespace is a quoted namespace...
-          if (get_current_char() == '?') {
-            advance_to_next_char();
-            // Yet another question mark...  This makes three in a row.
-            if (get_current_char() == '?') {
-              bad_code_msg('?', "??? thing");
-              throw DemanglerError(error);
-            }
-            else {
-              auto ns = std::make_shared<Namespace>(get_literal());
-              ns->is_embedded = true;
-              if (debug) std::cout << "Found quoted namespace: " << ns->str() << std::endl;
-              t->name.insert(t->name.begin(), std::move(ns));
-            }
+          // Wow is this ugly.  But it looks like Microsoft really did it this way, so what
+          // else can we do?  A number that starts with 'A' would be a namespace number that
+          // has a leading zero digit, which is not required.  Thus it signals a strangely
+          // handled "anonymous namespace" with a discarded unqie identifier.
+          if (get_current_char() == 'A') {
+            t->name.push_back(get_anonymous_namespace());
           }
           else {
-            // Wow is this ugly.  But it looks like Microsoft really did it this way, so what
-            // else can we do?  A number that starts with 'A' would be a namespace number that
-            // has a leading zero digit, which is not required.  Thus it signals a strangely
-            // handled "anonymous namespace" with a discarded unqie identifier.
-            if (get_current_char() == 'A') {
-              t->name.insert(t->name.begin(), get_anonymous_namespace());
-            }
-            else {
-              uint64_t number = get_number();
-              std::string numbered_namespace = boost::str(boost::format("`%d'") % number);
-              if (debug) std::cout << "Found numbered namespace: "
-                                   << numbered_namespace << std::endl;
-              auto nns = std::make_shared<Namespace>(numbered_namespace);
-              t->name.insert(t->name.begin(), std::move(nns));
-            }
+            uint64_t number = get_number();
+            std::string numbered_namespace = boost::str(boost::format("`%d'") % number);
+            if (debug) std::cout << "Found numbered namespace: "
+                                 << numbered_namespace << std::endl;
+            auto nns = std::make_shared<Namespace>(numbered_namespace);
+            t->name.push_back(std::move(nns));
           }
         }
       }
     }
     else if (c >= '0' && c <= '9') {
       progress("reference to symbol");
-      t->name.insert(t->name.begin(), resolve_reference(name_stack, c));
+      t->name.push_back(resolve_reference(name_stack, c));
       advance_to_next_char();
     }
     else {
       auto ns = std::make_shared<Namespace>(get_literal());
-      t->name.insert(t->name.begin(), ns);
+      t->name.push_back(ns);
       name_stack.push_back(std::move(ns));
       stack_debug(name_stack, name_stack.size()-1, "name");
     }
@@ -1630,13 +1890,13 @@ DemangledTypePtr VisualStudioDemangler::get_anonymous_namespace() {
   char c = get_next_char();
   size_t start_offset = offset;
   if (c != '0') {
-      error = boost::str(boost::format("Expected '0' in anonymous namespace, found '%c'.") % c);
-      throw DemanglerError(error);
+    general_error(
+      boost::str(boost::format("Expected '0' in anonymous namespace, found '%c'.") % c));
   }
   c = get_next_char();
   if (c != 'x') {
-      error = boost::str(boost::format("Expected 'x' in anonymous namespace, found '%c'.") % c);
-      throw DemanglerError(error);
+    general_error(
+      boost::str(boost::format("Expected 'x' in anonymous namespace, found '%c'.") % c));
   }
 
   size_t digits = 0;
@@ -1647,8 +1907,9 @@ DemangledTypePtr VisualStudioDemangler::get_anonymous_namespace() {
       // Allowed
     }
     else {
-      error = boost::str(boost::format("Disallowed character '%c' in literal string.") % c);
-      throw DemanglerError(error);
+      general_error(
+        boost::str(boost::format("Disallowed character '%c' in anonymous namespace digits.")
+                   % c));
     }
     c = get_next_char();
     digits++;
@@ -1674,16 +1935,20 @@ std::string VisualStudioDemangler::get_literal() {
 
   char c = get_current_char();
   while (c != '@') {
-    // Allowed characters are:
-    if ((c >= 'A' && c <= 'Z') || // uppercase letters
-        (c >= 'a' && c <= 'z') || // lowercase letters
-        (c >= '0' && c <= '9') || // digits
-        c == '_' || c == '$') {  // underscore and dollar sign
-      // Allowed
-    }
-    else {
-      error = boost::str(boost::format("Disallowed character '%c' in literal string.") % c);
-      throw DemanglerError(error);
+    switch (c) {
+      // misc punctuation
+     case '_': case '$':
+     case '<': case '>':
+     case '-': case '.':
+      break;
+     default:
+      if (!((c >= 'A' && c <= 'Z') || // uppercase letters
+            (c >= 'a' && c <= 'z') || // lowercase letters
+            (c >= '0' && c <= '9'))) // digits
+      {
+        general_error(
+          boost::str(boost::format("Disallowed character '%c' in literal string.") % c));
+      }
     }
     c = get_next_char();
   }
@@ -1741,20 +2006,17 @@ int64_t VisualStudioDemangler::get_number() {
   }
 
   if (c != '@') {
-    error = "Numbers must be terminated with an '@' character. ";
-    throw DemanglerError(error);
+    general_error("Numbers must be terminated with an '@' character. ");
   }
   progress("end of number");
   advance_to_next_char();
 
   if (digits_found <= 0) {
-    error = "There were too few hex digits endecoded in the number.";
-    throw DemanglerError(error);
+    general_error("There were too few hex digits endecoded in the number.");
   }
 
-  if (digits_found > 8) {
-    error = "There were too many hex digits encoded in the number.";
-    throw DemanglerError(error);
+  if (digits_found > 16) {
+    general_error("There were too many hex digits encoded in the number.");
   }
 
   if (negative) return -num;
@@ -1762,6 +2024,17 @@ int64_t VisualStudioDemangler::get_number() {
 }
 
 DemangledTypePtr & VisualStudioDemangler::get_function(DemangledTypePtr & t) {
+  // Storage class for methods
+  if (t->is_func && t->is_member) {
+    auto tmp = std::make_shared<DemangledType>();
+    get_storage_class_modifiers(tmp);
+    get_storage_class(tmp);
+    t->is_const = tmp->is_const;
+    t->is_volatile = tmp->is_volatile;
+    t->ptr64 = tmp->ptr64;
+    t->unaligned = tmp->unaligned;
+    t->restrict = tmp->restrict;
+  }
   // And then the remaining codes are the same for functions and methods.
   process_calling_convention(t);
   // Return code.  It's annoying that the modifiers come first and require us to allocate it.
@@ -1802,8 +2075,7 @@ DemangledTypePtr & VisualStudioDemangler::get_function(DemangledTypePtr & t) {
   }
 
   //if (get_current_char() != 'Z') {
-  //  error = "Expected 'Z' to terminate function.";
-  //  throw DemanglerError(error);
+  //  general_error("Expected 'Z' to terminate function.");
   //}
   return t;
 }
@@ -1813,25 +2085,26 @@ DemangledTypePtr VisualStudioDemangler::get_symbol() {
 
   auto t = std::make_shared<DemangledType>();
   get_fully_qualified_name(t, false);
-  progress("here");
-  get_symbol_type(t);
+  if (t->symbol_type == SymbolType::Unspecified) {
+    get_symbol_type(t);
+  }
 
   switch(t->symbol_type) {
    case SymbolType::GlobalThing2:
-    t->instance_name = t->name;
-    t->name.clear();
-    process_method_storage_class(t);
-    // The interface name is optional.
-    if (get_current_char() != '@') {
-      t->com_interface = std::make_shared<DemangledType>();
-      get_fully_qualified_name(t->com_interface);
-    }
-    if (get_current_char() != '@') {
-      error = "Expected '@' at end of SymbolType6.";
-      throw DemanglerError(error);
+    {
+      t->instance_name = t->name;
+      t->name.clear();
+      process_method_storage_class(t);
+      // The interface name is optional.
+      while (get_current_char() != '@') {
+        auto n = std::make_shared<DemangledType>();
+        t->com_interface.push_back(get_fully_qualified_name(n, false));
+      }
     }
     return t;
+   case SymbolType::String:
    case SymbolType::GlobalThing1:
+   case SymbolType::HexSymbol:
     return t;
    case SymbolType::GlobalObject:
    case SymbolType::StaticClassMember:
@@ -1840,19 +2113,39 @@ DemangledTypePtr VisualStudioDemangler::get_symbol() {
     t->instance_name = t->name;
     t->name.clear();
     get_type(t); // Table 9
+    get_storage_class_modifiers(t);
     get_storage_class(t); // Table 10
     return t;
+   case SymbolType::VtorDisp:
+    // Get the displacement, then treat as method
+    t->n1 = get_number();
+    // Fall through
    case SymbolType::ClassMethod:
+    if (t->method_property == MethodProperty::Thunk) {
+      // get the thunk offset
+      t->n2 = get_number();
+    }
     // There's no storage class code for static class methods.
     if (t->method_property != MethodProperty::Static) {
       process_method_storage_class(t); // Table 15
     }
-    // Fall through to global function.
+    // Fall through
    case SymbolType::GlobalFunction:
     return get_function(t);
+   case SymbolType::StaticGuard:
+    t->n1 = get_number();
+    return t;
+   case SymbolType::MethodThunk:
+    t->n1 = get_number();
+    switch (char c = get_current_char()) {
+     case 'A': break; // Only known type: flat
+     default: bad_code(c, "method thunk type");
+    }
+    advance_to_next_char();
+    process_calling_convention(t);
+    return t;
    default:
-    error = "Unrecognized symbol type.";
-    throw DemanglerError(error);
+    general_error("Unrecognized symbol type.");
   }
 }
 
@@ -1862,8 +2155,8 @@ DemangledTypePtr VisualStudioDemangler::analyze() {
 
   char c = get_current_char();
   if (c == '_') {
-    error = "Mangled names beginning with '_' are currently not supported.";
-    throw DemanglerError(error);
+    general_error("Mangled names beginning with '_' are currently not supported.");
+    throw Error(error);
   }
   else if (c == '.') {
     advance_to_next_char();
@@ -1876,6 +2169,9 @@ DemangledTypePtr VisualStudioDemangler::analyze() {
     return get_symbol();
   }
 }
+
+} // namespace detail
+} // namespace demangle
 
 /* Local Variables:   */
 /* mode: c++          */

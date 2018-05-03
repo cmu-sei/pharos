@@ -321,7 +321,7 @@ bool Session::register_cxx_predicate(
   impl::c2p_int(idx, impl::p2p_arg(rhs, 1));
   // unify A1 to A1, A2 to A2, etc.
   for (int i = 0; i < arity; ++i) {
-    bool check = impl::p2p_unify(impl::p2p_arg(lhs, i + 1), impl::p2p_arg(rhs, i + 2));
+    UNUSED bool check = impl::p2p_unify(impl::p2p_arg(lhs, i + 1), impl::p2p_arg(rhs, i + 2));
     assert(check);
   }
   bool rv = run_command();

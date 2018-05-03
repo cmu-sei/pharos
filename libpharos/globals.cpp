@@ -5,6 +5,7 @@
 #include "descriptors.hpp"
 #include "datatypes.hpp"
 #include "util.hpp"
+#include "types.hpp"
 #include "typedb.hpp"
 
 namespace pharos {
@@ -19,26 +20,86 @@ GlobalMemoryDescriptor::GlobalMemoryDescriptor() {
   access_size = 0;
 
   // Because we have no concept of NULL symbolic values, empty will have to do
-  value = SymbolicValuePtr();
+
+  values.push_back(SymbolicValuePtr());
   memory_address = SymbolicValuePtr();
 }
 
 GlobalMemoryDescriptor::GlobalMemoryDescriptor(rose_addr_t addr) {
-    address = addr;
-    confidence = ConfidenceNone;
-    type = DTypeNone;
-    size = 0;
-    access_size = 0;
-    analyze(addr);
+  address = addr;
+  confidence = ConfidenceNone;
+  type = DTypeNone;
+  size = 0;
+  access_size = 0;
+  analyze(addr);
 
-    // defaulting to the width of the architcture. This is not really right, but not really
-    // wrong either
-    size_t arch_bits = global_descriptor_set->get_arch_bits();
-    memory_address = SymbolicValue::constant_instance(arch_bits, addr);
+  // defaulting to the width of the architcture. This is not really right, but not really
+  // wrong either
+  size_t arch_bits = global_descriptor_set->get_arch_bits();
+  memory_address = SymbolicValue::constant_instance(arch_bits, addr);
+  values.push_back(SymbolicValue::variable_instance(arch_bits));
+}
 
-    // We don't really know the value of the global variable. We can get it's initial value,
-    // but that can change over the course of the program
-    value = SymbolicValue::variable_instance(arch_bits);
+
+std::string
+GlobalMemoryDescriptor::to_string() const {
+  std::stringstream ostr;
+
+  ostr << "Global variable at " << address_string();
+  if (memory_address) {
+    TreeNodePtr global_addr_tnp = memory_address->get_expression();
+    if (global_addr_tnp) {
+
+      // TODO: This is useful for this when done debugging
+      int64_t addr_raw = reinterpret_cast<int64_t>(&*global_addr_tnp);
+      ostr << ", " << "raw=(" << addr_str(addr_raw) << ")";
+
+      TypeDescriptorPtr addr_td = fetch_type_descriptor(global_addr_tnp);
+      ostr << " addr=" << *global_addr_tnp << " addr td=(" << addr_td->to_string() << ")";
+    }
+    else {
+      ostr << " address=(invalid)";
+    }
+  }
+
+  auto global_values = values;
+  if (global_values.empty() == false) {
+
+    size_t i = 0;
+    ostr << " values=({";
+
+    for (auto gv : global_values) {
+      TreeNodePtr val_tnp = gv->get_expression();
+      if (val_tnp) {
+        ostr << "(exp=(" << *val_tnp << ")";
+      }
+      else {
+        ostr << "<unknown>";
+      }
+      TypeDescriptorPtr global_value_tdp = fetch_type_descriptor(gv);
+      ostr << " td=";
+      if (global_value_tdp) {
+        ostr << "(" << global_value_tdp->to_string() << ")";
+      }
+      else {
+        ostr << "<unknown>";
+      }
+      ostr << ")";
+
+      if (i+1 < global_values.size())  ostr << ", ";
+
+      ++i;
+    }
+    ostr << "})";
+  }
+  else {
+    std::cout << " values=(invalid)";
+  }
+  return ostr.str();
+}
+
+void GlobalMemoryDescriptor::add_value(SymbolicValuePtr new_val) {
+  values.push_back(new_val);
 }
 
 void GlobalMemoryDescriptor::short_print(std::ostream &o) const {
@@ -78,6 +139,10 @@ void GlobalMemoryDescriptor::print(std::ostream &o) const {
     o << " Write: " << debug_instruction(insn) << LEND;
   }
 }
+
+const InsnSet& GlobalMemoryDescriptor::get_writes() { return writes; }
+const InsnSet& GlobalMemoryDescriptor::get_reads() { return reads; }
+const InsnSet& GlobalMemoryDescriptor::get_refs() { return refs; }
 
 // Analyze a memory address (most commonly during construction).
 void GlobalMemoryDescriptor::analyze(rose_addr_t addr) {

@@ -1,0 +1,124 @@
+=pod
+
+=head1 NAME
+
+B<fn2yara> - Function based Yara signature generation
+
+=head1 SYNOPSIS
+
+fn2yara [--output-filename=YARA_FILE] [--min-instructions=NUMBER] 
+  [--max-string-bytes=NUMBER] [--basic-blocks] [--comparison]
+  [--threshold=NUMBER] [--prefix=STRING] [--address-only]
+  [--include-thunks] [--oldway] [...Pharos options...] EXECUTABLE_FILE
+
+fn2yara --help
+
+fn2yara --rose-version
+
+@PHAROS_OPTS_POD@
+
+=head1 DESCRIPTION
+
+B<fn2yara> does stuff...
+
+=head1 OPTIONS
+
+=head2 B<fn2yara> OPTIONS
+
+The following options are specific to the B<fn2yara> program.
+
+=over 4
+
+=item B<--output-filename>=I<YARA_FILE>, B<-o>=I<YARA_FILE>
+
+output filename (defaults to the filename suffixed by .yara)
+
+=item B<--min-instructions>=I<NUMBER>, B<-m>=I<NUMBER>
+
+Minimum number of instructions needed for an instruction block to be
+output for a function. default = 5.
+
+=item B<--max-string-bytes>=I<NUMBER>, B<-M>=I<NUMBER>
+
+Maximum size allowed for a yara string (in bytes) to be output for a
+function (no rule generated if any string exceeds this).  Default =
+10000.
+
+=item B<--basic-blocks>, B<-B>
+
+Split rules strictly by basic blocks
+
+=item B<--comparison>, B<-c>
+
+Output a yara single rule that matches all instruction blocks found in
+the program.
+
+=item B<--threshold>=I<NUMBER>, B<-T>=I<NUMBER>
+
+A percentage threshold for the number of strings that need to match in
+any given rule.  Default = 100.
+
+=item B<--prefix>=I<STRING>, B<-p>=I<STRING>
+
+Prefix for rule names
+
+=item B<--address-only>, B<-a>
+
+Only output addresses of candidate functions, rather than rules.  Not
+in YARA format.
+
+=item B<--include-thunks>
+
+include thunks in output
+
+=item B<--oldway>, B<-o>
+
+use old hacky way to PIC.  (probably should be removed)
+
+=back
+
+@PHAROS_OPTIONS_POD@
+
+=head1 EXAMPLES
+
+Put examples here.
+
+=head1 ENVIRONMENT
+
+=over 4
+
+@PHAROS_ENV_POD@
+
+=back
+
+=head1 FILES
+
+=over 4 
+
+@PHAROS_FILES_POD@
+
+=back
+
+=for compiled
+head1 NOTES
+
+=head1 AUTHOR
+
+Written by the Software Engineering Institute at Carnegie Mellon
+University.  The primary author was Michael Duggan.
+
+=head1 COPYRIGHT
+
+Copyright 2018 Carnegie Mellon University.  All rights reserved.  This
+software is licensed under a "BSD" license.  Please see I<LICENSE.txt>
+for details.
+
+=for comment
+head1 SEE ALSO
+
+=cut
+
+Local Variables:
+mode:text
+indent-tabs-mode:nil
+End:

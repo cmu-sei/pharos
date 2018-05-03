@@ -7,13 +7,18 @@
 
 namespace pharos {
 
-// Global table for tracking unique virtual function tables.  This allow us to prevent
-// duplicated effort, by re-using earlier analysis of the same table.  Should perhaps be part
-// of the global descriptor set.
-VFTableAddrMap global_vftables;
 
-// Global tables of virtual base tables...
-VBTableAddrMap global_vbtables;
+VirtualTableInstallation::VirtualTableInstallation(
+  SgAsmInstruction* i, FunctionDescriptor* f, rose_addr_t a,
+  TreeNodePtr w, int64_t o, bool b) {
+  insn = i;
+  fd = f;
+  table_address = a;
+  written_to = w;
+  offset = o;
+  base_table = b;
+}
+
 
 TypeRTTICompleteObjectLocator *
 read_RTTI(rose_addr_t addr)
@@ -37,12 +42,12 @@ read_RTTI(rose_addr_t addr)
   return NULL;
 }
 
-void VirtualBaseTable::analyze() {
+bool VirtualBaseTable::analyze() {
   // Set the size to zero to indicate that we're not a valid virtual base table.
   size = 0;
 
   // If we don't have a vbtable address yet, there's nothing to analyze.
-  if (addr == 0) return;
+  if (addr == 0) return false;
 
   size_t arch_bytes = global_descriptor_set->get_arch_bytes();
 
@@ -82,12 +87,14 @@ void VirtualBaseTable::analyze() {
   }
 
   GDEBUG << "Virtual base table " << addr_str(addr) << " has " << size << " valid entries." << LEND;
+  return valid();
 }
 
 void VirtualBaseTable::analyze_overlaps() {
   unsigned int limit;
   size_t arch_bytes = global_descriptor_set->get_arch_bytes();
-  for (const VirtualFunctionTable* vft : boost::adaptors::values(global_vftables)) {
+  VFTableAddrMap& vftables = global_descriptor_set->get_vftables();
+  for (const VirtualFunctionTable* vft : boost::adaptors::values(vftables)) {
     if (vft->addr > addr) {
       // Don't bound ourselves by other vftables if we know that they are invalid.
       if (vft->best_size < 1) continue;
@@ -107,7 +114,8 @@ void VirtualBaseTable::analyze_overlaps() {
     }
   }
 
-  for (const VirtualBaseTable* vbt : boost::adaptors::values(global_vbtables)) {
+  VBTableAddrMap& vbtables = global_descriptor_set->get_vbtables();
+  for (const VirtualBaseTable* vbt : boost::adaptors::values(vbtables)) {
     if (vbt->addr > addr) {
       // Don't bound ourselves by other vbtables if we know that they are invalid.
       if (vbt->size < 2) continue;
@@ -129,6 +137,27 @@ signed int VirtualBaseTable::read_entry(unsigned int entry) const {
   // Read the function address value in that memory location...
   rose_addr_t object_offset = global_descriptor_set->read_addr(taddr);
   return (signed int)object_offset;
+}
+
+bool VirtualBaseTable::valid() const {
+  if (size > 1) {
+    return true;
+  }
+  return false;
+}
+
+bool VirtualFunctionTable::valid() const {
+  // The address can only truly be a virtual function table if it passes some basic tests,
+  // such as having at least one function pointer.
+  if (max_size < 1) {
+    // If there were no pointer at all, just reject the table outright.
+    if (non_function == 0) {
+      GDEBUG << "Possible virtual function table at " << addr_str(addr)
+             << " rejected because no valid pointers were found." << LEND;
+      return false;
+    }
+  }
+  return true;
 }
 
 // This method updates the minimum size of the vtable based on new information (typically a
@@ -215,12 +244,14 @@ void VirtualFunctionTable::analyze_rtti(const rose_addr_t address) {
 
 // This method updates the fields describing the virtual function table based on analyzing
 // the contents of the memory at the address of the table.
-void VirtualFunctionTable::analyze() {
+bool VirtualFunctionTable::analyze() {
   unsigned int failures = 0;
   unsigned int entry = 0;
 
+  VFTableAddrMap& vftables = global_descriptor_set->get_vftables();
+
   // If we don't have a vtable address yet, there's nothing to analyze.
-  if (addr == 0) return;
+  if (addr == 0) return false;
 
   // Before determining the size of the vftable, check to see if there is RTTI associated with
   // it.  The RTTI pointer will be located immediately before the table, and because it's a
@@ -289,14 +320,14 @@ void VirtualFunctionTable::analyze() {
       rose_addr_t next_taddr = taddr + arch_bytes;
       // Have we already processsed this vftable?  If so, don't do it again.
       VirtualFunctionTable* next_vftable = NULL;
-      if (global_vftables.find(next_taddr) == global_vftables.end()) {
+      if (vftables.find(next_taddr) == vftables.end()) {
         // Create a new table, analyze it, and then add it to the global map.
         next_vftable = new VirtualFunctionTable(taddr + arch_bytes);
         // This call could be recursive, but it's not obvious that's a problem.
         next_vftable->analyze();
         //OINFO << "Found an new VFTable at " << addr_str(next_taddr)
         //      << " with " << next_vftable->best_size << " entries." << LEND;
-        global_vftables[next_taddr] = next_vftable;
+        vftables[next_taddr] = next_vftable;
       }
       // An RTTI data structure is never a valid entry in a VFTable.
       break;
@@ -382,6 +413,8 @@ void VirtualFunctionTable::analyze() {
     // If we've got a reasonable maximum, we should also use that to update our best guess.
     update_size_guess();
   }
+
+  return valid();
 }
 
 } // namespace pharos

@@ -1,18 +1,16 @@
-// Copyright 2015, 2016, 2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <unordered_map>
 #include <limits>
+#include <algorithm>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
 #include <yaml-cpp/yaml.h>
 #pragma GCC diagnostic pop
-#include "util.hpp"
-#include "misc.hpp"
 #include "apidb.hpp"
-#include "descriptors.hpp"
 #include "demangle.hpp"
 #include <sqlite3.h>
-#include <boost/range/adaptor/reversed.hpp>
+#include <boost/range/adaptor/map.hpp>
 
 namespace pharos {
 
@@ -20,6 +18,8 @@ namespace {
 
 using Path = boost::filesystem::path;
 using boost::filesystem::is_directory;
+using boost::adaptors::values;
+using boost::adaptors::keys;
 
 using inout_map_t = std::map<std::string, APIParam::inout_t>;
 
@@ -58,9 +58,9 @@ struct pair_hash {
 
 using defhash = pair_hash<std::string, std::string>;
 using ordhash = pair_hash<std::string, size_t>;
-using defmap_t = std::unordered_map<defkey_t, APIDefinitionPtr, defhash>;
-using ordmap_t = std::unordered_map<ordkey_t, APIDefinitionPtr, ordhash>;
-using addrmap_t = std::unordered_map<rose_addr_t, APIDefinitionPtr>;
+using defmap_t = std::unordered_multimap<defkey_t, APIDefinitionPtr, defhash>;
+using ordmap_t = std::unordered_multimap<ordkey_t, APIDefinitionPtr, ordhash>;
+using addrmap_t = std::unordered_multimap<rose_addr_t, APIDefinitionPtr>;
 
 constexpr auto STACKDELTA_MAX =
   std::numeric_limits<decltype(APIDefinition::stackdelta)>::max();
@@ -68,6 +68,8 @@ constexpr auto RELATIVE_ADDRESS_MAX =
   std::numeric_limits<decltype(APIDefinition::relative_address)>::max();
 
 } // unnamed namespace
+
+Sawyer::Message::Facility APIDictionary::mlog;
 
 APIDefinition::APIDefinition() :
   relative_address(RELATIVE_ADDRESS_MAX),
@@ -78,32 +80,55 @@ APIDefinition::APIDefinition() :
 // This is essentially a macro used by all the MultiApiDictionary::get_api_definition
 // definitions
 template <typename... T>
-APIDefinitionPtr MultiApiDictionary::_get_api_definition(T &&... args) const
+APIDefinitionList MultiApiDictionary::_get_api_definition(T &&... args) const
 {
   for (auto & dict : dicts) {
     auto result = dict->get_api_definition(std::forward<T>(args)...);
-    if (result) {
-      return result;
+    if (!result.empty()) {
+      return std::move(result);
     }
   }
-  return nullptr;
+  return APIDefinitionList();
 }
 
-APIDefinitionPtr MultiApiDictionary::get_api_definition(
+APIDefinitionList MultiApiDictionary::get_api_definition(
   const std::string & dll_name, const std::string & func_name) const
 {
   return _get_api_definition(dll_name, func_name);
 }
 
-APIDefinitionPtr MultiApiDictionary::get_api_definition(
+APIDefinitionList MultiApiDictionary::get_api_definition(
   const std::string & dll_name, size_t ordinal) const
 {
   return _get_api_definition(dll_name, ordinal);
 }
 
-APIDefinitionPtr MultiApiDictionary::get_api_definition(rose_addr_t addr) const
+APIDefinitionList MultiApiDictionary::get_api_definition(rose_addr_t addr) const
 {
   return _get_api_definition(addr);
+}
+
+bool MultiApiDictionary::handles_dll(std::string const & dll_name) const
+{
+  for (auto & dict : dicts) {
+    if (dict->handles_dll(dll_name)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+std::string MultiApiDictionary::describe() const
+{
+  std::ostringstream os;
+  os << "API database multi wrapper {";
+  auto b = std::begin(dicts);
+  for (auto i = b; i != std::end(dicts); ++i) {
+    if (i != b) os << ", ";
+    os << (*i)->describe();
+  }
+  os << '}';
+  return os.str();
 }
 
 struct JSONApiDictionary::Data {
@@ -120,12 +145,11 @@ JSONApiDictionary::~JSONApiDictionary() = default;
 JSONApiDictionary::JSONApiDictionary(JSONApiDictionary &&) noexcept = default;
 JSONApiDictionary &JSONApiDictionary::operator=(JSONApiDictionary &&) = default;
 
-JSONApiDictionary::JSONApiDictionary(const std::string &path) : data(new Data())
+JSONApiDictionary::JSONApiDictionary(const std::string & path_)
+  : data(new Data()), path(path_)
 {
   data->load_on_demand = is_directory(path);
-  if (data->load_on_demand) {
-    directory = path;
-  } else {
+  if (!data->load_on_demand) {
     load_json(path);
   }
 }
@@ -150,6 +174,15 @@ inline std::string normalize_dll(const std::string &dll) {
 bool APIDictionary::handle_node(MultiApiDictionary & db, const YAML::Node & node,
                                 bool top, handle_error_t handle)
 {
+  auto add = [&db](std::unique_ptr<APIDictionary> && dict) {
+    auto complain = make_unique<ReportDictionary>(std::move(dict), dict->describe());
+    complain->dll_error_log(mlog[Sawyer::Message::WHERE])
+      .fn_error_log(mlog[Sawyer::Message::WHERE])
+      .fn_success_log(mlog[Sawyer::Message::TRACE])
+      .fn_detail_log(mlog[Sawyer::Message::DEBUG]);
+    db.add(std::move(complain));
+  };
+
   switch (node.Type()) {
    case YAML::NodeType::Scalar:
     // Interpret a simple string as a path to api information.
@@ -157,13 +190,13 @@ bool APIDictionary::handle_node(MultiApiDictionary & db, const YAML::Node & node
       auto path = Path(node.Scalar());
       if (!path.has_root_directory()) {
         // Relative paths will be considered relative to the library path.
-        path = global_descriptor_set->get_library_path() / path;
+        path = get_library_path() / path;
       }
       if (is_directory(path)) {
         // Assume the directory contains per-DLL json files
         auto jsondb = make_unique<JSONApiDictionary>(path.native());
         assert(jsondb);
-        db.add(make_unique<WinAWLookupPlan>(std::move(jsondb)));
+        add(std::move(jsondb));
         return true;
       }
       try {
@@ -184,12 +217,14 @@ bool APIDictionary::handle_node(MultiApiDictionary & db, const YAML::Node & node
           // Assume json
           auto jsondb = make_unique<JSONApiDictionary>(path.native());
           assert(jsondb);
-          db.add(make_unique<WinAWLookupPlan>(std::move(jsondb)));
+          add(std::move(jsondb));
         } else {
           // SQLite
           auto sql = make_unique<SQLLiteApiDictionary>(path.native());
           assert(sql);
-          db.add(make_unique<WinAWLookupPlan>(std::move(sql)));
+          auto cached_sql = make_unique<DLLStateCacheDict>(std::move(sql));
+          assert(cached_sql);
+          add(std::move(cached_sql));
         }
         return true;
       } catch (const std::runtime_error & e) {
@@ -200,10 +235,10 @@ bool APIDictionary::handle_node(MultiApiDictionary & db, const YAML::Node & node
          case IGNORE:
           break;
          case LOG_WARN:
-          GWARN << os.str() << LEND;
+          MWARN << os.str() << LEND;
           break;
          case LOG_ERROR:
-          GERROR << os.str() << LEND;
+          MERROR << os.str() << LEND;
           break;
          case THROW:
           throw std::runtime_error(os.str());
@@ -220,12 +255,13 @@ bool APIDictionary::handle_node(MultiApiDictionary & db, const YAML::Node & node
       }
       return all_success;
     }
-    // [[fallthrough]];
+    // falls through
+    // becomes [[fallthrough]]; in c++17
    case YAML::NodeType::Map:
     try {
       // A map or sequence is an inline set of API information
       auto jsondb = make_unique<JSONApiDictionary>(node);
-      db.add(make_unique<WinAWLookupPlan>(std::move(jsondb)));
+      add(std::move(jsondb));
       return true;
     } catch (const std::runtime_error & e) {
       switch (handle) {
@@ -234,7 +270,7 @@ bool APIDictionary::handle_node(MultiApiDictionary & db, const YAML::Node & node
        case LOG_WARN:
        case LOG_ERROR:
         {
-          auto & err = glog[(handle == LOG_WARN)
+          auto & err = mlog[(handle == LOG_WARN)
                             ? Sawyer::Message::WARN : Sawyer::Message::ERROR];
           err && err << "Error in API database\n"
                      << "Reason: " << e.what() << LEND;
@@ -258,11 +294,8 @@ std::unique_ptr<APIDictionary> APIDictionary::create_standard(
   assert(multidb);
 
   if (vm.count("apidb")) {
-    // If it's listed on the command line, use that.  Command line options should be applied in
-    // reverse order, so the last --apidb option takes priority
-    for (auto & filename :
-           boost::adaptors::reverse(vm["apidb"].as<std::vector<std::string>>()))
-    {
+    // If it's listed on the command line, use that.
+    for (auto & filename : vm["apidb"].as<std::vector<std::string>>()) {
       handle_node(*multidb, YAML::Node(filename), false, THROW);
     }
   }
@@ -276,7 +309,25 @@ std::unique_ptr<APIDictionary> APIDictionary::create_standard(
     // A config.yaml entry exists
     handle_node(*multidb, db_path.as_node(), true, handle);
   }
-  return std::move(multidb);
+
+  // Add decorated name fallback
+  auto decorated = make_unique<DecoratedDictionary>();
+  assert(decorated);
+  auto cdecorated = make_unique<ReportDictionary>(std::move(decorated), decorated->describe());
+  assert(cdecorated);
+  cdecorated->dll_error_log(mlog[Sawyer::Message::WHERE])
+    .fn_error_log(mlog[Sawyer::Message::WHERE])
+    .fn_success_log(mlog[Sawyer::Message::TRACE])
+    .fn_detail_log(mlog[Sawyer::Message::DEBUG]);
+  multidb->add(std::move(cdecorated));
+
+  // Add a failure logging layer
+  auto complainer = make_unique<ReportDictionary>(std::move(multidb));
+  assert(complainer);
+  complainer->dll_error_log(mlog[Sawyer::Message::WARN])
+    .fn_error_log(mlog[Sawyer::Message::WARN])
+    .fn_request_log(mlog[Sawyer::Message::TRACE]);
+  return std::move(complainer);
 }
 
 void JSONApiDictionary::load_json(const std::string &filename) const
@@ -415,11 +466,13 @@ void JSONApiDictionary::load_json(const YAML::Node & exports) const
     if (fd->display_name.empty()) {
       if (!fd->export_name.empty()) {
         try {
-          auto type = visual_studio_demangle(fd->export_name);
+          auto type = demangle::visual_studio_demangle(fd->export_name);
           if (type) {
             fd->display_name = type->str();
+          } else {
+            fd->display_name = fd->export_name;
           }
-        } catch (const DemanglerError &) {
+        } catch (const demangle::Error &) {
           fd->display_name = fd->export_name;
         }
       } else if (fd->relative_address != RELATIVE_ADDRESS_MAX) {
@@ -436,19 +489,42 @@ void JSONApiDictionary::load_json(const YAML::Node & exports) const
 
     // Once the APIDefinition has been made, add it to the maps
     std::string dll_name = fd->dll_name;
-    defkey_t defkey(dll_name, to_lower(fd->get_name()));
-    auto & value = data->defmap[std::move(defkey)];
+    defkey_t defkey(dll_name, fd->get_name());
+    data->defmap.emplace(std::move(defkey), fd);
     size_t ord = fd->ordinal;
-    value = std::move(fd);
     if (ord) {
       ordkey_t ordkey(std::move(dll_name), ord);
-      data->ordmap.emplace(std::move(ordkey), value);
+      data->ordmap.emplace(std::move(ordkey), fd);
     }
-    if (value->relative_address != RELATIVE_ADDRESS_MAX) {
-      data->addrmap.emplace(value->relative_address, value);
+    if (fd->relative_address != RELATIVE_ADDRESS_MAX) {
+      data->addrmap.emplace(fd->relative_address, fd);
     }
 
   } // for (auto node : exports)
+}
+
+bool JSONApiDictionary::handles_dll(std::string const & dll_name_) const
+{
+  auto dll_name = normalize_dll(dll_name_);
+  if (data->load_on_demand) {
+    return known_dll(dll_name);
+  }
+
+  auto rdef = keys(data->defmap);
+  auto rord = keys(data->ordmap);
+  return (std::any_of(begin(rdef), end(rdef),
+                      [&dll_name](defkey_t const & x) {return x.first == dll_name;})
+          || std::any_of(begin(rord), end(rord),
+                         [&dll_name](ordkey_t const & x) {return x.first == dll_name;}));
+}
+
+std::string JSONApiDictionary::describe() const
+{
+  if (data->load_on_demand) {
+    return "JSON API database directory " + path;
+  } else {
+    return "JSON API database " + path;
+  }
 }
 
 // pre-condition: dll_name is normalized
@@ -464,71 +540,181 @@ bool JSONApiDictionary::known_dll(const std::string & dll_name) const
   }
 
   // Load the json file
-  std::string filename = directory + "/" + dll_name + ".json";
+  std::string filename = path + "/" + dll_name + ".json";
   bool succeeded = false;
   try {
     load_json(filename);
     succeeded = true;
-    GINFO << "Loaded API database: " << filename << LEND;
+    MINFO << "Loaded API database json file: " << filename << LEND;
   } catch (...) {
-    GERROR << "Unable to load API database: " << filename << LEND;
+    MDEBUG << "Unable to load API database json file: " << filename << LEND;
   }
   data->loaded_files[dll_name] = succeeded;
   return succeeded;
 }
 
-APIDefinitionPtr
+APIDefinitionList
 JSONApiDictionary::get_api_definition(
   const std::string & dll_name, const std::string & func_name) const
 {
-  defkey_t key(normalize_dll(dll_name), to_lower(func_name));
+  defkey_t key(normalize_dll(dll_name), func_name);
   if (!known_dll(key.first)) {
-    return nullptr;
+    return APIDefinitionList();
   }
-  auto found = data->defmap.find(key);
-  return (found == data->defmap.end()) ? nullptr : found->second;
+  auto found = values(data->defmap.equal_range(key));
+  return APIDefinitionList(begin(found), end(found));
 }
 
-APIDefinitionPtr
+APIDefinitionList
 JSONApiDictionary::get_api_definition(
   const std::string & dll_name, size_t ordinal) const
 {
   ordkey_t key(normalize_dll(dll_name), ordinal);
   if (!known_dll(key.first)) {
-    return nullptr;
+    return APIDefinitionList();
   }
-  auto found = data->ordmap.find(key);
-  return (found == data->ordmap.end()) ? nullptr : found->second;
+  auto found = values(data->ordmap.equal_range(key));
+  return APIDefinitionList(begin(found), end(found));
 }
 
-APIDefinitionPtr
+APIDefinitionList
 JSONApiDictionary::get_api_definition(rose_addr_t addr) const
 {
-  auto found = data->addrmap.find(addr);
-  return (found == data->addrmap.end()) ? nullptr : found->second;
+  auto found = values(data->addrmap.equal_range(addr));
+  return APIDefinitionList(begin(found), end(found));
 }
 
 struct SQLLiteApiDictionary::Data {
-  // Select statement to look up functions by dll and name
-  static constexpr char select_by_name[] =
-    "SELECT rowId, ordinal, name, canonical, callingConvention, returnType FROM function"
-    " WHERE dll = ?1 AND name = ?2";
 
-  // Select statement to look up functions by dll and ordinal
-  static constexpr char select_by_ordinal[] =
-    "SELECT rowId, ordinal, name, canonical, callingConvention, returnType FROM function"
-    " WHERE dll = ?1 AND ordinal = ?2";
+  static Sawyer::Message::Facility mlog;
+  static Sawyer::Message::Facility & initDiagnostics();
+  static void log_sql(void *, char const *stmt) {
+    if (mlog[Sawyer::Message::DEBUG]) {
+      mlog[Sawyer::Message::DEBUG] << stmt << std::endl;
+    }
+  }
+
+  void enable_trace() {
+    static bool initialized = false;
+    if (!initialized && mlog[Sawyer::Message::DEBUG]) {
+      sqlite3_trace(db, log_sql, nullptr);
+      initialized = true;
+    }
+  }
+
+  enum version_t {
+    V0, V1, V2, V4, VERSION_COUNT
+  };
+
+  enum query_type_t {
+    NAME_TYPE, ORDINAL_TYPE, QUERY_TYPE_COUNT
+  };
+
+  static constexpr int ROWID = 0;
+  static constexpr int ORDINAL = 1;
+  static constexpr int EXPORT_NAME = 2;
+  static constexpr int DISPLAY_NAME = 3;
+  static constexpr int CALLING_CONVENTION = 4;
+  static constexpr int RETURN_TYPE = 5;
+  static constexpr int PARAMS_KNOWN = 6;
+  static constexpr int ALIAS_ID = 7;
+  static constexpr int DLL_NAME = 8;
+  static constexpr int MD5 = 9;
+
+  // Which columns to fetch during function lookup
+  static constexpr char const * select_function_columns[VERSION_COUNT] = {
+    ("rowId, ordinal, name, canonical, callingConvention, returnType, 1, NULL, NULL, NULL"),
+    ("rowId, ordinal, name, canonical, callingConvention, returnType, paramsKnown, NULL, "
+     "NULL, NULL"),
+    ("f.rowId, o.ordinal, f.exportName, f.displayName, f.callingConvention, "
+     "f.returnType, f.paramsKnown, f.aliasId, s.displayName, s.md5"),
+    ("DISTINCT f.rowId, o.ordinal, n.exportName, n.displayName, f.callingConvention, "
+     "f.returnType, f.paramsKnown, NULL, s.displayName, NULL ")
+  };
+
+  // Which tables to look through during function lookup
+  static constexpr char const * FT_a = "FROM function";
+  static constexpr char const * select_function_tables[VERSION_COUNT][QUERY_TYPE_COUNT] = {
+    {FT_a, FT_a},
+    {FT_a, FT_a},
+    {("FROM function AS f "
+      "LEFT JOIN ordinal AS o ON f.rowId = o.functionId "
+      "INNER JOIN source AS s ON f.sourceId = s.rowId"),
+     ("FROM function AS f "
+      "INNER JOIN ordinal AS o ON f.rowId = o.functionId "
+      "INNER JOIN source AS s ON f.sourceId = s.rowId")},
+    {("FROM name AS n "
+      "INNER JOIN sourcedll AS s ON s.rowId = n.dllId "
+      "INNER JOIN function AS f ON f.rowId = n.functionId "
+      "LEFT JOIN sourcemeta AS sm ON sm.sourceId = s.rowId "
+      "LEFT JOIN ordinal AS o ON f.rowId = o.functionId AND sm.rowId = o.sourceMetaId"),
+     ("FROM ordinal AS o "
+      "INNER JOIN function AS f ON f.rowId = o.functionId "
+      "INNER JOIN sourcemeta AS sm ON sm.rowId = o.sourceMetaId "
+      "INNER JOIN sourcedll AS s ON s.rowId = sm.sourceId "
+      "LEFT JOIN name AS n ON f.rowId = n.functionId")}
+  };
+
+
+  // Select by name SQL condition
+  static constexpr char const * SN_a = "dll = ?1 AND name = ?2";
+  static constexpr char const * select_by_name_condition[VERSION_COUNT] = {
+    SN_a, SN_a,
+    "s.normalizedName = ?1 AND f.exportName = ?2",
+    "s.normalizedName = ?1 AND n.exportName = ?2"
+  };
+
+  // Select by ordinal SQL condition
+  static constexpr char const * ON_a = "dll = ?1 AND ordinal = ?2";
+  static constexpr char const * ON_b = "s.normalizedName = ?1 AND o.ordinal = ?2";
+  static constexpr char const * select_by_ordinal_condition[VERSION_COUNT] = {
+    ON_a, ON_a, ON_b, ON_b
+  };
+
+  // Select by row condition
+  static constexpr char const * RC = "f.rowId = ?1";
+  static constexpr char const * select_by_row_condition[VERSION_COUNT] = {
+    &RC[2], &RC[2], RC, RC
+  };
+
+  // DLL exists query
+  static constexpr char const * DLLE_a = "SELECT 1 FROM function WHERE dll = ?1 LIMIT 1";
+  static constexpr char const * select_dll_exists[VERSION_COUNT] = {
+    DLLE_a, DLLE_a,
+    "SELECT 1 FROM source WHERE normalizedName = ?1 LIMIT 1",
+    "SELECT 1 FROM sourcedll WHERE normalizedName = ?1 LIMIT 1"
+  };
+
+  static constexpr int PARAM_NAME = 0;
+  static constexpr int PARAM_TYPE = 1;
+  static constexpr int PARAM_INOUT = 2;
+  static constexpr int PARAM_POSITION = 3;
 
   // Select statement to look up a function's parameters.  Ordered descending to get the count
   // of params up front from the position parameter
-  static constexpr char select_params[] =
+  static constexpr char const select_params[] =
     "SELECT name, type, inOut, position FROM parameter"
     " WHERE functionId = ?1 ORDER BY position DESC";
+
+  static constexpr char const select_version[] =
+    "SELECT dbVer FROM metadata";
 
   // Throw an error based on an error code
   [[noreturn]] static void throw_error(int code);
   // Throw an error based on the state of the db
   [[noreturn]] void throw_error() const;
+
+  std::string build_function_query(query_type_t qt, char const * const * condition) {
+    int idx = static_cast<int>(version);
+    return build_function_query(qt, condition[idx]);
+  }
+
+  std::string build_function_query(query_type_t qt, char const * condition) {
+    int v_idx = static_cast<int>(version);
+    int t_idx = static_cast<int>(qt);
+    return (std::string("SELECT ") + select_function_columns[v_idx] + " "
+            + select_function_tables[v_idx][t_idx] + " WHERE " + condition);
+  }
 
   // Throw an error based on the code if the code isn't OK
   static void maybe_throw_code(int code);
@@ -539,30 +725,58 @@ struct SQLLiteApiDictionary::Data {
   Data(const std::string & filename);
   ~Data();
 
-  APIDefinitionPtr
+  APIDefinitionList
   get_api_definition(
     const std::string & dll_name, const std::string & func_name) const;
 
-  APIDefinitionPtr
+  APIDefinitionList
   get_api_definition(
     const std::string & dll_name, size_t ordinal) const;
 
-  APIDefinitionPtr
+  APIDefinitionList
   get_db_function(
     sqlite3_stmt * lookup, const std::string & dll_name) const;
+
+  bool handles_dll(std::string const & dll_name) const;
+
 
   sqlite3 * db = nullptr;
   sqlite3_stmt * lookup_by_id = nullptr;
   sqlite3_stmt * lookup_by_name = nullptr;
+  sqlite3_stmt * lookup_by_row = nullptr;
   sqlite3_stmt * lookup_params = nullptr;
+  sqlite3_stmt * lookup_dll_exists = nullptr;
   mutable defmap_t defmap;
   mutable ordmap_t ordmap;
+  version_t version;
 };
 
+Sawyer::Message::Facility SQLLiteApiDictionary::Data::mlog;
+
+Sawyer::Message::Facility & SQLLiteApiDictionary::Data::initDiagnostics()
+{
+  static bool initialized = false;
+  if (!initialized) {
+    mlog = Sawyer::Message::Facility("APSQ");
+    Sawyer::Message::FdSinkPtr mout = Sawyer::Message::FdSink::instance(global_logging_fileno);
+    Sawyer::Message::PrefixPtr prefix =
+      Sawyer::Message::Prefix::instance()->showProgramName(false)->showElapsedTime(false);
+    mlog.initStreams(mout->prefix(prefix));
+    Sawyer::Message::mfacilities.insert(mlog);
+    initialized = true;
+  }
+  return mlog;
+}
+
 // The definitions of these have to exist, per the standard.
-constexpr char SQLLiteApiDictionary::Data::select_by_name[];
-constexpr char SQLLiteApiDictionary::Data::select_by_ordinal[];
-constexpr char SQLLiteApiDictionary::Data::select_params[];
+constexpr char const * SQLLiteApiDictionary::Data::select_function_columns[];
+constexpr char const * SQLLiteApiDictionary::Data::select_function_tables[][QUERY_TYPE_COUNT];
+constexpr char const * SQLLiteApiDictionary::Data::select_by_name_condition[];
+constexpr char const * SQLLiteApiDictionary::Data::select_by_ordinal_condition[];
+constexpr char const * SQLLiteApiDictionary::Data::select_by_row_condition[];
+constexpr char const * SQLLiteApiDictionary::Data::select_dll_exists[];
+constexpr char const SQLLiteApiDictionary::Data::select_params[];
+constexpr char const SQLLiteApiDictionary::Data::select_version[];
 
 inline void SQLLiteApiDictionary::Data::throw_error(int code)
 {
@@ -601,25 +815,78 @@ SQLLiteApiDictionary::Data::Data(const std::string & filename)
   try {
     constexpr auto flags = SQLITE_OPEN_READONLY;
     maybe_throw_code(sqlite3_open_v2(filename.c_str(), &db, flags, nullptr));
+    enable_trace();
   } catch (const SQLError &) {
     GERROR << "Unable to read API Database \"" << filename << '\"' << LEND;
     throw;
   }
 
+  // query preparation helper
+  auto prepare = [this](std::string const & query, sqlite3_stmt *& stmt) {
+    MDEBUG << "Preparing query: " << query << std::endl;
+    maybe_throw(sqlite3_prepare_v2(db, query.c_str(), query.size(), &stmt, nullptr));
+  };
+
+  // Determine the version
+  sqlite3_stmt * lookup_version = nullptr;
+  prepare(select_version, lookup_version);
+  auto deleter = [](sqlite3_stmt *s) { sqlite3_finalize(s); };
+  std::unique_ptr<sqlite3_stmt, decltype(deleter)> version_guard(lookup_version, deleter);
+  int rv;
+  do {
+    rv = sqlite3_step(lookup_version);
+    switch (rv) {
+     case SQLITE_BUSY:
+      break;
+     case SQLITE_ROW:
+      {
+        const char * raw_version = reinterpret_cast<const char *>(
+          sqlite3_column_text(lookup_version, 0));
+        if (!raw_version) {
+          throw SQLError("Database does not contain version");
+        }
+        Version v(raw_version);
+        if (v < Version{1}) {
+          throw SQLError("Database does not contain known version");
+        } else if (v < Version{1,1}) {
+          version = V0;
+        } else if (v < Version{2}) {
+          // Version 1.1 added the paramsKnown field
+          version = V1;
+        } else if (v < Version{4}) {
+          // Version 2.0 added the aliasId field and renamed the canonical and name fields
+          version = V2;
+        } else {
+          version = V4;
+        }
+      }
+      break;
+     case SQLITE_DONE:
+      // Original database was often missing the version information
+      version = V0;
+      break;
+     default:
+      throw_error();
+    }
+  } while (rv == SQLITE_BUSY);
+
   // Prepare the select statements
-  maybe_throw(sqlite3_prepare_v2(db, select_by_name, sizeof(select_by_name),
-                                 &lookup_by_name, nullptr));
-  maybe_throw(sqlite3_prepare_v2(db, select_by_ordinal, sizeof(select_by_ordinal),
-                                 &lookup_by_id, nullptr));
-  maybe_throw(sqlite3_prepare_v2(db, select_params, sizeof(select_params),
-                                 &lookup_params, nullptr));
+  std::string name_query = build_function_query(NAME_TYPE, select_by_name_condition);
+  std::string ordinal_query = build_function_query(ORDINAL_TYPE, select_by_ordinal_condition);
+  std::string dll_exists_query = select_dll_exists[static_cast<int>(version)];
+  std::string row_query = build_function_query(NAME_TYPE, select_by_row_condition);
+  prepare(name_query, lookup_by_name);
+  prepare(ordinal_query, lookup_by_id);
+  prepare(row_query, lookup_by_row);
+  prepare(select_params, lookup_params);
+  prepare(dll_exists_query, lookup_dll_exists);
 }
 
 SQLLiteApiDictionary::Data::~Data()
 {
   // All statments must be finalized before closing the db
 
-  int rv;
+  UNUSED int rv;
   rv = sqlite3_finalize(lookup_by_id);
   assert(rv == SQLITE_OK);
   rv = sqlite3_finalize(lookup_by_name);
@@ -630,31 +897,14 @@ SQLLiteApiDictionary::Data::~Data()
   assert(rv == SQLITE_OK);
 }
 
-APIDefinitionPtr
+APIDefinitionList
 SQLLiteApiDictionary::Data::get_db_function(
   sqlite3_stmt * lookup, const std::string & dll_name) const
 {
   int rv;
 
-  // Look up the function in the db
-  do {
-    rv = sqlite3_step(lookup);
-    switch (rv) {
-     case SQLITE_BUSY:
-     case SQLITE_ROW:
-      // Continue if we found it, or are busy
-      break;
-     case SQLITE_DONE:
-      // Return null if we didn't find it
-      return nullptr;
-     default:
-      // Otherwise, error
-      throw_error();
-    }
-  } while (rv == SQLITE_BUSY);
-
   // Generate a function for a statement that extracts text strings from that statement,
-  // accounting fo possible NULLs
+  // accounting for possible NULLs
   auto create_textval = [](sqlite3_stmt * stm) {
     return [stm](int col) {
       if (sqlite3_column_type(stm, col) == SQLITE_NULL) {
@@ -665,110 +915,148 @@ SQLLiteApiDictionary::Data::get_db_function(
     };
   };
 
-  // Generate a textval for the lookup statement
-  auto id_textval = create_textval(lookup);
+  std::string export_name;
+  std::string display_name;
+  sqlite3_stmt * current_lookup = lookup;
 
-  // Get the data from the row
-  auto rowid = sqlite3_column_int64(lookup, 0);
-  auto func_ordinal = sqlite3_column_int64(lookup, 1);
-  auto func_name = id_textval(2);
-  auto canonical = id_textval(3);
-  auto convention = id_textval(4);
-  auto return_type = id_textval(5);
-
-  do {
-    // Check to see if there are more
-    rv = sqlite3_step(lookup);
-    switch (rv) {
-     case SQLITE_DONE:
-     case SQLITE_BUSY:
-      // If no more, or busy, fine
-      break;
-     case SQLITE_ROW:
-      // If more, there are duplicate answers
-      throw std::runtime_error("Found more than one match for function");
-     default:
-      // Otherwise, error
-      throw_error();
-    }
-  } while (rv == SQLITE_BUSY);
-
-  auto fd = std::make_shared<APIDefinition>();
-  fd->dll_name = dll_name;
-
-  // Fill the definition
-  fd->ordinal = func_ordinal;
-  fd->export_name = std::move(canonical);
-  fd->display_name = std::move(func_name);
-  fd->calling_convention = std::move(convention);
-  fd->return_type = std::move(return_type);
-
-  // Lookup the parameters by function rowid
-  maybe_throw(sqlite3_reset(lookup_params));
-  maybe_throw(sqlite3_bind_int64(lookup_params, 1, rowid));
-  auto param_txtval = create_textval(lookup_params);
-  do {
-    rv = sqlite3_step(lookup_params);
-    switch (rv) {
-     case SQLITE_DONE:
-     case SQLITE_BUSY:
-      break;
-     case SQLITE_ROW:
-      {
-        // Get the data from the row
-        auto param_name = param_txtval(0);
-        auto type_name = param_txtval(1);
-        auto inout = param_txtval(2);
-        auto pos = size_t(sqlite3_column_int(lookup_params, 3));
-
-        // Resize the array as necessary
-        if (pos + 1 > fd->parameters.size()) {
-          fd->parameters.resize(pos + 1);
+  APIDefinitionList list;
+  while (true) {
+    // Look the function up in the db
+    bool done = false;
+    do {
+      rv = sqlite3_step(current_lookup);
+      switch (rv) {
+       case SQLITE_BUSY:
+       case SQLITE_ROW:
+        // Continue if we found it, or are busy
+        break;
+       case SQLITE_DONE:
+        if (current_lookup == lookup) {
+          done = true;
+        } else {
+          current_lookup = lookup;
         }
-
-        // Fill this parameter from the array
-        auto & param = fd->parameters[pos];
-        param.name = std::move(param_name);
-        param.type = std::move(type_name);
-        auto inout_loc = inout_map.find(inout);
-        if (inout_loc != inout_map.end()) {
-          param.direction = inout_loc->second;
-        }
+        break;
+       default:
+        // Otherwise, error
+        throw_error();
       }
+    } while (rv == SQLITE_BUSY);
+
+    if (done) {
       break;
-     default:
-      throw_error();
     }
-  } while (rv != SQLITE_DONE);
 
-  // Set up the stackdelta
-  if (fd->calling_convention.empty() || fd->calling_convention == "stdcall") {
-    fd->stackdelta = fd->parameters.size() * 4;
-  } else {
-    fd->stackdelta = 0;
-  }
+    if (current_lookup == lookup) {
+      // Take the names from the first look-up, not from any alias look-ups
+      auto id_textval = create_textval(lookup);
+      export_name = id_textval(EXPORT_NAME);
+      display_name = id_textval(DISPLAY_NAME);
+    }
+    if (sqlite3_column_type(current_lookup, ALIAS_ID) == SQLITE_NULL) {
+      // Don't return a definition if we don't have useful parameter information
+      if (sqlite3_column_int(lookup, PARAMS_KNOWN)) {
+        // Create a definition
+        auto fd = std::make_shared<APIDefinition>();
+        auto &def = *fd;
+        auto textval = create_textval(current_lookup);
+        auto rowid = sqlite3_column_int64(current_lookup, ROWID);
+        def.ordinal = sqlite3_column_int64(current_lookup, ORDINAL);
+        def.calling_convention = textval(CALLING_CONVENTION);
+        def.return_type = textval(RETURN_TYPE);
+        def.dll_name = textval(DLL_NAME);
+        if (def.dll_name.size() > 4) {
+          static const char dll_suffix[] = "lld.";
+          auto s = &dll_suffix[0];
+          auto e = s + 4;
+          if (std::equal(s, e, def.dll_name.rbegin(),
+                         [](char a, char b) { return a == std::tolower(b); }))
+          {
+            def.dll_name.resize(def.dll_name.size() - 4);
+          }
+        }
+        def.md5 = textval(MD5);
+        def.export_name = std::move(export_name);
+        if (display_name.empty()) {
+          def.display_name = def.export_name;
+        } else {
+          def.display_name = std::move(display_name);
+        }
 
-  // Add to cache
-  auto defkey = defkey_t(fd->dll_name, to_lower(fd->export_name));
-  auto & value = defmap[std::move(defkey)];
-  value = std::move(fd);
-  if (func_ordinal) {
-    auto ordkey = ordkey_t(value->dll_name, func_ordinal);
-    ordmap.emplace(std::move(ordkey), value);
-  }
+        // Lookup the parameters by function rowid
+        maybe_throw(sqlite3_reset(lookup_params));
+        maybe_throw(sqlite3_bind_int64(lookup_params, 1, rowid));
+        auto param_txtval = create_textval(lookup_params);
+        do {
+          rv = sqlite3_step(lookup_params);
+          switch (rv) {
+           case SQLITE_DONE:
+           case SQLITE_BUSY:
+            break;
+           case SQLITE_ROW:
+            {
+              // Get the data from the row
+              auto param_name = param_txtval(PARAM_NAME);
+              auto type_name = param_txtval(PARAM_TYPE);
+              auto inout = param_txtval(PARAM_INOUT);
+              auto pos = size_t(sqlite3_column_int(lookup_params, PARAM_POSITION));
 
-  return value;
+              // Resize the array as necessary
+              if (pos + 1 > def.parameters.size()) {
+                def.parameters.resize(pos + 1);
+              }
+
+              // Fill this parameter from the array
+              auto & param = def.parameters[pos];
+              param.name = std::move(param_name);
+              param.type = std::move(type_name);
+              auto inout_loc = inout_map.find(inout);
+              if (inout_loc != inout_map.end()) {
+                param.direction = inout_loc->second;
+              }
+            }
+            break;
+           default:
+            throw_error();
+          }
+        } while (rv != SQLITE_DONE);
+
+        // Set up the stackdelta
+        if (def.calling_convention.empty() || def.calling_convention == "stdcall"
+            || def.calling_convention == "thiscall")
+        {
+          def.stackdelta = def.parameters.size() * 4;
+        }
+
+        auto defkey = defkey_t(dll_name, def.export_name);
+        defmap.emplace(std::move(defkey), fd);
+        if (fd->ordinal) {
+          auto ordkey = ordkey_t(dll_name, fd->ordinal);
+          ordmap.emplace(std::move(ordkey), fd);
+        }
+        list.push_back(fd);
+      } // if (sqlite3_column_int(lookup, PARAMS_KNOWN))
+      current_lookup = lookup;
+    } else {
+      auto follow = sqlite3_column_int64(current_lookup, ALIAS_ID);
+      current_lookup = lookup_by_row;
+      maybe_throw(sqlite3_reset(current_lookup));
+      maybe_throw(sqlite3_bind_int64(current_lookup, 1, sqlite3_int64(follow)));
+    }
+  } // while (true)
+
+
+  return list;
 }
 
-
-APIDefinitionPtr
+APIDefinitionList
 SQLLiteApiDictionary::Data::get_api_definition(
   const std::string & dll_name, size_t ordinal) const
 {
   auto key = ordkey_t(normalize_dll(dll_name), ordinal);
-  auto loc = ordmap.find(key);
-  if (loc != ordmap.end()) {
-    return loc->second;
+  auto loc = values(ordmap.equal_range(key));
+  if (begin(loc) != end(loc)) {
+    return APIDefinitionList(begin(loc), end(loc));
   }
 
   // Not cached.  Look it up in the db
@@ -780,14 +1068,14 @@ SQLLiteApiDictionary::Data::get_api_definition(
   return get_db_function(lookup_by_id, key.first);
 }
 
-APIDefinitionPtr
+APIDefinitionList
 SQLLiteApiDictionary::Data::get_api_definition(
   const std::string & dll_name, const std::string & func_name) const
 {
-  auto key = defkey_t(normalize_dll(dll_name), to_lower(func_name));
-  auto loc = defmap.find(key);
-  if (loc != defmap.end()) {
-    return loc->second;
+  auto key = defkey_t(normalize_dll(dll_name), func_name);
+  auto loc = values(defmap.equal_range(key));
+  if (begin(loc) != end(loc)) {
+    return APIDefinitionList(begin(loc), end(loc));
   }
 
   // Not cached.  Look it up in the db
@@ -801,62 +1089,345 @@ SQLLiteApiDictionary::Data::get_api_definition(
   return get_db_function(lookup_by_name, key.first);
 }
 
-SQLLiteApiDictionary::SQLLiteApiDictionary(const std::string &lp) :
-  data(new Data(lp)), lib_path(lp) {}
+bool
+SQLLiteApiDictionary::Data::handles_dll(std::string const & dll_name_) const
+{
+  auto dll_name = normalize_dll(dll_name_) + ".dll";
+  maybe_throw(sqlite3_reset(lookup_dll_exists));
+  maybe_throw(sqlite3_bind_text(lookup_dll_exists, 1, dll_name.c_str(),
+                                dll_name.size(), SQLITE_TRANSIENT));
+  int rv;
+  while (true) {
+    rv = sqlite3_step(lookup_dll_exists);
+    switch (rv) {
+     case SQLITE_DONE:
+      return false;
+     case SQLITE_BUSY:
+      break;
+     case SQLITE_ROW:
+      return true;
+     default:
+      throw_error();
+    }
+  }
+}
+
+SQLLiteApiDictionary::SQLLiteApiDictionary(const std::string & file) :
+  data(new Data(file)), path(file) {}
 SQLLiteApiDictionary::~SQLLiteApiDictionary() = default;
 SQLLiteApiDictionary::SQLLiteApiDictionary(SQLLiteApiDictionary &&) noexcept = default;
 SQLLiteApiDictionary &SQLLiteApiDictionary::operator=(SQLLiteApiDictionary &&) = default;
 
-APIDefinitionPtr
+APIDefinitionList
 SQLLiteApiDictionary::get_api_definition(
   const std::string & dll_name, size_t ordinal) const
 {
   return data->get_api_definition(dll_name, ordinal);
 }
 
-APIDefinitionPtr
+APIDefinitionList
 SQLLiteApiDictionary::get_api_definition(
   const std::string & dll_name, const std::string & func_name) const
 {
   return data->get_api_definition(dll_name, func_name);
 }
 
-APIDefinitionPtr
+APIDefinitionList
 SQLLiteApiDictionary::get_api_definition(rose_addr_t) const
 {
-  return nullptr;
+  return APIDefinitionList();
 }
 
-APIDefinitionPtr
-WinAWLookupPlan::get_api_definition(
+bool
+SQLLiteApiDictionary::handles_dll(std::string const & dll_name) const
+{
+  return data->handles_dll(dll_name);
+}
+
+std::string SQLLiteApiDictionary::describe() const
+{
+  return "SQLite API database " + path;
+}
+
+bool
+DLLStateCacheDict::handles_dll(std::string const & dll_name_) const
+{
+  auto dll_name = normalize_dll(dll_name_);
+  auto found = cache.find(dll_name);
+  if (found != cache.end()) {
+    return found->second;
+  }
+  auto result = PassThroughDictionary::handles_dll(dll_name);
+  cache.emplace(std::move(dll_name), result);
+  return result;
+}
+
+
+APIDefinitionList
+DLLStateCacheDict::get_api_definition(
   const std::string & dll_name, size_t ordinal) const
 {
-  return subdict->get_api_definition(dll_name, ordinal);
+  APIDefinitionList result;
+
+  if (!handles_dll(dll_name)) {
+    return result;
+  }
+
+  return PassThroughDictionary::get_api_definition(dll_name, ordinal);
 }
 
-APIDefinitionPtr
-WinAWLookupPlan::get_api_definition(
+APIDefinitionList
+DLLStateCacheDict::get_api_definition(
   const std::string & dll_name, const std::string & func_name) const
 {
-  if (func_name.empty()) {
-    return NULL;
+  APIDefinitionList result;
+
+  if (!handles_dll(dll_name)) {
+    return result;
   }
-  auto result = subdict->get_api_definition(dll_name, func_name);
-  if (result == NULL) {
-    auto size = func_name.size() - 1;
-    char c = std::toupper(func_name[size]);
-    if (c == 'A' || c == 'W') {
-      auto basename = func_name.substr(0, size);
-      return subdict->get_api_definition(dll_name, std::move(basename));
+
+  return PassThroughDictionary::get_api_definition(dll_name, func_name);
+}
+
+bool
+ReportDictionary::check_dll(std::string const & dll_name_) const
+{
+  auto dll_name = normalize_dll(dll_name_);
+  auto found = dll_cache.find(dll_name);
+  if (found != dll_cache.end()) {
+    if (found->second) {
+      ++found->second;
+      return false;
+    }
+    return true;
+  }
+  bool result = handles_dll(dll_name);
+  if (result) {
+    dll_cache.emplace(dll_name, 0);
+  } else {
+    dll_cache.emplace(dll_name, 1);
+    if (dll_error_log_ && *dll_error_log_) {
+      (*dll_error_log_) << name << " has no data for DLL: " << dll_name_ << std::endl;
     }
   }
   return result;
 }
 
-APIDefinitionPtr
-WinAWLookupPlan::get_api_definition(rose_addr_t addr) const
+template <typename T>
+APIDefinitionList
+ReportDictionary::get_definition(
+  const char * tname, const std::string & dll_name, const T & value) const
 {
-  return subdict->get_api_definition(addr);
+  APIDefinitionList result;
+
+  if (fn_request_log_ && *fn_request_log_) {
+    *fn_request_log_ << "API Lookup: " << dll_name << ":" << std::dec << value << std::endl;
+  }
+
+  result = subdict().get_api_definition(dll_name, value);
+  if (result.empty()) {
+    if (fn_error_log_ && !check_dll(dll_name) && *fn_error_log_) {
+      *fn_error_log_ << name << " could not find " << tname << ' '
+                     << std::dec << value << " in " << dll_name << std::endl;
+    }
+  } else {
+    if (fn_success_log_ && *fn_success_log_) {
+      *fn_success_log_ << name << " found " << tname << ' '
+                       << std::dec << value << " for " << dll_name << std::endl;
+    }
+    log_detail(result);
+  }
+  return result;
+}
+
+APIDefinitionList
+ReportDictionary::get_api_definition(
+  const std::string & dll_name, size_t ordinal) const
+{
+  return get_definition("ordinal", dll_name, ordinal);
+}
+
+APIDefinitionList
+ReportDictionary::get_api_definition(
+  const std::string & dll_name, const std::string & func_name) const
+{
+  return get_definition("function", dll_name, func_name);
+}
+
+APIDefinitionList
+ReportDictionary::get_api_definition(
+  rose_addr_t addr) const
+{
+  if (fn_request_log_ && *fn_request_log_) {
+    *fn_request_log_ << "API Lookup: " << addr_str(addr) << std::endl;
+  }
+  auto result = subdict().get_api_definition(addr);
+  if (fn_request_log_ && *fn_request_log_) {
+    if (result.empty()) {
+      *fn_request_log_ << "API Lookup failed to find " << addr_str(addr) << std::endl;
+    } else {
+      *fn_request_log_ << "API Lookup found " << addr_str(addr) << std::endl;
+    }
+  }
+  return result;
+}
+
+void
+ReportDictionary::log_detail(APIDefinitionList const & result) const
+{
+  if (!fn_detail_log_ || !*fn_detail_log_) {
+    return;
+  }
+  auto & log = *fn_detail_log_;
+  for (auto const & def : result) {
+    if (!def) {
+      continue;
+    }
+    log << def->dll_name << '|'
+        << def->export_name << '|'
+        << def->display_name << '|'
+        << std::dec << def->ordinal << '|'
+        << std::hex << def->relative_address << '|'
+        << def->calling_convention << '|'
+        << def->return_type << '|'
+        << std::dec << def->stackdelta << '|'
+        << '(';
+    bool first = true;
+    for (auto const & param : def->parameters) {
+      if (first) {
+        first = false;
+      } else {
+        log << ", ";
+      }
+      if (!param.type.empty()) {
+        log << param.type;
+      }
+      if (!param.name.empty()) {
+        log << ' ' << param.name;
+      }
+      switch (param.direction) {
+       case APIParam::NONE:
+        break;
+       case APIParam::IN:
+        log << " {in}";
+        break;
+       case APIParam::OUT:
+        log << " {out}";
+        break;
+       case APIParam::INOUT:
+        log << " {in/out}";
+        break;
+      }
+    }
+    log << ')' << std::endl;
+  }
+}
+
+std::ostream & ReportDictionary::report_dll_failures(std::ostream & s) const
+{
+  for (auto & val : dll_cache) {
+    s << name << " failed " << val.second << " times to look up functions in DLL "
+      << val.first << std::endl;
+  }
+  return s;
+}
+
+Sawyer::Message::Facility & APIDictionary::initDiagnostics()
+{
+  static bool initialized = false;
+  if (!initialized) {
+    mlog = Sawyer::Message::Facility("APID");
+    Sawyer::Message::FdSinkPtr mout = Sawyer::Message::FdSink::instance(global_logging_fileno);
+    Sawyer::Message::PrefixPtr prefix =
+      Sawyer::Message::Prefix::instance()->showProgramName(false)->showElapsedTime(false);
+    mlog.initStreams(mout->prefix(prefix));
+    Sawyer::Message::mfacilities.insert(mlog);
+    initialized = true;
+  }
+
+  SQLLiteApiDictionary::Data::initDiagnostics();
+
+  return mlog;
+}
+
+APIDefinitionList
+DecoratedDictionary::get_api_definition(
+  const std::string & dll_name,
+  const std::string & func_name) const
+{
+  APIDefinitionList list;
+  demangle::DemangledTypePtr type;
+  try {
+    type = demangle::visual_studio_demangle(func_name);
+  } catch (demangle::Error &) {
+    return list;
+  }
+  if (!type) {
+    try {
+      char c = func_name.at(0);
+      if (c == '_' || c== '@') {
+        std::size_t at = func_name.rfind('@');
+        if (at != std::string::npos && at > 0 ) {
+          std::string name(func_name.substr(1, at));
+          ++at;
+          int delta = stoi(func_name, &at);
+          if (at == func_name.size()) {
+            auto def = std::make_shared<APIDefinition>();
+            def->export_name = func_name;
+            def->display_name = std::move(name);
+            def->dll_name = normalize_dll(dll_name);
+            def->calling_convention = (c == '_') ? "stdcall" : "fastcall";
+            def->stackdelta = delta;
+            int nparams = delta / 4; // TODO: FIXME!
+            def->parameters.resize(nparams);
+            list.push_back(std::move(def));
+          }
+        } else {
+          auto def = std::make_shared<APIDefinition>();
+          def->export_name = func_name;
+          def->display_name = func_name.substr(1);
+          def->dll_name = normalize_dll(dll_name);
+          def->calling_convention = "cdecl";
+          list.push_back(std::move(def));
+        }
+      }
+    }
+    catch (std::invalid_argument) { /* Fall through */ }
+    catch (std::out_of_range) { /* Fall through */ }
+
+    return list;
+  }
+
+  auto def = std::make_shared<APIDefinition>();
+
+  def->export_name = func_name;
+  def->display_name = type->str();
+  def->dll_name = normalize_dll(dll_name);
+  if (!type->calling_convention.empty()) {
+    def->calling_convention = type->calling_convention.substr(2);
+  }
+  if (type->retval) {
+    def->return_type = type->retval->str();
+  }
+  for (auto & arg : type->args) {
+    std::string argstr;
+    if (arg) {
+      argstr = arg->str();
+    }
+    if (argstr != "void") {
+      def->parameters.emplace_back();
+      if (arg) {
+        auto & param = def->parameters.back();
+        param.type = arg->str();
+      }
+    }
+  }
+  if (def->calling_convention == "stdcall" || def->calling_convention == "thiscall") {
+    def->stackdelta = def->parameters.size() * 4;
+  }
+
+  list.push_back(std::move(def));
+  return list;
 }
 
 } // namespace pharos

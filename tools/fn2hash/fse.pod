@@ -1,0 +1,173 @@
+=pod
+
+=head1 NAME
+
+B<fse.py> - Function set extraction comparison utility
+
+=head1 SYNOPSIS
+
+fse.py [--debug] [--quiet] [--minlen=NUMBER] [--instruction=NUMBER]
+  [--function-threshold=NUMBER] [--blacklist=CSV_FILE]
+  [--hashtype=HASHTYPE] [--matrix] [--compact] [--histogram]
+  [--graph] [--faces] <fn2hash csv file> ...
+
+fse.py --help
+
+fse.py --version
+
+=head1 DESCRIPTION
+
+B<fse.py> is a Python script that reads in one or more B<fn2hash> csv output
+files and can display a text matrix showing where shared functions (based on
+one of the hash types in the fn2hash output) are found across the files
+represented in the data.  This can be used to find shared sets of functions
+across different subsets of files.
+
+The text matrix output will have rows for each function hash in the dataset,
+and the first N columns will be for each file in the set (and the rows will
+contain an 'X' character in the file column if the function for that row is
+present in that file), followed by a 'c' column (conflicting i/b values across
+the function instances in the files), an 'i' column (# instructions), a 'b'
+column (# bytes), an 'addr' column (if the function is at a consistent address
+across the files), and a final column with the hash value for that row.
+
+The order of the rows is chosen in an effort to try and maximize the ability
+for you to recognize clusters in the output.  The algorithm it uses to try and
+do this is extremely naive and desparately needs improvement...
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<--help>
+
+Show the options
+
+=item B<--debug>, B<-d>
+
+debug logging
+
+=item B<--quiet>, B<-q>
+
+quiet logging (errors & above)
+
+=item B<--minlen>=I<NUMBER>, B<-m>=I<NUMBER>
+
+minimum length (bytes) of function to consider (default 1)
+
+=item B<--instructions>=I<NUMBER>, B<-i>=I<NUMBER>
+
+minimum length (instructions) of function to consider (default 1)
+
+=item B<--function-threshold>=I<NUMBER>, B<-t>=I<NUMBER>
+
+minimum number of files to appear in to show a function in the text
+matrix output (default 0)
+
+=item B<--blacklist>=I<CSV_FILE>, B<-X>=I<CSV_FILE>
+
+specify a file filled with csv data to filter out functions that are in it
+from the rest of the processing (eg: cleanware csv data).  Note that you can
+use -X multiple times, but don't use wildcards to read in multiple blacklist
+files, probably won't work...
+
+=item B<--hashtype>=I<HASHTYPE>, B<-T>=I<HASHTYPE>
+
+hash type to use for fn hash comparisons (EXACT,PIC,CPIC,MNEM,MCNT,MCAT,MCCNT; default PIC)
+
+=item B<--matrix>, B<-M>
+
+show text matrix of files and hashes (default)
+
+=item B<--compact>, B<-c>
+
+compact the output a bit (when appropriate).  Basically this removes some
+column separators and replaces a blank space with a period to represent "hash
+not in function".  Primarily useful if you have a LOT of files in the dataset.
+
+=item B<--histogram>, B<-H>
+
+show histogram of # files per # hashes (B<NOT IMPLEMENTED YET>)
+
+=item B<--graph>, B<-G>
+
+show graph of files and hashes (requires NetworkX, matplotlib, scipy,
+and numpy, B<NOT IMPLEMENTED YET>)
+
+=item B<--faces>, B<-F>
+
+show chernoff faces of fn2hash data ala our malfaces R module (requires
+scikit-learn, matplotlib, scipy, and numpy, B<NOT IMPLEMENTED YET>)
+
+=back
+
+=head1 EXAMPLES
+
+ $ fn2hash --stockpart --no-semantics win7_calc.exe > win7_calc.fn2hash.txt
+ $ fn2hash --stockpart --no-semantics win7_notepad.exe > win7_notepad.fn2hash.txt
+ $ fse.py --instructions 10 win7_calc.fn2hash.txt win7_notepad.fn2hash.txt
+
+ 2018-04-19 17:29:41,311 [WARNING] # of funcs (1907) > 100, text matrix output will likely be sub optimal
+ F00: 4884DA7754823B44CCC2B2106F21146E (1600 funcs)
+ F01: D378BFFB70923139D6A4F546864AA61C (329 funcs)
+
+ ############################################################
+ # PIC function set intersection matrix
+ ############################################################
+
+ F|F| |    |    |           |                                |
+ 0|1|c|   i|   b|       addr|                             PIC|
+ -|-|-|----|----|-----------|--------------------------------|
+ X|X| |1018|3681| ??????????|CF6D480A32A36B4A3449BA8B874F3A29|
+ X|X| |  35|  91| ??????????|3676392BA431D4E7A70363B50D763F3B|
+ X|X| |  22|  67| ??????????|C9F577AB8C1BF5620CF7A0A67302588F|
+ X|X| |  21|  69| ??????????|811CD12E227C10CBE2ADB732931501E6|
+ X|X| | 195| 668| ??????????|9B2E2D282431DBC884C714F8FBF4A9DD|
+ X|X| |  29|  85| ??????????|1684118B7BC00D040125B51075535966|
+ X|X| |  21|  53| ??????????|E7022369DAAB739F931F23C05A800D9D|
+ X|X| |  28|  97| ??????????|000215BF052813EDB8B29D5BEE03E132|
+ X|X| |  47| 233| ??????????|0D9197DE433C9BD30F5F76343D37EB0F|
+ X|X| |  10|  14| ??????????|C792F9D694399A44024B92CB3A499FE3|
+ ...
+ X| | |  19|  42| 0x0100D45E|780CE046A910E6F66A503D2CFA43A17A|
+ X| | |  84| 171| 0x01053968|8B68BB83F89C947F0A8FC2D5DC1FB139|
+ X| | |  16|  42| ??????????|80AD6DEE274FE71A4427AE95F60106F0|
+ X| | | 858|2021| 0x01052C78|E2F0CC971A45C80C7CD4E44A2087D3B7|
+ X| | |  25|  47| 0x0103ACCE|C93DF8A993CE2F38F1BFD64DE4FE1D3F|
+ X| | | 272| 818| 0x0103319D|683FC4EDE695950B12E9522E4E2CA87B|
+ X| | | 923|2179| 0x01052BCC|7210ECE2072BA7C9F84ED87E461B4283|
+ X| | |  51| 168| 0x01033613|D395C3AFFA2A846506BFC06BCE56D07C|
+ X| | |1207|5218| 0x01020F14|9CFB765C004514C127838E600AB46C45|
+ ...
+  |X| |1055|2247| 0x0100AF96|7C91FDE4F89E768A9E7B906EBCEBA359|
+  |X| | 635|1338| 0x0100B32E|F61A96317C378EC225CFA15DA2E316E6|
+  |X| | 823|1749| 0x0100B214|7D80E98564E073F3E618085142707373|
+  |X| |  27|  76| 0x01004073|7DE7890658FA606DDC18C63E4624D661|
+  |X| |  20|  50| 0x01003EA6|1687925A84DD38E0A59241A274AD22C7|
+  |X| |1911|4209| 0x0100A65A|CE6ED38AE4C1460E7D5410F89783746A|
+  |X| |  22|  79| 0x01007BA2|A47E49908477386A684852ECF47F3B88|
+  |X| | 483|1004| 0x0100B548|BDE6A73200793D93013C1868A2A27D74|
+  |X| |1554|3399| 0x0100AA5E|E5BB06FAD7891E6120EEEA6C9714A306|
+ ...
+
+=head1 AUTHOR
+
+Written by the Software Engineering Institute at Carnegie Mellon
+University.  The primary author was Charles Hines.
+
+=head1 COPYRIGHT
+
+Copyright 2018 Carnegie Mellon University.  All rights reserved.  This
+software is licensed under a "BSD" license.  Please see I<LICENSE.txt>
+for details.
+
+=head1 SEE ALSO
+
+See fn2hash.
+
+=cut
+
+Local Variables:
+mode:text
+indent-tabs-mode:nil
+End:

@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <rose.h>
 #include <stdio.h>
@@ -80,7 +80,7 @@ TEST_F(ApiAnalyzerInterproceduralTest, TEST_SHOULD_NOT_FIND_INVALID_INTERPROCEDU
   bool r = api_graph_.Search(sig, &results);
 
   EXPECT_FALSE(r);
-  EXPECT_EQ(results.size(),0);
+  EXPECT_EQ(results.size(),ApiSearchResultVector::size_type(0));
 
   ApiSig sig2;
    sig2.name = "TEST_SHOULD_FIND_VALID_SIG_INTERPROCEDURAL";
@@ -94,7 +94,7 @@ TEST_F(ApiAnalyzerInterproceduralTest, TEST_SHOULD_NOT_FIND_INVALID_INTERPROCEDU
    bool r2 = api_graph_.Search(sig2, &results2);
 
    EXPECT_FALSE(r2);
-   EXPECT_EQ(results2.size(),0);
+   EXPECT_EQ(results2.size(),ApiSearchResultVector::size_type(0));
 }
 
 // This test is designed to force backtracking for a valid signature
@@ -139,7 +139,7 @@ TEST_F(ApiAnalyzerInterproceduralTest, TEST_SHOULD_FIND_VALID_INTERPROCEDURAL_SI
   bool r = api_graph_.Search(sig, &results);
 
   EXPECT_TRUE(r);
-  EXPECT_EQ(results.size(),1);
+  EXPECT_EQ(results.size(),ApiSearchResultVector::size_type(1));
 
   rose_addr_t component = 0x00401160;
   std::string expected = "0x0040129A0x004010D00x004010A40x004010600x004010400x004010840x00401307";
@@ -159,14 +159,7 @@ int main(int argc, char **argv) {
     GFATAL << "Unable to analyze file (no executable content found)." << LEND;
     return EXIT_FAILURE;
   }
-
-  // Load a config file overriding parts of the analysis.
-  if (vm.count("imports")) {
-    std::string config_file = vm["imports"].as<std::string>();
-    GINFO << "Loading analysis configuration file: " <<  config_file << LEND;
-    ds.read_config(config_file);
-  }
-  // Load stack deltas from config files for imports.
+  // Resolve imports, load API data, etc.
   ds.resolve_imports();
 
   BottomUpAnalyzer bua(&ds, vm);

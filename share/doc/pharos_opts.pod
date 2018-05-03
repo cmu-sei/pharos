@@ -1,0 +1,17 @@
+Shared Pharos options:
+  [--verbose=NUMBER] [--batch] [--allow-64bit]
+  [--include-func=ADDRESS] [--exclude-func=ADDRESS]
+  [--config=PHAROS_CONFIG_FILE]
+  [--dump-config] [--no-user-file] [--no-site-file]
+  [--apidb=APIDB_FILE] [--library=CONFIG_DIR]
+  [--timeout=TIMEOUT] [--reltimeout=TIMEOUT]
+  [--ptimeout=TIMEOUT] [--preltimeout=TIMEOUT]
+  [--maxmem=MEMSIZE] [--relmaxmem=MEMSIZE]
+  [--blockcounterlimit=NUMBER] [--funccounterlimit=NUMBER]
+  [--imports=IMPORT_CONFIG_FILE] [--type-file=FILE]
+  [--analyze-types] [--file=EXECUTABLE_FILE]
+
+  [--serialize=SERIALIZED_FILE] [--ignore-serialize-version]
+  [--stockpart] [--no-semantics] [--pdebug]
+  [--mark-executable] [--no-executable-entry]
+  [--log=LOG_CONTROL_STRING]

@@ -107,7 +107,7 @@ bool VirtualFunctionCallAnalyzer::analyze(CallInformationPtr &call_info) {
   GDEBUG << "Evaluating possible virtual call: " << debug_instruction(call_insn) << LEND;
 
   // reset the CallInformationPtr???
-  call_info.reset();
+  //call_info.reset();
 
   const DUAnalysis& du = pdg->get_usedef();
 
@@ -275,7 +275,7 @@ bool VirtualFunctionCallAnalyzer::analyze(CallInformationPtr &call_info) {
     for (const TreeNodePtr& tn : object_sv->get_possible_values()) {
       GDEBUG << "VCall ITE this-ptr: " << *tn << LEND;
       // The most common non OO condition is the NULL pointer.
-      if (tn->isNumber() && tn->toInt() == 0) {
+      if (tn->isNumber() && tn->isLeafNode()->bits().isAllClear()) {
         GDEBUG << "Skipping NULL pointer as possible object pointer." << LEND;
         continue;
       }

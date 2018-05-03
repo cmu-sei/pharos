@@ -1,4 +1,4 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Semantics_H
 #define Pharos_Semantics_H
@@ -23,7 +23,7 @@
 
 namespace pharos {
 
-typedef Rose::BinaryAnalysis::SMTSolver SMTSolver;
+typedef Rose::BinaryAnalysis::SmtSolverPtr SmtSolverPtr;
 // Import specific names from the external ROSE namepaces
 typedef Semantics2::BaseSemantics::Formatter RoseFormatter;
 typedef Semantics2::DispatcherX86 RoseDispatcherX86;
@@ -155,7 +155,7 @@ public:
   virtual Sawyer::Optional<BaseSValuePtr>
   createOptionalMerge(const BaseSValuePtr &other,
                       const BaseMergerPtr& merger,
-                      SMTSolver* solver) const ROSE_OVERRIDE;
+                      const SmtSolverPtr &solver) const ROSE_OVERRIDE;
 
 
   // Non virtualized version returns a SymbolicValuePtr
@@ -313,9 +313,6 @@ public:
   bool is_reg(const RegisterDescriptor r) const {
     return (!isMemReference && register_descriptor.get_major() == r.get_major() &&
             register_descriptor.get_minor() == r.get_minor()); }
-  bool is_reg(const RegisterDescriptor* r) const {
-    return (!isMemReference && register_descriptor.get_major() == r->get_major() &&
-            register_descriptor.get_minor() == r->get_minor()); }
   bool is_mem() const { return (isMemReference); }
   bool is_invalid() const { return (size == 0); }
   bool is_valid() const { return (size != 0); }
@@ -349,7 +346,7 @@ public:
     }
     // Order registers by their register descriptors.
     else if (is_reg() && other.is_reg()) {
-      return RegisterDescriptorLtCmp(register_descriptor, other.register_descriptor);
+      return register_descriptor < other.register_descriptor;
     }
     else {
       // Arbitrary and icky, but it also shouldn't happen.

@@ -1,4 +1,4 @@
-// Copyright 2016-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Michael Duggan
 
@@ -8,12 +8,15 @@
 namespace pharos {
 namespace prolog {
 
+namespace msg = ::Sawyer::Message;
+
+static std::map<std::string, msg::Importance> importance_map;
+
+msg::Facility plog{"PLOG"};
+
 Session::Session(const ProgOptVarMap& vm)
 {
-  Path libdir;
-  if (global_descriptor_set) {
-    libdir = global_descriptor_set->get_library_path();
-  }
+  Path libdir = get_library_path();
   auto prolog_dir = absolute(Path(PHAROS_XSB_BUILD_LOCATION));
   auto pdir = vm.config().path_get("pharos.prolog_dir");
   if (pdir && !pdir.Scalar().empty()) {
@@ -31,6 +34,16 @@ Session::Session(const ProgOptVarMap& vm)
       default_rule_dir = libdir / default_rule_dir;
     }
   }
+
+  if (importance_map.empty()) {
+    for (int i = 0; i < msg::N_IMPORTANCE; ++i) {
+      importance_map.emplace(to_lower(msg::stringifyImportance(msg::Importance(i))),
+                             msg::Importance(i));
+    }
+  }
+
+  register_predicate("log", 2, prolog_log, "pharos");
+  register_predicate("logln", 2, prolog_logln, "pharos");
 }
 
 bool Session::consult(const std::string & name)
@@ -51,6 +64,36 @@ bool Session::consult(const std::string & name)
     return false;
   }
   return true;
+}
+
+int Session::prolog_log_base(bool newline)
+{
+  using pharos::prolog::impl::arg;
+
+  try {
+    std::string imp = arg<std::string>(0);
+    auto level = importance_map.find(to_lower(imp));
+    if (level == importance_map.end()) {
+      return false;
+    }
+    if (plog[level->second]) {
+      try {
+        // Assume a string argument
+        char const * message = arg<char const *>(1);
+        plog[level->second] << message;
+      } catch (TypeMismatch &) {
+        // Handle non-string arguments
+        std::string message = arg<void>(1);
+        plog[level->second] << message;
+      }
+      if (newline) {
+        plog[level->second] << std::endl;
+      }
+    }
+    return true;
+  } catch (const TypeMismatch &) {
+    return false;
+  }
 }
 
 

@@ -1,0 +1,32 @@
+cmake_minimum_required(VERSION @CMAKE_MINIMUM_REQUIRED_VERSION@)
+project(z3-build)
+
+message(STATUS "Will install z3 to ${Z3_PREFIX}")
+message(STATUS "Initializing z3 repo")
+execute_process(
+  COMMAND @GIT_EXECUTABLE@ submodule update --init z3
+  WORKING_DIRECTORY @CMAKE_SOURCE_DIR@)
+message(STATUS "Cleaning z3 repo")
+execute_process(
+  COMMAND @GIT_EXECUTABLE@ clean -fx
+  COMMAND @GIT_EXECUTABLE@ reset --hard
+  WORKING_DIRECTORY @CMAKE_SOURCE_DIR@/z3)
+message(STATUS "Patching z3 repo")
+execute_process(
+  COMMAND patch -p1
+  INPUT_FILE @CMAKE_SOURCE_DIR@/cmake/z3-cmake-git-fix.patch
+  WORKING_DIRECTORY @CMAKE_SOURCE_DIR@/z3)
+
+include(ExternalProject)
+ExternalProject_Add(z3
+  SOURCE_DIR @Z3_SOURCE_DIR@
+  BINARY_DIR @Z3_BUILD_DIR@
+  INSTALL_DIR ${Z3_PREFIX}
+  PATCH_COMMAND
+  CMAKE_ARGS
+  -DCMAKE_INSTALL_PREFIX=${Z3_PREFIX}
+  -DCMAKE_BUILD_TYPE=Release
+  -DCMAKE_INSTALL_LIBDIR=lib
+  -DINCLUDE_GIT_DESCRIBE=false
+  -DINCLUDE_GIT_HASH=false
+  STEP_TARGETS build install)

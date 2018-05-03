@@ -1,6 +1,0 @@
-#!/bin/bash
-
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-source "$DIR/../helper.bash" "$DIR"
-
-$XSB -e "[util],[validate],load_dyn('${1}'),load_dyn('${2}'),validateResults,halt."

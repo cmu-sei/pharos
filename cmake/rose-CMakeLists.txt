@@ -1,0 +1,59 @@
+cmake_minimum_required(VERSION @CMAKE_MINIMUM_REQUIRED_VERSION@)
+project(rose-build)
+
+set(CMAKE_MODULE_PATH "@CMAKE_MODULE_PATH@")
+
+message(STATUS "Will install rose to ${ROSE_PREFIX}")
+message(STATUS "Initializing rose repo")
+execute_process(
+  COMMAND @GIT_EXECUTABLE@ submodule update --init rose
+  WORKING_DIRECTORY @CMAKE_SOURCE_DIR@)
+message(STATUS "Cleaning rose repo")
+execute_process(
+  COMMAND @GIT_EXECUTABLE@ reset --hard
+  WORKING_DIRECTORY @CMAKE_SOURCE_DIR@/rose)
+
+set(Boost_USE_MULTITHREADED on)
+find_package(Boost 1.60.0 REQUIRED
+  COMPONENTS system thread program_options iostreams filesystem regex wave)
+find_package(YamlCpp REQUIRED)
+find_package(Z3 REQUIRED)
+
+get_filename_component(BOOST_PREFIX "${Boost_INCLUDE_DIR}" DIRECTORY)
+set(BOOST_LIBDIR "${Boost_LIBRARY_DIR_RELEASE}")
+get_filename_component(YAML_CPP_PREFIX "${YAML_CPP_INCLUDE_DIR}" DIRECTORY)
+
+set(ROSE_OPTIONS
+  CXXFLAGS=-std=c++11 --with-C_WARNINGS=-w --with-CXX_WARNINGS=-w
+  --enable-languages=binaries --without-doxygen
+  --enable-projects-directory --disable-tutorial-directory
+  --disable-static --enable-shared --with-java=no
+  --with-boost=${BOOST_PREFIX} --with-boost-libdir=${BOOST_LIBDIR}
+  --disable-boost-version-check
+  --with-yaml=${YAML_CPP_PREFIX}
+  --with-z3=${Z3_PREFIX})
+
+include(ExternalProject)
+ExternalProject_Add(rose
+  SOURCE_DIR @ROSE_SOURCE_DIR@
+  BINARY_DIR @ROSE_BUILD_DIR@
+  INSTALL_DIR ${ROSE_PREFIX}
+  CONFIGURE_COMMAND
+  @ROSE_SOURCE_DIR@/configure --prefix=${ROSE_PREFIX} ${ROSE_OPTIONS}
+  BUILD_COMMAND $(MAKE) -C src
+  INSTALL_COMMAND $(MAKE) install-rose-library)
+ExternalProject_Get_Property(rose source_dir binary_dir)
+ExternalProject_Add_Step(rose build-tools
+  COMMAND $(MAKE) -C projects/BinaryAnalysisTools
+  DEPENDERS install
+  DEPENDEES build
+  WORKING_DIRECTORY ${binary_dir})
+ExternalProject_Add_Step(rose install-tools
+  COMMAND $(MAKE) -C projects/BinaryAnalysisTools install
+  DEPENDEES install
+  WORKING_DIRECTORY ${binary_dir})
+ExternalProject_Add_Step(rose prepare
+  COMMAND ${source_dir}/build
+  DEPENDERS configure
+  WORKING_DIRECTORY ${source_dir})
+ExternalProject_Add_StepTargets(rose build-tools install)

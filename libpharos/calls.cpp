@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/optional.hpp>
 #include <boost/property_map/property_map.hpp>
@@ -204,8 +204,37 @@ bool CallDescriptor::check_virtual(PDG * pdg) {
 // calling update_connections, but we want to discourage leaving things in an inconsistent
 // state.
 void CallDescriptor::add_target(rose_addr_t taddr) {
-  targets.insert(taddr);
-  update_connections();
+  if (targets.find(taddr) == targets.end()) {
+    targets.insert(taddr);
+    update_connections();
+  }
+}
+
+bool CallDescriptor::get_never_returns() const {
+  // If we have no idea about the call targets, assume that the call returns.
+  if (targets.size() == 0) return false;
+
+  // For each call target, if that target returns, then the call returns.
+  for (rose_addr_t target : targets) {
+    const FunctionDescriptor* cfd = global_descriptor_set->get_func(target);
+    if (cfd) {
+      //OINFO << "Call " << address_string() << " calls " << cfd->address_string()
+      //      << " which returns = " << cfd->get_never_returns() << LEND;
+      if (! cfd->get_never_returns()) return false;
+    }
+#if 0
+    // We should get the never returns status from the import database!
+    else {
+      const ImportDescriptor* cid = global_descriptor_set->get_import(target);
+      if (cid) {
+        OINFO << "Call " << address_string() << " calls " << cid->address_string()
+              << " which is " << cid->get_long_name() << LEND;
+      }
+    }
+#endif
+  }
+  // If none of the targets ever return, the call does not return.
+  return true;
 }
 
 // Add the specified import descriptor as a target of this call.  Update the appropriate
@@ -360,6 +389,17 @@ void CallDescriptor::update_call_type(CallType ct, GenericConfidence conf) {
   confidence = conf;
 }
 
+// Analyze whether a call is virtual or not, and update the type and call_info.  This way of
+// doing it was added for the new Prolog OOAnalyzer, and the "old way" is still around as well.
+void CallDescriptor::update_virtual_call(PDG* pdg) {
+  if (get_call_type() == CallVirtualFunction) return;
+  SgAsmX86Instruction* xinsn = isSgAsmX86Instruction(get_insn());
+  VirtualFunctionCallAnalyzer vcall(xinsn, pdg);
+  if (vcall.analyze(call_info)) {
+    update_call_type(CallVirtualFunction, ConfidenceGuess);
+  }
+}
+
 void CallDescriptor::read_config(const boost::property_tree::ptree& tree,
                                  ImportNameMap* import_names) {
   // Address.  I'm somewhat uncertain about when we would need to override this.
@@ -390,8 +430,7 @@ void CallDescriptor::read_config(const boost::property_tree::ptree& tree,
   // Import
   boost::optional<std::string> impstr = tree.get_optional<std::string>("import");
   if (impstr) {
-    std::string lowered = to_lower(*impstr);
-    ImportNameMap::iterator ifinder = import_names->find(lowered);
+    ImportNameMap::iterator ifinder = import_names->find(*impstr);
     if (ifinder != import_names->end()) {
       import_descriptor = ifinder->second;
       //GINFO << "Found import descriptor for: " << *impstr << LEND;
@@ -442,6 +481,7 @@ void CallDescriptor::print(std::ostream &o) const {
     o << "Call: insn=(NOT SET!) address=" << address_string();
   }
 
+  o << " loc=" << Enum2Str(call_location);
   o << " type=" << Enum2Str(call_type) << " conf=" << Enum2Str(confidence);
   if (import_descriptor != NULL) {
     o << " import=" << import_descriptor->get_long_name();
@@ -512,7 +552,7 @@ void CallDescriptor::analyze() {
         GWARN << "Unexpected size for fixed call target address at" << address_string() << LEND;
       }
       confidence = ConfidenceCertain;
-      call_location = CallExternal;
+      call_location = CallInternal;
       call_type = CallImmediate;
       break;
     }
@@ -523,6 +563,19 @@ void CallDescriptor::analyze() {
     }
   }
 }
+
+CallParamInfo CallParamInfoBuilder::create(CallDescriptor const & cd) const {
+  ValueList values;
+  for (auto & param : cd.get_parameters().get_params()) {
+    auto value = param.get_value();
+    auto & type = param.get_type();
+    auto tref = type.empty() ? std::make_shared<typedb::UnknownType>("<unknown>")
+                : db.lookup(type);
+    values.push_back(tref->get_value(value, &*cd.get_state()));
+  }
+  return CallParamInfo(cd, std::move(values));
+}
+
 
 } // namespace pharos
 

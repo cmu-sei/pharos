@@ -1,4 +1,4 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
@@ -10,16 +10,14 @@
 #include "options.hpp"
 #include "util.hpp"
 #include "descriptors.hpp"
+#include "masm.hpp"
+#include "revision.hpp"
+#include "build.hpp"
+#include "apidb.hpp"
 
 // these next ones needed for global obj cleanup...
 #include "riscops.hpp"
-#include "usage.hpp"
-#include "method.hpp"
 #include "vftable.hpp"
-#include "masm.hpp"
-#include "class.hpp"
-#include "revision.hpp"
-#include "build.hpp"
 
 // for non portable unhandled exception stuff in pharos_main:
 #ifdef __GNUC__
@@ -32,8 +30,11 @@ namespace pharos {
 
 namespace bf = boost::filesystem;
 
+using prolog::plog;
+
+// This is library path from the command line or the default value.
 namespace {
-bf::path lib_root;
+bf::path library_path;
 }
 
 int global_logging_fileno = STDOUT_FILENO;
@@ -54,46 +55,48 @@ ProgOptVarMap global_vm;
 ProgOptDesc cert_standard_options() {
   namespace po = boost::program_options;
 
-  ProgOptDesc certopt("CERT options");
+  ProgOptDesc certopt("CERT/Pharos options");
 
+  // Don't forget to update the documentation if you change this list!
   certopt.add_options()
     ("help,h",        "display help")
-    ("config,C",
-     po::value<std::vector<std::string>>()->composing(),
-     "pharos configuration file (can be specified multiple times)")
-    ("no-user-file",
-     "don't load the user's configuration file")
-    ("no-site-file",
-     "don't load the site's configuration file")
-    ("dump-config",
-     "display current active config parameters")
-    ("imports,I",
-     po::value<std::string>(),
-     "analysis configuration file (JSON)")
-    ("analyze-types",
-     "generate prolog type information")
-    ("type-file",
-     po::value<std::string>(),
-     "name of type (prolog) facts file")
+
+    // Important options affecting lots of programs?
+    ("verbose,v",
+     po::value<int>()->implicit_value(DEFAULT_VERBOSITY),
+     //po::value<int>()->default_value(DEFAULT_VERBOSITY),
+     boost::str(boost::format("enable verbose logging (1-%d, default %d)")
+                % MAXIMUM_VERBOSITY % DEFAULT_VERBOSITY).c_str())
+    ("batch,b", "suppress colors, progress bars, etc.")
+
+    // Increasingly important?  And possibly going away before too much longer?
+    ("allow-64bit", "allow analysis of 64-bit executables")
+
+    // The inclusion and exclusion of specific functions (commonly used?)
     ("include-func,i",
      po::value<StrVector>(),
      "limit analysis to a specific function")
     ("exclude-func,e",
      po::value<StrVector>(),
      "exclude analysis of a specific function")
-    ("file,f",
-     po::value<std::string>(),
-     "executable to be analyzed")
-    ("log",
-     po::value<std::string>(),
-     "log facility control string")
-    ("batch,b", "suppress colors, progress bars, etc.")
-    ("allow-64bit", "allow analysis of 64-bit executables")
-    ("library,l",
-     po::value<std::string>(),
-     "specify the path to the objdigger library")
+
+    // These are options controlling the configuration of the Pharos system.
+    ("config,C",
+     po::value<std::vector<std::string>>()->composing(),
+     "pharos configuration file (can be specified multiple times)")
+    ("dump-config",
+     "display current active config parameters")
+    ("no-user-file",
+     "don't load the user's configuration file")
+    ("no-site-file",
+     "don't load the site's configuration file")
     ("apidb", po::value<std::vector<std::string>>(),
      "path to sqlite or JSON file containing API and type information")
+    ("library,l",
+     po::value<std::string>(),
+     "specify the path to the pharos library directory")
+
+    // Timeouts affecting the "core" analysis pass.
     ("timeout", po::value<double>(),
      "specify the absolute defuse timeout value")
     ("reltimeout", po::value<double>(),
@@ -110,23 +113,49 @@ ProgOptDesc cert_standard_options() {
      "limit the number of instructions per basic block")
     ("funccounterlimit", po::value<int>(),
      "limit the number of blocks (roughly) per function")
-    ("verbose,v",
-     po::value<int>()->implicit_value(DEFAULT_VERBOSITY),
-     //po::value<int>()->default_value(DEFAULT_VERBOSITY),
-     boost::str(boost::format("enable verbose logging (1-%d, default %d)") % MAXIMUM_VERBOSITY % DEFAULT_VERBOSITY).c_str())
+
+    // Crufty old stuff that may not even be real anymore?
+    ("imports,I",
+     po::value<std::string>(),
+     "analysis configuration file (JSON)")
+
+    // Almost unused option to work around performance issues when enabled by default.
+    ("analyze-types",
+     "generate prolog type information")
+    ("type-file",
+     po::value<std::string>(),
+     "name of type (prolog) facts file")
+
+    // Historical...  Do we even need this anymore?
+    ("file,f",
+     po::value<std::string>(),
+     "executable to be analyzed")
     ;
   ;
 
+  // Don't forget to update the documentation if you change this list!
+
+  // These are really partitioner options or maybe options that are mostly just passed along to
+  // control standard ROSE behavior.
   ProgOptDesc roseopt("ROSE options");
   roseopt.add_options()
+    ("serialize", po::value<std::string>(),
+     "File which caches function partitioning information")
+    ("ignore-serialize-version",
+     "Reject version mismatch errors when reading a serialized file")
     ("stockpart",
-     "use stock partitioner version one instead of our modified one")
-    ("partitioner2",
-     "use our customized version two partitioner")
+     "use stock ROSE partitioner without the Pharos changes")
     ("no-semantics",
      "disable semantic analysis during parititioning")
     ("pdebug",
      "enable partitioner debugging")
+    ("no-executable-entry",
+     "do not mark the entry point segment as executable")
+    ("mark-executable",
+     "mark all segments as executable during partitioning")
+    ("log",
+     po::value<std::string>(),
+     "log facility control string")
 #if 0  // maybe eventually...
     ("threads",
      po::value<unsigned int>(),
@@ -136,12 +165,15 @@ ProgOptDesc cert_standard_options() {
      "output ROSE version information and exit immediately")
     ;
 
+  // Don't forget to update the documentation if you change this list!
+
   certopt.add(roseopt);
   return certopt;
 }
 
-ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od,
-                                 const std::string & proghelptext)
+ProgOptVarMap parse_cert_options_generic(
+  int argc, char** argv, ProgOptDesc od, ProgPosOptDesc posopt,
+  const std::string & proghelptext)
 {
   namespace po = boost::program_options;
 
@@ -168,7 +200,12 @@ ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od,
     prog_loc = bf::canonical(prog_loc);
   }
 
+  // This is the root of the installation path, the repository of the current working directory.
+  // This path is not exposed in the API because it's only needed for etc/pharos.yaml (below).
   bf::path root_loc;
+  // This is share/pharos subdirectory or the current working directory in release builds.
+  // If CMakeFiles is found in development builds, it's the repository root directory.
+  bf::path lib_root;
 
   if (prog_loc.filename() == "bin") {
     // Assume the install root is one directory below.
@@ -178,7 +215,7 @@ ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od,
     // This is disabled in release builds to prevent PHAROS_BUILD_LOCATION from ending up in
     // the binary
     if (exists(prog_loc / "CMakeFiles")) {
-      root_loc = lib_root = PHAROS_BUILD_LOCATION;
+      root_loc = lib_root = (PHAROS_BUILD_LOCATION "/share");
     } else
     {
       root_loc = lib_root = bf::current_path();
@@ -186,9 +223,6 @@ ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od,
   }
 
   ProgOptVarMap vm;
-
-  ProgPosOptDesc posopt;
-  posopt.add("file", -1);
 
   Sawyer::Message::FdSinkPtr mout = Sawyer::Message::FdSink::instance(global_logging_fileno);
 
@@ -202,7 +236,7 @@ ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od,
   olog.initStreams(mout->prefix(prefix));
   // Initialize the global log with the appropriate filters.  Set this up before option
   // processing.
-  glog.initStreams(mout->prefix(prefix));
+  glog().initStreams(mout->prefix(prefix));
 
   po::store(po::command_line_parser(argc, argv).
             options(od).positional(posopt).run(), vm);
@@ -223,6 +257,10 @@ ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od,
     std::cout << vm.config() << LEND;
     exit(3);
   }
+
+  // Once the command line options have been processed we can determine the library path.
+  auto lv = vm.get<std::string>("library", "pharos.library");
+  library_path = lv ? *lv : lib_root;
 
   // ----------------------------------------------------------------------------------------
   // Configure the rest of the logging facilities
@@ -259,17 +297,24 @@ ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od,
   po::notify(vm);
 
   // Add the global logging facility to the known facilities.
-  Sawyer::Message::mfacilities.insert(glog);
+  Sawyer::Message::mfacilities.insert(glog());
   // Initialize the semantics log with the appropriate filters.
   slog.initStreams(mout->prefix(prefix));
   // Add the semantic logging facility to the known facilities.
   Sawyer::Message::mfacilities.insert(slog);
+  // Initialize the prolog
+  plog.initStreams(mout->prefix(prefix));
+  // Add the prolog logging facility to the known facilities.
+  Sawyer::Message::mfacilities.insert(plog);
+
+  auto & apidblog = APIDictionary::initDiagnostics();
 
   // Set the default verbosity to only emit errors and and fatal messages.
   Sawyer::Message::mfacilities.control("none, >=error");
   // Since the line above doesn't seem to work as expected...
   glog[Sawyer::Message::WARN].disable();
   slog[Sawyer::Message::WARN].disable();
+  plog[Sawyer::Message::WARN].disable();
 
   // The options log is the exception to the rule that only errors and above are reported.
   olog[Sawyer::Message::WARN].enable();
@@ -278,64 +323,68 @@ ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od,
     olog[Sawyer::Message::MARCH].enable();
   }
 
+  // apidb
+  apidblog[Sawyer::Message::WARN].enable();
+
   // If the user has modified the verbosity level, let's try to get the logging right before we
   // emit any messages at all.
-  if (vm.count("verbose") && vm.count("log")) {
-    OERROR << "Verbosity option overridden by explicit --log parameter." << LEND;
-  }
-  else {
-    auto verbosity_opt = vm.get<int>("verbose", "pharos.verbosity");
-    if (verbosity_opt) {
-      // Cory would like to control whether timestamps are displayed on log messages with the
-      //--timing option, but that's an option on objdigger only at present.
-      int verbosity = *verbosity_opt;
+  auto verbosity_opt = vm.get<int>("verbose", "pharos.verbosity");
+  if (verbosity_opt) {
+    int verbosity = *verbosity_opt;
 
-      if (verbosity < 0) {
-        OERROR << "Valid verbosity levels are 1-" << MAXIMUM_VERBOSITY << ", using 1." << LEND;
-        verbosity = 1;
-      }
+    if (verbosity < 0) {
+      OERROR << "Valid verbosity levels are 1-" << MAXIMUM_VERBOSITY << ", using 1." << LEND;
+      verbosity = 1;
+    }
 
-      if (verbosity > MAXIMUM_VERBOSITY) {
-        OERROR << "Valid verbosity levels are 1-" << MAXIMUM_VERBOSITY << ", using "
-               << MAXIMUM_VERBOSITY << "." << LEND;
-        verbosity = MAXIMUM_VERBOSITY;
-      }
+    if (verbosity > MAXIMUM_VERBOSITY) {
+      OERROR << "Valid verbosity levels are 1-" << MAXIMUM_VERBOSITY << ", using "
+             << MAXIMUM_VERBOSITY << "." << LEND;
+      verbosity = MAXIMUM_VERBOSITY;
+    }
 
-      // Enable warnings in the main program.
-      glog[Sawyer::Message::WARN].enable(verbosity >= 1);
-      // Enable informational messages from the main program.
-      glog[Sawyer::Message::INFO].enable(verbosity >= 2);
-      // Positively report options, including this one.
-      olog[Sawyer::Message::WHERE].enable(verbosity >= 3);
-      if (verbosity >= 3) {
-        ODEBUG << "Verbose logging level set to " << verbosity << "." << LEND;
-      }
+    // Enable warnings in the main program.
+    glog[Sawyer::Message::WARN].enable(verbosity >= 1);
+    // Enable informational messages from the main program.
+    glog[Sawyer::Message::INFO].enable(verbosity >= 2);
+    // Positively report options, including this one.
+    olog[Sawyer::Message::WHERE].enable(verbosity >= 3);
+    if (verbosity >= 3) {
+      ODEBUG << "Verbose logging level set to " << verbosity << "." << LEND;
+    }
 
-      // Enable warnings from the semantics facility.
-      slog[Sawyer::Message::WARN].enable(verbosity >= 4);
-      // Enable (our) debugging from the main program.
-      glog[Sawyer::Message::WHERE].enable(verbosity >= 5);
-      // Enable informational messages from the semantics facility.
-      slog[Sawyer::Message::INFO].enable(verbosity >= 6);
-      // Enable more debugging from the main program.
-      glog[Sawyer::Message::TRACE].enable(verbosity >= 7);
-      // Enable everything from the main program.
-      glog[Sawyer::Message::DEBUG].enable(verbosity >= 8);
-      // Enable (our) debugging from the semantics facility.
-      slog[Sawyer::Message::WHERE].enable(verbosity >= 9);
-      // Enable more debugging in the options parsing code.
-      olog[Sawyer::Message::TRACE].enable(verbosity >= 10);
-      // Enable everything from the options parsing code.
-      olog[Sawyer::Message::DEBUG].enable(verbosity >= 11);
-      // Enable more debugging from the semantics facility.
-      slog[Sawyer::Message::TRACE].enable(verbosity >= 12);
-      // Enable everything from the semantics facility.
-      slog[Sawyer::Message::DEBUG].enable(verbosity >= 13);
+    // Enable warnings from the semantics facility.
+    slog[Sawyer::Message::WARN].enable(verbosity >= 4);
+    // Enable (our) debugging from the main program.
+    glog[Sawyer::Message::WHERE].enable(verbosity >= 5);
+    // Enable informational messages from the semantics facility.
+    slog[Sawyer::Message::INFO].enable(verbosity >= 6);
+    // Enable more debugging from the main program.
+    glog[Sawyer::Message::TRACE].enable(verbosity >= 7);
+    // Enable everything from the main program.
+    glog[Sawyer::Message::DEBUG].enable(verbosity >= 8);
+    // Enable (our) debugging from the semantics facility.
+    slog[Sawyer::Message::WHERE].enable(verbosity >= 9);
+    // Enable more debugging in the options parsing code.
+    olog[Sawyer::Message::TRACE].enable(verbosity >= 10);
+    // Enable everything from the options parsing code.
+    olog[Sawyer::Message::DEBUG].enable(verbosity >= 11);
+    // Enable more debugging from the semantics facility.
+    slog[Sawyer::Message::TRACE].enable(verbosity >= 12);
+    // Enable everything from the semantics facility.
+    slog[Sawyer::Message::DEBUG].enable(verbosity >= 13);
 
-      // Enable everything everywhere...
-      if (verbosity >= MAXIMUM_VERBOSITY) {
-        Sawyer::Message::mfacilities.control("all");
-      }
+    // Prolog logging levels
+    plog[Sawyer::Message::ERROR].enable(true);
+    plog[Sawyer::Message::FATAL].enable(true);
+    plog[Sawyer::Message::WARN].enable(verbosity >= 4);
+    plog[Sawyer::Message::INFO].enable(verbosity >= 6);
+    plog[Sawyer::Message::TRACE].enable(verbosity >= 12);
+    plog[Sawyer::Message::DEBUG].enable(verbosity >= 13);
+
+    // Enable everything everywhere...
+    if (verbosity >= MAXIMUM_VERBOSITY) {
+      Sawyer::Message::mfacilities.control("all");
     }
   }
 
@@ -365,14 +414,6 @@ ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od,
     GCRAZY << "Main program CRAZY/DEBUG messages are enabled." << LEND;
   }
 
-  if (vm.count("file")) {
-    OINFO << "Analyzing executable: " << vm["file"].as<std::string>() << LEND;
-  }
-  else {
-    OFATAL << "You must specify at least one executable to analyze." << LEND;
-    exit(3);
-  }
-
   if (vm.count("include-func")) {
     for (const std::string & astr : vm["include-func"].as<StrVector>()) {
       rose_addr_t addr = parse_number(astr);
@@ -390,19 +431,32 @@ ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od,
   // We might want to investigate allowing unknown options for pasthru to ROSE
   // http://www.boost.org/doc/libs/1_53_0/doc/html/program_options/howto.html
 
-  global_vm = vm; // so libpharos can get at this stuff without having to pass options all around...
+  global_vm = vm; // so libpharos can get at this stuff without having to pass options all
+                  // around...
 
   return vm;
 }
 
-bf::path get_default_libdir()
+ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od,
+                                 const std::string & proghelptext)
 {
-  if (!lib_root.empty()) {
-    return lib_root;
+  ProgPosOptDesc posopt;
+  posopt.add("file", -1);
+  auto vm = parse_cert_options_generic(argc, argv, od, posopt, proghelptext);
+  if (vm.count("file")) {
+    OINFO << "Analyzing executable: " << vm["file"].as<std::string>() << LEND;
   }
-  return bf::current_path();
+  else {
+    OFATAL << "You must specify at least one executable to analyze." << LEND;
+    exit(3);
+  }
+  return vm;
 }
 
+const bf::path& get_library_path()
+{
+  return library_path;
+}
 
 ProgOptVarMap& get_global_options_vm()
 {
@@ -538,17 +592,6 @@ void cleanup_our_globals() {
   // to prevent static object ctor/dtor order problems w/ statically linked exec from crashing
   // in various ways at exit time during static object destruction:
   global_rops.reset(); // riscops.hpp
-  object_uses.clear(); // usage.hpp
-  this_call_methods.clear(); // method.hpp
-  global_vftables.clear(); // vftable.hpp, this one is probably safe to not do this on, but just in case :)
-  global_vbtables.clear(); // vftable.hpp, this one is probably safe to not do this on, but just in case :)
-  //global_label_map.clear(); // masm.hpp
-  classes.clear(); // calls.hpp
-  //delete global_descriptor_set; // descriptors.hpp
-  //global_descriptor_set->get_global_map().clear();
-  //global_descriptor_set->get_import_map().clear();
-  //global_descriptor_set->get_call_map().clear();
-  //global_descriptor_set->get_func_map().clear();
 }
 
 static void report_exception(const std::exception & e, int level = 0)
@@ -568,7 +611,11 @@ static void report_exception(const std::exception & e, int level = 0)
   }
 }
 
-int pharos_main(main_func_ptr fn, int argc, char **argv, int logging_fileno) {
+int pharos_main(std::string const & glog_, main_func_ptr fn,
+                int argc, char **argv, int logging_fileno)
+{
+  set_glog_name(glog_);
+
   int rc = 0;
   atexit(cleanup_our_globals);
 

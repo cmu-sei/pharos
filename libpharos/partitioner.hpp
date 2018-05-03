@@ -130,6 +130,17 @@ public:
   virtual bool match(const P2::Partitioner &partitioner, rose_addr_t anchor) ROSE_OVERRIDE;
 };
 
+class NamePredicate:
+ public Sawyer::Container::SegmentPredicate<MemoryMap::Address, MemoryMap::Value> {
+  const std::string name;
+ public:
+  NamePredicate(std::string const & n) : name(n) {}
+
+  bool operator()(bool, const Args & args) override {
+    return args.segment.name() == name;
+  }
+};
+
 // We want our own engine because we want to override some steps. Specifically, we want to make
 // sure our functions get defined after basic blocks are discovered but before they're assigned
 // to functions.  Another way would be to run the base engine like normal, then throw away the

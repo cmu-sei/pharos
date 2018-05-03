@@ -90,8 +90,8 @@ class GlobalMemoryDescriptor {
   // The data type as an enumeration.
   DataType type;
 
-  // The abstract value associated with this global variable
-  SymbolicValuePtr value;
+  // The list of abstract value associated with this global variable
+  std::vector<SymbolicValuePtr> values;
 
   // The address of the global
   SymbolicValuePtr memory_address;
@@ -115,7 +115,7 @@ public:
 
   SymbolicValuePtr get_memory_address() { return memory_address; }
 
-  SymbolicValuePtr get_value() { return value; }
+  const std::vector<SymbolicValuePtr>& get_values() { return values; }
 
   rose_addr_t get_address() const { return address; }
 
@@ -124,6 +124,13 @@ public:
   void add_ref(SgAsmInstruction* insn) { refs.insert(insn); }
   void add_read(SgAsmInstruction* insn, int asize);
   void add_write(SgAsmInstruction* insn, int asize);
+  void add_value(SymbolicValuePtr new_val);
+
+  std::string to_string() const;
+
+  const InsnSet& get_writes();
+  const InsnSet& get_reads();
+  const InsnSet& get_refs();
 
   // Are all known memory accesses reads?
   bool read_only() const;

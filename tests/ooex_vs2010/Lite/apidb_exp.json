@@ -1,0 +1,59 @@
+{
+    "config": {
+        "exports": {
+            "exp.dll:??0Cexp@@QAE@XZ": {
+                "function": {
+                    "convention": "thiscall"
+
+                }
+            },
+            "exp.dll:?func1@Cexp@@QAEXH@Z": {
+                "function": {
+                    "convention": "thiscall",
+                    "parameters": [
+                        {
+                            "type":"int"
+                        }
+                    ]
+                }
+            },
+            "exp.dll:?func2@Cexp@@QAEXXZ": {
+                "function": {
+                    "convention": "thiscall"
+                }
+            },
+            "exp.dll:?func3@Cexp@@QAEXH_N@Z": {
+                "function": {
+                    "convention": "thiscall",
+                    "parameters": [
+                        {
+                            "type":"int"
+                        },
+                        {
+                            "type":"bool"
+                        }
+                    ]
+                }
+            },
+            "exp.dll:?func4@Cexp@@QAEHXZ": {
+                "function": {
+                    "convention": "thiscall",
+                    "parameters": [
+                        {
+                            "type":"int"
+                        },
+                        {
+                            "type":"bool"
+                        }
+                    ],
+                    "type": "int"
+                }
+            },
+            "exp.dll:??1Cexp@@QAE@XZ": {
+                "function": {
+                    "convention": "thiscall"
+                }
+            }
+        }
+    }
+}

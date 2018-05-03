@@ -2,11 +2,14 @@
 // Copyright 2016-2017 Carnegie Mellon University.  See LICENSE file for terms.
 // Author: Jeff Gennari
 
+#include <boost/range/adaptor/map.hpp>
+
 #include "types.hpp"
 #include "xsb.hpp"
 #include "pdg.hpp"
 #include "defuse.hpp"
 #include "stkvar.hpp"
+#include "demangle.hpp"
 
 // set up local logging
 namespace {
@@ -39,14 +42,16 @@ const std::string MEMADDR_FACT = "memaddr";
 const std::string BITWIDTH_FACT = "bitwidth";
 const std::string VAL_FACT = "value";
 const std::string FNCALL_ARG_FACT = "functionCallArg";
-const std::string FNCALL_TARGET_FACT = "functionCallTarget";
-const std::string APINAME_FACT = "apiCallName";        // name of an API function
-const std::string API_PARAM_TYPE_FACT = "apiParamType"; // name of parameter type
-const std::string TYPE_POINTER_FACT = "typePointerness";   // is parameter a pointer type
-const std::string TYPE_SIGNED_FACT = "typeSignedness";    // is parameter signed
-const std::string KNOWN_POINTER_FACT = "knownPointer";  // is parameter a pointer type
-const std::string KNOWN_SIGNED_FACT = "knownSigned";   // is parameter signed
-const std::string KNOWN_TYPENAME_FACT = "knownTypename";     // the typename is known
+const std::string FNCALL_RETVAL_FACT = "functionCallRetval";
+const std::string APINAME_FACT = "apiCallName";               // name of an API function
+const std::string API_PARAM_TYPE_FACT = "apiParamType";       // name of parameter type
+const std::string API_RET_TYPE_FACT = "apiReturnType";        // return type of an API
+const std::string TYPE_POINTER_FACT = "typePointerness";      // is parameter a pointer type
+const std::string TYPE_SIGNED_FACT = "typeSignedness";        // is parameter signed
+const std::string KNOWN_POINTER_FACT = "knownPointer";        // is parameter a pointer type
+const std::string KNOWN_SIGNED_FACT = "knownSigned";          // is parameter signed
+const std::string KNOWN_TYPENAME_FACT = "knownTypename";      // the typename is known
+const std::string KNOWN_OBJECT_FACT = "knownObject";
 const std::string TYPE_REF_FACT = "typeRef";
 const std::string SAME_TYPE_FACT = "sameType";
 const std::string POINTS_TO_FACT = "pointsTo";
@@ -55,7 +60,10 @@ const std::string ARCH_FACT = "archBits";
 // Prolog query strings
 const std::string FINAL_POINTER_QUERY = "finalPointer";
 const std::string FINAL_SIGNED_QUERY = "finalSigned";
-const std::string TYPE_NAME_QUERY = "typeName";
+const std::string FINAL_TYPENAME_QUERY = "finalTypeName";
+const std::string FINAL_OBJECT_QUERY = "finalObject";
+
+const std::string THISCALL_CONVENTION = "__thiscall";
 
 using namespace prolog;
 
@@ -65,7 +73,7 @@ bool
 has_type_descriptor(TreeNodePtr tnp) {
 
    if (tnp == NULL) {
-    MDEBUG << "Cannot fetch/create type descriptor because treenode is NULL" << LEND;
+    OWARN << "Cannot fetch/create type descriptor because treenode is NULL" << LEND;
     return false;
   }
 
@@ -79,10 +87,70 @@ has_type_descriptor(TreeNodePtr tnp) {
   return false;
 }
 
+// An implementation of can-be-equals that ignores zero values
+bool
+smart_can_be_equal(SymbolicValuePtr sv1, SymbolicValuePtr sv2) {
+
+  if (!sv1 || !sv2) return false;
+
+  if (!sv1->contains_ite() && !sv2->contains_ite()) {
+    return sv1->can_be_equal(sv2);
+  }
+  // one or more values contains an ite,
+
+  std::set<TreeNodePtr> sv1_treenodes;
+  std::set<TreeNodePtr> sv2_treenodes;
+
+  if (sv1->contains_ite()) {
+    for (const TreeNodePtr& tn : sv1->get_possible_values()) {
+      if (tn->isNumber() && tn->isLeafNode()->bits().isAllClear()) {
+        continue;
+      }
+      sv1_treenodes.insert(tn);
+    }
+  }
+  else {
+    sv1_treenodes.insert(sv1->get_expression());
+  }
+  if (sv2->contains_ite()) {
+    for (const TreeNodePtr& tn : sv2->get_possible_values()) {
+      if (tn->isNumber() && tn->isLeafNode()->bits().isAllClear()) {
+        continue;
+      }
+      sv2_treenodes.insert(tn);
+    }
+  }
+  else {
+    sv2_treenodes.insert(sv2->get_expression());
+  }
+
+  std::set<TreeNodePtr> intersection;
+
+  auto TreeNodeCmp = [](TreeNodePtr lhs, TreeNodePtr rhs) { return lhs->isEquivalentTo(rhs); };
+  std::set_intersection(sv1_treenodes.begin(), sv1_treenodes.end(),
+                        sv1_treenodes.begin(), sv2_treenodes.end(),
+                        std::inserter(intersection, intersection.begin()),
+                        TreeNodeCmp);
+
+  // If there is an intersection then there was a match
+  return (intersection.size() > 0);
+
+}
+
+// Fetch the type descriptor off of a SymbolicValue or create a default one
+// if it cannot be found
+TypeDescriptorPtr
+fetch_type_descriptor(SymbolicValuePtr val) {
+  if (!val) return NULL;
+  return fetch_type_descriptor(val->get_expression());
+}
+
 // Fetch the type descriptor off of a treenode or create a default one
 // if it cannot be found
 TypeDescriptorPtr
 fetch_type_descriptor(TreeNodePtr tnp) {
+
+  if (tnp == NULL) return NULL;
 
   if (has_type_descriptor(tnp)) {
     return boost::any_cast< TypeDescriptorPtr >(tnp->userData());
@@ -113,6 +181,61 @@ TreeNode* xsb_to_treenode(uint64_t tn) {
   return reinterpret_cast<TreeNode*>(tn);
 }
 
+void
+to_facts(TreeNodePtr tn, std::shared_ptr<prolog::Session> session) {
+
+  TypeDescriptorPtr td = fetch_type_descriptor(tn);
+
+  // Emit known typename facts
+  session->add_fact(KNOWN_TYPENAME_FACT, treenode_to_xsb(tn), td->get_type_name());
+
+   // Emit known bitwidth
+  session->add_fact(BITWIDTH_FACT, treenode_to_xsb(tn), td->bit_width());
+
+  // Emit known pointerness facts
+  if (td->Pointerness() == types::Pointerness::Pointer) {
+    session->add_fact(KNOWN_POINTER_FACT, treenode_to_xsb(tn), IS);
+  }
+  else if (td->Pointerness() == types::Pointerness::NotPointer) {
+    session->add_fact(KNOWN_POINTER_FACT, treenode_to_xsb(tn), ISNOT);
+  }
+  else if (td->Pointerness() == types::Pointerness::Bottom) {
+    session->add_fact(KNOWN_POINTER_FACT, treenode_to_xsb(tn), BOTTOM);
+  }
+  else if (td->Pointerness() == types::Pointerness::Top) {
+    session->add_fact(KNOWN_POINTER_FACT, treenode_to_xsb(tn), TOP);
+  }
+
+  // Emit known signedness facts
+  if (td->Signedness() == types::Signedness::Signed) {
+    session->add_fact(KNOWN_SIGNED_FACT, treenode_to_xsb(tn), IS);
+  }
+  else if (td->Signedness() == types::Signedness::Unsigned) {
+    session->add_fact(KNOWN_SIGNED_FACT, treenode_to_xsb(tn), ISNOT);
+  }
+  else if (td->Signedness() == types::Signedness::Bottom) {
+    session->add_fact(KNOWN_SIGNED_FACT, treenode_to_xsb(tn), BOTTOM);
+  }
+  else if (td->Signedness() == types::Signedness::Top) {
+    session->add_fact(KNOWN_SIGNED_FACT, treenode_to_xsb(tn), TOP);
+  }
+
+  // Emit known object facts
+  if (td->Objectness() == types::Objectness::Object) {
+    session->add_fact(KNOWN_OBJECT_FACT, treenode_to_xsb(tn), IS);
+  }
+  else if (td->Objectness() == types::Objectness::NotObject) {
+    session->add_fact(KNOWN_OBJECT_FACT, treenode_to_xsb(tn), ISNOT);
+  }
+  else if (td->Objectness() == types::Objectness::Bottom) {
+    session->add_fact(KNOWN_OBJECT_FACT,treenode_to_xsb(tn), BOTTOM);
+  }
+  else if (td->Objectness() == types::Objectness::Top) {
+    session->add_fact(KNOWN_OBJECT_FACT, treenode_to_xsb(tn), TOP);
+  }
+}
+
+
 // *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
 // TypeDescriptor methods
 // *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
@@ -120,19 +243,25 @@ TreeNode* xsb_to_treenode(uint64_t tn) {
 // The default constructor simply sets everything to the top of the lattices
 // to indicate that nothing is yet known.
 TypeDescriptor::TypeDescriptor()
-  :  pointerness_(types::Pointerness::Top),
-     signedness_(types::Signedness::Top),
-     type_name_(types::TypenameTop),
-     bit_width_(types::BitwidthTop),
-     is_aggregate_(false) { }
+{
+  pointerness_ = types::Pointerness::Top;
+  signedness_ = types::Signedness::Top;
+  objectness_ = types::Objectness::Top;
+  type_name_ = types::TypenameTop;
+  bit_width_ = types::BitwidthTop;
+  is_aggregate_ = false;
+}
 
 // Copy constructor for a type descriptor
 TypeDescriptor::TypeDescriptor(const TypeDescriptor& other) {
   type_name_ = other.type_name_;
   pointerness_ = other.pointerness_;
   signedness_ = other.signedness_;
+  objectness_ = other.objectness_;
   bit_width_ = other.bit_width_;
   is_aggregate_ = other.is_aggregate_;
+
+  candidate_typenames_ = other.candidate_typenames_;
 
   if (pointerness_ == types::Pointerness::Pointer) {
     reference_types_ = other.reference_types_;
@@ -143,14 +272,24 @@ TypeDescriptor::TypeDescriptor(const TypeDescriptor& other) {
   }
 }
 
+bool
+TypeDescriptor::type_unknown() const {
+  return (pointerness_ == types::Pointerness::Top &&
+          signedness_ == types::Signedness::Top &&
+          objectness_ == types::Objectness::Top &&
+          type_name_ == types::TypenameTop);
+}
+
 // assignment operator
 TypeDescriptor&
 TypeDescriptor::operator=(const TypeDescriptor &other) {
   type_name_ = other.type_name_;
   pointerness_ = other.pointerness_;
   signedness_ = other.signedness_;
+  objectness_ = other.objectness_;
   bit_width_ = other.bit_width_;
   is_aggregate_ = other.is_aggregate_;
+  candidate_typenames_ = other.candidate_typenames_;
 
   if (pointerness_ == types::Pointerness::Pointer) {
     reference_types_ = other.reference_types_;
@@ -171,44 +310,6 @@ TypeDescriptor::~TypeDescriptor() {
   }
 }
 
-void
-TypeDescriptor::to_facts(TreeNodePtr tn, std::shared_ptr<prolog::Session> session) {
-
-  // Emit known typename facts
-  session->add_fact(KNOWN_TYPENAME_FACT, treenode_to_xsb(tn), type_name_);
-
-  // Emit known pointerness facts
-  if (pointerness_ == types::Pointerness::Pointer) {
-    session->add_fact(KNOWN_POINTER_FACT, treenode_to_xsb(tn), IS);
-  }
-  else if (pointerness_ == types::Pointerness::NotPointer) {
-    session->add_fact(KNOWN_POINTER_FACT, treenode_to_xsb(tn), ISNOT);
-  }
-  else if (pointerness_ == types::Pointerness::Bottom) {
-    session->add_fact(KNOWN_POINTER_FACT, treenode_to_xsb(tn), BOTTOM);
-  }
-  else if (pointerness_ == types::Pointerness::Top) {
-    session->add_fact(KNOWN_POINTER_FACT, treenode_to_xsb(tn), TOP);
-  }
-
-  // Emit known signedness facts
-  if (signedness_ == types::Signedness::Signed) {
-    session->add_fact(KNOWN_SIGNED_FACT, treenode_to_xsb(tn), IS);
-  }
-  else if (signedness_ == types::Signedness::Unsigned) {
-    session->add_fact(KNOWN_SIGNED_FACT, treenode_to_xsb(tn), ISNOT);
-  }
-  else if (signedness_ == types::Signedness::Bottom) {
-    session->add_fact(KNOWN_SIGNED_FACT,treenode_to_xsb(tn), BOTTOM);
-  }
-  else if (signedness_ == types::Signedness::Top) {
-    session->add_fact(KNOWN_SIGNED_FACT, treenode_to_xsb(tn), TOP);
-  }
-
- // Emit known bitwidth
- session->add_fact(BITWIDTH_FACT, treenode_to_xsb(tn), bit_width_);
-}
-
 std::string
 TypeDescriptor::to_string() {
 
@@ -227,11 +328,11 @@ TypeDescriptor::to_string() {
     ss << "pointerness=top";
   }
   else {
-    ss << "pointerness=unknown";
+    ss << "pointerness=<unknown>";
   }
 
   if (signedness_ == types::Signedness::Signed) {
-    ss << " signedness:signed";
+    ss << " signedness=signed";
   }
   else if (signedness_ == types::Signedness::Unsigned) {
     ss << " signedness=unsigned";
@@ -243,7 +344,7 @@ TypeDescriptor::to_string() {
     ss << " signedness=top";
   }
   else {
-    ss << " signedness=unknown";
+    ss << " signedness=<unknown>";
   }
 
   if (bit_width_ == types::BitwidthTop) {
@@ -256,37 +357,123 @@ TypeDescriptor::to_string() {
     ss << " width=" << bit_width_;
   }
 
-  if (type_name_ == types::TypenameTop) {
-    ss << " name=<unknown>";
+  if (objectness_ == types::Objectness::Object) {
+    ss << " objectness=object";
+  }
+  else if (objectness_ == types::Objectness::NotObject) {
+    ss << " objectness=not object";
+  }
+  else if (objectness_ == types::Objectness::Top) {
+    ss << " objectness=top";
+  }
+  else if (objectness_ == types::Objectness::Bottom) {
+    ss << " objectness=bottom";
   }
   else {
-    ss << " name=" << type_name_;
+    ss << " objectness=<unknown>";
+  }
+
+  if (type_name_ == types::TypenameTop) {
+    ss << " typename=<unknown>";
+  }
+  else {
+    ss << " typename=" << type_name_;
   }
 
   return ss.str();
 }
 
-// type properties
+// Width properties
+void
+TypeDescriptor::bit_width(size_t bw) { bit_width_ = bw; }
 
-void TypeDescriptor::bit_width(size_t bw) { bit_width_ = bw; }
+size_t
+TypeDescriptor::bit_width() const { return bit_width_; }
 
-size_t TypeDescriptor::bit_width() const { return bit_width_; }
+// Pointerness properties
+void
+TypeDescriptor::is_pointer() { pointerness_ = types::Pointerness::Pointer; }
 
-void TypeDescriptor::is_pointer() { pointerness_ = types::Pointerness::Pointer; }
+void
+TypeDescriptor::not_pointer() { pointerness_ = types::Pointerness::NotPointer; }
 
-void TypeDescriptor::not_pointer() { pointerness_ = types::Pointerness::NotPointer; }
+void
+TypeDescriptor::bottom_pointer() { pointerness_ = types::Pointerness::Bottom; }
 
-void TypeDescriptor::bottom_pointer() { pointerness_ = types::Pointerness::Bottom; }
+void
+TypeDescriptor::top_pointer() { pointerness_ = types::Pointerness::Top; }
 
-types::Pointerness TypeDescriptor::Pointerness() const { return pointerness_; }
+types::Pointerness
+TypeDescriptor::Pointerness() const { return pointerness_; }
 
-void TypeDescriptor::is_signed() { signedness_ = types::Signedness::Signed; }
+// Signedness properties
+void
+TypeDescriptor::is_signed() { signedness_ = types::Signedness::Signed; }
 
-void TypeDescriptor::not_signed() { signedness_ = types::Signedness::Unsigned; }
+void
+TypeDescriptor::not_signed() { signedness_ = types::Signedness::Unsigned; }
 
-void TypeDescriptor::bottom_signed() { signedness_ = types::Signedness::Bottom; }
+void
+TypeDescriptor::bottom_signed() { signedness_ = types::Signedness::Bottom; }
 
-types::Signedness TypeDescriptor::Signedness() const { return signedness_; }
+void
+TypeDescriptor::top_signed() { signedness_ = types::Signedness::Top; }
+
+types::Signedness
+TypeDescriptor::Signedness() const { return signedness_; }
+
+// Objectness properties
+void
+TypeDescriptor::is_object() { objectness_ = types::Objectness::Object; }
+
+void
+TypeDescriptor::not_object() { objectness_ = types::Objectness::NotObject; }
+
+void
+TypeDescriptor::bottom_object() { objectness_ = types::Objectness::Bottom; }
+
+void
+TypeDescriptor::top_object() { objectness_ = types::Objectness::Top; }
+
+types::Objectness
+TypeDescriptor::Objectness() const { return objectness_; }
+
+void
+TypeDescriptor::set_type_name(std::vector<std::string> candidates) {
+
+  candidate_typenames_ = candidates;
+
+  if (candidate_typenames_.size() == 1) {
+    type_name_ = candidate_typenames_.at(0);
+  }
+  else if (candidate_typenames_.size() > 1) {
+    type_name_ = types::TypenameBottom;
+  }
+  else { // There are 0 candidates
+    type_name_ = types::TypenameTop;
+  }
+}
+
+// Explicitly set type name
+void
+TypeDescriptor::set_type_name(std::string n) {
+  type_name_ = n;
+}
+
+std::string
+TypeDescriptor::get_type_name() const {
+  return type_name_;
+}
+
+const std::vector<std::string>&
+TypeDescriptor::get_candidate_type_names() {
+  return candidate_typenames_;
+}
+
+void
+TypeDescriptor::bottom_name() {
+  type_name_ = types::TypenameBottom;
+}
 
 // *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
 // OperationStrategyContext methods
@@ -316,7 +503,7 @@ TypeSolver::assert_value_facts(TreeNodePtr tnp) {
 
   // we currently don't handle values larger than 64 bits, i.e. floats
   if (tnp->nBits() > 64) {
-    MDEBUG << "Detected possible floating point value: " << *tnp << LEND;
+    OWARN << "Detected possible floating point value: " << *tnp << ", Not asserting value" << LEND;
     return;
   }
   session_->add_fact(VAL_FACT, treenode_to_xsb(tnp), tnp->toInt());
@@ -324,22 +511,411 @@ TypeSolver::assert_value_facts(TreeNodePtr tnp) {
 
 // assert facts concerning the size of tree nodes. The format of this fact is
 // (bitwidth HASH SIZE)
-void TypeSolver::assert_bitwidth_fact(TreeNodePtr tnp) {
+void
+TypeSolver::assert_bitwidth_fact(TreeNodePtr tnp) {
 
   if (!session_ || !tnp) return;
 
   session_->add_fact(BITWIDTH_FACT, treenode_to_xsb(tnp), tnp->nBits());
 }
 
-// Assert various facts for function calls. In particular, three
-// facts are asserted:
-//
-// A fact to relate call addresses to call targets
-// A fact to relate call addresses to function parameters
+// Assert basic facts about global memory, such as global addreses refer to specific values
 void
-TypeSolver::assert_function_call_facts(const CallDescriptor *cd) {
+TypeSolver::assert_global_variable_facts() {
 
-  MDEBUG << "Analyzing function call at " << addr_str(cd->get_address()) << LEND;
+  // ======================================================
+  // Emit global variable facts. These facts capture the fact that
+  const GlobalMemoryDescriptorMap& globals = global_descriptor_set->get_global_map();
+  const FunctionDescriptorMap& funcs = global_descriptor_set->get_func_map();
+  for (const GlobalMemoryDescriptorMap::value_type & pair : globals) {
+
+    GlobalMemoryDescriptor global_var = pair.second;
+
+    // is this is a function, then it is not really a global variable
+    if (funcs.find(global_var.get_address()) != funcs.end()) continue;
+
+    SymbolicValuePtr global_address = global_var.get_memory_address();
+    const std::vector<SymbolicValuePtr>& global_values = global_var.get_values();
+
+    if (global_values.empty() || !global_address) continue;
+
+    TreeNodePtr global_mem_tnp = global_address->get_expression();
+    if (has_type_descriptor(global_mem_tnp) == false) {
+      recursively_assert_facts(global_mem_tnp);
+    }
+    else {
+
+      // if the global variable has already been assigned a type descriptor, turn it to facts
+      // and re-analyze with new evidence
+      to_facts(global_mem_tnp, session_);
+    }
+    uint64_t m = reinterpret_cast<uint64_t>(&*global_mem_tnp);
+
+    for (auto gv : global_values) {
+      TreeNodePtr global_val_tnp = gv->get_expression();
+      uint64_t v = reinterpret_cast<uint64_t>(&*global_val_tnp);
+
+      if (has_type_descriptor(global_val_tnp) == false) {
+        recursively_assert_facts(global_val_tnp);
+      }
+      else {
+
+      // if the global variable has already been assigned a type descriptor, turn it to facts
+      // and re-analyze with new evidence
+
+        TypeDescriptorPtr known_val_tdp = fetch_type_descriptor(global_mem_tnp);
+        to_facts(global_mem_tnp, session_);
+      }
+
+      session_->add_fact(POINTS_TO_FACT,
+                         treenode_to_xsb(global_mem_tnp),
+                         treenode_to_xsb(global_val_tnp));
+
+      MTRACE << "Global variable PointsTo:  = " << *global_mem_tnp << " - " << addr_str(m)
+             << " -> " << *global_val_tnp << " - " << addr_str(v) << LEND;
+    }
+
+
+    // As with stack variable there can be multiple values. All the values in the global
+    // variable value set should be the same type. Of course, there must be multiple values for
+    // this to make sense
+
+    if (global_values.size() > 1) {
+      for (unsigned int i=0; i < global_values.size()-1; i++) {
+        const SymbolicValuePtr& cur_val = global_values.at(i);
+        const SymbolicValuePtr& nxt_val = global_values.at(i+1);
+
+        if (!cur_val || !nxt_val) continue;
+
+        TreeNodePtr cur_val_tnp = cur_val->get_expression();
+        TreeNodePtr nxt_val_tnp = nxt_val->get_expression();
+
+        if (!cur_val_tnp || !nxt_val_tnp) continue;
+
+        session_->add_fact(SAME_TYPE_FACT,
+                           treenode_to_xsb(cur_val_tnp),
+                           treenode_to_xsb(nxt_val_tnp));
+
+        MDEBUG << "Emitting sameType fact for global values treenodes: (cur==nxt): "
+               << addr_str(treenode_to_xsb(cur_val_tnp)) << " == " << addr_str(treenode_to_xsb(nxt_val_tnp))
+               << LEND;
+      }
+    }
+  }
+}
+
+void
+TypeSolver::assert_objectness_facts(const CallDescriptor *cd) {
+
+  FunctionDescriptor *target_fd = cd->get_function_descriptor();
+  RegisterDescriptor ecx_thisptr = global_descriptor_set->get_arch_reg("ecx");
+
+  MTRACE << "Generating objectness facts for call at " << addr_str(cd->get_address()) << LEND;
+
+  // the called function address may be null, for instance if it is an
+  // imported function
+  if (target_fd && target_fd->get_address() != 0) {
+
+    // Is this a call to the new operator? If so, emit facts that the value is an object
+    if (target_fd->is_new_method()) {
+
+      MTRACE << "Found call to static new method (" << target_fd->address_string() << ")"
+            << " at call " << addr_str(cd->get_address()) << LEND;
+
+      // This is how we must get the return value for new() at the call point
+      SgAsmx86Instruction* call_insn = isSgAsmX86Instruction(cd->get_insn());
+      SymbolicValuePtr new_retval;
+      access_filters::aa_range reg_writes = du_analysis_.get_reg_writes(call_insn);
+      if (std::begin(reg_writes) != std::end(reg_writes)) {
+        for (const AbstractAccess &rwaa : reg_writes) {
+          std::string regname = unparseX86Register(rwaa.register_descriptor, NULL);
+          if (regname == "eax") {
+            new_retval = rwaa.value;
+            break;
+          }
+        }
+      }
+
+      if (new_retval) {
+
+        TreeNodePtr new_tnp = new_retval->get_expression();
+        if (new_tnp) {
+          uint64_t new_tnp_id = reinterpret_cast<uint64_t>(&*new_tnp);
+          MDEBUG << "Adding KNOWN OBJECT fact for static new operator, tnp: "
+                 << *new_tnp << " (" << addr_str(new_tnp_id) << ")" << LEND;
+
+          session_->add_fact(KNOWN_OBJECT_FACT, treenode_to_xsb(new_tnp), IS);
+
+          std::string default_type_name = "obj_" + cd->address_string();
+          session_->add_fact(KNOWN_TYPENAME_FACT, treenode_to_xsb(new_tnp), default_type_name);
+
+        }
+      }
+    }
+
+    // Not new() operator - check for thiscall-ness in regular functions
+    else {
+
+      MDEBUG << "Function call at " << addr_str(cd->get_address()) << " to "
+             << addr_str(target_fd->get_address()) << " not new(), checking for thiscall" << LEND;
+
+      ParamVector callee_params = target_fd->get_parameters().get_params();
+
+      // In the case where this is a regular call (i.e. the function body is in this program),
+      // then assert the objectness on the callee parameters
+
+      const CallingConventionPtrVector& conventions = target_fd->get_calling_conventions();
+      if (conventions.size() == 1) {
+        const CallingConvention* conv = conventions.at(0);
+
+        MDEBUG << "The calling convention for " << addr_str(target_fd->get_address())
+               << " is " << conv->get_name() << LEND;
+
+        if (conv->get_name() == THISCALL_CONVENTION) {
+
+          MDEBUG << "Detected  __thiscall method: "
+                 << addr_str(target_fd->get_address()) << " called from "
+                 << addr_str(cd->get_address()) << LEND;
+
+          for (auto callee_param : callee_params) {
+            if (callee_param.value && callee_param.reg == ecx_thisptr) {
+
+              TreeNodePtr ecx_tnp = callee_param.value->get_expression();
+              if (ecx_tnp) {
+                MDEBUG << "Adding KNOWN OBJECT fact for regular __thiscall method" << LEND;
+                session_->add_fact(KNOWN_OBJECT_FACT, treenode_to_xsb(ecx_tnp), IS);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // If the call is to a function without a descriptor, then it is an
+  // import. If it is an import to new() then we know something about
+  // it's objectness. Specifically, the return value is an object
+
+  else {
+
+    ImportDescriptor* id = cd->get_import_descriptor();
+    if (id != NULL) {
+      if (id->is_new_method()) {
+
+        MINFO << "Found call to imported new method at "
+              << cd->address_string() << " called from " << addr_str(cd->get_address()) << LEND;
+
+        const SymbolicValuePtr &rv = cd->get_return_value();
+        if (rv) {
+          TreeNodePtr rv_tnp = rv->get_expression();
+          if (rv_tnp) {
+
+            MTRACE << "Adding KNOWN OBJECT fact for imported new" << LEND;
+            session_->add_fact(KNOWN_OBJECT_FACT, treenode_to_xsb(rv_tnp), IS);
+
+            // Now create a default typename for this allocation
+            std::string default_type_name = "obj_" + cd->address_string();
+            session_->add_fact(KNOWN_TYPENAME_FACT, treenode_to_xsb(rv_tnp), default_type_name);
+
+          }
+        }
+      }
+
+       // If the import is not a call to new() then check to see if it is thiscall-ness and
+       // propogate objectness
+
+      else {
+
+        try {
+          auto dtype = demangle::visual_studio_demangle(id->get_name());
+
+          if (dtype) {
+
+            // Evaluate imported __thiscall methods and set the ECX parameter to an object
+            if (dtype->symbol_type == demangle::SymbolType::ClassMethod) {
+
+              MTRACE << "Detected imported __thiscall method: "
+                     << addr_str(id->get_address()) << " called from "
+                     << addr_str(cd->get_address()) << LEND;
+
+              // Duggan says get the params from the import descriptor
+              const ParamVector& caller_params = cd->get_parameters().get_params();
+
+              for (const ParameterDefinition &param : caller_params) {
+
+                if (param.value  && param.reg == ecx_thisptr) {
+
+                  TreeNodePtr ecx_tnp = param.value->get_expression();
+                  if (ecx_tnp) {
+                    MDEBUG << "Adding KNOWN OBJECT fact for imported __thiscall method" << LEND;
+                    session_->add_fact(KNOWN_OBJECT_FACT, treenode_to_xsb(ecx_tnp), IS);
+                  }
+                }
+              }
+            }
+          }
+        }
+        catch (const demangle::Error &) {
+          // I guess this isn't an OO Method
+        }
+      }
+    }
+  }
+}
+
+void
+TypeSolver::assert_local_variable_facts() {
+
+  // ===================================================
+  // Emit stack variable facts
+  const StackVariablePtrList& stack_vars = current_function_->get_stack_variables();
+
+  // For each stack variable, emit the "pointsTo" facts. These facts
+  // capture the stack variable memory addresses refer to stack
+  // variable values (if present)
+  for (StackVariable *stkvar : stack_vars) {
+
+    MTRACE << "Emitting facts for stack variable: " << stkvar->to_string() << LEND;
+
+    SymbolicValuePtr var_addr = stkvar->get_memory_address();
+    if (!var_addr) continue;
+
+    // the stack var address is valid ... it always should be at this
+    // point
+
+    TreeNodePtr var_addr_tnp = var_addr->get_expression();
+
+    // add default type info to the memory address
+    if (!has_type_descriptor(var_addr_tnp)) {
+      recursively_assert_facts(var_addr_tnp);
+    }
+
+    // There can be multiple values
+    std::vector<SymbolicValuePtr> var_vals = stkvar->get_values();
+    for (auto var_val : var_vals) {
+
+      if (var_val) {
+        TreeNodePtr var_val_tnp = var_val->get_expression();
+
+        // add default type info to the value
+        if (!has_type_descriptor(var_val_tnp)) {
+          recursively_assert_facts(var_val_tnp);
+        }
+
+        session_->add_fact(POINTS_TO_FACT,
+          treenode_to_xsb(var_addr_tnp),
+          treenode_to_xsb(var_val_tnp));
+
+
+        MDEBUG << "Stack variable PointsTo:  = "
+               << *var_addr_tnp << " - " << addr_str(treenode_to_xsb(var_addr_tnp))
+               << " -> " << *var_val_tnp << " - " << addr_str(treenode_to_xsb(var_val_tnp)) << LEND;
+      }
+    }
+
+    // There can be multiple values. All the values in the stack
+    // variable value set should be the same type. Of course, there
+    // must be multiple values for this to make sense
+    if (var_vals.size() > 1) {
+      for (unsigned int i=0; i < var_vals.size()-1; i++) {
+        SymbolicValuePtr& cur_val = var_vals.at(i);
+        SymbolicValuePtr& nxt_val = var_vals.at(i+1);
+
+        if (!cur_val || !nxt_val) continue;
+
+        TreeNodePtr cur_val_tnp = cur_val->get_expression();
+        TreeNodePtr nxt_val_tnp = nxt_val->get_expression();
+
+        if (!cur_val_tnp || !nxt_val_tnp) continue;
+
+        session_->add_fact(SAME_TYPE_FACT,
+                           treenode_to_xsb(cur_val_tnp),
+                           treenode_to_xsb(nxt_val_tnp));
+
+        MDEBUG << "Emitting sameType fact for stack values treenodes: (cur==nxt): "
+              << addr_str(treenode_to_xsb(cur_val_tnp)) << " == " << addr_str(treenode_to_xsb(nxt_val_tnp)) << LEND;
+      }
+    }
+  }
+}
+
+void
+TypeSolver::assert_function_call_facts() {
+
+  // To make the reasoning work for the entire program, all the facts for each call must be
+  // available at every function
+
+  for (auto call_pair : global_descriptor_set->get_call_map()) {
+    CallDescriptor cd = call_pair.second;
+
+    const ParamVector& caller_params = cd.get_parameters().get_params();
+    ParamVector callee_params;
+
+    // if this is an import, then there are no interprocedural facts, but there are caller-perspective facts
+    const ImportDescriptor *imp = cd.get_import_descriptor(); // is this an import?
+    if (imp != NULL) {
+      // import
+      const FunctionDescriptor* impfd = imp->get_function_descriptor();
+      if (impfd) {
+        callee_params = impfd->get_parameters().get_params();
+      }
+    }
+    else {
+      // Not import
+      FunctionDescriptor *target_fd = cd.get_function_descriptor();
+      if (target_fd) {
+        callee_params = target_fd->get_parameters().get_params();
+      }
+    }
+
+    ParamVector::const_iterator callee_iter = callee_params.begin();
+    ParamVector::const_iterator caller_iter = caller_params.begin();
+
+    while (caller_iter != caller_params.end() && callee_iter != callee_params.end()) {
+
+      const ParameterDefinition &caller_param = *caller_iter;
+      const ParameterDefinition &callee_param = *callee_iter;
+
+      // the parameters map to each other
+      if (caller_param.num == callee_param.num) {
+
+        if (caller_param.value != NULL && callee_param.value != NULL) {
+
+          TreeNodePtr caller_tnp = caller_param.value->get_expression(); // the caller is this function
+          TypeDescriptorPtr caller_td = fetch_type_descriptor(caller_tnp);
+
+          TreeNodePtr callee_tnp = callee_param.value->get_expression();
+          TypeDescriptorPtr callee_td = fetch_type_descriptor(callee_tnp);
+
+          // Emit all the known facts about the callee to ensure the type is correct
+          to_facts(callee_tnp, session_);
+
+
+          // Link the caller/callee params to enable interprocedural reasoning
+
+          session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(caller_tnp), treenode_to_xsb(callee_tnp));
+
+          MTRACE << "Emitting sameType fact for caller/callee params. (caller==callee) "
+                 << addr_str(treenode_to_xsb(caller_tnp)) << " == " << addr_str(treenode_to_xsb(callee_tnp)) << LEND;
+        }
+      }
+      // Move to the next parameter set
+      ++callee_iter;
+      ++caller_iter;
+    }
+  }
+}
+
+// ============================================================================================
+// Assert various same type facts for function calls including facts to relate parameters to
+// variables, return values, and global memory. These facts enable interprocedural analysis by
+// emitting a facts for variety of equivalence relationships.
+
+void
+TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
+
+  MDEBUG << "Analyzing function call at "
+         << addr_str(cd->get_address()) << LEND;
 
   if (cd == NULL) {
     OERROR << "Invalid call descriptor" << LEND;
@@ -350,216 +926,249 @@ TypeSolver::assert_function_call_facts(const CallDescriptor *cd) {
     return;
   }
 
-  // for each out-going call add a fact for the target of a function call
-  // functionCallTarget(Source Address, Destination Address).
-  FunctionDescriptor *targetFd = cd->get_function_descriptor();
-  if (targetFd) {
-    if (targetFd->get_address() != 0) { // the called function address may be null, for instance if it is an imported function
-
-      MDEBUG << "Generating facts for outgoing call at " << addr_str(cd->get_address()) << " to "
-            << addr_str(targetFd->get_address()) << LEND;
-
-      session_->add_fact(FNCALL_TARGET_FACT, cd->get_address(), targetFd->get_address());
-
-    }
-  }
-
+  // ==========================================================================================
+  // Emit facts about how return values relate to parameters, local
+  // variables and global variables. facts.
+  //
   const StackVariablePtrList& stack_vars = current_function_->get_stack_variables();
+
+  const ParamVector& cd_rets = cd->get_parameters().get_returns();
+  for (const ParameterDefinition &retval : cd_rets) {
+
+    if (retval.value) {
+
+      TreeNodePtr retval_tnp = retval.value->get_expression();
+
+      if (false == has_type_descriptor(retval_tnp)) {
+        recursively_assert_facts(retval_tnp);
+      }
+
+      if (!retval_tnp) continue;
+      session_->add_fact(FNCALL_RETVAL_FACT,
+                         cd->get_address(),
+                         treenode_to_xsb(retval_tnp));
+
+      // ======================================================================================
+      // Tie return values to stack variables
+      for (StackVariable *stkvar : stack_vars) {
+        if (!stkvar) continue;
+
+        std::vector<SymbolicValuePtr> var_vals = stkvar->get_values();
+        for (SymbolicValuePtr varval_sv : var_vals) {
+
+          if (varval_sv) {
+            TreeNodePtr varval_tnp = varval_sv->get_expression();
+
+            if (!varval_tnp) continue;
+
+            if (smart_can_be_equal(retval.value, varval_sv) == true) {
+              MDEBUG << "Emitting sameType fact for stackvar/ret val: (retval==stackvar) "
+                     << *retval_tnp << " == " << *varval_tnp << LEND
+                     << addr_str(treenode_to_xsb(retval_tnp)) << " == " << addr_str(treenode_to_xsb(varval_tnp))
+                     << LEND;
+
+              session_->add_fact(SAME_TYPE_FACT,
+                                 treenode_to_xsb(retval_tnp),
+                                 treenode_to_xsb(varval_tnp));
+              break;
+            }
+          }
+        }
+      }
+
+      // ======================================================================================
+      // Type global variables from return values; for example:
+      //
+      // int x;
+      // void func() {
+      //   x = API();
+      // }
+
+      // Check the global value against the return value
+      const GlobalMemoryDescriptorMap& globals = global_descriptor_set->get_global_map();
+      const FunctionDescriptorMap& funcs = global_descriptor_set->get_func_map();
+
+       for (const GlobalMemoryDescriptorMap::value_type & pair : globals) {
+
+         GlobalMemoryDescriptor global_var = pair.second;
+
+         // is this is a function, then it is not really a global variable
+         if (funcs.find(global_var.get_address()) != funcs.end()) continue;
+
+         SymbolicValuePtr global_address = global_var.get_memory_address();
+         const std::vector<SymbolicValuePtr>& global_values = global_var.get_values();
+
+         if (smart_can_be_equal(global_address,retval.value) == true) {
+           TreeNodePtr global_addr_tnp = global_address->get_expression();
+
+           session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(retval_tnp), treenode_to_xsb(global_addr_tnp));
+
+           MDEBUG << "Emitting sameType fact for global addr to ret val: (ret_val==global_addr) "
+                  << addr_str(treenode_to_xsb(retval_tnp)) << " == " << addr_str(treenode_to_xsb(global_addr_tnp))
+                  << LEND;
+
+         }
+         else {
+           for (auto global_val : global_values) {
+             if (smart_can_be_equal(global_val,retval.value) == true) {
+               TreeNodePtr global_val_tnp = global_val->get_expression();
+
+               session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(retval_tnp), treenode_to_xsb(global_val_tnp));
+
+               MDEBUG << "Emitting sameType fact for global val to ret val: (global_val==ret_val) "
+                      << addr_str(treenode_to_xsb(global_val_tnp)) << " == " << addr_str(treenode_to_xsb(retval_tnp))
+                      << LEND;
+             }
+           }
+         }
+       }
+
+       // TODO: We also need to check return values against parameters. Consider the
+       // following:
+       //
+       //  Object *o = new Object();
+       //  o->method();
+       //
+       // In this case the return value of new may be placed directly in ECX and passe to
+       // o::method
+
+    } // if retval is valid
+  } // for each retval
+
+  // ======================================================================================================
+  // Emit facts about parameters as they relate to stack and global variables. We are
+  // looking for pass byte value and pass by reference relationships
   const ParamVector& caller_params = cd->get_parameters().get_params();
 
   MDEBUG << "This function has " << stack_vars.size() << " stack variables and "
          << caller_params.size() << " parameters" << LEND;
 
-  // For each stack variable, emit the "pointsTo" facts
-  for (StackVariable *stkvar : stack_vars) {
-    std::vector<std::reference_wrapper<const AbstractAccess>> var_aas = stkvar->accesses();
-    const AbstractAccess& var_aa = var_aas.at(0);
-
-    if (!var_aa.value || !var_aa.memory_address) continue;
-
-    TreeNodePtr var_aa_val = var_aa.value->get_expression();
-    TreeNodePtr var_aa_mem = var_aa.memory_address->get_expression();
-    uint64_t v = reinterpret_cast<uint64_t>(&*var_aa_val);
-    uint64_t m = reinterpret_cast<uint64_t>(&*var_aa_mem);
-
-    if (has_type_descriptor(var_aa_val) == false) {
-      //assert_initial_facts(var_aa_val);
-      recursively_assert_facts(var_aa_val);
-    }
-    if (has_type_descriptor(var_aa_mem) == false) {
-      // assert_initial_facts(var_aa_mem);
-      recursively_assert_facts(var_aa_mem);
-    }
-
-    session_->add_fact(POINTS_TO_FACT, treenode_to_xsb(var_aa_mem), treenode_to_xsb(var_aa_val));
-
-    MTRACE << "Stack variable PointsTo:  = " << *var_aa_mem << " - " << addr_str(m)
-           << " -> " << *var_aa_val << " - " << addr_str(v) << LEND;
-  }
-
-  // For each global variable, emit the "pointsTo" facts
-  const GlobalMemoryDescriptorMap& globals = global_descriptor_set->get_global_map();
-  const FunctionDescriptorMap& funcs = global_descriptor_set->get_func_map();
-  for (const GlobalMemoryDescriptorMap::value_type & pair : globals) {
-
-    GlobalMemoryDescriptor global_var = pair.second;
-
-    // is this is a function, then it is not really a global variable
-
-    if (funcs.find(global_var.get_address()) != funcs.end()) continue;
-
-    SymbolicValuePtr address = global_var.get_memory_address();
-    SymbolicValuePtr value = global_var.get_value();
-
-    if (!value || !address) continue;
-
-    TreeNodePtr global_val_tnp = value->get_expression();
-    TreeNodePtr global_mem_tnp = address->get_expression();
-    uint64_t v = reinterpret_cast<uint64_t>(&*global_val_tnp);
-    uint64_t m = reinterpret_cast<uint64_t>(&*global_mem_tnp);
-
-    if (has_type_descriptor(global_val_tnp) == false) {
-      recursively_assert_facts(global_val_tnp);
-    }
-    if (has_type_descriptor(global_mem_tnp) == false) {
-      recursively_assert_facts(global_mem_tnp);
-    }
-
-    session_->add_fact(POINTS_TO_FACT, treenode_to_xsb(global_mem_tnp), treenode_to_xsb(global_val_tnp));
-
-    MTRACE << "Global variable PointsTo:  = " << *global_mem_tnp << " - " << addr_str(m)
-           << " -> " << *global_val_tnp << " - " << addr_str(v) << LEND;
-  }
-
-  // For each stack variable, emit the "pointsTo" facts
-  for (StackVariable *stkvar : stack_vars) {
-    std::vector<std::reference_wrapper<const AbstractAccess>> var_aas = stkvar->accesses();
-    const AbstractAccess& var_aa = var_aas.at(0);
-
-    if (!var_aa.value || !var_aa.memory_address) continue;
-
-    TreeNodePtr var_aa_val = var_aa.value->get_expression();
-    TreeNodePtr var_aa_mem = var_aa.memory_address->get_expression();
-    uint64_t v = reinterpret_cast<uint64_t>(&*var_aa_val);
-    uint64_t m = reinterpret_cast<uint64_t>(&*var_aa_mem);
-
-    if (has_type_descriptor(var_aa_val) == false) {
-      recursively_assert_facts(var_aa_val);
-    }
-    if (has_type_descriptor(var_aa_mem) == false) {
-      recursively_assert_facts(var_aa_mem);
-    }
-
-    session_->add_fact(POINTS_TO_FACT, treenode_to_xsb(var_aa_mem), treenode_to_xsb(var_aa_val));
-
-    MTRACE << "Stack variable PointsTo:  = " << *var_aa_mem << " - " << addr_str(m)
-           << " -> " << *var_aa_val << " - " << addr_str(v) << LEND;
-  }
-
   for (const ParameterDefinition &param : caller_params) {
 
     if (!param.value || !param.address) continue;
 
-    TreeNodePtr par_aa_val = param.value->get_expression();
-    TreeNodePtr par_aa_mem = param.address->get_expression();
-    uint64_t pvaddr = reinterpret_cast<uint64_t>(&*par_aa_val);
-    uint64_t pmaddr = reinterpret_cast<uint64_t>(&*par_aa_mem);
+    TreeNodePtr par_val_tnp = param.value->get_expression();
+    TreeNodePtr par_mem_tnp = param.address->get_expression();
+    uint64_t par_val_id = reinterpret_cast<uint64_t>(&*par_val_tnp);
 
-    session_->add_fact(FNCALL_ARG_FACT, cd->get_address(), param.num, treenode_to_xsb(par_aa_val));
+    session_->add_fact(FNCALL_ARG_FACT,
+                       cd->get_address(), param.num, treenode_to_xsb(par_val_tnp));
 
     MTRACE << "===" << LEND;
-    MTRACE << "Evaluating TNP Param: (" << addr_str(pvaddr) << ") " << *par_aa_val << LEND;
+    MTRACE << "Evaluating TNP Param: (" << addr_str(par_val_id) << ") " << *par_val_tnp << LEND;
 
-    if (has_type_descriptor(par_aa_val) == false) {
-      // assert_initial_facts(par_aa_val);
-      recursively_assert_facts(par_aa_val);
+    if (has_type_descriptor(par_val_tnp) == false) {
+      recursively_assert_facts(par_val_tnp);
     }
-    if (has_type_descriptor(par_aa_mem) == false) {
-      // assert_initial_facts(par_aa_mem);
-      recursively_assert_facts(par_aa_mem);
+    if (has_type_descriptor(par_mem_tnp) == false) {
+      recursively_assert_facts(par_mem_tnp);
     }
 
-    // 1. param_mem points to param val fact
-    session_->add_fact(POINTS_TO_FACT, treenode_to_xsb(par_aa_mem), treenode_to_xsb(par_aa_val));
+    // Emit (obvious) facts that the parameter memory address "points
+    // to" the parameter value
+    session_->add_fact(POINTS_TO_FACT,
+                       treenode_to_xsb(par_mem_tnp), treenode_to_xsb(par_val_tnp));
 
     for (StackVariable *stkvar : stack_vars) {
 
-      // TODO: don't just take the 0 abstract access.
-      std::vector<std::reference_wrapper<const AbstractAccess>> var_aas = stkvar->accesses();
-      const AbstractAccess& var_aa = var_aas.at(0);
+      if (!stkvar) continue;
 
-      if (!var_aa.value || !var_aa.memory_address) continue;
+      SymbolicValuePtr var_addr = stkvar->get_memory_address();
 
-      TreeNodePtr var_aa_val = var_aa.value->get_expression();
-      TreeNodePtr var_aa_mem = var_aa.memory_address->get_expression();
-      uint64_t vvaddr = reinterpret_cast<uint64_t>(&*var_aa_val);
-      uint64_t vmaddr = reinterpret_cast<uint64_t>(&*var_aa_mem);
+      if (!var_addr) continue;
 
-      MTRACE << "Stack variable: " << stkvar->to_string() << LEND;
-      MTRACE << "Stack variable AA: val = " << *var_aa_val << " - " << addr_str(vvaddr)
-            << ", mem = " << *var_aa_mem << " - " << addr_str(vmaddr) << LEND;
-
-      MTRACE << "Param variable AA: val = " << *par_aa_val << " - " << addr_str(pvaddr)
-             << ", mem = " << *par_aa_mem << " - " << addr_str(pmaddr) << LEND;
-
-
-      auto& is = param.value->get_defining_instructions();
-      MTRACE << "Parameter definers:" << LEND;
-      for (auto& i : is) {
-        MTRACE << "   Def: " << addr_str(i->get_address()) << LEND;
-      }
-
-      auto& sis = var_aa.value->get_defining_instructions();
-      MTRACE << "Stkvar definers:" << LEND;
-      for (auto& si : sis) {
-        MTRACE << "   Def: " << addr_str(si->get_address()) << LEND;
-      }
+      TreeNodePtr var_addr_tnp = var_addr->get_expression();
+      uint64_t var_addr_id = reinterpret_cast<uint64_t>(&*var_addr_tnp);
 
       // Do the parameter and stack variable share evidence?  if the
       // value in parameter read from insn from the local variable,
-      // they must be the same type.  is var address the same value
-      // read?
+      // they must be the same type.  This really means is the var
+      // address the same value read? if so, then the address of the
+      // stack var is pushed so it's stack address is the param
+      // value. This is a classic pass-by-reference (PBR)
+      // arrangement. Essentially, this means that we are passing the
+      // address of a stack variable to a function
 
-      // in this case the address of the stack var is pushed so it's
-      // stack address is the param value. This is a classic
-      // pass-by-reference (PBR) arrangement. Essentially, this means
-      // that we are passing the address of a stack variable to a function
-      if (var_aa.memory_address->can_be_equal(param.value)) {
+      MTRACE << "Checking sameType fact for PBR treenodes: var_addr: "
+            << *var_addr_tnp << " : " << addr_str(var_addr_id)
+            << ", par_val: " << *par_val_tnp << " : " << addr_str(par_val_id) << LEND;
 
-        if (vmaddr != pvaddr) {
+      if (smart_can_be_equal(var_addr, param.value) == true) {
+        if (var_addr_id != par_val_id) {
           MTRACE << "*** Detected stack variable pass by reference" << LEND;
-          session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(var_aa_mem), treenode_to_xsb(par_aa_val));
+          session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(var_addr_tnp), treenode_to_xsb(par_val_tnp));
+
+          MDEBUG << "Emitting sameType fact for param/var PBR: (var_addr==param_val) "
+                 << addr_str(treenode_to_xsb(var_addr_tnp)) << " == " << addr_str(treenode_to_xsb(par_val_tnp))
+                 << LEND;
         }
       }
+      else {
 
-      // This first test checks for pass by value by comparing values
-      else if (var_aa_val->isEquivalentTo(par_aa_val)) {
+        // If the relationship is not PBR, check for pass-by-value
+        // (PBV). With PBV relationships the values contained in the
+        // stack variables will be used as parameters. The approach to
+        // detecting PBV is to compare values and then, if there is a
+        // match, look for common defining instructions
 
-        // sameType facts are not needed for the exact same treenode
-        if (vvaddr != pvaddr) {
+        std::vector<SymbolicValuePtr> var_vals = stkvar->get_values();
+        for (auto var_val : var_vals) {
 
-          // If the two values are equal, check their lineage to see if
-          // they are related (i.e. have commong defining instructions).
-          const InsnSet& par_definers = param.value->get_defining_instructions();
-          const InsnSet& var_definers = var_aa.value->get_defining_instructions();
-          InsnSet intersect;
+          if (!var_val) continue;
 
-          // if the intersection of the parameter and stack definers is not the empty set
-          std::set_intersection(par_definers.begin(), par_definers.end(),
-                                var_definers.begin(), var_definers.end(),
-                                std::inserter(intersect, intersect.begin()));
+          TreeNodePtr var_val_tnp = var_val->get_expression();
+          if (!var_val_tnp) continue;
 
-          if (intersect.size() > 0) {
+          // This test checks for pass by value by comparing
+          // values. Not a given that this indicates PBV, but a
+          // necessary precondition
+          if (var_val_tnp->isEquivalentTo(par_val_tnp)) {
 
-            session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(var_aa_val), treenode_to_xsb(par_aa_val));
+            uint64_t var_val_id = reinterpret_cast<uint64_t>(&*var_val_tnp);
 
-            MTRACE << "*** Detected stack variable pass by value" << LEND;
+            // sameType facts are not needed for the exact same treenode
+
+            if (var_val_id != par_val_id) { // TODO: Check this, it will not work for symbolic memory addresses
+
+              // If the two values are equal but not identical, check
+              // their lineage to see if they are related (i.e. have
+              // commong defining instructions).
+              const InsnSet& par_definers = param.value->get_defining_instructions();
+              const InsnSet& var_definers = var_val->get_defining_instructions();
+              InsnSet intersect;
+
+              // if the intersection of the parameter and stack definers is not the empty set
+              std::set_intersection(par_definers.begin(), par_definers.end(),
+                                    var_definers.begin(), var_definers.end(),
+                                    std::inserter(intersect, intersect.begin()));
+
+              MTRACE << "Checking sameType fact for PBV treenodes: var_val: "
+                     << *var_val_tnp << " : " << addr_str(var_val_id)
+                     << ", par_val: " << *par_val_tnp << " : " << addr_str(par_val_id) << LEND;
+
+              if (intersect.size() > 0) {
+                MTRACE << "*** Detected stack variable pass by value" << LEND;
+
+                session_->add_fact(SAME_TYPE_FACT,
+                                   treenode_to_xsb(var_val_tnp), treenode_to_xsb(par_val_tnp));
+
+                MDEBUG << "Emitting sameType fact for param/var PBV: (var_val==param_val) "
+                       << addr_str(treenode_to_xsb(var_val_tnp)) << " == " << addr_str(treenode_to_xsb(par_val_tnp))
+                       << LEND;
+
+
+              }
+            }
           }
-        }
-      }
+        } // for each val
+      } // else check PBV
     } // for each stack variable
 
+    // ======================================================================================
     // check for PBV and PBR in global vars
+    const GlobalMemoryDescriptorMap& globals = global_descriptor_set->get_global_map();
+    const FunctionDescriptorMap& funcs = global_descriptor_set->get_func_map();
+
     for (const GlobalMemoryDescriptorMap::value_type & pair : globals)  {
 
       GlobalMemoryDescriptor global_var = pair.second;
@@ -568,128 +1177,57 @@ TypeSolver::assert_function_call_facts(const CallDescriptor *cd) {
       if (funcs.find(global_var.get_address()) != funcs.end()) continue;
 
       SymbolicValuePtr global_address = global_var.get_memory_address();
-      SymbolicValuePtr global_value = global_var.get_value();
+      const std::vector<SymbolicValuePtr>& global_values = global_var.get_values();
 
-      if (!global_value || !global_address) continue;
+      if (global_values.empty() || !global_address) continue;
 
-      TreeNodePtr global_val_tnp = global_value->get_expression();
       TreeNodePtr global_mem_tnp = global_address->get_expression();
 
-      if (!global_val_tnp || !global_mem_tnp) continue;
+      for (auto gv : global_values) {
+        TreeNodePtr global_val_tnp = gv->get_expression();
 
-      MTRACE << "Global variable val = " << *global_val_tnp << ", mem = " << *global_mem_tnp << LEND;
-      MTRACE << "Param "  << param.num << " variable val = " << *par_aa_val << ", mem = " << *par_aa_mem << LEND;
+        if (!global_val_tnp || !global_mem_tnp) continue;
 
-      // if the memory address of the global is the value of the parameter, then this is PBR
-      if (global_mem_tnp->isEquivalentTo(par_aa_val)) {
+        MDEBUG << "Global variable val = " << *global_val_tnp << ", mem = " << *global_mem_tnp << LEND;
+        MDEBUG << "Param "  << param.num << " variable val = " << *par_val_tnp << ", mem = " << *par_mem_tnp << LEND;
 
-        uint64_t gmaddr = reinterpret_cast<uint64_t>(&*global_mem_tnp);
+        // if the memory address of the global is the value of the parameter, then this is PBR
+        if (global_mem_tnp->isEquivalentTo(par_val_tnp)) {
 
-        // there is no reason to emit sameType facts for the same exact treenode
-        if (gmaddr != pvaddr) {
-          MTRACE << "*** Detected global variable pass by reference" << LEND;
-          session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(global_mem_tnp), treenode_to_xsb(par_aa_val));
+          uint64_t gmaddr = reinterpret_cast<uint64_t>(&*global_mem_tnp);
+
+          // there is no reason to emit sameType facts for the same exact treenode
+          if (gmaddr != par_val_id) {
+            MDEBUG << "*** Detected global variable pass by reference" << LEND;
+
+            MDEBUG << "Emitting sameType fact for global PBR treenodes: (global mem==param) "
+                  << addr_str(treenode_to_xsb(global_mem_tnp)) << " == " << addr_str(treenode_to_xsb(par_val_tnp)) << LEND;
+
+            session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(global_mem_tnp), treenode_to_xsb(par_val_tnp));
+          }
         }
-      }
 
-      // Test for PBV by comparing values
-      else if (global_val_tnp->isEquivalentTo(par_aa_val)) {
+        // Test for PBV by comparing values
+        else if (global_val_tnp->isEquivalentTo(par_val_tnp)) {
 
-        uint64_t gvaddr = reinterpret_cast<uint64_t>(&*global_val_tnp);
+          uint64_t gvaddr = reinterpret_cast<uint64_t>(&*global_val_tnp);
 
-        // there is no reason to emit sameType facts for the same exact treenode
-        if (gvaddr != pvaddr) {
-          MTRACE << "*** Detected global variable pass by value" << LEND;
-          session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(global_val_tnp), treenode_to_xsb(par_aa_val));
+          // there is no reason to emit sameType facts for the same exact treenode
+          if (gvaddr != par_val_id) {
+            MDEBUG << "*** Detected global variable pass by value" << LEND;
+
+            MDEBUG << "Emitting sameType fact for global PBV treenodes: gbl address: (global==param) "
+                  << addr_str(treenode_to_xsb(global_val_tnp)) << " == " << addr_str(treenode_to_xsb(par_val_tnp)) << LEND;
+
+            session_->add_fact(SAME_TYPE_FACT,
+                               treenode_to_xsb(global_val_tnp), treenode_to_xsb(par_val_tnp));
+          }
         }
-      }
+      } // for each global variable value
     } // for each global variable
-
-    MTRACE << "===" << LEND;
   }  // for each parameter
-
-
-  ParamVector callee_params;
-  // if this is an import, then there are no interprocedural facts, but there are caller-perspective facts
-  const ImportDescriptor *imp = cd->get_import_descriptor(); // is this an import?
-   if (imp != NULL) {
-     MDEBUG << "Detected call to import" << LEND;
-     const FunctionDescriptor* impfd = imp->get_function_descriptor();
-     if (impfd) {
-       callee_params = impfd->get_parameters().get_params();
-     }
-     //return;
-   }
-   else {
-     MDEBUG << "Detected regular call" << LEND;
-     if (targetFd) {
-       callee_params = targetFd->get_parameters().get_params();
-     }
-   }
-   // assert facts based on function flow
-
-   // It is possible that caller and callee parameter lists are empty
-   if (caller_params.empty() || callee_params.empty()) {
-     MDEBUG << "Abandoning function fact generation due to empty parameter list" << LEND;
-     return;
-   }
-
-   ParamVector::const_iterator callee_iter = callee_params.begin();
-   ParamVector::const_iterator caller_iter = caller_params.begin();
-
-   while (caller_iter != caller_params.end() && callee_iter != callee_params.end()) {
-
-     const ParameterDefinition &caller_param = *caller_iter;
-     const ParameterDefinition &callee_param = *callee_iter;
-
-     // the parameters map to each other
-     if (caller_param.num == callee_param.num) {
-
-       if (caller_param.value != NULL && callee_param.value != NULL) {
-
-         TreeNodePtr caller_tnp = caller_param.value->get_expression(); // the caller is this function
-         bool caller_has_td = has_type_descriptor(caller_tnp);
-         TypeDescriptorPtr caller_td = fetch_type_descriptor(caller_tnp);
-         if (caller_has_td == false) {
-           recursively_assert_facts(caller_tnp);
-         }
-
-         TreeNodePtr callee_tnp = callee_param.value->get_expression(); // the callee is the called function
-         bool callee_has_td = has_type_descriptor(callee_tnp);
-         TypeDescriptorPtr callee_td = fetch_type_descriptor(callee_tnp);
-         if (callee_has_td == false) {
-           recursively_assert_facts(callee_tnp);
-         }
-
-         rose_addr_t addr = reinterpret_cast<rose_addr_t>(&*callee_tnp);
-         MDEBUG << "TypeDescriptor for callee TNP (" << addr_str(addr) << "): " << callee_td->to_string() << LEND;
-
-         if (callee_td->Pointerness() == types::Pointerness::Pointer) {
-           session_->add_fact(KNOWN_POINTER_FACT, treenode_to_xsb(caller_tnp), IS);
-         }
-         else if (callee_td->Pointerness() == types::Pointerness::NotPointer) {
-           session_->add_fact(KNOWN_POINTER_FACT, treenode_to_xsb(caller_tnp), ISNOT);
-         }
-
-         if (callee_td->Signedness() == types::Signedness::Signed) {
-           session_->add_fact(KNOWN_SIGNED_FACT, treenode_to_xsb(caller_tnp), IS);
-         }
-         else if (callee_td->Signedness() == types::Signedness::Unsigned) {
-           session_->add_fact(KNOWN_SIGNED_FACT, treenode_to_xsb(caller_tnp), ISNOT);
-         }
-
-         std::string known_type_name = callee_td->get_name();
-         if (known_type_name.empty() == false) {
-           // there is a name
-           session_->add_fact(KNOWN_TYPENAME_FACT, treenode_to_xsb(caller_tnp), known_type_name);
-         }
-       }
-     }
-     // Move to the next parameter set
-     ++callee_iter;
-     ++caller_iter;
-   }
 }
+
 
 void
 TypeSolver::assert_initial_facts(TreeNodePtr tnp) {
@@ -716,17 +1254,20 @@ TypeSolver::assert_initial_facts(TreeNodePtr tnp) {
     extract_possible_values(tnp, possible_val_set);
 
     // If the possible value set only contains one element, then it is
-    // the current treenode and can be ignored
+    // the current treenode and can be ignored2
     if (possible_val_set.size() > 1) {
       for (auto ite_elm : possible_val_set) {
-        OINFO << "Exporting fact sameType("
-              << addr_str( treenode_to_xsb(ite_elm))
-              << ", " << addr_str(treenode_to_xsb(tnp)) << ")." << LEND;
+
+        MDEBUG << "Emitting sameType fact for ITE (part 2)"
+               << addr_str( treenode_to_xsb(ite_elm)) << " == " << addr_str(treenode_to_xsb(tnp))
+               << LEND;
+
         session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(ite_elm), treenode_to_xsb(tnp));
       }
     }
   }
 }
+
 
 // Assert facts about API calls. These facts concern the specific
 // types of variables based on how they are passed to APIs.
@@ -749,21 +1290,17 @@ TypeSolver::assert_api_facts(const CallDescriptor *cd) {
   // add a fact that names the function call
   session_->add_fact(APINAME_FACT, cd->get_address(), imp_ss.str());
 
-     // Now assert facts for treenodes associated with this function call
+  // Now assert facts for treenodes associated with this function call
 
   const ParamVector& cd_params = cd->get_parameters().get_params();
-
   for (const ParameterDefinition &param : cd_params) { // for each param on the call
-    // add the type names for the
 
-    // get the tree node for the parameter
     TreeNodePtr tnp = param.get_value()->get_expression();
-
     auto type = param.get_type();
 
     if (!type.empty()) {
 
-      auto ref = typedb_.lookup(type);
+      typedb::TypeRef ref = typedb_.lookup(type);
 
       dir_enum dir = IN;
       // parameters that receive a (persistent) value are OUT or IN/OUT.
@@ -772,44 +1309,74 @@ TypeSolver::assert_api_facts(const CallDescriptor *cd) {
         dir = OUT;
       }
 
-      if (ref->get_pointerness() == types::Pointerness::Pointer) {
-        session_->add_fact(TYPE_POINTER_FACT, ref->get_name(), POINTER);
-
-        // if this is a pointer, then we should know something about
-        // what it points to.
-
-        auto pointer = ref->as<typedb::Pointer>();
-        if (pointer) {
-          auto pointee = pointer->get_contained();
-
-          // emit a fact stating what type the reference type points to
-          session_->add_fact(TYPE_REF_FACT,ref->get_name(), pointee->get_name());
-
-          if (pointee->get_pointerness() == types::Pointerness::Pointer) {
-            session_->add_fact(TYPE_POINTER_FACT, pointee->get_name(), POINTER);
-          }
-          else {
-             session_->add_fact(TYPE_POINTER_FACT, pointee->get_name(), NOTPOINTER);
-          }
-        }
-      }
-      else if (ref->get_pointerness() == types::Pointerness::NotPointer) {
-        session_->add_fact(TYPE_POINTER_FACT, ref->get_name(), NOTPOINTER);
-      }
-
-      if (ref->get_signedness() == types::Signedness::Signed) {
-        session_->add_fact(TYPE_SIGNED_FACT, ref->get_name(), SIGNED);
-      }
-      else if (ref->get_signedness() == types::Signedness::Unsigned) {
-        session_->add_fact(TYPE_SIGNED_FACT, ref->get_name(), UNSIGNED);
-      }
+      assert_type_facts(ref);
 
       // name the parameter type by ordinal
       session_->add_fact(API_PARAM_TYPE_FACT, imp_ss.str(), param.num, ref->get_name(), dir);
     }
+  } // foreach param
+
+  // emit facts about return types for functions ... the "by-convention" return type
+  RegisterDescriptor eax_reg = global_descriptor_set->get_arch_reg("eax");
+
+  // Emit a fact about return type for the API
+  const ParamVector& cd_rets = cd->get_parameters().get_returns();
+  for (const ParameterDefinition &retval : cd_rets) {
+
+    // for now just track eax and the "return value"
+    if (retval.reg == eax_reg) {
+      typedb::TypeRef ret_type = typedb_.lookup(retval.get_type());
+      // emit a fact about return type
+
+      MTRACE << "The return type of " << imp_ss.str()
+            << " is " << ret_type->get_name() << LEND;
+
+      session_->add_fact(API_RET_TYPE_FACT, imp_ss.str(),  ret_type->get_name());
+
+      assert_type_facts(ret_type);
+
+      break;
+    }
   }
 }
 
+// assert basic facts about this type
+void
+TypeSolver::assert_type_facts(typedb::TypeRef& ref) {
+
+  if (ref->get_pointerness() == types::Pointerness::Pointer) {
+    session_->add_fact(TYPE_POINTER_FACT, ref->get_name(), POINTER);
+
+    // if this is a pointer, then we should know something about
+    // what it points to.
+
+    auto pointer = ref->as<typedb::Pointer>();
+    if (pointer) {
+      auto pointee = pointer->get_contained();
+
+      // emit a fact stating what type the reference type points to
+      session_->add_fact(TYPE_REF_FACT,ref->get_name(), pointee->get_name());
+
+      if (pointee->get_pointerness() == types::Pointerness::Pointer) {
+        session_->add_fact(TYPE_POINTER_FACT, pointee->get_name(), POINTER);
+      }
+      else {
+        session_->add_fact(TYPE_POINTER_FACT, pointee->get_name(), NOTPOINTER);
+      }
+    }
+  }
+  else if (ref->get_pointerness() == types::Pointerness::NotPointer) {
+    session_->add_fact(TYPE_POINTER_FACT, ref->get_name(), NOTPOINTER);
+  }
+
+  if (ref->get_signedness() == types::Signedness::Signed) {
+    session_->add_fact(TYPE_SIGNED_FACT, ref->get_name(), SIGNED);
+  }
+  else if (ref->get_signedness() == types::Signedness::Unsigned) {
+    session_->add_fact(TYPE_SIGNED_FACT, ref->get_name(), UNSIGNED);
+  }
+  // This is not a pointer. Do we know of any types that point to it?
+}
 
 void
 TypeSolver::save_arch_facts(std::iostream &out_sstream) {
@@ -841,12 +1408,6 @@ TypeSolver::save_function_call_facts(std::iostream &out_sstream) {
 
   if (!session_) return;
 
-  // Dump function call argument facts
-  auto callQuery = session_->query(FNCALL_TARGET_FACT, any(), any());
-  for (; !callQuery->done(); callQuery->next()) {
-    callQuery->debug_print(out_sstream);
-  }
-
   // Dump function call facts
   auto argQuery = session_->query(FNCALL_ARG_FACT, any(), any(), any());
   for (; !argQuery->done(); argQuery->next()) {
@@ -868,6 +1429,18 @@ TypeSolver::save_function_call_facts(std::iostream &out_sstream) {
     knownTypeQuery->debug_print(out_sstream);
   }
 
+  // Dump function return value facts
+  auto rvQuery = session_->query(FNCALL_RETVAL_FACT, any(), any());
+  for (; !rvQuery->done(); rvQuery->next()) {
+    rvQuery->debug_print(out_sstream);
+  }
+
+  // Dump function return value facts
+  auto obj_query = session_->query(KNOWN_OBJECT_FACT, any(), any());
+  for (; !obj_query->done(); obj_query->next()) {
+    obj_query->debug_print(out_sstream);
+  }
+
   auto refQuery = session_->query(SAME_TYPE_FACT, any(), any());
   for (; !refQuery->done(); refQuery->next()) {
     refQuery->debug_print(out_sstream);
@@ -881,15 +1454,11 @@ TypeSolver::save_function_call_facts(std::iostream &out_sstream) {
 
 /**
  * Dump facts related to API Calls
- *
- * apiCallName(ADDRESS, API).
- * apiParamType(API, ORDINAL, TYPENAME).
- * typePointerness(TYPE, pointer|notpointer).
- * typeSignedness(TYPE, signed|unsigned).
  */
-
 void
 TypeSolver::save_api_facts(std::iostream &out_sstream) {
+
+  if (!session_) return;
 
   // Dump function call name facts
   auto nameQuery = session_->query(APINAME_FACT, any(), any());
@@ -901,6 +1470,12 @@ TypeSolver::save_api_facts(std::iostream &out_sstream) {
   auto pnameQuery = session_->query(API_PARAM_TYPE_FACT, any(), any(), any(), any());
   for (; !pnameQuery->done(); pnameQuery->next()) {
     pnameQuery->debug_print(out_sstream);
+  }
+
+  // Dump API function return type facts
+  auto rtQuery = session_->query(API_RET_TYPE_FACT, any(), any());
+  for (; !rtQuery->done(); rtQuery->next()) {
+    rtQuery->debug_print(out_sstream);
   }
 
   // Dump API function parameter pointer facts
@@ -957,6 +1532,55 @@ void TypeSolver::set_output_file(std::string fn) {
   save_to_file_ = true;
 }
 
+// Find new methods by examining imports.
+void find_imported_new_methods() {
+  MTRACE << "Finding imported new methods..." << LEND;
+
+  // Make a list of names that represent new in it's various forms.
+  StringSet new_method_names;
+  new_method_names.insert("??2@YAPAXI@Z");
+  new_method_names.insert("??2@YAPAXIHPBDH@Z");
+  // From notepad++5.6.8:
+  // void *__cdecl operator new(size_t Size, const struct std::nothrow_t *)
+  new_method_names.insert("??2@YAPAXIABUnothrow_t@std@@@Z");
+
+  // Get the import map out of the provided descriptor set.
+  ImportDescriptorMap& im = global_descriptor_set->get_import_map();
+
+  // For each new() name...
+  for (const std::string & name : new_method_names) {
+    // Find all the import descriptors that match.
+
+    for (ImportDescriptor* id : im.find_name(name)) {
+      MTRACE << "Imported new '" << name << "' found at address "
+            << id->address_string() << "."<< LEND;
+      id->set_new_method(true);
+      id->get_rw_function_descriptor()->set_new_method(true);
+
+      // This part is kind-of icky.  Maybe we should make a nice set of backward links to all
+      // the imports from all the thunks that jump to them...  For now Cory's going to brute
+      // force it and move on.
+      FunctionDescriptorMap& fdmap = global_descriptor_set->get_func_map();
+      for (FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
+        // If it's not a thunk to the import, move on to the next function.
+        if (fd.get_jmp_addr() != id->get_address()) continue;
+        // If this function is a thunk to the import, it's a new method.
+        MTRACE << "Function at " << fd.address_string()
+              << " is a thunk to a new() method." << LEND;
+        fd.set_new_method(true);
+        // Also any functions that are thunks to this function are new methods.  This is
+        // another example of why thunks are tricky.  In this case we want to access them
+        // backwards.  We don't currently have an inverted version of follow_thunks().
+        for (FunctionDescriptor* tfd : fd.get_thunks()) {
+          MTRACE << "Function at " << tfd->address_string()
+                << " is a thunk to a thunk to a new() method." << LEND;
+          tfd->set_new_method(true);
+        }
+      }
+    }
+  }
+}
+
 // When the typesolver is created, so is the prolog session
 TypeSolver::TypeSolver(const DUAnalysis& du, const  FunctionDescriptor* f)
   : du_analysis_(du), current_function_(f),
@@ -977,9 +1601,13 @@ TypeSolver::TypeSolver(const DUAnalysis& du, const  FunctionDescriptor* f)
     session_ = NULL;
   }
 
-  assert_arch_fact();
+  // TODO: This code is literally copied from ooanalyzer and should be
+  // moved into a Known Function Analyzer
+  find_imported_new_methods();
 
+  assert_arch_fact();
 }
+
 
 // The only thing to do here is invalidate the session
 TypeSolver::~TypeSolver() {
@@ -991,7 +1619,7 @@ void
 TypeSolver::recursively_assert_facts(TreeNodePtr tnp) {
 
   uint64_t tnaddr = reinterpret_cast<uint64_t>(&*tnp);
-  MDEBUG << "Generating facts for (" << addr_str(tnaddr) << ") " << *tnp << LEND;
+  // MDEBUG << "Generating facts for (" << addr_str(tnaddr) << ") " << *tnp << LEND;
 
   // Has this tree node been processed? Tree node hashes are based
   // on value not pointer so there can be different pointers and
@@ -1021,9 +1649,6 @@ TypeSolver::recursively_assert_facts(TreeNodePtr tnp) {
     }
   }
 
-  boost::any ud = td_ptr;
-  tnp->userData(ud); // The tree node now has a TypeDescriptor
-
   MDEBUG << "Added type descriptor for " << addr_str(tnaddr) << LEND;
 
   // Check to see if the treen node is an operation. If it is assert an operation fact
@@ -1043,10 +1668,16 @@ TypeSolver::recursively_assert_facts(TreeNodePtr tnp) {
       if (op == Rose::BinaryAnalysis::SymbolicExpr::OP_ITE) {
 
         session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(kids[1]), treenode_to_xsb(tnp));
-        MDEBUG << "Exporting fact sameType(" << addr_str( treenode_to_xsb(kids[1])) << ", " << addr_str(treenode_to_xsb(tnp)) << ")." << LEND;
+
+        MDEBUG << "Emitting sameType fact for ITE: "
+               << addr_str( treenode_to_xsb(kids[1])) << " == " << addr_str(treenode_to_xsb(tnp))
+               << LEND;
 
         session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(kids[2]), treenode_to_xsb(tnp));
-        MDEBUG << "Exporting fact sameType(" << addr_str( treenode_to_xsb(kids[2])) << ", " << addr_str(treenode_to_xsb(tnp)) << ")." << LEND;
+
+        MDEBUG << "Emitting sameType fact for ITE: "
+              << addr_str( treenode_to_xsb(kids[2])) << " == " << addr_str(treenode_to_xsb(tnp))
+              << LEND;
       }
 
       for (TreeNodePtr child : kids) {
@@ -1060,12 +1691,18 @@ bool
 TypeSolver::generate_type_information(const std::map<TreeNode*,TreeNodePtr> &treenodes,
                                       const std::map<TreeNode*,TreeNodePtr> &memory_accesses)
 {
+  using clock = std::chrono::steady_clock;
+  using time_point = std::chrono::time_point<clock>;
+  using duration = std::chrono::duration<double>;
+
   if (!session_) {
     OERROR << "Error cannot start prolog" << LEND;
     return false;
   }
 
   MDEBUG << "Generating type facts" << LEND;
+
+  time_point factgen_ts = clock::now();
 
   for (auto& tnpair : treenodes) {
     recursively_assert_facts(tnpair.second);
@@ -1074,35 +1711,49 @@ TypeSolver::generate_type_information(const std::map<TreeNode*,TreeNodePtr> &tre
   MDEBUG << "Analyzing " << memory_accesses.size() << " memory accesses" << LEND;
 
   // assert the memory facts
-
   for (auto mempair : memory_accesses) {
-
-    TreeNodePtr mem_tnp = mempair.second;
-    if (mem_tnp) {
-      assert_memory_facts(mem_tnp);
-      recursively_assert_facts(mem_tnp);
+    if (mempair.second) {
+      assert_memory_facts(mempair.second);
+      recursively_assert_facts(mempair.second);
     }
   }
 
-  // examine the calls in this function and assert facts
-  const CallDescriptorSet& outCalls = current_function_->get_outgoing_calls();
-  for (const CallDescriptor *cd : outCalls) {
+  assert_global_variable_facts();
+
+  assert_local_variable_facts();
+
+  assert_function_call_facts();
+
+  // examine the calls in this function and assert relevant facts
+  for (const CallDescriptor *cd : current_function_->get_outgoing_calls()) {
 
     if (cd) {
       // for each found call descriptor assert the relevant facts
-      assert_function_call_facts(cd);
+      assert_objectness_facts(cd);
+      assert_function_call_parameter_facts(cd);
       assert_api_facts(cd);
     }
   }
 
-  // assert the type descriptors based on collected facts
+  time_point factgen_te = clock::now();
+  duration factgen_secs = factgen_te - factgen_ts;
+
+  // Generate the type descriptors based on collected facts
+  time_point typegen_ts = clock::now();
+
   generate_type_descriptors();
+
+  time_point typegen_te = clock::now();
+  duration typegen_secs = typegen_te - typegen_ts;
+
+  MTRACE << "Type analysis complete for function " << addr_str(current_function_->get_address())
+         << ", fact generation took " << factgen_secs.count()
+         << "s; type generation took " << typegen_secs.count() << "s" << LEND;
 
   // if specified, dump the facts to a file for further processing
   if (save_to_file_) {
     save_facts();
   }
-
   return true;
 }
 
@@ -1138,9 +1789,7 @@ TypeSolver::save_facts_to_file(std::string &facts) {
   return true;
 }
 
-/**
- * Update TypeDescriptor type name information
- */
+// Update TypeDescriptor type name information
 void TypeSolver::update_typename() {
 
   if (!session_) {
@@ -1149,25 +1798,22 @@ void TypeSolver::update_typename() {
   }
 
   uint64_t tnp_term;
-  std::string name;
-  auto query = session_->query(TYPE_NAME_QUERY, var(tnp_term), var(name));
+  std::vector<std::string> candidate_names;
+  auto query = session_->query(FINAL_TYPENAME_QUERY, var(tnp_term), var(candidate_names));
+
   for (; !query->done(); query->next()) {
 
     TreeNode* tn = xsb_to_treenode(tnp_term);
     TreeNodePtr tnp = tn->sharedFromThis();
 
-    uint64_t addr = reinterpret_cast<uint64_t>(&*tnp);
-    MDEBUG << "setting " << *tnp << " ID: "<< addr_str(addr) << " name to " << name << LEND;
-
-    TypeDescriptorPtr typeDesc = fetch_type_descriptor(tnp);
-    typeDesc->set_name(name); // This type has a known name
+    TypeDescriptorPtr type_desc = fetch_type_descriptor(tnp);
+    type_desc->set_type_name(candidate_names); // This type has a known name
   }
 }
 
-/**
- * Update TypeDescriptor pointerness information
- */
-void TypeSolver::update_pointerness() {
+// Update TypeDescriptor pointerness information
+void
+TypeSolver::update_pointerness() {
 
   MDEBUG << "Updating pointerness" << LEND;
 
@@ -1176,51 +1822,80 @@ void TypeSolver::update_pointerness() {
     return;
   }
 
-  uint64_t is_ptr_term;
-  auto is_ptr_query = session_->query(FINAL_POINTER_QUERY, var(is_ptr_term), IS);
-  for (; !is_ptr_query->done(); is_ptr_query->next()) {
+  uint64_t pointer_term;
+  type_enum pointer_result;
 
-    TreeNode* tn = xsb_to_treenode(is_ptr_term);
+  auto pointer_query = session_->query(FINAL_POINTER_QUERY, var(pointer_term), var(pointer_result));
+  for (; !pointer_query->done(); pointer_query->next()) {
+
+    TreeNode* tn = xsb_to_treenode(pointer_term);
     TreeNodePtr tnp = tn->sharedFromThis();
-
     uint64_t addr = reinterpret_cast<uint64_t>(&*tnp);
-    MDEBUG << "setting " << addr_str(addr) <<  " ( " << *tnp << ") to IS pointer" << LEND;
 
     TypeDescriptorPtr type_desc = fetch_type_descriptor(tnp);
-    type_desc->is_pointer(); // indicate this is a pointer
+    if (pointer_result == IS) {
+      MDEBUG << "setting " << addr_str(addr) << " to IS pointer" << LEND;
+      type_desc->is_pointer(); // indicate this is a pointer
+    }
+    else if (pointer_result == ISNOT) {
+      MDEBUG << "setting " << addr_str(addr) << " to ISNOT pointer" << LEND;
+      type_desc->not_pointer(); // indicate this is not a pointer
+    }
+    else if (pointer_result == BOTTOM) {
+      MDEBUG << "setting " << addr_str(addr) << " to BOTTOM object" << LEND;
+      type_desc->bottom_pointer(); // indicate there is conflicting evidence of pointerness
+    }
+    else {
+      // This may be redundant, but it is explicit
+      MDEBUG << "setting " << addr_str(addr) << " to TOP object" << LEND;
+      type_desc->top_pointer(); // indicate we don't know about pointerness
+    }
+  }
+}
+
+
+// Update the TypeDescriptor objectness information
+void
+TypeSolver::update_objectness() {
+
+  if (!session_) {
+    OERROR << "Invalid prolog session!" << LEND;
+    return;
   }
 
-  uint64_t not_pointer_term;
-  auto not_ptr_query = session_->query(FINAL_POINTER_QUERY, var(not_pointer_term), ISNOT);
-  for (; !not_ptr_query->done(); not_ptr_query->next()) {
+  uint64_t obj_term;
+  type_enum obj_result;
 
-    TreeNode* tn = xsb_to_treenode(not_pointer_term);
+  auto obj_query = session_->query(FINAL_OBJECT_QUERY, var(obj_term), var(obj_result));
+  for (; !obj_query->done(); obj_query->next()) {
+
+    TreeNode* tn = xsb_to_treenode(obj_term);
     TreeNodePtr tnp = tn->sharedFromThis();
-
     uint64_t addr = reinterpret_cast<uint64_t>(&*tnp);
-    MDEBUG << "setting " << addr_str(addr) <<  " ( " << *tnp << ") to ISNOT pointer" << LEND;
 
     TypeDescriptorPtr type_desc = fetch_type_descriptor(tnp);
-    type_desc->not_pointer(); // indicate this is not a pointer
-  }
 
-  uint64_t bottom_pointer_term;
-  auto bottom_ptr_query = session_->query(FINAL_POINTER_QUERY, var(bottom_pointer_term), BOTTOM);
-  for (; !bottom_ptr_query->done(); bottom_ptr_query->next()) {
-
-    TreeNode* tn = xsb_to_treenode(bottom_pointer_term);
-    TreeNodePtr tnp = tn->sharedFromThis();
-
-    uint64_t addr = reinterpret_cast<uint64_t>(&*tnp);
-    MDEBUG << "setting " << addr_str(addr) << " to BOTTOM pointer" << LEND;
-
-    TypeDescriptorPtr type_desc = fetch_type_descriptor(tnp);
-    type_desc->bottom_pointer();  // indicate conflicting information
+    if (obj_result == IS) {
+      MDEBUG << "setting " << addr_str(addr) << " to IS object" << LEND;
+      type_desc->is_object(); // indicate this is an object
+    }
+    else if (obj_result == ISNOT) {
+      MDEBUG << "setting " << addr_str(addr) << " to ISNOT object" << LEND;
+      type_desc->not_object(); // indicate this is not an object
+    }
+    else if (obj_result == BOTTOM) {
+      MDEBUG << "setting " << addr_str(addr) << " to BOTTOM object" << LEND;
+      type_desc->bottom_object(); // indicate there is no evidence of objectness
+    }
+    else {
+      MDEBUG << "setting " << addr_str(addr) << " to TOP object" << LEND;
+      type_desc->top_object(); // indicate there is no evidence of objectness
+    }
   }
 }
 
 /**
- * Update the TypeDescriptor signedness  information
+ * Update the TypeDescriptor signedness information
  */
 void TypeSolver::update_signedness() {
 
@@ -1229,47 +1904,35 @@ void TypeSolver::update_signedness() {
     return;
   }
 
-  uint64_t is_signed_term;
-  auto is_signed_query = session_->query(FINAL_SIGNED_QUERY, var(is_signed_term), IS);
-  for (; !is_signed_query->done(); is_signed_query->next()) {
+  uint64_t signed_term;
+  type_enum signed_result;
 
-    TreeNode* tn = xsb_to_treenode(is_signed_term);
+  auto signed_query = session_->query(FINAL_SIGNED_QUERY, var(signed_term), var(signed_result));
+  for (; !signed_query->done(); signed_query->next()) {
+
+    TreeNode* tn = xsb_to_treenode(signed_term);
     TreeNodePtr tnp = tn->sharedFromThis();
-
     uint64_t addr = reinterpret_cast<uint64_t>(&*tnp);
-    MDEBUG << "setting " << addr_str(addr) << " to IS signed" << LEND;
-
-    TypeDescriptorPtr typeDesc = fetch_type_descriptor(tnp);
-
-    typeDesc->is_signed(); // indicate this is signed
-  }
-
-  uint64_t not_signed_term;
-  auto not_signed_query = session_->query(FINAL_SIGNED_QUERY, var(not_signed_term), ISNOT);
-  for (; !not_signed_query->done(); not_signed_query->next()) {
-
-    TreeNode* tn = xsb_to_treenode(not_signed_term);
-    TreeNodePtr tnp = tn->sharedFromThis();
-
-    uint64_t addr = reinterpret_cast<uint64_t>(&*tnp);
-    MDEBUG << "setting " << addr_str(addr) << " to ISNOT signed" << LEND;
 
     TypeDescriptorPtr type_desc = fetch_type_descriptor(tnp);
-    type_desc->not_signed(); // indicate this is not signed
-  }
 
-  uint64_t bottom_signed_term;
-  auto bottom_signed_query = session_->query(FINAL_SIGNED_QUERY, var(bottom_signed_term), BOTTOM);
-  for (; !bottom_signed_query->done(); bottom_signed_query->next()) {
-
-    TreeNode* tn = xsb_to_treenode(bottom_signed_term);
-    TreeNodePtr tnp = tn->sharedFromThis();
-
-    uint64_t addr = reinterpret_cast<uint64_t>(&*tnp);
-    MDEBUG << "setting " << addr_str(addr) << " to BOTTOM signed" << LEND;
-
-    TypeDescriptorPtr type_desc = fetch_type_descriptor(tnp);
-    type_desc->bottom_signed(); // indicate this is signed
+    if (signed_result == IS) {
+      MDEBUG << "setting " << addr_str(addr) << " to signed" << LEND;
+      type_desc->is_signed(); // indicate this is signed
+    }
+    else if (signed_result == ISNOT) {
+      MDEBUG << "setting " << addr_str(addr) << " to unsigned" << LEND;
+      type_desc->not_signed(); // indicate this is unsigned
+    }
+    else if (signed_result == BOTTOM) {
+      MDEBUG << "setting " << addr_str(addr) << " to BOTTOM signed" << LEND;
+      type_desc->bottom_signed(); // indicate there is conflicting evidence of signedness
+    }
+    else {
+      // This may be redundant, but it makes intentions explicit
+      MDEBUG << "setting " << addr_str(addr) << " to TOP signed" << LEND;
+      type_desc->top_signed();
+    }
   }
 }
 
@@ -1285,11 +1948,11 @@ TypeSolver::save_facts_private()
   exported += session_->print_predicate(std::cout, BITWIDTH_FACT, 2);
   exported += session_->print_predicate(std::cout, VAL_FACT, 2);
   exported += session_->print_predicate(std::cout, FNCALL_ARG_FACT, 3);
-  exported += session_->print_predicate(std::cout, FNCALL_TARGET_FACT, 3);
   exported += session_->print_predicate(std::cout, APINAME_FACT, 2);
   exported += session_->print_predicate(std::cout, API_PARAM_TYPE_FACT, 4);
   exported += session_->print_predicate(std::cout, TYPE_POINTER_FACT, 2);
   exported += session_->print_predicate(std::cout, TYPE_SIGNED_FACT, 2);
+  exported += session_->print_predicate(std::cout, KNOWN_OBJECT_FACT, 2);
   exported += session_->print_predicate(std::cout, KNOWN_POINTER_FACT, 3);
   exported += session_->print_predicate(std::cout, KNOWN_SIGNED_FACT, 3);
   exported += session_->print_predicate(std::cout, KNOWN_TYPENAME_FACT, 2);
@@ -1302,20 +1965,42 @@ TypeSolver::save_facts_private()
   MINFO << "Exported " << exported << " Prolog facts." << LEND;
 }
 
-/**
- * This function will update the default type descriptors, currently
- * with pointer and sign information
- */
+
+// This function will update the default type descriptors, currently
+// with pointer and sign information
 void TypeSolver::generate_type_descriptors() {
+  using clock = std::chrono::steady_clock;
+  using time_point = std::chrono::time_point<clock>;
+  using duration = std::chrono::duration<double>;
 
   MINFO << "Updating type descriptors for function "
         << addr_str(current_function_->get_address()) << LEND;
 
+  time_point t1 = clock::now();
+
   update_pointerness();
+  time_point t2 = clock::now();
+  duration secs1 = t2 - t1;
+  MINFO << "update_pointerness() for function " << addr_str(current_function_->get_address())
+        << " took " << secs1.count() << "s" << LEND;
 
   update_signedness();
+  time_point t3 = clock::now();
+  duration secs2 = t3 - t2;
+  MINFO << "update_signedness() for function " << addr_str(current_function_->get_address())
+        << " took " << secs2.count() << "s" << LEND;
 
   update_typename();
+  time_point t4 = clock::now();
+  duration secs3 = t4 - t3;
+  MINFO << "update_typename() for function " << addr_str(current_function_->get_address())
+        << " took " << secs3.count() << "s" << LEND;
+
+  update_objectness();
+  time_point t5 = clock::now();
+  duration secs4 = t5 - t4;
+  MINFO << "update_objectness() for function " << addr_str(current_function_->get_address())
+        << " took " << secs4.count() << "s" << LEND;
 }
 
 /**
@@ -1453,7 +2138,7 @@ void SextendStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::S
   TreeNodePtr A = kids.at(0);
   TreeNodePtr B = kids.at(1);
 
-  session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(B), treenode_to_xsb(A));
+  session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
 void SextendStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream) {
@@ -1479,10 +2164,11 @@ void UextendStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::S
 
   TreeNodePtrVector kids;
   kids  = in->children();
+
   TreeNodePtr A = kids.at(0);
   TreeNodePtr B = kids.at(1);
 
-  session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(B), treenode_to_xsb(A));
+  session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
 void UextendStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
@@ -2605,3 +3291,9 @@ void ZeropStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::io
 // ------------------------------------------------------------------------------
 
 } // namespace pharos
+
+/* Local Variables:   */
+/* mode: c++          */
+/* fill-column:    95 */
+/* comment-column: 0  */
+/* End:               */

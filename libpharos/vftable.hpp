@@ -11,7 +11,31 @@
 
 namespace pharos {
 
+// An instruction that possibly installs a virtual table.
+class VirtualTableInstallation {
+ public:
+  // The instruction that installed the table somewhere.
+  SgAsmInstruction* insn;
+  // The function that the instruction is in.
+  FunctionDescriptor* fd;
+  // The constant address of the table.
+  rose_addr_t table_address;
+  // The variable portion of the symbolic value that the table was written into.
+  TreeNodePtr written_to;
+  // The constant offset into the symbolic value.
+  int64_t offset;
+  // True if the table is virtual base table, and false it is a virtual function table.
+  bool base_table;
+
+  VirtualTableInstallation(SgAsmInstruction* i, FunctionDescriptor *f,
+                           rose_addr_t a, TreeNodePtr w, int64_t o, bool b);
+};
+
+typedef std::shared_ptr<VirtualTableInstallation> VirtualTableInstallationPtr;
+
 class VirtualBaseTable {
+
+  bool valid() const;
 
  public:
 
@@ -26,7 +50,9 @@ class VirtualBaseTable {
     size = 0;
   }
 
-  void analyze();
+  // Analyzes the vitrual base table.  Returns true if the table is valid, and false if it is
+  // not.
+  bool analyze();
 
   // Limit sizes based on overlaps with other tables and data structures.
   void analyze_overlaps();
@@ -37,6 +63,8 @@ class VirtualBaseTable {
 
 
 class VirtualFunctionTable {
+
+  bool valid() const;
 
  public:
 
@@ -120,63 +148,10 @@ class VirtualFunctionTable {
   FunctionDescriptor * read_entry_fd(unsigned int entry);
 
   // This method updates the fields describing the virtual function table based on analyzing
-  // the contents of the memory at the address of the table.
-  void analyze();
+  // the contents of the memory at the address of the table.  Returns true if the table is
+  // valid, and false if it is not.
+  bool analyze();
 };
-
-// This class accumulates "evidence" about the existence of a virtual function table based on
-// instructions that write the virtual function table pointer into a specific offset in an
-// object.  Because of inlined constructors, we sometimes need additional information to be
-// able to decide which virtual function tables are associated with which classes.
-
-// Poorly named right now (still deciding how to handle base verus function tables).
-class VFTEvidence {
-
-public:
-
-  // The instruction that installed the pointer into the object.
-  SgAsmInstruction* insn;
-  // The function that contains the instruction.
-  FunctionDescriptor* fd;
-  // Our class representing the virtual function table.
-  VirtualFunctionTable* vftable;
-  // Our class representing the virtual base table.
-  VirtualBaseTable* vbtable;
-
-  // We'll probably also want a this-pointer value here in the future.
-
-  VFTEvidence(SgAsmInstruction* i, FunctionDescriptor* f,
-              VirtualFunctionTable* vft, VirtualBaseTable* vbt) {
-    insn = i;
-    fd = f;
-    vftable = vft;
-    vbtable = vbt;
-    // The instruction and the function descriptor pointers must be valid.
-    assert(insn != NULL);
-    assert(fd != NULL);
-  }
-};
-
-// Members contain a set of VFTEvidence objects.  Memory allocation for the evidence objects is
-// managed by the set.
-struct VFTEvidenceCompare {
-  bool operator()(const VFTEvidence x, const VFTEvidence y) const {
-    return (x.insn->get_address() < y.insn->get_address()) ? true : false;
-  }
-};
-typedef std::set<VFTEvidence, VFTEvidenceCompare> VFTEvidenceSet;
-
-// Map addresses in the program to virtual function tables.
-typedef std::map<rose_addr_t, VirtualFunctionTable*> VFTableAddrMap;
-typedef std::map<rose_addr_t, VirtualBaseTable*> VBTableAddrMap;
-
-// Global table for tracking unique virtual function tables.  This allow us to prevent
-// duplicated effort, by re-using earlier analysis of the same table.  Should perhaps be part
-// of the global descriptor set.
-extern VFTableAddrMap global_vftables;
-
-// A global tables for tracking virtual base tables.
-extern VBTableAddrMap global_vbtables;
 
 } // namespace pharos
 

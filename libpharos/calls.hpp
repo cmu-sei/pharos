@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015, 2016, 2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Calls_H
 #define Pharos_Calls_H
@@ -13,6 +13,7 @@
 #include "imports.hpp"
 #include "state.hpp"
 #include "convention.hpp"
+#include "typedb.hpp"
 
 namespace pharos {
 
@@ -185,6 +186,9 @@ public:
   rose_addr_t get_address() const {
     return address;
   }
+  CallTargetLocation get_target_location() const {
+    return call_location;
+  }
 
   // Add a new address to the targets list, recompute the merged descriptions, and update
   // connections with the affected function descriptor.
@@ -210,6 +214,7 @@ public:
   bool check_virtual(PDG *pdg);
 
   void update_call_type(CallType ct, GenericConfidence conf);
+  void update_virtual_call(PDG *pdg);
 
   CallType get_call_type() const  {
     return call_type;
@@ -237,6 +242,9 @@ public:
   CallInformationPtr get_call_info() const {
     return call_info;
   }
+
+  // Does the call never return (because all of the targets never return, e.g. exits).
+  bool get_never_returns() const;
 
   // Get the state at the time of the call.
   const SymbolicStatePtr get_state() const { return state; }
@@ -326,6 +334,74 @@ private:
   CallType call_type;
   GenericConfidence conf;
   TargetSetCardinality target_card;
+};
+
+
+using ValueList = std::vector<typedb::Value>;
+
+class CallParamInfoBuilder;
+
+class CallParamInfo {
+ private:
+  CallDescriptor const & cd;
+  ValueList const val;
+  CallParamInfo(CallDescriptor const & cd_, ValueList && val_)
+    : cd(cd_), val(std::move(val_))
+  {}
+  friend class CallParamInfoBuilder;
+
+  static typedb::TypeRef type_from_value(typedb::Value const & val) {
+    return val.get_type();
+  }
+  static std::string const & name_from_param(ParameterDefinition const & pd) {
+    return pd.get_name();
+  }
+  static std::string const & type_name_from_param(ParameterDefinition const & pd) {
+    return pd.get_type();
+  }
+
+ public:
+  CallDescriptor const & descriptor() const {
+    return cd;
+  }
+  ValueList const & values() const {
+    return val;
+  }
+  ParamVector const & params() const {
+    return cd.get_parameters().get_params();
+  }
+
+  using type_range = decltype(std::declval<ValueList>()
+                              | boost::adaptors::transformed(type_from_value));
+  using name_range = decltype(std::declval<ParamVector>()
+                              | boost::adaptors::transformed(name_from_param));
+  using type_name_range = decltype(std::declval<ParamVector>()
+                                   | boost::adaptors::transformed(type_name_from_param));
+
+  type_range types() const {
+    return values() | boost::adaptors::transformed(type_from_value);
+  }
+
+  name_range names() const {
+    return params() | boost::adaptors::transformed(name_from_param);
+  }
+
+  type_name_range type_names() const {
+    return params() | boost::adaptors::transformed(type_name_from_param);
+  }
+};
+
+class CallParamInfoBuilder {
+ private:
+  typedb::DB db;
+ public:
+  CallParamInfoBuilder(typedb::DB && db_) : db(db_) {}
+  CallParamInfoBuilder(ProgOptVarMap const & vm) : db(typedb::DB::create_standard(vm)) {}
+
+  CallParamInfo create(CallDescriptor const & cd) const;
+  CallParamInfo operator()(CallDescriptor const & cd) const {
+    return create(cd);
+  }
 };
 
 } // namespace pharos

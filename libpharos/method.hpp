@@ -7,12 +7,12 @@
 
 #include "delta.hpp"
 #include "funcs.hpp"
-#include "oo.hpp"
-
-// Full declarations for members are required because methods allocate the members in a MemberMap.
-#include "member.hpp"
+#include "vftable.hpp"
 
 namespace pharos {
+
+// Forward declaration.
+class ThisCallMethod;
 
 // Assuming Visual Studio
 #define THIS_PTR_STR "ecx"
@@ -43,6 +43,47 @@ public:
   }
 };
 
+
+// This class is just so that we could eliminate maps of pairs, and be clear about what
+// represents a "member".  This should probably be replaced with a class that we've given some
+// thought to -- in particular Jeff Gennari made some progress in this area I think.
+class Member {
+
+public:
+  // This is the offset in the current object where the member is located.
+  unsigned int offset;
+
+  // This is the size of the member in bytes.
+  unsigned int size;
+
+  // Is this member believed to be a base table?
+  bool base_table;
+
+  // This is the set of instructions that access this member, thus providing evidence for it's
+  // existence, and documenting the places where we use the member.  Surprisingly(?), it
+  // includes the uses of the member where the "use" is as a parameter to a call for offset
+  // zero, and any embedded objects.  This is probably good because it causes this field to
+  // also provide the evidence for the embedded ctors list below.
+  X86InsnSet using_instructions;
+
+  Member(unsigned int o, unsigned int s, SgAsmx86Instruction* i, bool b);
+
+  // Member (in)equality is determined by comparing size and offset for two different members
+  friend bool operator== (Member &m1, Member &m2) {
+    return (m1.offset == m2.offset && m1.size == m2.size);
+    // Cory's unclear on when we added vftable to the comparison, and whether we should have.
+    // When changing how vftables worked, he removed: m1.get_vftable() == m2.get_vftable()
+  }
+
+  friend bool operator!= (Member &m1, Member &m2) {
+    return !(m1 == m2);
+  }
+
+  void merge(Member& m);
+};
+
+typedef std::map<unsigned int, Member> MemberMap;
+
 // A map of functions to their offsets in something related to passing this-pointers.
 typedef std::map<rose_addr_t, FuncOffset> FuncOffsetMap;
 
@@ -68,27 +109,12 @@ class ThisCallMethod {
   // non-leaf pointers...
   LeafNodePtr leaf;
 
-  // Is this method a constructor?
-  bool constructor;
-  // Our confidence in our determination of whether this method is a constructor.
-  GenericConfidence constructor_confidence;
-
-  // Is this method a destructor?
-  bool destructor;
-  // Our confidence in our determination of whether this method is a destructor.
-  GenericConfidence destructor_confidence;
-
-  // Is this method a deleting destructor?
-  bool deleting_destructor;
-  // Our confidence in our determination of whether this method is a deleting destructor.
-  GenericConfidence deleting_destructor_confidence;
-
-  // The list of the classes that might "own" this method.  In the source code, each method is
-  // associated with one and only one class.  But until we have complete knowledge about the
-  // classes, we instead have a list of candidate classes.
-  ClassDescriptorSet calling_classes;
-
 public:
+
+  bool returns_self;
+  bool no_calls_before;
+  bool no_calls_after;
+  bool uninitialized_reads;
 
   // The function that corresponds to this method.
   FunctionDescriptor* fd;
@@ -102,52 +128,25 @@ public:
   // information is transferred to classes.
   FuncOffsetMap passed_func_offsets;
 
-  // This is a list of all the methods called on the same object (belonging to either this
-  // class or it's ancestors) that is implied by this method.  For example, if this method is
-  // on some class, and the same this-pointer is passed to method X, which in turn passes the
-  // same object to method Y, then this list would contain X and Y.  It's a step in the
-  // algorithm for finding which methods are associated with which class.  See
-  // update_recursive_methods() for how this field is populated.
-  ThisCallMethodSet recursive_methods;
-
   // FunctionDescriptor should probably be a reference so that we don't have to keep checking
   // it for NULL.
   ThisCallMethod(FunctionDescriptor *f);
 
+  void stage2();
+
   bool is_this_call() const { return (thisptr != NULL); }
-  bool is_constructor() const { return constructor; }
-  bool is_destructor() const { return destructor; }
-  bool is_deleting_destructor() const { return deleting_destructor; }
   std::string address_string() const { return fd->address_string(); }
   rose_addr_t get_address() const { return fd->get_address(); }
-
-  // Add a class that calls this method.
-  void add_class(ClassDescriptor* cls) { calling_classes.insert(cls); }
-
-  // Get the classes that call this method.
-  const ClassDescriptorSet& get_classes() const { return calling_classes; }
-
-  // Populate the recursive methods set by examining each known object instance, and updating
-  // the list.  This algorithm references other ThisCallMethods, and so needs to be called
-  // repeatedly until we converge on an answer.  Returns true if the internal list of recursive
-  // methods was updated.
-  bool update_recursive_methods();
-
-  // Mark the method as a destructor (or not) with a specified confidence.
-  void set_destructor(bool b, GenericConfidence conf);
-
-  // Mark the method as a deleting destructor (or not) with a specified confidence.
-  void set_deleting_destructor(bool b, GenericConfidence conf);
-
-  // Mark the method as a constructor (or not) with a specified confidence.
-  void set_constructor(bool b, GenericConfidence conf);
 
   // Test whether the method has apparently uninitialized reads of the object.
   bool test_for_uninit_reads() const;
 
+  // Do late stage validation of virtual table pointers.
+  bool validate_vtable(VirtualTableInstallationPtr install);
+
   // Most analysis methods in ThisCallMethod are private, but this one has to be called after
-  // the global this_call_methods map has been populated.  It updates the passed_func_offsets
-  // map with the stack offsets of passed this-pointers.
+  // we've updated the oo_properties member on the function descriptors.  It updates the
+  // passed_func_offsets map with the stack offsets of passed this-pointers.
   void find_passed_func_offsets();
 
   // Given an expression, return true if the expression contains a reference to our
@@ -172,30 +171,27 @@ public:
   // Is the expression out this-pointer plus an offset?
   boost::optional<int64_t> get_offset(const TreeNodePtr& tn);
 
-  // Get the "leaf" version of the this-pointer.  Having this be separate from the
-  // get_this_ptr() method is not the most efficient way of doing this, but Cory's exploring
-  // different access patterns, and it's helps to know which code is using which pattern.
-  LeafNodePtr get_leaf_ptr() const { return leaf; }
   SymbolicValuePtr get_this_ptr() const { return thisptr; }
-
-  void debug() const;
 
   // So that we can put this call methods in a set...
   bool operator<(const ThisCallMethod& other) const {
     return (fd->get_address() < other.fd->get_address());
   }
 
-  // This method is duplicated in ClassDescriptor... That's probably not really right.  The
-  // additional warnings are uncovering some interesting cases however.
   void add_data_member(Member m);
 
 };
 
+// This is to keep members in the ThisCallMethodSet in a consistent address order.
+struct ThisCallMethodCompare {
+  bool operator()(const ThisCallMethod *x, const ThisCallMethod *y) const;
+};
+
+// Specifically, the class description needs a set of methods associate with the class.
+typedef std::set<ThisCallMethod*, ThisCallMethodCompare> ThisCallMethodSet;
+
 typedef std::map<rose_addr_t, ThisCallMethod> ThisCallMethodMap;
 typedef std::vector<ThisCallMethod *> ThisCallMethodVector;
-
-// Let everyone know that methods.cpp has a global variable listing all OO methods.
-extern ThisCallMethodMap this_call_methods;
 
 // This function seems most related to ThisCallMethods...
 ThisCallMethod* follow_oo_thunks(rose_addr_t addr);

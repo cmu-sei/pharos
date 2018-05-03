@@ -274,15 +274,7 @@ int main(int argc, char **argv) {
     GFATAL << "Unable to analyze file (no executable content found)." << LEND;
     return EXIT_FAILURE;
   }
-
-  // Load a config file overriding parts of the analysis.
-  if (vm.count("imports")) {
-    std::string config_file = vm["imports"].as<std::string>();
-    GINFO << "Loading analysis configuration file: " <<  config_file << LEND;
-    ds.read_config(config_file);
-  }
-
-  // Load stack deltas from config files for imports.
+  // Resolve imports, load API data, etc.
   ds.resolve_imports();
 
   // Generate PDGs and do the analysis

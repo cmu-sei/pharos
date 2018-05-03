@@ -1,17 +1,36 @@
 // Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
+#include <rose.h>
+
 #include "pdg.hpp"
 #include "method.hpp"
-#include "class.hpp"
 #include "vftable.hpp"
 
 namespace pharos {
 
-// This is newly created global map to track all methods following the "this-call" calling
-// convention.  The map itself maps the address of the function to a ThisCallMethod instance.
-// Globals that were ok in objdigger.cpp are now a little icky in libpharos.  Perhaps this
-// should be moved somewhere else.
-ThisCallMethodMap this_call_methods;
+Member::Member(unsigned int o, unsigned int s, SgAsmx86Instruction* i, bool b) {
+  offset = o;
+  size = s;
+
+  // Add the instruction to the list of using instructions.
+  using_instructions.insert(i);
+
+  base_table = b;
+}
+
+// Merge two members.  This method forms the core of our approach to consolidating multiple
+// member accesses into a consistent whole.
+void Member::merge(Member& m) {
+  // Accumulate base table facts, with a preference for true.
+  if (m.base_table) base_table = m.base_table;
+
+  // Always merge the using instructions into the current list.  Presumably this is other
+  // accesses of the same member discovered from another method on the class.  It's a little
+  // unclear whether this should ever happen on the members referenced from a this-pointer
+  // usage, or whether this behavior should be restricted to members referenced from a class
+  // description, and how we might go about enforcing that restriction.
+  using_instructions.insert(m.using_instructions.begin(), m.using_instructions.end());
+}
 
 // Order methods by their addresses.
 bool ThisCallMethodCompare::operator()(const ThisCallMethod *x, const ThisCallMethod *y) const {
@@ -46,10 +65,10 @@ SymbolicValuePtr get_this_ptr_for_call(const CallDescriptor* cd) {
     return SymbolicValue::instance();
   }
   // We should be able to find this globally somehow...
-  const RegisterDescriptor* this_reg = global_descriptor_set->get_arch_reg(THIS_PTR_STR);
-  assert(this_reg != NULL);
+  RegisterDescriptor this_reg = global_descriptor_set->get_arch_reg(THIS_PTR_STR);
+  assert(this_reg.is_valid());
   // Read ECX from the state immediately before the call.
-  SymbolicValuePtr this_value = state->read_register(*this_reg);
+  SymbolicValuePtr this_value = state->read_register(this_reg);
   return this_value;
 }
 
@@ -59,22 +78,26 @@ ThisCallMethod::ThisCallMethod(FunctionDescriptor *f) {
   fd = f;
   assert(fd != NULL);
 
-  constructor = false;
-  constructor_confidence = ConfidenceNone;
-
-  destructor = false;
-  destructor_confidence = ConfidenceNone;
-
-  deleting_destructor = false;
-  deleting_destructor_confidence = ConfidenceNone;
+  // New prolog "possible" facts that are not mutually exclusive (and need no confidence)
+  // This is the "returns self" test isolated from the ordering test.
+  returns_self = false;
+  // This is now just the ordering tests (with both true by default).
+  no_calls_before = true;
+  no_calls_after = true;
+  uninitialized_reads = false;
 
   if (find_this_pointer()) {
     test_for_constructor();
-    if (is_constructor()) {
-      analyze_vftables();
-    }
-    find_members();
   }
+}
+
+void ThisCallMethod::stage2() {
+  // Do these really belong here (inside constructor test?) in OOAnalyzer?
+  if (returns_self) {
+    //analyze_vftables();
+    uninitialized_reads = test_for_uninit_reads();
+  }
+  find_members();
 }
 
 void ThisCallMethod::add_data_member(Member m) {
@@ -82,7 +105,7 @@ void ThisCallMethod::add_data_member(Member m) {
   MemberMap::iterator finder = data_members.find(m.offset);
   if (finder != data_members.end()) {
     Member& fm = finder->second;
-    fm.merge(m, get_address());
+    fm.merge(m);
   }
   else {
     // This avoids the need for a default constructor on Member...
@@ -111,191 +134,14 @@ boost::optional<int64_t> ThisCallMethod::get_offset(const TreeNodePtr& tn) {
     GDEBUG << "Removed expression was: " << *offset_tn << LEND;
     return boost::none;
   }
+  //
+  if (ln->nBits() > 64) {
+    return boost::none;
+  }
 
   // Otherwise, convert the expression to an int64_t, and return it.
   int64_t offset = IntegerOps::signExtend2(ln->toInt(), ln->nBits(), 8*sizeof(int64_t));
   return offset;
-}
-
-// Mark the method as a destructor (or not) with a specified confidence.
-void ThisCallMethod::set_destructor(bool b, GenericConfidence conf) {
-
-  if (b) {
-    GDEBUG << "Attempting to set destructor for " << addr_str(get_address()) << LEND;
-  }
-
-  // Refuse to downgrade the confidence.  This shouldn't happen, but if it did we'd want to
-  // know.
-  if (conf < destructor_confidence) {
-    GWARN << "Refused to downgrade destructor confidence: " << address_string() << LEND;
-    return;
-  }
-
-  // Refuse to set the destructor flag inconsistently with a higher confidence constructor
-  // flag.
-  if (b && constructor && (conf < constructor_confidence)) {
-    GWARN << "Refused to override constructor confidence: " << address_string() << LEND;
-    return;
-  }
-  else if (b && deleting_destructor && (conf < deleting_destructor_confidence)) {
-    GWARN << "Refused to override deleting destructor confidence: " << address_string() << LEND;
-    return;
-  }
-
-  // Also warn about turning non-destructors into destructors, since that shouldn't happen
-  // either unless we've added some new analysis capability.
-  if (b && !destructor) {
-    GDEBUG << "Converting method into a destructor: " << address_string() << LEND;
-  }
-
-  // Set the destructor boolean whichever way the caller said.
-  destructor = b;
-  // And update the confidence.
-  destructor_confidence = conf;
-
-  // If we know that this method is a destructor with some confidence, we have the same
-  // confidence that it is not a constructor. If the confidence on the constructor flag was
-  // greater than our new confidence, we wouldn't have reached this code.
-  if (destructor) {
-    constructor_confidence = destructor_confidence;
-    deleting_destructor_confidence = destructor_confidence;
-
-    // Additionaly, since a method can't be both a constructor and a destructor simultaneously,
-    // force the constructor field to false, and make a note of that.
-    if (constructor || deleting_destructor) {
-      // Move to GDEBUG after testing since most destructors start out being incorrectly
-      // detected possible constructors.
-      GDEBUG << "Destructor " << address_string() << " cannot also be a constructor or deleting destructor." << LEND;
-      constructor = false;
-      deleting_destructor = false;
-    }
-  }
-}
-
-// Mark the method as a destructor (or not) with a specified confidence.
-void ThisCallMethod::set_deleting_destructor(bool b, GenericConfidence conf) {
-
-  if(b) {
-    GDEBUG << "Attempting to set deleting destructor for " << addr_str(get_address()) << LEND;
-  }
-
-  // Refuse to downgrade the confidence.  This shouldn't happen, but if it did we'd want to
-  // know.
-  if (conf < deleting_destructor_confidence) {
-    GWARN << "Refused to downgrade deleting destructor confidence: " << address_string() << LEND;
-    return;
-  }
-
-  // Refuse to set the deleting destructor flag inconsistently with a higher confidence constructor
-  // flag.
-  if (b && constructor && (conf < constructor_confidence)) {
-    GWARN << "Refused to override constructor confidence: " << address_string() << LEND;
-    return;
-  }
-  else if (b && destructor && (conf < destructor_confidence)) {
-    GWARN << "Refused to override destructor confidence: " << address_string() << LEND;
-    return;
-  }
-
-  // Also warn about turning non-destructors into destructors, since that shouldn't happen
-  // either unless we've added some new analysis capability.
-  if (b && !deleting_destructor) {
-    GWARN << "Converting method into a deleting_destructor: " << address_string() << LEND;
-  }
-
-  // Set the destructor boolean whichever way the caller said.
-  deleting_destructor = b;
-  // And update the confidence.
-  deleting_destructor_confidence = conf;
-
-  // If we know that this method is a deleting destructor with some confidence, we have the same
-  // confidence that it is neither a constructor nor destructor. If the confidence on the constructor flag was
-  // greater than our new confidence, we wouldn't have reached this code.
-  if (deleting_destructor) {
-    constructor_confidence = deleting_destructor_confidence;
-    destructor_confidence = deleting_destructor_confidence;
-
-    // Additionaly, since a method can't be both a constructor and a destructor simultaneously,
-    // force the constructor field to false, and make a note of that.
-    if (constructor || destructor) {
-      // Move to GDEBUG after testing since most destructors start out being incorrectly
-      // detected possible constructors.
-      GDEBUG << "Deleting destructor " << address_string() << " cannot also be a constructor or destructor." << LEND;
-      constructor = false;
-      destructor = false;
-    }
-  }
-}
-
-// Mark the method as a constructor (or not) with a specified confidence.
-void ThisCallMethod::set_constructor(bool b, GenericConfidence conf) {
-
-  if (b) {
-    GDEBUG << "Attempting to set constructor for " << addr_str(get_address()) << LEND;
-  }
-  // Refuse to downgrade the confidence.  This shouldn't happen, but if it did we'd want to
-  // know.
-  if (conf < constructor_confidence) {
-    GWARN << "Refused to downgrade constructor confidence: " << address_string() << LEND;
-    return;
-  }
-
-  if (b && destructor && (conf < destructor_confidence)) {
-    GWARN << "Refused to override destructor confidence: " << address_string() << LEND;
-    return;
-  }
-  else if (b && deleting_destructor && (conf < deleting_destructor_confidence)) {
-    GWARN << "Refused to override deleting destructor confidence: " << address_string() << LEND;
-    return;
-  }
-
-  // Also warn about turning non-constructors into destructors, since that shouldn't happen
-  // either unless we've added some new analysis capability.
-  if (b && !constructor) {
-    GWARN << "Converting method into a constructor: " << address_string() << LEND;
-  }
-
-  // Set the contructor boolean whichever way the caller said.
-  constructor = b;
-  // And update the confidence.
-  constructor_confidence = conf;
-
-  // If we know that this method is a constructor with some confidence, we have the same
-  // confidence that it is not a destructor. If the confidence on the destructor flag was
-  // greater than our new confidence, we wouldn't have reached this code.
-  if (constructor) {
-    destructor_confidence = constructor_confidence;
-    deleting_destructor_confidence = constructor_confidence;
-
-    // Additionaly, since a method can't be both a constructor and a destructor simultaneously,
-    // force the destructor field to false, and make a note of that.
-    if (destructor || deleting_destructor) {
-      // This message can probably remain at GWARN, because we should rarely trigger it.
-      GWARN << "Constructor " << address_string() << " cannot also be a destructor." << LEND;
-      destructor = false;
-      deleting_destructor = false;
-    }
-  }
-}
-
-void ThisCallMethod::debug() const {
-  GDEBUG << "TCM: " << address_string();
-  if (is_constructor()) GDEBUG << " ctor { ";
-  else if (is_destructor()) GDEBUG << " dtor { ";
-  else GDEBUG << "      { ";
-  for (const FuncOffsetMap::value_type& fopair : passed_func_offsets) {
-    const FuncOffset& fo = fopair.second;
-    GDEBUG << fo.offset << "=" << fo.tcm->address_string() << " ";
-  }
-  GDEBUG << "}" << std::dec << LEND;
-
-  if (GDEBUG && calling_classes.size() != 1) {
-    GDEBUG << "TCM: " << address_string() << " is assigned to "
-           << calling_classes.size() << " classes." << LEND;
-    for (const ClassDescriptor* cls : calling_classes) {
-      GDEBUG << "TCM: " << address_string() << " in " << cls->address_string() << LEND;
-    }
-  }
 }
 
 bool ThisCallMethod::find_this_pointer()
@@ -313,8 +159,8 @@ bool ThisCallMethod::find_this_pointer()
 
   // We should probably be using a RegisterDescriptor (or an AbstractAccess)
   // to describe the this pointer anyway.  Here we need it to pass to is_reg().
-  const RegisterDescriptor* this_reg = global_descriptor_set->get_arch_reg(THIS_PTR_STR);
-  const RegisterDescriptor* edx = global_descriptor_set->get_arch_reg("edx");
+  RegisterDescriptor this_reg = global_descriptor_set->get_arch_reg(THIS_PTR_STR);
+  RegisterDescriptor edx = global_descriptor_set->get_arch_reg("edx");
 
   PDG *p = fd->get_pdg();
   if (p == NULL) return false;
@@ -344,8 +190,8 @@ bool ThisCallMethod::find_this_pointer()
   // Display for debugging, should probably be a function of it's own.
   GDEBUG << "Function " << fd->address_string() << " has parameters: ";
   for (const RegisterEvidenceMap::value_type& rpair : ru.parameter_registers) {
-    const RegisterDescriptor* rd = rpair.first;
-    GDEBUG << " " << unparseX86Register(*rd, NULL);
+    RegisterDescriptor rd = rpair.first;
+    GDEBUG << " " << unparseX86Register(rd, NULL);
   }
   GDEBUG << LEND;
 
@@ -438,45 +284,29 @@ void ThisCallMethod::test_for_constructor() {
   if (p == NULL) return;
   GDEBUG << "Evaluating constructor candidate " << this_call_fd->address_string() << LEND;
 
-  // Assume that we're not a constructor if something goes wrong.
-  constructor = false;
-  constructor_confidence = ConfidenceWrong;
-
   // Get definition and usage analysis, so that we can access in the input and output states.
   const DUAnalysis& du = p->get_usedef();
   // Obtain the final value of eax (the return value).
-  const RegisterDescriptor* eaxrd = global_descriptor_set->get_arch_reg("eax");
+  RegisterDescriptor eaxrd = global_descriptor_set->get_arch_reg("eax");
   // If we don't have an output state, it's because analysis failed.  Just return that the
   // function is not a constructor in the lack of any better evidence.
   const SymbolicStatePtr output_state = du.get_output_state();
   if (!output_state) return;
-  SymbolicValuePtr final_eax = output_state->read_register(*eaxrd);
+  SymbolicValuePtr final_eax = output_state->read_register(eaxrd);
   // And the initial value of ECX (the this pointer).
-  const RegisterDescriptor* ecxrd = global_descriptor_set->get_arch_reg(THIS_PTR_STR);
+  RegisterDescriptor ecxrd = global_descriptor_set->get_arch_reg(THIS_PTR_STR);
   // Cory's unsure if it's even possible to be missing an input state, but returning false wil
   // be better than performing an invalid memory dereference.
   const SymbolicStatePtr input_state = du.get_input_state();
   if (!input_state) return;
-  SymbolicValuePtr initial_ecx = input_state->read_register(*ecxrd);
+  SymbolicValuePtr initial_ecx = input_state->read_register(ecxrd);
 
   // If they can't be equal, then we're going to say that we're not a constructor.  While this
   // is a good general rule, it's not always true.  We could be returning a new instance of the
   // same object that's different than the one we were passed for example.
-  if (!(final_eax->can_be_equal(initial_ecx))) {
-    GDEBUG << "Constructor test failed for " << this_call_fd->address_string()
-           << ": eax=" << *final_eax << " cannot equal ecx=" << *initial_ecx << LEND;
-
-    //GDEBUG << "Initial state " << du.input_state << LEND;
-    //GDEBUG << "Final state " << du.output_state << LEND;
-    constructor = false;
-    constructor_confidence = ConfidenceGuess;
-  }
-  else {
-    GDEBUG << "Constructor test succeeded for " << addr_str(get_address()) << LEND;
-    // If they are, then I guess we are a constructor.  Or at least we look a little bit like
-    // one.  We should probably
-    constructor = true;
-    constructor_confidence = ConfidenceGuess;
+  if (final_eax->can_be_equal(initial_ecx)) {
+    GINFO << "Constructor test succeeded for " << addr_str(get_address()) << LEND;
+    returns_self = true;
   }
 }
 
@@ -485,10 +315,6 @@ ThisCallMethod::test_for_uninit_reads() const
 {
   // This is a new rule for eliminating constructors based on the idea that valid constructors
   // can't be reading values out of the object (before initialization) during construction.
-
-  // We're only interested in applying this rule if the previous one decided that we could be a
-  // constructor.
-  if (!constructor) return false;
 
   // Same thunk logic as the previous rule...
   // Check to see if this function is a thunk to another.  Should be calling follow_oo_thunks?
@@ -564,19 +390,8 @@ ThisCallMethod::test_for_uninit_reads() const
       MemberMap::const_iterator existing_member_finder = data_members.find(cp);
       if (existing_member_finder != data_members.end()) {
         const Member& emem = existing_member_finder->second;
-        //GDEBUG << "Found member in object at offset " << cp << LEND;
-
-        // Look through each VFTableEvidence structure to check for vbtables.
-        bool exempted = false;
-        for (const VFTEvidence& e : emem.get_vftable_evidence()) {
-          if (e.vbtable) {
-            exempted = true;
-            break;
-          }
-        }
-
         // If the member is a virtual base table pointer, it's exempted from this rule.
-        if (exempted) {
+        if (emem.base_table) {
           //GDEBUG << "Method " << this_call_fd->address_string()
           //       << " was exempted because the read was from a vbtable!" << LEND;
           continue;
@@ -614,10 +429,32 @@ void ThisCallMethod::find_members() {
       SgAsmX86Instruction *insn = isSgAsmX86Instruction(is);
       if (!insn) continue;
 
+      // NOPs don't result in member accesses.
+      if (insn_is_nop(insn)) {
+        GDEBUG << "NOP instruction " << debug_instruction(insn)
+               << " is not a member access." << LEND;
+        continue;
+      }
+
       GTRACE << "Looking for members in: " << debug_instruction(insn) << LEND;
 
-      // Why are we excluding LEA instructions?
-      if (insn->get_kind() == x86_lea) continue;
+      // Handle LEA instructions specially....
+      if (insn->get_kind() == x86_lea) {
+        // The address we "accessed" will be in the write (there should be only one).
+        for (const AbstractAccess& aa : ud.get_reg_writes(insn)) {
+          boost::optional<int64_t> offset = get_offset(aa.value->get_expression());
+          if (!offset) continue;
+
+          if (*offset >= 0) {
+            add_data_member(Member(*offset, aa.get_byte_size(), insn, NULL));
+          }
+          else {
+            GDEBUG << "Ignoring negative object offset (" << *offset
+                   << ") in LEA insn " << debug_instruction(insn) << LEND;
+          }
+        }
+        continue;
+      }
 
       // Look for memory accesses (typically of the form [tptr + offset]).
 
@@ -633,7 +470,7 @@ void ThisCallMethod::find_members() {
           // Add the member to the method.  Calling get_byte_size() is more accurate than
           // reading sizes off of the operands (e.g. movsd) which we're probably not handling
           // correctly anyway, but it's also simpler.
-          add_data_member(Member(*offset, aa.get_byte_size(), 0, insn, NULL));
+          add_data_member(Member(*offset, aa.get_byte_size(), insn, NULL));
         }
         else {
           GDEBUG << "Ignoring negative object offset (" << *offset
@@ -649,7 +486,7 @@ void ThisCallMethod::find_members() {
         if (!offset) continue;
 
         if (*offset >= 0) {
-          add_data_member(Member(*offset, aa.get_byte_size(), 0, insn, NULL));
+          add_data_member(Member(*offset, aa.get_byte_size(), insn, NULL));
         }
         else {
           GDEBUG << "Ignoring negative object offset (" << *offset
@@ -679,11 +516,10 @@ void ThisCallMethod::find_passed_func_offsets() {
     // approach.  if (*offset != 0) continue;
 
     for (rose_addr_t saddr : cd->get_targets()) {
+      // In order for follow_oo_thunks to work properly (only following thunks to OO methods,
+      // we need to have populated the oo_properties member on the function descriptor before
+      // calling this function.
       ThisCallMethod* ctcm = follow_oo_thunks(saddr);
-      // If the method is not __thiscall, then we don't care about it.  In addition to
-      // following thunks, the oo version validates that the target is a member of the global
-      // this_call_methods map.  This map needs to have ben populated completely before this
-      // function is called so that we don't miss any passed this-pointers.
       if (ctcm == NULL) continue;
       rose_addr_t caddr = ctcm->get_address();
 
@@ -705,218 +541,93 @@ void ThisCallMethod::find_passed_func_offsets() {
       // it may be impossible to differentiate between without virtual functions anyway.
       GDEBUG << "Embedded object at offset " << *offset << " in method at " << address_string()
              << " is passed to " << addr_str(caddr) << LEND;
-      add_data_member(Member(*offset, 0, caddr, insn, NULL));
+      add_data_member(Member(*offset, 0, insn, NULL));
     }
   }
 }
 
-void ThisCallMethod::analyze_vftables() {
-  // Analyze the function if we haven't already.
-  PDG* p = fd->get_pdg();
-  if (p == NULL) return;
+bool ThisCallMethod::validate_vtable(VirtualTableInstallationPtr install) {
+  // Short hand for the variable portion, or the object that the table was installed into.
+  TreeNodePtr vp = install->written_to;
+  //
+  SgAsmInstruction* insn = install->insn;
 
-  GDEBUG << "Analyzing vftables for " << fd->address_string() << LEND;
+  GDEBUG << "Validating virtual table found at " << addr_str(install->table_address)
+         << " installed by " << addr_str(install->insn->get_address()) << LEND;
 
-  // For every write in the function...
-  for (const AccessMap::value_type& access : p->get_usedef().get_accesses()) {
-    // The second entry of the pair is the vector of abstract accesses.
-    for (const AbstractAccess& aa : access.second) {
-      // We only want writes
-      if (aa.isRead) continue;
+  // Neither of these should be possible.
+  if (!vp) return false;
+  if (!insn) return false;
 
-      // We're only interested in writes that write a constant value to the target.
-      // This is a reasonably safe presumption for compiler generated code.
-      if (!aa.value->is_number()) continue;
+  // This is the offset into the object where the virtual function table pointer is stored.
+  // This shoudl be checked else where.
+  if (install->offset < 0) {
+    GWARN << "Rejected negative virtual function table offset=" << install->offset
+          << " at instruction: " << debug_instruction(insn) << LEND;
+    return false;
+  }
 
-      // I was doubtful about the requirement that the write must be to memory, but after
-      // further consideration, I'm fairly certain that even if we moved the constant value
-      // into a register, and the register into the object's memory (which is literally
-      // required), then we'd detect the memory write on the second instruction.
-      if (!aa.is_mem()) continue;
-
-      // We're only interested in constant addresses that are in the memory image.  In some
-      // unusual corner cases this might fail, but it should work for compiler generated code.
-      rose_addr_t constaddr = aa.value->get_number();
-      if (!global_descriptor_set->memory_in_image(constaddr)) continue;
-
-      // We're not interested in writes to fixed memory addresses.  This used to exclude stack
-      // addresses, but now it's purpose is a little unclear.  It might prevent vtable updates
-      // to global objects while providing no benefit, or it might correctly eliminate many
-      // write to fixed memory addresses correctly.  Cory doesn't really know.
-      if (aa.memory_address->is_number()) continue;
-
-      // This is the instruction we're talking about.
-      SgAsmInstruction* insn = access.first;
-      SgAsmX86Instruction* x86insn = isSgAsmX86Instruction(insn);
-
-      // We're not interested in call instructions, which write constant return addresses to
-      // the stack.  This is largely duplicative of the test above, but will be needed when
-      // the stack memory representation gets fixed to include esp properly.
-      if (insn_is_call(x86insn)) continue;
-
-      GDEBUG << "Analyzing vtable access instruction: " << debug_instruction(insn) << LEND;
-
-      // Let's try to extract the object pointer variable, and any offset
-      // that's present.
-      TreeNodePtr tn = aa.memory_address->get_expression();
-      AddConstantExtractor ace(tn);
-      TreeNodePtr vp = ace.variable_portion();
-      // There must be a variable portion.
-      if (vp == NULL) {
-        GDEBUG << "Malformed virtual function table initialization: expr=" << *tn
-               << " at instruction: " << debug_instruction(insn) << LEND;
-        continue;
-      }
-
-      // If the variable portion is a single variable, it must match the this-pointer.
-      if (vp->isLeafNode() != NULL) {
-        // The variable portion must actually match the current this-pointer.  This check was
-        // not being performed previously because we assumed that vtable writes in the
-        // constructor would be to the object for this constructor, but when this constructor
-        // embeds another object and the constuctor for the embeded object was inlined into
-        // this method, we get misleading results here.
-        if (!(vp->isEquivalentTo(leaf))) {
-          GDEBUG << "Rejected virtual function table write for wrong object " << *vp
-                 << " != " << *leaf << " at instruction: " << debug_instruction(insn) << LEND;
-          continue;
-        }
-      }
-      // There's another crazy possibility caused by virtual base tables (primarily?).  It
-      // involves an offset into the object that contains two variable portions.  One is the
-      // object pointer, which is truly variable, and the other is a semi-constant that was
-      // read out the virtual base table.  Unfortunately, we don't currently have a good
-      // general purpose system for replacing variables with their constant values from the
-      // program image, so we're going to hack it up a little bit here and just look for an add
-      // operation that contains out this pointer.  Unfortunately the VXTableWrite facts will
-      // be incorrect (because they assume the vbtable adjustment was zero) until we
-      // reimplement this code more robustly...
-      else {
-        // We must be an interior node if we weren't a leaf node.
-        InternalNodePtr inode = vp->isInteriorNode();
-        // In this branch we're not a this-pointer until we find what we're looking for.
-        bool found_this_ptr = false;
-        // If we're an ADD operation, that's what we're looking for.
-        if (inode && inode->getOperator() == Rose::BinaryAnalysis::SymbolicExpr::OP_ADD) {
-          // Now go through each node and see if one of them is the object pointer.
-          for (const TreeNodePtr ctp : inode->children()) {
-            if (ctp->isEquivalentTo(leaf)) found_this_ptr = true;
-          }
-        }
-        if (found_this_ptr) {
-          GWARN << "Ignoring unknown virtual base table offset in instruction "
-                << addr_str(insn->get_address()) << LEND;
-        }
-        else {
-          GDEBUG << "Rejected virtual function table write for wrong object " << *vp
-                 << " does not contain thisptr at instruction: " << debug_instruction(insn) << LEND;
-          continue;
-        }
-      }
-
-      // What's left is starting to look a lot like the initialization of a virtual function
-      // table pointer.  Let's check to see if we've already analyzed this address.  If so,
-      // there's no need to analyze it again, just use the previous results.
-      VirtualFunctionTable* vftable = NULL;
-      VirtualBaseTable* vbtable = NULL;
-      if (global_vftables.find(constaddr) != global_vftables.end()) {
-        vftable = global_vftables[constaddr];
-      }
-      else if (global_vbtables.find(constaddr) != global_vbtables.end()) {
-        vbtable = global_vbtables[constaddr];
-      }
-      else {
-        // It's important that the table go into one of the two global lists here so that we
-        // don't have to keep processing it over and over again.
-
-        // This memory is not currently freed anywhere. :-( Sorry 'bout that. -- Cory
-
-        // Starting by doing virtual base table analysis.  This analysis should not falsely
-        // claim any virtual function tables, and tables that are very invalid will get handled
-        // as malformed virtual function tables..
-        vbtable = new VirtualBaseTable(constaddr);
-        vbtable->analyze();
-        // If the vbtable doesn't have at least two entries, it's invalid.
-        if (vbtable->size > 1) {
-          //GDEBUG << "Found possible virtual base table at: " << addr_str(constaddr) << LEND;
-          global_vbtables[constaddr] = vbtable;
-        }
-        else {
-          // Free the vbtable that we decided not to use.  At least I freed something. :-)
-          delete vbtable;
-          vbtable = NULL;
-          //GDEBUG << "Found possible virtual function table at: " << addr_str(constaddr) << LEND;
-          // Now try creating a virtual function table at the same address.
-          vftable = new VirtualFunctionTable(constaddr);
-          vftable->analyze();
-          global_vftables[constaddr] = vftable;
-        }
-      }
-
-      if (vbtable != NULL) {
-        // Unclear what else we should be doing with the vbtables right now.
-      }
-
-      // There's more work to be done, but only for virtual function tables, not virtual base
-      // tables.
-      if (vftable != NULL) {
-        // The address can only truly be a virtual function table if it passes some basic tests,
-        // such as having at least one function pointer.
-        if (vftable->max_size < 1) {
-          // If there were no pointer at all, just reject the table outright.
-          if (vftable->non_function == 0) {
-            GDEBUG << "Possible virtual function table at " << addr_str(constaddr)
-                   << " rejected because no valid pointers were found." << LEND;
-            // Don't add the table to the list of tables for the object.
-            continue;
-          }
-          // But if there were valid non-function pointers, let's continue to assume that we've
-          // had a disassembly failure, and add the table to the list of tables even though it's
-          // obviously broken.
-          else {
-            GDEBUG << "Possible virtual function table at " << addr_str(constaddr)
-                   << " is highly suspicious because no function pointers were found." << LEND;
-          }
-        }
-      }
-
-      // This is the offset into the object where the virtual function table pointer is stored.
-      int64_t offset = ace.constant_portion();
-      if (offset >= 0) {
-
-        // Check to see if there's already a member at that offset with a different virtual
-        // function table pointer.  If there is, that probably means that parent class
-        // constructor was inlined into this constructor.  While the overwrite will produce the
-        // correct answer for the child class, we'll lose knowledge about the parent class.
-        MemberMap::iterator existing_member_finder = data_members.find(offset);
-        if (existing_member_finder != data_members.end()) {
-          Member& emem = existing_member_finder->second;
-          if (GDEBUG) {
-            GDEBUG << "VTable overwrites existing member: " << LEND;
-            emem.debug();
-          }
-        }
-        GDEBUG << "VTable write: " << *ace.variable_portion() << " offset=" << offset << " <- "
-               << addr_str(constaddr) << " in " << debug_instruction(insn) << LEND;
-        GINFO << "Possible virtual " << (vftable ? "function" : "base") << " table found at "
-              << addr_str(constaddr) << " installed by " << addr_str(insn->get_address()) << LEND;
-        size_t arch_bytes = global_descriptor_set->get_arch_bytes();
-        VFTEvidence ve(insn, fd, vftable, vbtable);
-        add_data_member(Member(offset, arch_bytes, 0, x86insn, &ve));
-      }
-      else {
-        GWARN << "Rejected negative virtual function table offset=" << ace.constant_portion()
-              << " at instruction: " << debug_instruction(insn) << LEND;
-      }
-
-      // In all cases, this loop should continue to the next instruction, since there can be
-      // multiple virtual function tables per constructor, and any failures we encountered
-      // won't prevent later tables from validating correctly.
+  // If the variable portion is a single variable, it must match the this-pointer.
+  if (vp->isLeafNode() != NULL) {
+    // The variable portion must actually match the current this-pointer.  This check was
+    // not being performed previously because we assumed that vtable writes in the
+    // constructor would be to the object for this constructor, but when this constructor
+    // embeds another object and the constuctor for the embeded object was inlined into
+    // this method, we get misleading results here.
+    if (!(vp->isEquivalentTo(leaf))) {
+      GDEBUG << "Rejected virtual function table write for wrong object " << *vp << " != "
+             << *leaf << " at instruction: " << debug_instruction(insn) << LEND;
+      return false;
     }
   }
+
+  // There's another crazy possibility caused by virtual base tables (primarily?).  It
+  // involves an offset into the object that contains two variable portions.  One is the
+  // object pointer, which is truly variable, and the other is a semi-constant that was
+  // read out of the virtual base table.  Unfortunately, we don't currently have a good
+  // general purpose system for replacing variables with their constant values from the
+  // program image, so we're going to hack it up a little bit here and just look for an add
+  // operation that contains our this pointer.  Unfortunately the VXTableWrite facts will
+  // be incorrect (because they assume the vbtable adjustment was zero) until we
+  // reimplement this code more robustly...
+  else {
+    // We must be an interior node if we weren't a leaf node.
+    InternalNodePtr inode = vp->isInteriorNode();
+    // In this branch we're not a this-pointer until we find what we're looking for.
+    bool found_this_ptr = false;
+    // If we're an ADD operation, that's what we're looking for.
+    if (inode && inode->getOperator() == Rose::BinaryAnalysis::SymbolicExpr::OP_ADD) {
+      // Now go through each node and see if one of them is the object pointer.
+      for (const TreeNodePtr ctp : inode->children()) {
+        if (ctp->isEquivalentTo(leaf)) found_this_ptr = true;
+      }
+    }
+    if (found_this_ptr) {
+      GWARN << "Ignoring unknown virtual base table offset in instruction "
+            << addr_str(install->insn->get_address()) << LEND;
+    }
+    else {
+      GDEBUG << "Rejected virtual function table write for wrong object " << *vp
+             << " does not contain thisptr at instruction: " << debug_instruction(insn) << LEND;
+      return false;
+    }
+  }
+
+  GDEBUG << "VTable write: " << *vp << " offset=" << install->offset
+         << " <- " << addr_str(install->table_address)
+         << " in " << debug_instruction(insn) << LEND;
+  GDEBUG << "Possible virtual table found at " << addr_str(install->table_address)
+         << " installed by " << addr_str(insn->get_address()) << LEND;
+  size_t arch_bytes = global_descriptor_set->get_arch_bytes();
+
+  SgAsmX86Instruction* x86insn = isSgAsmX86Instruction(insn);
+  add_data_member(Member(install->offset, arch_bytes, x86insn, install->base_table));
+  return true;
 }
 
-// A version of follow thunks that returns the final target if and only if it's in
-// this_call_methods.
+// A version of follow thunks that returns the final target if and only if it's an OO method.
+// This is determined by inspecting the oo_properties field of the function descriptor, so that
+// needs to have been set before calling this function.
 ThisCallMethod* follow_oo_thunks(rose_addr_t addr) {
   // Find the function descriptor for the provided address.
   FunctionDescriptor *fd = global_descriptor_set->get_func(addr);
@@ -924,14 +635,7 @@ ThisCallMethod* follow_oo_thunks(rose_addr_t addr) {
   // Follow thunks.
   fd = fd->follow_thunks_fd();
   if (fd == NULL) return NULL;
-  // The address of the eventual target.
-  rose_addr_t eaddr = fd->get_address();
-  // If that's not an OO method, we're not interested.
-  if (this_call_methods.find(eaddr) == this_call_methods.end()) return NULL;
-  // Get the this-call method reference.
-  ThisCallMethod& tcm = this_call_methods.at(eaddr);
-  // And return a pointer to it.
-  return &tcm;
+  return fd->get_oo_properties();
 }
 
 } // namespace pharos

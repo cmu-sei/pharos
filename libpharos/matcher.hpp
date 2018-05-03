@@ -413,7 +413,7 @@ struct Matcher<Const<val>> {
   bool operator()(const node_t &tn) const {
     if (!tn) { return false; }
     auto n = tn->isLeafNode();
-    return n && (n->isNumber() && n->toInt() == val);
+    return n && (n->isNumber() && n->nBits() <= 64 && n->toInt() == val);
   }
 };
 

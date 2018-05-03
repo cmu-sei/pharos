@@ -1,4 +1,4 @@
-// Copyright 2016, 2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Typedb_H
 #define Pharos_Typedb_H
@@ -18,7 +18,22 @@
 
 namespace pharos {
 namespace types {
-      
+
+enum class Objectness {
+  // the case where a variable's objectness cannot be determined i.e. the top.
+  Top,
+
+  // This indicates that the pointer type in question is an aggregate (C++-style) object
+  Object,
+
+  // This lattice indicates that the pointer type is not an aggregate (C++-style) object
+  NotObject,
+
+  // This value denotes when a variable can be both an object pointer and not an object pointer
+  // depending on the code path taken. It is the most general value, i.e.  the bottom
+  Bottom
+};
+
 // This enumeration captures whether a type is signed or unsigned
 enum class Signedness {
 
@@ -35,8 +50,8 @@ enum class Signedness {
   // depending on the code path taken. It is the most general value, i.e.
   // the bottom
   Bottom
-};     
-      
+};
+
 // This enumeration captures whether a type is referential (i.e. a pointer)
 // or a concrete value
 enum class Pointerness {
@@ -373,6 +388,8 @@ class Value {
   };
 
  public:
+  Value() : Value(std::make_shared<UnknownType>("<unknown>")) {}
+
   Value(const TypeRef & t) : memory(nullptr), type(t)
   {}
 
@@ -389,7 +406,7 @@ class Value {
     return node ? node->get_expression() : nullnode;
   }
 
-  operator bool() const {
+  explicit operator bool() const {
     return node;
   }
 
