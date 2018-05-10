@@ -9,7 +9,7 @@ analysis, instruction semantics, and more.
 
 The current distribution is a substantial update to the previous
 version, and is part of an ongoing process to release more of the
-framework and tools publicly.  This softare is released under a BSD
+framework and tools publicly.  This software is released under a BSD
 [license](LICENSE.md).  Carnegie Mellon University retains the
 [copyright](COPYRIGHT.md).
 
