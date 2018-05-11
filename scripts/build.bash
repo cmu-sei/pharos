@@ -46,7 +46,7 @@ sudo make -j4 install
 cd $DIR
 test -d z3 && rm -rf z3
 git clone https://github.com/Z3Prover/z3.git z3
-cd rose
+cd z3
 git checkout b81165167304c20e28bc42549c94399d70c8ae65
 mkdir build
 cd build
