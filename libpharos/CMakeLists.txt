@@ -61,7 +61,7 @@ find_package(Threads)
 
 set(Boost_USE_MULTITHREADED on)
 find_package(Boost 1.60.0 REQUIRED
-  COMPONENTS system chrono timer)
+  COMPONENTS system chrono timer iostreams)
 
 configure_file(xsb_types.hpp.in xsb_types.hpp)
 configure_file(build.hpp.in build.hpp)
@@ -69,7 +69,7 @@ configure_file(build.hpp.in build.hpp)
 # Create pharos library
 add_library(pharos SHARED ${PHAROS_SOURCES} ${XSB_OBJECT_FILE})
 target_link_libraries(pharos PUBLIC
-  Threads::Threads Boost::chrono Boost::timer ${CMAKE_DL_LIBS}
+  Threads::Threads Boost::chrono Boost::timer Boost::iostreams ${CMAKE_DL_LIBS}
   Rose::Rose SQLite::SQLite ${CURSES_LIBRARIES})
 target_include_directories(pharos PRIVATE
   ${XSB_INCLUDE_DIRS}
