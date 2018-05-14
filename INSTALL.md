@@ -66,6 +66,10 @@ thread, program_options, iostreams, filesystem, regex, wave, chrono,
 date_time, atomic, and serialization.  It may be easier to just build
 and install all components.
 
+It is also important for Boost to be built with zlib support for
+boost::iostreams to function propertly, so ensure that zlib is
+installed properly, including development headers.
+
 You can build Boost using these commands:
 
 ```
@@ -122,7 +126,7 @@ yaml-cpp repository.  We build yaml-cpp using commands like these:
 $ git clone https://github.com/jbeder/yaml-cpp.git yaml
 $ mkdir yaml/build
 $ cd yaml/build
-$ cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
+$ cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_SHARED_LIBS=true ..
 $ make -j4
 $ make -j4 install
 ```
