@@ -140,13 +140,13 @@ questions about symbolic expression equivalence.  Some of the pharos
 tools require Z3 to work.  A fairly recent version of Z3 is necessary,
 but an even more recent commit broke the Z3 ABI with respect to ROSE.
 Therefore, we currently use a very specific revision of Z3.
-Specifically, revision b81165167304c20e28bc42549c94399d70c8ae65cd.
+Specifically, revision b81165167304c20e28bc42549c94399d70c8ae65.
 
 We build Z3 using commands like these:
 ```
 $ git clone https://github.com/Z3Prover/z3.git
 $ cd z3
-$ git reset --hard b81165167304c20e28bc42549c94399d70c8ae65cd.
+$ git reset --hard b81165167304c20e28bc42549c94399d70c8ae65
 $ mkdir build
 $ cd build
 $ cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_INSTALL_LIBDIR=lib ..
