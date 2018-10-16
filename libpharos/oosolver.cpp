@@ -747,7 +747,6 @@ OOSolver::dump_facts_private()
   exported += session->print_predicate(facts_file, "thisPtrUsage", 4);
   exported += session->print_predicate(facts_file, "possibleVirtualFunctionCall", 5);
   exported += session->print_predicate(facts_file, "thisPtrOffset", 3);
-  exported += session->print_predicate(facts_file, "preceeds", 2);
   exported += session->print_predicate(facts_file, "symbolGlobalObject", 3);
   exported += session->print_predicate(facts_file, "symbolClass", 3);
   exported += session->print_predicate(facts_file, "symbolProperty", 2);
@@ -758,7 +757,6 @@ OOSolver::dump_facts_private()
   exported += session->print_predicate(facts_file, "callParameter", 4);
   exported += session->print_predicate(facts_file, "callReturn", 4);
   exported += session->print_predicate(facts_file, "callTarget", 3);
-  exported += session->print_predicate(facts_file, "termDebug", 2);
 
   facts_file << "% Object fact exporting complete." << std::endl;
   facts_file.close();
@@ -804,7 +802,6 @@ OOSolver::dump_results_private()
   exported += session->print_predicate(results_file, "finalMember", 4);
   exported += session->print_predicate(results_file, "finalMemberAccess", 4);
   exported += session->print_predicate(results_file, "finalMethodProperty", 3);
-  exported += session->print_predicate(results_file, "finalUncertainName", 1);
 
   results_file << "% Object detection reporting complete." << std::endl;
   results_file.close();
