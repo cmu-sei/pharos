@@ -87,7 +87,7 @@ cd release
   CXXFLAGS='-std=c++11 --param ggc-min-expand=5 --param ggc-min-heapsize=32768' \
   --with-yaml=/usr/local \
   --with-z3=/usr/local
-make -k -j $NCPU
+make -k -j $NCPU || true
 make
 sudo make -j $NCPU install
 test "$1" = "-reclaim" && rm -rf $DIR/rose
