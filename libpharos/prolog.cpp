@@ -1,4 +1,4 @@
-// Copyright 2016-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Michael Duggan
 
@@ -17,7 +17,11 @@ msg::Facility plog{"PLOG"};
 Session::Session(const ProgOptVarMap& vm)
 {
   Path libdir = get_library_path();
+#ifndef PHAROS_RELEASE
   auto prolog_dir = absolute(Path(PHAROS_XSB_BUILD_LOCATION));
+#else // PHAROS_RELEASE
+  auto prolog_dir = libdir / "XSB"; // PHAROS_RELEASE
+#endif // PHAROS_RELEASE
   auto pdir = vm.config().path_get("pharos.prolog_dir");
   if (pdir && !pdir.Scalar().empty()) {
     prolog_dir = pdir.Scalar();
