@@ -2,7 +2,7 @@ FROM ubuntu:latest
 
 ADD . /root/pharos
 
-RUN apt-get -y update && apt-get upgrade -y
+RUN apt-get -y update
 RUN apt-get -y install sudo build-essential wget flex ghostscript bzip2 git subversion automake libtool bison python libncurses5-dev vim-common libsqlite3-0 libsqlite3-dev zlib1g-dev
 
 # Put everything in the same layer so it's much smaller

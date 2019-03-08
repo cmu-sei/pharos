@@ -1,0 +1,14 @@
+# C/C++ with GCC
+# Build your C/C++ project with GCC using make.
+# Add steps that publish test results, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/apps/c-cpp/gcc
+
+jobs:
+- job: Build
+  timeoutInMinutes: 660
+  pool:
+    vmImage: 'Ubuntu-16.04'
+  steps:
+  - script: sudo apt-get -y update
+  - script: sudo apt-get install sudo build-essential wget flex ghostscript bzip2 git subversion automake libtool bison python libncurses5-dev vim-common libsqlite3-0 libsqlite3-dev zlib1g-dev
+  - script: NCPU=2 ./scripts/build.bash -reclaim
