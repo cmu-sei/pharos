@@ -157,15 +157,15 @@ $ make -j4 install
 ## ROSE
 
 ROSE is probably the most difficult package to build.  We track the
-current commit on the development version of ROSE on GitHub more or
+current commit on the `develop` branch of ROSE on GitHub more or
 less daily, but our own updates to GitHub are less frequent.  At the
-time of this release, ROSE master is a couple of months behind
-rose-develop, so be sure to fetch the "development" version of ROSE.
+time of this release, ROSE `master` is a couple of months behind
+`develop`, so be sure to fetch the `develop` branch of ROSE.
 
 You can obtain the latest version of ROSE from:
 
 ```
-$ git clone https://github.com/rose-compiler/rose-develop rose
+$ git clone https://github.com/rose-compiler/rose rose
 ```
 
 Which has a reasonable chance of working or only having minor issues.
@@ -177,9 +177,9 @@ repository, you can checkout this commit (ROSE version 0.9.10.9):
 $ git reset --hard d3eaef2ad21687c294827d4471f2b0163af86978
 ```
 
-You may also be able to distribution packages from the ROSE website,
-although our code was updated to include a major renaming of the ROSE
-namespace shortly before our latest commit.
+You may also be able to use the distribution packages from the ROSE
+website, although our code was updated to include a major renaming of
+the ROSE namespace shortly before our latest commit.
 
 ROSE can be configured in a multitude of ways, and some attention to
 the configuration parameters in your environment is recommended.  The

@@ -72,7 +72,7 @@ cd $DIR
 sudo ldconfig
 
 test -d rose && rm -rf rose
-git clone https://github.com/rose-compiler/rose-develop rose
+git clone https://github.com/rose-compiler/rose rose
 cd rose
 git checkout d3eaef2ad21687c294827d4471f2b0163af86978
 
