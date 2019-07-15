@@ -31,12 +31,3 @@ else {
     throw new GradleException("GHIDRA_INSTALL_DIR is not defined!")
 }
 //----------------------END "DO NOT MODIFY" SECTION-------------------------------
-
-/*
-        Provide test dependencies here until we figure out how to separate.
-*/  
-dependencies {
-        testCompile "junit:junit:4.12"
-	testCompile 'org.junit.jupiter:junit-jupiter:5.4.2'
-	testImplementation 'org.junit.jupiter:junit-jupiter:5.4.2'
-}
