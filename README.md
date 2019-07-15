@@ -48,6 +48,23 @@ the program.  This tool was previously named "Objdigger" and is in the
 process of being renamed OOAnalyzer as part of a substantial redesign
 using Prolog rules to recover the object attributes.
 
+### OOAnalyzer Results Plugins
+
+The Pharos frameork includes tools import OOAnalyzer JSON results into
+common reverse engineering tools. Currently there are two results
+importers included with OOAnalyzer: an importer for [IDA
+Pro](https://www.hex-rays.com/products/ida) and
+[Ghidra](https://ghidra-sre.org). The IDA Pro plugin to import
+OOAnalyzer results can be found in the following directory:
+
+```
+ pharos/tools/ooanalyzer/ida
+ ```
+ Similarly, the Ghidra plugin to import OOAnalyzer results can be found in the following directory:
+ ```
+ pharos/tools/ooanalyzer/ghidra/OOAnalyzerPlugin
+```
+
 ## CallAnalyzer
 
 CallAnalyzer is a tool for reporting the static parameters to API
