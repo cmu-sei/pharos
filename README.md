@@ -50,7 +50,7 @@ using Prolog rules to recover the object attributes.
 
 ### OOAnalyzer Results Plugins
 
-The Pharos frameork includes tools import OOAnalyzer JSON results into
+The Pharos framework includes tools import OOAnalyzer JSON results into
 common reverse engineering tools. Currently there are two results
 importers included with OOAnalyzer: an importer for [IDA
 Pro](https://www.hex-rays.com/products/ida) and

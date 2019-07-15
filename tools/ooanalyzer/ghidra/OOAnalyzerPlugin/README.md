@@ -32,8 +32,9 @@ needed for JSON parsing and processing is the only external dependency
 for the OOAnalyzer Plugin. You will need to copy the `gson-2.8.5.jar`
 file to the plugin *lib* directory to build the plugin. Note that
 we've successfully tested the plugin with GSON version 2.8.5 and that
-is why we recommend this version. You can build GSON from source or
-fetch and install the jar file directly using the following command:
+is why this is the recommended GSON version. You can build GSON from
+source or fetch and install the jar file directly using the following
+command:
 
 ```
 cd pharos/tools/ooanalyzer/ghidra/OOAnalyzerPlugin/lib/
