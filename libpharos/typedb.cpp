@@ -1,4 +1,4 @@
-// Copyright 2016, 2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "typedb.hpp"
 #include "descriptors.hpp"
@@ -30,41 +30,12 @@ using boost::locale::conv::utf_to_utf;
 
 using ParseError = std::runtime_error;
 
-size_t Type::arch_bytes() const {
-  return global_descriptor_set->get_arch_bytes();
-}
-
-static SymbolicValuePtr program_bits(rose_addr_t addr, size_t nbits)
-{
-  auto bv = global_descriptor_set->read_addr_bits(addr, nbits);
-  if (tget<size_t>(bv) == nbits) {
-    return SymbolicValue::treenode_instance(
-      LeafNode::createConstant(*tget<std::unique_ptr<Sawyer::Container::BitVector>>(bv)));
-  }
-  return SymbolicValuePtr();
-}
-
-static SymbolicValuePtr memory_value(
-  const SymbolicState & memory,
-  const SymbolicValuePtr & addr,
-  size_t bits)
-{
-  auto val = memory.read_memory(addr, bits);
-  if (val) {
-    return val;
-  }
-  const auto & exp = addr->get_expression();
-  if (exp && exp->isNumber()) {
-    return program_bits(exp->toInt(), bits);
-  }
-  return SymbolicValuePtr();
-}
-
 Value Type::get_value(
-    const SymbolicValuePtr & value,
-    const SymbolicState * memory) const
+  const SymbolicValuePtr & value,
+  const Memory & img,
+  const SymbolicState * memory) const
 {
-  return Value(ptr(), value, memory);
+  return Value(img, ptr(), value, memory);
 }
 
 void Pointer::update(const DB & db) {
@@ -346,7 +317,7 @@ void DB::add_type(const std::string & name, const YAML::Node & node)
         }
         size_t size;
         if (nsize.Scalar() == "arch") {
-          size = global_descriptor_set->get_arch_bytes();
+          size = global_arch_bytes;
         } else {
           size = nsize.as<size_t>();
         }
@@ -510,6 +481,7 @@ boost::optional<bool> Value::as_bool() const
 
 template <typename Char>
 boost::optional<std::basic_string<Char>> parse_string_value(
+  const Memory& image,
   const SymbolicState & memory,
   const TreeNodePtr & base)
 {
@@ -517,7 +489,7 @@ boost::optional<std::basic_string<Char>> parse_string_value(
   for (size_t i = 0; true; i += sizeof(Char)) {
     auto addr = base + i;
     auto sym = SymbolicValue::treenode_instance(addr);
-    auto c = memory_value(memory, sym, sizeof(Char) * CHAR_BIT);
+    auto c = image.read_value(memory, sym, Bytes(sizeof(Char)));
     if (c) {
       auto & cexp = c->get_expression();
       if (cexp && cexp->isNumber()) {
@@ -542,6 +514,9 @@ boost::optional<std::string> Value::as_string(bool wide) const
     return boost::none;
   }
   const String * s = dynamic_cast<const String *>(type.get());
+  if (!s) {
+    throw IllegalConversion("Illegal call on non-string");
+  }
   auto & exp = node->get_expression();
   if (exp && exp->isNumber() && exp->isLeafNode()->bits().isAllClear()) {
     return boost::none;
@@ -549,12 +524,12 @@ boost::optional<std::string> Value::as_string(bool wide) const
     if (s->get_string_type() == String::WCHAR ||
         (s->get_string_type() == String::TCHAR && wide))
     {
-      auto result = parse_string_value<char16_t>(*memory, exp);
+      auto result = parse_string_value<char16_t>(image, *memory, exp);
       if (result) {
         return utf_to_utf<char>(*result);
       }
     } else {
-      return parse_string_value<char>(*memory, exp);
+      return parse_string_value<char>(image, *memory, exp);
     }
   }
   return boost::none;
@@ -563,7 +538,7 @@ boost::optional<std::string> Value::as_string(bool wide) const
 Value Value::val_from_param(const Param & param) const
 {
   auto ptr = std::make_shared<Pointer>(param.type);
-  auto val = ptr->get_value(node + param.offset, memory).dereference();
+  auto val = ptr->get_value(node + param.offset, image, memory).dereference();
   return val;
 }
 
@@ -605,20 +580,20 @@ Value Value::dereference() const
   }
   auto & t = p->get_contained();
   if (!node) {
-    return t->get_value(node, memory);
+    return t->get_value(node, image, memory);
   }
   auto & exp = node->get_expression();
   if (exp && exp->isNumber() && exp->isLeafNode()->bits().isAllClear()) {
     throw IllegalConversion("Cannot dereference NULL");
   }
   if (!memory) {
-    return Value(t);
+    return Value(image, t);
   }
   if (dynamic_cast<const Struct *>(t.get())) {
-    return Value(t, node, memory);
+    return Value(image, t, node, memory);
   }
-  auto v = memory_value(*memory, node, t->get_size() * CHAR_BIT);
-  return Value(t, v, memory);
+  auto v = image.read_value(*memory, node, Bytes(t->get_size()));
+  return Value(image, t, v, memory);
 }
 
 } // namespace typedb

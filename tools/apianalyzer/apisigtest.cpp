@@ -1,22 +1,19 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 
 #include <rose.h>
-
+#include <libpharos/util.hpp>
 #include <gtest/gtest.h>
 #include <libpharos/apisig.hpp>
 
 using namespace pharos;
 
-Sawyer::Message::Facility glog("APIT");
-
-
-// Thisis the main test fixture
+// This is the main test fixture
 class ApiSigTest : public testing::Test {
 
 protected:
 
-  ApiSigManager *sig_manager_;
+  std::unique_ptr<ApiSigManager> sig_manager_;
 
   std::string json_file1_;
 
@@ -27,15 +24,13 @@ protected:
   }
 
   virtual void SetUp() {
-
-    sig_manager_ = new ApiSigManager();
-    sig_manager_->SetParser(new ApiJsonSigParser());
+    sig_manager_ =  make_unique<ApiSigManager>(std::make_shared<ApiJsonSigParser>());
     sig_manager_->LoadSigFile(json_file1_);
 
   }
 
   virtual void TearDown() {
-    delete sig_manager_;
+    sig_manager_ = nullptr;
   }
 
 };
@@ -48,13 +43,13 @@ TEST_F(ApiSigTest, TEST_PARSE_VALID_SIG) {
 
 TEST_F(ApiSigTest, TEST_VALID_SIG_PARAMS) {
 
-  SigPtrVector sigs;
-  sig_manager_->GetSigs(&sigs);
+  ApiSigVector sigs;
+  sig_manager_->GetSigs(sigs);
 
-  for (const ApiSig &s : sigs) {
+  for (const ApiSig s : sigs) {
 
     if (boost::iequals(s.name,"TestSig1")) {
-      for (const ApiSigFunc & f : s.api_calls) {
+      for (const ApiSigFunc f : s.api_calls) {
         if (boost::iequals(f.name,"TestAPI2") == true) {
           EXPECT_TRUE(f.has_params);
           EXPECT_FALSE(f.has_retval);
@@ -81,11 +76,11 @@ TEST_F(ApiSigTest, TEST_VALID_SIG_PARAMS) {
 
 TEST_F(ApiSigTest, TEST_VALID_SIG_INFO) {
 
-  SigPtrVector sigs;
+  ApiSigVector sigs;
   ApiSig sig;
-  sig_manager_->GetSigs(&sigs);
+  sig_manager_->GetSigs(sigs);
 
-  for (const ApiSig &s : sigs) {
+  for (ApiSig s : sigs) {
     sig = s;
     break;
   }
@@ -97,19 +92,16 @@ TEST_F(ApiSigTest, TEST_VALID_SIG_INFO) {
   EXPECT_TRUE(boost::iequals(sig.category,"Test category"));
 }
 
-
 TEST_F(ApiSigTest, TEST_VALID_SIG_RETVAL) {
-
-  sig_manager_->SetParser(new ApiJsonSigParser());
   sig_manager_->LoadSigFile(json_file1_);
 
-  SigPtrVector sigs;
-  sig_manager_->GetSigs(&sigs);
+  ApiSigVector sigs;
+  sig_manager_->GetSigs(sigs);
 
-  for (const ApiSig &s : sigs) {
+  for (const ApiSig s : sigs) {
     if (boost::iequals(s.name,"TestSig1")) {
 
-      for (const ApiSigFunc & f : s.api_calls) {
+      for (const ApiSigFunc f : s.api_calls) {
         if (boost::iequals(f.name,"TestApi1") == true) {
           EXPECT_TRUE(f.has_retval);
 
@@ -123,8 +115,6 @@ TEST_F(ApiSigTest, TEST_VALID_SIG_RETVAL) {
     }
   }
 }
-
-
 
 int main(int argc, char **argv) {
 

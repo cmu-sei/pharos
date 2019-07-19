@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [ -n "$2" ]; then
+    arg1=$(realpath "$1")
+    arg2=$(realpath "$2")
+else
+    arg1="@CMAKE_SOURCE_DIR@/tools/ooanalyzer/tests/$1.facts"
+    arg2="@CMAKE_BINARY_DIR@/tools/ooanalyzer/tests/$1.facts"
+fi
+
+for file in "$arg1" "$arg2"; do
+    if [ ! -f "$file" ]; then
+        echo "Cannot find file $file"
+        exit 1
+    fi
+done
+
+PROG="[comparefacts],terms_compare('$arg1', '$arg2')"
+
+cd @CMAKE_CURRENT_SOURCE_DIR@
+@XSB_PROGRAM@ --noprompt -e "catch((($PROG);true), E, true), halt."

@@ -16,6 +16,24 @@ analysis progress.  Level three is the coarsest level of debugging.
 Level four enables warnings during the analysis of functions.  Higher
 numbers result in additional debugging messages.
 
+=item B<--timing>
+
+Print a running duration field in log messages.
+
+=item B<--threads>=I<INTEGER>
+
+Sets the number of threads the tool is allowed to use when analyzing
+the program.  Whether any threads are actually used can vary by the
+program in question.  If I<INTEGER> is positive, it declares the
+number of threads to use.  If I<INTEGER> is zero, it will use one
+thread per available processor.  If I<INTEGER> is negative, it will
+use one thread per available processor less the absolute value of
+I<INTEGER>.  At least one thread will always be used.  The default is
+to run with only one thread.
+
+When the number of threads is not one, per function memory limits are
+disabled.
+
 =item B<--batch>, B<-b>
 
 Suppress terminal-based magic in output, such as colors, progress
@@ -76,37 +94,70 @@ XSB installation.
 
 =item B<--timeout>=I<TIMEOUT>
 
-Set the absolute defuse timeout in seconds.  (Default: 900 seconds)
+Set the execution timeout in seconds.  The pharos tool will usually
+exit shortly after this limit is reached.  The default value is 900
+seconds (15 minutes), but this value should definitely be increased
+for large programs.  This option defaults to a relatively small value
+to facilitate large scale analysis of many files.
 
-=item B<--reltimeout>=I<TIMEOUT>
+=item B<--per-function-timeout>=I<TIMEOUT>
 
-Set the relative defuse timeout in seconds.  (Default: 20 seconds)
+Set the maximum amount of CPU time in seconds that should be allocated
+to the analysis of each function.  The Pharos tool will usually abort
+the analysis of the current function and proceed to the next function
+shortly after this limit is reached.  Skipping the analysis of
+functions obviously reduces the accuracy of the results, but a few
+functions are often the cause of the majority of analysis time.
+Setting this value to a small value (tens of seconds) is often
+preferable to setting an overall time limit since it allows the Pharos
+tool to complete and produce incomplete results rather than nothing at
+all when given limited resources.  The default value is 20 seconds.
 
-=item B<--ptimeout>=I<TIMEOUT>
+=item B<--partitioner-timeout>=I<TIMEOUT>
 
-Set the absolute partitioner timeout in seconds.  (Default: 300 seconds)
+Set the time limit in seconds for the function partitioning phase of
+the analysis.  The default value is 300 seconds (5 minutes), but this
+value should definitely be increased for large programs.  This option
+defaults to a relatively small value to facilitate large scale
+analysis of many files.  This value should be smaller than the overall
+timeout to leave time for function analysis.
 
-=item B<--preltimeout>=I<TIMEOUT>
+=item B<--maximum-memory>=I<MEMSIZE>
 
-Set the relative partitioner timeout in seconds.  (Default: 300 seconds)
+Set the maximum memory usage in mibibytes.  The Pharos tool will
+usually exit shortly after this limit is reached.  The default value
+is 8000 mibibytes (about 8 gigabytes).
 
-=item B<--maxmem>=I<MEMSIZE>
+=item B<--per-function-memory>=I<MEMSIZE>
 
-Set the absolute maximum memory usage in megabytes.  (Default: 40000 MiB)
+Set the maximum memory usage that should be permitted for each
+function.  The Pharos tool will usually abort the analysis of the
+current function and proceed to the next function shortly after this
+limit is reached.  Skipping the analysis of functions obviously
+reduces the accuracy of the results, but a few functions are often the
+cause of the majority of the memory consumption.  Setting this value
+to a small value (tens of mibibytes) is often preferable to setting an
+overall memory limit since it allows the Pharos tool to complete and
+produce incomplete results rather than nothing at all when given
+limited resources.  The default value is 100 mibibytes.
 
-=item B<--relmaxmem>=I<MEMSIZE>
+Per function memory limits are disabled when running with more than
+one thread.
 
-Set the relative maximum memory usage in megabytes.  (Default: 1000 MiB)
+=item B<--maximum-instructions-per-block>=I<NUMBER>
 
-=item B<--blockcounterlimit>=I<NUMBER>
+Set the maximum number of instructions allowed in a basic block before
+aborting the analysis of a function.  This limit is primarily a safety
+setting for degenerate situations where large blocks of data are
+incorrecly interpreted as thousands of instructions.  The default
+value is 3000 instructions.
 
-Set the number of instructions a basic block may have before analysis
-on it is stopped.  (Default: 3000)
+=item B<--maximum-iterations-per-function>=I<NUMBER>
 
-=item B<--funccounterlimit>=I<NUMBER>
-
-Set the number of blocks a function may have before analysis on it is
-stopped.  (Default: 3000)
+Set the maximum number of iterations over the control flow graph in a
+function before aborting analysis of the function.  This limit is
+primarily a safety setting for situations where the control flow graph
+is malformed.  The default value is 3000 iterations.
 
 =item B<--imports>=I<IMPORT_CONFIG_FILE>, B<-I>=I<IMPORT_CONFIG_FILE>
 
@@ -135,6 +186,29 @@ components present in ROSE, such as the function partitioner.
 
 =over 4
 
+=item B<--partitioner>=I<{pharos, rose, or superset}>
+
+Use the specified function partitioning algorithm.  The supported
+partitioners are "pharos", "rose", and "superset".
+
+I<pharos>: This is the default and recommended partitioner.  It
+extends the standard ROSE partitioner to make code speculatively in
+undefined gaps between existing instructions.  This partitioner may
+not be required if the program being analyzed is "normal software".
+
+I<rose>: Use the stock (built into ROSE) version of the partitioner.
+This will generally give less complete results, but will also take
+less time to process the file.  The Pharos customized partitioner
+sometimes takes very much longer than the stock ROSE partitioner, so
+this option can be used to speed analysis if accuracy is not the top
+priority.  This option can also be used to troubleshoot problems in
+either partitioner by comparing the results from each.
+
+I<superset>: This is an experimental disassembly algorithm that will
+create an instruction for every byte in the program image.  It is not
+generally suitable for analyzing programs at the current time because
+it does not partition instructions into functions.
+
 =item B<--serialize>=I<SERIALIZED_FILE>
 
 Causes the results of the function partitioning step (including
@@ -156,16 +230,6 @@ and not a true version number for the serialization file format, this
 option can be used to avoid needlessly regenerating serialization
 files.  The recommended course of action is to remove the
 serialization file and regenerate it with B<--serialize>.
-
-=item B<--stockpart>
-
-Use the stock (built into ROSE) version of the partitioner.  This will
-generally give less complete results, but will also take less time to
-process the file.  The Pharos customized partitioner sometimes takes
-very much longer than the stock ROSE partitioner, so this option can
-be used to speed analysis if accuracy is not the top priority.  This
-option can also be used to troubleshoot problems in either partitioner
-by comparing the results from each.
 
 =item B<--no-semantics>
 
@@ -210,6 +274,11 @@ result in additional incorrect code detection.
 Use I<LOG_CONTROL_STRING> to determine what log messages are output.
 These strings are documented in the Sawyer C++ library documentation,
 under C<Message::Facilities::control()>.
+
+=item B<--stockpart>
+
+This option has been deprecated.  Please use B<--partitioner>=I<rose>
+instead.
 
 =item B<--rose-version>
 

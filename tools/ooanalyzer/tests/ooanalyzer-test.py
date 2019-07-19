@@ -165,7 +165,8 @@ def run_ooanalyzer_test(args):
     options.append("--no-user-file")
     options.append("--config=%s" % os.path.join(args.build_dir, "tests", "testconfig.yaml"))
     options.append("--verbose=4")
-    options.append("--json=%s" % test_output_path(args) + ".json")
+    json_output_path = test_output_path(args) + ".json"
+    options.append("--json=%s" % json_output_path)
     prolog_fact_path = test_output_path(args) + ".facts"
     options.append("--prolog-facts=%s" % prolog_fact_path)
     prolog_results_path = test_output_path(args) + ".results"
@@ -204,7 +205,9 @@ def run_ooanalyzer_test(args):
     sort_file(args, gen_facts_path)
     gen_results_path = test_output_path(args) + ".results"
     sort_file(args, gen_results_path)
-    return compare_prolog_answers(args, gen_facts_path, gen_results_path)
+    failed = compare_prolog_answers(args, gen_facts_path, gen_results_path)
+    failed += compare_json_answers(args, json_output_path)
+    return failed
 
 def sort_file(args, filename):
     cmd = "sort %s >%s.new && mv %s.new %s" % (filename, filename, filename, filename)
@@ -227,11 +230,13 @@ def run_prolog_test(args):
     testname = args.testcase[0]
 
     update_rules(args)
-    rules_path = os.path.join(args.git_dir, "share", "prolog", "oorules")
+    rules_path = os.path.join(args.build_dir, "share", "prolog", "oorules")
     os.chdir(rules_path)
 
     xsb_path = args.xsb_path
-    assertions = "[rulerun],assert(rTTIEnabled),run('%s')." % ground_facts_path
+    # Annoyingly, XSB still places the XWAM file in the same place as the source file.
+    assertions = "asserta(library_directory('%s/share/prolog/oorules')),[rulerun],assert(rTTIEnabled),run('%s')." % (
+        args.git_dir, ground_facts_path)
     redirection = ">%s 2>%s" % (gen_results_path, xsb_spew_path)
     prolog_cmd = xsb_path + ' --noprompt -e "' + assertions + '" ' + redirection
 
@@ -252,6 +257,22 @@ def run_prolog_test(args):
         failed += compare_prolog_answers(args, ground_facts_path, gen_results_path)
 
     return failed
+
+def compare_json_answers(args, gen_json_path):
+    testname = args.testcase[0]
+
+    ground_json_path = test_ground_path(args) + ".json"
+    gen_json_lines = set(open(gen_json_path, 'U').readlines())
+    ground_json_lines = set(open(ground_json_path, 'U').readlines())
+
+    if args.commands:
+        cmd = "diff %s %s" % (ground_json_path, gen_json_path)
+        print cmd
+
+    if gen_json_lines != ground_json_lines:
+        print "JSON files differ!"
+        return 1
+    return 0
 
 def compare_prolog_answers(args, gen_fact_path, gen_results_path):
     testname = args.testcase[0]
@@ -327,16 +348,20 @@ def compare_prolog_answers(args, gen_fact_path, gen_results_path):
 def accept_prolog_test(args):
     gen_facts_path = test_output_path(args) + ".facts"
     gen_results_path = test_output_path(args) + ".results"
+    gen_json_path = test_output_path(args) + ".json"
     ground_facts_path = test_ground_path(args) + ".facts"
     ground_results_path = test_ground_path(args) + ".results"
+    ground_json_path = test_ground_path(args) + ".json"
 
     if args.commands:
         print "cp %s %s" % (gen_facts_path, ground_facts_path)
         print "cp %s %s" % (gen_results_path, ground_results_path)
+        print "cp %s %s" % (gen_json_path, ground_json_path)
 
     if not args.review:
         shutil.copyfile(gen_facts_path, ground_facts_path)
         shutil.copyfile(gen_results_path, ground_results_path)
+        shutil.copyfile(gen_json_path, ground_json_path)
 
 # ===========================================================================
 # Globals for the OOanalyzer output fixup process
@@ -426,17 +451,18 @@ if __name__ == "__main__":
                         type=str, default="",
                         help="set the git root checkout directory")
     parser.add_argument("-x", "--xsb-path",
-                        type=str, default="/usr/local/xsb-3.7.0/bin/xsb",
+                        type=str, default="../../../XSB/xsb-3.8.0/bin/xsb",
                         help="The location of the xsb runtime")
     args = parser.parse_args()
+
+    if args.git_dir == "":
+        args.git_dir = os.path.dirname(args.build_dir)
 
     ground_facts_path = test_ground_path(args) + ".facts"
     if not os.path.exists(ground_facts_path):
         print >>sys.stderr, "FAILED: Invalid test case '%s'" % (args.testcase[0])
+        print >>sys.stderr, "  No such file or directory: '%s'" % (ground_facts_path)
         sys.exit(1)
-
-    if args.git_dir == "":
-        args.git_dir = os.path.dirname(args.build_dir)
 
     if args.accept:
         while len(args.testcase) > 0:

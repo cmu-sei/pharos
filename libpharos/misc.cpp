@@ -38,20 +38,11 @@ using Rose::BinaryAnalysis::BinaryLoader;
 using Rose::BinaryAnalysis::SymbolicExpr::OP_ADD;
 using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
 
-GLogWrapper glog;
-
-void GLogWrapper::set_name(std::string const & name)
-{
-  if (!glog_) {
-    glog_ = make_unique<Sawyer::Message::Facility>(name);
-  } else {
-    glog_->renameStreams(name);
-  }
-}
+Sawyer::Message::Facility glog;
 
 void set_glog_name(std::string const & name)
 {
-  glog.set_name(name);
+  glog.initialize(name);
 }
 
 TreeNodePtr operator+(const TreeNodePtr & a, int64_t b)
@@ -77,8 +68,8 @@ TreeNodePtr operator+(const TreeNodePtr & a, int64_t b)
 // functions above for architecture.  It gives us some specific text to search for to find
 // places where we're obviously touching this bit of brokenness.  See also get_stack_const() in
 // semantics.hpp.
-bool filter_stack(rose_addr_t addr) {
-  if (addr > 0x0000FFFF && addr < 0x80000000) return true;
+bool filter_stack(rose_addr_t target_addr) {
+  if (target_addr > 0x0000FFFF && target_addr < 0x80000000) return true;
   return false;
 }
 
@@ -95,56 +86,29 @@ std::string MyHex(const SgUnsignedCharList& data) {
   return result;
 }
 
+
+
 // Cory is trying to enforce some consistency in how we print addresses so that we can control
 // the format by changing only one (or at least just a few) places in the code.  There's no
 // implicit claim that boost::format("0x%08X") is the "correct" answer, just that there should
 // be some consistency, and that the whole std::hex / std::dec thing sucks...
-std::string addr_str(rose_addr_t addr) {
-  return boost::str(boost::format("0x%08X") % addr);
+std::string addr_str(rose_addr_t target_addr) {
+  return boost::str(boost::format("0x%08X") % target_addr);
 }
 
 // Get the message levels from Sawyer::Message::Common.
 using namespace Sawyer::Message::Common;
 
-typedef std::vector<rose_addr_t> AddrVector;
+using AddrVector = std::vector<rose_addr_t>;
 
-void customize_message_facility(const ProgOptVarMap& vm, Sawyer::Message::Facility facility, std::string name) {
-  // Create a sink associated with standard output.
-  Sawyer::Message::FdSinkPtr mout = Sawyer::Message::FdSink::instance(global_logging_fileno);
-  if (!color_terminal() || vm.count("batch")) {
-    ODEBUG << "Forcing non-color logging." << LEND;
-    mout->overridePropertiesNS().useColor = false;
-  }
-  // Create a prefix object so that we can modify prefix properties.
-  Sawyer::Message::PrefixPtr prefix = Sawyer::Message::Prefix::instance();
-  prefix = prefix->showProgramName(false)->showElapsedTime(false);
-  // It's sometimes useful to also disable the faciltiy and importance.
-  //prefix = prefix->showFacilityName(Sawyer::Message::NEVER)->showImportance(false);
-
-  // Get the options logging facility working with the standard options.
+void customize_message_facility(Sawyer::Message::Facility facility, std::string name)
+{
   facility.renameStreams(name);
-  facility.initStreams(mout->prefix(prefix));
-}
-
-// This should be turned into a nicer utility function.
-SgAsmInterpretation* GetWin32Interpretation(SgProject* project) {
-  // Only process the Win32 portion of the executable.
-  // BUG? I'd prefer that this method not use querySubTree to obtain this list.
-  std::vector<SgNode*> interps = NodeQuery::querySubTree(project, V_SgAsmInterpretation);
-  if (interps.size() != 2) {
-    OFATAL << "Target executable does not appear to be a valid Win32-PE file." << LEND;
-    exit(2);
-  }
-  SgAsmInterpretation *interp = isSgAsmInterpretation(interps[1]);
-  if (interp == NULL) {
-    OFATAL << "Target executable does not appear to be a valid Win32-PE file." << LEND;
-    exit(3);
-  }
-  return interp;
+  facility.initStreams(get_logging_destination());
 }
 
 // This should be a method on SgAsmX86Instruction and possibly on SgAsmInstruction as well.
-bool insn_is_call(const SgAsmx86Instruction* insn) {
+bool insn_is_call(const SgAsmX86Instruction* insn) {
   if (insn == NULL) return false;
   else if (insn->get_kind() == x86_call) return true;
   else if (insn->get_kind() == x86_farcall) return true;
@@ -152,21 +116,21 @@ bool insn_is_call(const SgAsmx86Instruction* insn) {
 }
 
 // I think we meant insn_is_call() in all of these cases...
-bool insn_is_callNF(const SgAsmx86Instruction* insn) {
+bool insn_is_callNF(const SgAsmX86Instruction* insn) {
   if (insn == NULL) return false;
   else if (insn->get_kind() == x86_call) return true;
   else return false;
 }
 
 // This should be a method on SgAsmX86Instruction and possibly on SgAsmInstruction as well.
-bool insn_is_jcc(const SgAsmx86Instruction* insn) {
+bool insn_is_jcc(const SgAsmX86Instruction* insn) {
   if (insn == NULL) return false;
   else if (insn->get_kind() >= x86_ja && insn->get_kind() <= x86_js) return true;
   else return false;
 }
 
 // This should be a method on SgAsmX86Instruction and possibly on SgAsmInstruction as well.
-bool insn_is_branch(const SgAsmx86Instruction* insn) {
+bool insn_is_branch(const SgAsmX86Instruction* insn) {
   // BUG? No far calls here?
   if (insn_is_callNF(insn)) return true;
   if (insn_is_jcc(insn)) return true;
@@ -174,17 +138,35 @@ bool insn_is_branch(const SgAsmx86Instruction* insn) {
 }
 
 // This should be a method on SgAsmX86Instruction and possibly on SgAsmInstruction as well.
-bool insn_is_control_flow(const SgAsmx86Instruction* insn) {
-  if (insn == NULL) return false;
-  else if (insn->get_kind() == x86_ret) return true;
-  else if (insn->get_kind() == x86_call) return true;
-  else if (insn->get_kind() == x86_jmp) return true;
-  else if (insn->get_kind() == x86_farcall) return true;
-  else if (insn->get_kind() >= x86_ja && insn->get_kind() <= x86_js) return true;
-  else return false;
+bool insn_is_control_flow(const SgAsmInstruction* insn) {
+  if (!insn) return false;
+
+  // A bad start on some more multi-architecture support?
+  const SgAsmX86Instruction *xinsn = isSgAsmX86Instruction(insn);
+  if (!xinsn) return false;
+
+  // Really support X86.
+  if (xinsn->get_kind() == x86_ret) return true;
+  if (xinsn->get_kind() == x86_call) return true;
+  if (xinsn->get_kind() == x86_jmp) return true;
+  if (xinsn->get_kind() == x86_farcall) return true;
+  if (xinsn->get_kind() >= x86_ja && xinsn->get_kind() <= x86_js) return true;
+  return false;
 }
 
-bool insn_is_nop(const SgAsmx86Instruction* insn) {
+// Does this instruction have a valid repeat prefix (including repeating semantics)?
+bool insn_is_repeat(const SgAsmX86Instruction* insn) {
+  // Return false if given an invalid instruction pointer.
+  if (!insn) return false;
+  // Return true if it's one of the valid instruction that actually use the prefix.
+  if (insn->get_kind() >= x86_rep_insb && insn->get_kind() <= x86_repne_scasw) return true;
+  // Return false if the instruction does not have a repeat prefix, if it's part of the normal
+  // (non-repeating) instruction encoding.  Finally, also return false if the instruction has a
+  // repeat prefix but the instruction does not actually use it the instruction semantics.
+  return false;
+}
+
+bool insn_is_nop(const SgAsmX86Instruction* insn) {
   // The function is a response to poor performance and accuracy problems in
   // SageInterface::isNOP().  We should really attempt to create an exhaustive list and handle
   // this issue comprehensively including prefix bytes and other odditities.  The immediate
@@ -325,6 +307,7 @@ std::string insn_get_generic_category(SgAsmInstruction *insn) {
   // this code horribly x86 specific for now, but later needs to be able to handle ARM, etc.
   // The categories themselves are of course generic, and hopefully comprehensive enough but
   // can be expanded later.
+  if (!isSgAsmX86Instruction(insn)) return result;
 
   // okay, I think a lot of these comparisons for x86 can be simplified by using the first
   // couple of chars in the mnemonic much of the time, so let's start there:
@@ -855,6 +838,20 @@ SgAsmFunction* insn_get_func(const SgAsmInstruction* insn) {
   return isSgAsmFunction(block->get_parent());
 }
 
+// For situations where the DescriptorSet isn't available.
+RegisterDescriptor get_arch_reg(RegisterDictionary &regdict, const std::string & name, size_t arch_bytes)
+{
+  // Wow.  Horrible embarassing hack.   We'll need to think about this much harder.
+  // 64-bit
+  if (name.size() > 1 and name[0] == 'e' and arch_bytes == 8) {
+    std::string large_name = name;
+    large_name[0] = 'r';
+    return regdict.lookup(large_name);
+  }
+  // 32-bit (and assorted other failure cases)...
+  return regdict.lookup(name);
+}
+
 // Merge the expressions represented by "other" into "this"
 void AddConstantExtractor::merge(AddConstantExtractor && other)
 {
@@ -1035,6 +1032,67 @@ void backtrace(Sawyer::Message::Facility & log, Sawyer::Message::Importance leve
   log[level] && log[level] << LEND;
 #endif // __GNUC__
 }
+
+rose_addr_t
+address_from_node(LeafNodePtr leaf) {
+   assert(leaf && leaf->isNumber());
+   return static_cast<rose_addr_t>(leaf->bits().toInteger());
+}
+
+void print_expression(std::ostream & stream, TreeNode & e)
+{
+  stream << e;
+}
+
+void print_expression(TreeNode & e) {
+  print_expression(std::cout, e);
+}
+
+void print_expression(std::ostream & stream, TreeNodePtr & e)
+{
+  if (!e) {
+    stream << "null";
+  } else {
+    print_expression(stream, *e);
+  }
+}
+
+void print_expression(TreeNodePtr & e) {
+  print_expression(std::cout, e);
+}
+
+void print_expression(std::ostream & stream, SymbolicSemantics::SValue const & e)
+{
+  TreeNodePtr p = e.get_expression();
+  print_expression(stream, p);
+}
+
+void print_expression(SymbolicSemantics::SValue const & e)
+{
+  TreeNodePtr p = e.get_expression();
+  print_expression(p);
+}
+
+void print_expression(std::ostream & stream, SymbolicSemantics::SValuePtr const & e)
+{
+  print_expression(stream, *e);
+}
+
+void print_expression(SymbolicSemantics::SValuePtr const & e)
+{
+  print_expression(*e);
+}
+
+template void debug_print_expression(std::ostream & stream, TreeNode & e);
+template void debug_print_expression(TreeNode & e);
+template void debug_print_expression(std::ostream & stream, TreeNodePtr & e);
+template void debug_print_expression(TreeNodePtr & e);
+template void debug_print_expression(
+  std::ostream & stream, SymbolicSemantics::SValue const & e);
+template void debug_print_expression(SymbolicSemantics::SValue const & e);
+template void debug_print_expression(
+  std::ostream & stream, SymbolicSemantics::SValuePtr const & e);
+template void debug_print_expression(SymbolicSemantics::SValuePtr const & e);
 
 } // namespace pharos
 

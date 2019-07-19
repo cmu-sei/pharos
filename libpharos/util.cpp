@@ -17,13 +17,13 @@
 namespace pharos {
 
 // Return true if we're on a color terminal, and false if not.
-bool color_terminal() {
+bool color_terminal(int fd) {
   bool color = false;
-  if (isatty(global_logging_fileno)) {
+  if (fd >= 0 && isatty(fd)) {
     int erret = 0;
-    if (setupterm(NULL,global_logging_fileno,&erret) != ERR) {
+    if (setupterm(NULL,fd,&erret) != ERR) {
       color = tigetnum((char *)"colors") > 0;
-      restartterm(NULL,global_logging_fileno,NULL);
+      restartterm(NULL,fd,NULL);
     }
   }
   return color;

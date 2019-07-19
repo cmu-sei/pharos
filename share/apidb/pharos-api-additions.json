@@ -1,6 +1,123 @@
 { "config": { "exports": [
 {
   "dll": "KERNEL32.DLL",
+  "export_name": "Sleep",
+  "display_name": "Sleep",
+  "convention": "stdcall",
+  "parameters": [
+     {"name": "dwMilliseconds", "type": "DWORD", "inout": "in"}
+  ],
+  "type": "void"
+},
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "RaiseException",
+  "display_name": "RaiseException",
+  "convention": "stdcall",
+    "parameters": [
+        {"name": "dwExceptionCode", "type": "DWORD", "inout": "in"},
+        {"name": "dwExceptionFlags", "type": "DWORD", "inout": "in"},
+        {"name": "nNumberOfArguments", "type": "DWORD", "inout": "in"},
+        {"name": "lpArguments", "type": "const ULONG_PTR*", "inout": "in"}
+  ],
+  "type": "void"
+},
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "DebugBreak",
+  "display_name": "DebugBreak",
+  "convention": "stdcall",
+    "parameters": [],
+  "type": "void"
+},
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "GetStartupInfoW",
+  "display_name": "GetStartupInfoW",
+  "convention": "stdcall",
+    "parameters": [
+        {"name": "lpStartuppInfo", "type": "LPSTARTUPINFO", "inout": "out"}
+    ],
+  "type": "void"
+},
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "SetLastError",
+  "display_name": "SetLastError",
+  "convention": "stdcall",
+    "parameters": [
+        {"name": "dwErrCode", "type": "DWORD", "inout": "in"}
+    ],
+  "type": "void"
+},
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "InterlockedCompareExchange",
+  "display_name": "InterlockedCompareExchange",
+  "convention": "stdcall",
+    "parameters": [
+        {"name": "Destination", "type": "LONG *", "inout": "inout"},
+        {"name": "Exchange", "type": "LONG", "inout": "in"},
+        {"name": "Comparand", "type": "LONG", "inout": "in"}
+    ],
+  "type": "void"
+},
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "GetLastError",
+  "display_name": "GetLastError",
+  "convention": "stdcall",
+    "parameters": [],
+  "type": "DWORD"
+},
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "RtlUnwind",
+  "display_name": "RtlUnwind",
+  "convention": "stdcall",
+    "parameters": [
+        {"name": "TargetFrame", "type": "PVOID", "inout": "in"},
+        {"name": "TargetIp", "type": "PVOID", "inout": "in"},
+        {"name": "ExceptionRecord", "type": "PEXCEPTION_RECORD", "inout": "in"},
+        {"name": "ReturnValue", "type": "PVOID", "inout": "in"}
+    ],
+  "type": "void"
+},
+{
+  "dll": "KERNEL32.DLL",
+  "export_name": "GetStringTypeW",
+  "display_name": "GetStringTypeW",
+  "convention": "stdcall",
+    "parameters": [
+        {"name": "dwInfoType", "type": "DWORD", "inout": "in"},
+        {"name": "lpSrcStr", "type": "", "inout": "in"},
+        {"name": "cchSrc", "type": "int", "inout": "in"},
+        {"name": "lpCharType", "type": "LPWORD", "inout": "in"}
+    ],
+  "type": "BOOL"
+},
+{
+  "dll": "MSVCP100D.DLL",
+  "export_name": "??0_Container_base12@std@@QAE@XZ",
+  "display_name": "~_Container_base12",
+  "convention": "thiscall",
+    "parameters": [],
+  "type": "thisptr"
+},
+{
+  "dll": "MSVCP100D.DLL",
+  "export_name": "??1_Container_base12@std@@QAE@XZ",
+  "display_name": "Container_base12",
+  "convention": "thiscall",
+    "parameters": [],
+  "type": "thisptr"
+},
+
+
+
+
+{
+  "dll": "KERNEL32.DLL",
   "export_name": "EncodePointer",
   "display_name": "EncodePointer",
   "convention": "stdcall",

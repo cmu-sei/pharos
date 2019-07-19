@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Options_H
 #define Pharos_Options_H
@@ -8,13 +8,12 @@
 
 #include <rose.h>
 
+#include <Sawyer/Message.h>
 #include "config.hpp"
 
 namespace pharos {
 
-// Forward declarations to reduce the header interdependencies.
 class DescriptorSet;
-class FunctionDescriptor;
 
 // The option parsing logging facility.
 extern Sawyer::Message::Facility olog;
@@ -30,6 +29,9 @@ extern Sawyer::Message::Facility olog;
 // misc.hpp needs this definition...
 class ProgOptVarMap : public boost::program_options::variables_map{
  public:
+  ProgOptVarMap() = default;
+  ProgOptVarMap(int argc, char **argv);
+
   pharos::Config & config() {
     return _config;
   }
@@ -62,8 +64,15 @@ class ProgOptVarMap : public boost::program_options::variables_map{
     return get<T>(config_option);
   }
 
+  std::vector<char const *> const & args() const {
+    return _args;
+  }
+
+  std::string command_line() const;
+
  private:
   pharos::Config _config;
+  std::vector<char const *> _args;
 };
 
 } // namespace pharos
@@ -73,63 +82,38 @@ class ProgOptVarMap : public boost::program_options::variables_map{
 
 namespace pharos {
 
-typedef std::vector<std::string> StrVector;
+using StrVector = std::vector<std::string>;
 
-typedef boost::program_options::options_description ProgOptDesc;
-typedef boost::program_options::positional_options_description ProgPosOptDesc;
+using ProgOptDesc = boost::program_options::options_description;
+using ProgPosOptDesc = boost::program_options::positional_options_description;
+
+using LogDestination = Sawyer::Message::UnformattedSinkPtr;
 
 ProgOptDesc cert_standard_options();
 // parse_cert_options should probably become a class at some point instead of a function
-ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od,
-                                 const std::string & proghelptext = std::string());
-ProgOptVarMap parse_cert_options_generic(
-  int argc, char** argv, ProgOptDesc od, ProgPosOptDesc posopt,
-  const std::string & proghelptext = std::string());
+ProgOptVarMap parse_cert_options(
+  int argc, char** argv,
+  ProgOptDesc od,
+  const std::string & proghelptext = std::string(),
+  boost::optional<ProgPosOptDesc> posopt = boost::none,
+  LogDestination logging = LogDestination());
 
-AddrSet option_addr_list(ProgOptVarMap& vm, const char *name);
+AddrSet option_addr_list(ProgOptVarMap const & vm, const char *name);
 
-ProgOptVarMap& get_global_options_vm();
+AddrSet get_selected_funcs(const DescriptorSet& ds, ProgOptVarMap const & vm);
+
+ProgOptVarMap const & get_global_options_vm();
 
 const boost::filesystem::path& get_library_path();
 
 #define PHAROS_PASS_EXCEPTIONS_ENV "PHAROS_PASS_EXCEPTIONS"
 
-extern int global_logging_fileno;
+LogDestination get_logging_destination();
+bool interactive_logging();
 
-typedef int (*main_func_ptr)(int argc, char** argv);
+using main_func_ptr = int (*)(int argc, char** argv);
 int pharos_main(std::string const & glog_name, main_func_ptr fn,
                 int argc, char **argv, int logging_fileno = STDOUT_FILENO);
-
-class BottomUpAnalyzer {
-
-public:
-  // Cory sees no reason not to make these public.  They're practically global.
-  DescriptorSet* ds;
-  ProgOptVarMap vm;
-
-  size_t processed_funcs;
-  size_t total_funcs;
-  rose_addr_t current_func;
-
-  BottomUpAnalyzer(DescriptorSet* ds_, ProgOptVarMap& vm_);
-
-  // Call this method to do the actual work.
-  void analyze();
-
-  // Override this method if you want to alter the progress bar.
-  virtual void update_progress() const;
-
-  // Override this method which is called at the beginning of
-  // analzye()
-  virtual void start();
-
-  // Override this method which is called at the end of analyze()
-  virtual void finish();
-
-  // Override this method, with is invoked for each selected function
-  // in the appropriate bottom up order.
-  virtual void visit(FunctionDescriptor *fd);
-};
 
 } // namespace pharos
 

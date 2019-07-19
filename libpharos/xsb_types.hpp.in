@@ -1,4 +1,4 @@
-// Copyright 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Michael Duggan
 
@@ -7,7 +7,7 @@
 
 #include <cstdint>
 
-namespace pharos { namespace prolog { namespace impl { namespace xsb {
+namespace pharos { namespace prolog { namespace impl { inline namespace xsb {
 
 // This validity of these types are asserted in xsb.cpp.
 using xsb_int = @XSB_PINT_TYPE@ ;

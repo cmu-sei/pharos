@@ -1,0 +1,131 @@
+{
+    "Structures": [
+        {
+            "Name": "cls_4115f0",
+            "DemangledName": "",
+            "Size": "16",
+            "Members": [
+                {
+                    "name": "mbr_0",
+                    "type": "dword",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "cls_411550_4",
+                    "type": "struc",
+                    "struc": "cls_411550",
+                    "parent": "no",
+                    "offset": "4",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_c",
+                    "type": "dword",
+                    "offset": "c",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "4115f0",
+                    "name": "ctor_4115f0",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                },
+                {
+                    "ea": "411730",
+                    "name": "meth_411730",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                },
+                {
+                    "ea": "4117a0",
+                    "name": "meth_4117a0",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                }
+            ]
+        },
+        {
+            "Name": "cls_411550",
+            "DemangledName": "",
+            "Size": "8",
+            "Members": [
+                {
+                    "name": "mbr_0",
+                    "type": "dword",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_4",
+                    "type": "byte",
+                    "offset": "4",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "411550",
+                    "name": "ctor_411550",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                },
+                {
+                    "ea": "4115a0",
+                    "name": "meth_4115a0",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                }
+            ]
+        }
+    ],
+    "Usages": [
+        {
+            "Members": [
+                {
+                    "class": "cls_4115f0",
+                    "ea": "4116c2"
+                },
+                {
+                    "class": "cls_4115f0",
+                    "ea": "4117d1"
+                },
+                {
+                    "class": "cls_4115f0",
+                    "ea": "4116b1"
+                },
+                {
+                    "class": "cls_4115f0",
+                    "ea": "411756"
+                },
+                {
+                    "class": "cls_4115f0",
+                    "ea": "41175f"
+                },
+                {
+                    "class": "cls_411550",
+                    "ea": "411576"
+                },
+                {
+                    "class": "cls_411550",
+                    "ea": "4115cd"
+                },
+                {
+                    "class": "cls_411550",
+                    "ea": "41157f"
+                },
+                {
+                    "class": "cls_411550",
+                    "ea": "4115c6"
+                }
+            ]
+        }
+    ]
+}

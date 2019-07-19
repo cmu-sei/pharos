@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/optional.hpp>
 #include <boost/property_map/property_map.hpp>
@@ -7,6 +7,7 @@
 #include <AstTraversal.h>
 
 #include "calls.hpp"
+#include "masm.hpp"
 #include "vcall.hpp"
 
 namespace pharos {
@@ -31,7 +32,7 @@ bool CallDescriptorCompare::operator()(const CallDescriptor* x, const CallDescri
   return (x->get_address() < y->get_address());
 }
 
-const LeafNodePtr & CallDescriptor::get_stack_delta_variable() const {
+LeafNodePtr CallDescriptor::get_stack_delta_variable() const {
   if (import_descriptor != nullptr) {
     return import_descriptor->get_stack_delta_variable();
   }
@@ -42,7 +43,7 @@ const LeafNodePtr & CallDescriptor::get_stack_delta_variable() const {
     return function_descriptor->get_stack_delta_variable();
   }
   if (stack_delta_variable == nullptr) {
-    size_t arch_bits = global_descriptor_set->get_arch_bits();
+    size_t arch_bits = ds.get_arch_bits();
     stack_delta_variable = LeafNode::createVariable(arch_bits, "", UNKNOWN_STACK_DELTA);
   }
   return stack_delta_variable;
@@ -73,14 +74,14 @@ StackDelta CallDescriptor::get_stack_delta() const {
       // follow_thunks() so that if there's multiple thunks in the chain, we do the correct
       // thing.
       rose_addr_t thunk_addr = function_descriptor->follow_thunks(NULL);
-      ImportDescriptor* tid = global_descriptor_set->get_import(thunk_addr);
+      const ImportDescriptor* tid = ds.get_import(thunk_addr);
       if (tid != NULL) {
         GDEBUG << "Call descriptor calls " << tid->get_long_name() << " through missed thunks." << LEND;
         return tid->get_stack_delta();
       }
 
       // Now see if there's a function at the specified address.
-      FunctionDescriptor *thunk_fd = global_descriptor_set->get_func(thunk_addr);
+      const FunctionDescriptor *thunk_fd = ds.get_func(thunk_addr);
       if (thunk_fd == NULL) {
         GDEBUG << "Call descriptor calls " << *function_descriptor << LEND;
         merged = function_descriptor->get_stack_delta();
@@ -142,14 +143,14 @@ StackDelta CallDescriptor::get_stack_parameters() const {
       // destroying the ability to understand the actual thunks as well.
       if (function_descriptor->is_thunk()) {
         rose_addr_t taddr = function_descriptor->follow_thunks(NULL);
-        ImportDescriptor* tid = global_descriptor_set->get_import(taddr);
+        const ImportDescriptor* tid = ds.get_import(taddr);
         if (tid != NULL) {
           GDEBUG << "Call at " << address_string() << " gets parameters from import "
                  << *tid << LEND;
           return tid->get_stack_parameters();
         }
         else {
-          FunctionDescriptor* tfd = global_descriptor_set->get_func(taddr);
+          const FunctionDescriptor* tfd = ds.get_func(taddr);
           if (tfd != NULL) {
             GDEBUG << "Call at " << address_string() << " gets parameters from function at "
                    << tfd->address_string() << LEND;
@@ -175,28 +176,16 @@ StackDelta CallDescriptor::get_stack_parameters() const {
   return stack_delta;
 }
 
-void CallDescriptor::validate(std::ostream &o, FunctionDescriptorMap& fdmap) {
+void CallDescriptor::validate(std::ostream &o, const FunctionDescriptorMap& fdmap) const {
   if (!insn)
     o << "Uninitialized call descriptor in set." << LEND;
   if (confidence == ConfidenceWrong) o << *this << LEND;
   for (CallTargetSet::iterator tit = targets.begin(); tit != targets.end(); tit++) {
-    FunctionDescriptor* fd = fdmap.get_func(*tit);
+    const FunctionDescriptor* fd = fdmap.get_func(*tit);
     if (fd == NULL)  o << "No function description for call target "
                        << std::hex << *tit << " at call instruction "
                        << get_address() << std::dec << LEND;
   }
-}
-
-// Cycle through all the register-based calls to determine which are possibly virtual functions
-bool CallDescriptor::check_virtual(PDG * pdg) {
-
-  VirtualFunctionCallAnalyzer vcall(isSgAsmX86Instruction(get_insn()), pdg);
-
-  if (vcall.analyze(call_info)) {
-    // this is a virtual function.
-    return true;
-  }
-  return false;
 }
 
 // Add a new address to the list of targets.  Update the connections after adding the new
@@ -204,9 +193,10 @@ bool CallDescriptor::check_virtual(PDG * pdg) {
 // calling update_connections, but we want to discourage leaving things in an inconsistent
 // state.
 void CallDescriptor::add_target(rose_addr_t taddr) {
+  auto && guard = write_guard(mutex);
   if (targets.find(taddr) == targets.end()) {
     targets.insert(taddr);
-    update_connections();
+    _update_connections();
   }
 }
 
@@ -216,7 +206,7 @@ bool CallDescriptor::get_never_returns() const {
 
   // For each call target, if that target returns, then the call returns.
   for (rose_addr_t target : targets) {
-    const FunctionDescriptor* cfd = global_descriptor_set->get_func(target);
+    const FunctionDescriptor* cfd = ds.get_func(target);
     if (cfd) {
       //OINFO << "Call " << address_string() << " calls " << cfd->address_string()
       //      << " which returns = " << cfd->get_never_returns() << LEND;
@@ -225,7 +215,7 @@ bool CallDescriptor::get_never_returns() const {
 #if 0
     // We should get the never returns status from the import database!
     else {
-      const ImportDescriptor* cid = global_descriptor_set->get_import(target);
+      const ImportDescriptor* cid = ds.get_import(target);
       if (cid) {
         OINFO << "Call " << address_string() << " calls " << cid->address_string()
               << " which is " << cid->get_long_name() << LEND;
@@ -243,6 +233,8 @@ bool CallDescriptor::get_never_returns() const {
 // has targets, we can't handle that properly.  Also, this routine should be kep in sync with
 // the analyze() function that also add an import (but before we can call update_connections).
 void CallDescriptor::add_import_target(ImportDescriptor* id) {
+  auto && guard = write_guard(mutex);
+
   // If we've already resolved this call, just return immediately.
   if (import_descriptor == id)
     return;
@@ -281,7 +273,7 @@ void CallDescriptor::add_import_target(ImportDescriptor* id) {
   id->add_caller(address);
 
   // Enforce consistency with the other function descriptors, import descriptors, etc.
-  update_connections();
+  _update_connections();
 
   GDEBUG << "Resolved call target at " << address_string() << " calls to import "
          << id->get_long_name() << " at address " << id->address_string() << LEND;
@@ -294,9 +286,7 @@ void CallDescriptor::add_import_target(ImportDescriptor* id) {
 // that really only need to be set once, but there doesn't seem to any harm in calling it
 // multiple times.  It has gradually become the "consistency enforcing" function that ensures
 // that a call descriptor is kept in a rational state relative to the other descriptors.
-void CallDescriptor::update_connections() {
-  FunctionDescriptorMap& fdmap = global_descriptor_set->get_func_map();
-
+void CallDescriptor::_update_connections() {
   rose_addr_t addr = get_address();
   // We can't update anything if we're not a real descriptor yet.
   if (addr == 0) return;
@@ -305,16 +295,15 @@ void CallDescriptor::update_connections() {
   assert(insn != NULL);
   const SgAsmFunction *func = insn_get_func(insn);
   assert(func != NULL);
-  containing_function = global_descriptor_set->get_func(func->get_entry_va());
+  containing_function = ds.get_rw_func(func->get_entry_va()); // in update_connections()
   assert(containing_function != NULL);
 
   containing_function->add_outgoing_call(this);
 
   // Deallocate the call's function descriptor if one was allocated, since we're about to
   // recompute the value (and possibly allocate a new one).
-  if (function_allocated) delete function_descriptor;
-  function_allocated = false;
-  function_descriptor = NULL;
+  function_descriptor = nullptr;
+  owned_function_descriptor.reset();
 
   // If we have an import descriptor, make sure it knows about us.
   if (import_descriptor != NULL) {
@@ -326,7 +315,7 @@ void CallDescriptor::update_connections() {
     // assignment doesn't do anything the first time through, because the function descriptors
     // haven't been populated on the import descriptors yet(?), but it will when it's called
     // again later.
-    function_descriptor = import_descriptor->get_rw_function_descriptor();
+    function_descriptor = import_descriptor->get_rw_function_descriptor(); // in update_connections()
 
     // No need to add a caller to the function descriptor, we've already added it to the import
     // descriptor.
@@ -339,18 +328,21 @@ void CallDescriptor::update_connections() {
 
     // The target might be the import descriptor target, which doesn't really exist in the
     // function map, so we need to check that the function exists before overwriting the
-    FunctionDescriptor *fd = fdmap.get_func(target_addr);
+    FunctionDescriptor *fd = ds.get_rw_func(target_addr); // in update_connections()
     // If the address resolved to anything at all...
     if (fd != NULL) {
       // Now that we've got more complete information, we can follow thunks appropriately, and
       // decide whether we actually end up at an import.  Cory's not 100% sure that this is the
       // right place to do this, but it seems like a reasonable one at least.
-      import_descriptor = fd->follow_thunks_id(NULL);
+
+      bool endless = false;
+      rose_addr_t fdtarget = fd->follow_thunks(&endless);
+      import_descriptor = ds.get_rw_import(fdtarget); // in update_connections()
       // This code is duplicated from just above in part because there's still confusion about
       // how to handle call to multiple targets, one or more of which are to imports.
       if (import_descriptor != NULL) {
         import_descriptor->add_caller(addr);
-        function_descriptor = import_descriptor->get_rw_function_descriptor();
+        function_descriptor = import_descriptor->get_rw_function_descriptor(); // in update_connections()
         GDEBUG << "Resolved thunked call descriptor " << *this
                << " to import " << *import_descriptor << LEND;
       }
@@ -363,19 +355,19 @@ void CallDescriptor::update_connections() {
   }
   else if (targets.size() > 1) {
     // Multiple call targets is the most complicated case.
-    function_descriptor = new FunctionDescriptor();
-    function_allocated = true;
+    owned_function_descriptor = std::make_unique<FunctionDescriptor>(ds);
+    function_descriptor = owned_function_descriptor.get();
     // Now merge each of the call targets into the merged description.
     for (rose_addr_t t : targets) {
       // This might include bogus addresses for the import descriptors, but that's ok, the test
       // for NULL will cause us to do the right thing.
-      FunctionDescriptor* fd = fdmap.get_func(t);
+      const FunctionDescriptor* fd = ds.get_func(t);
       if (fd != NULL) function_descriptor->merge(fd);
     }
     // Now propgate any discoveries made during merging back to each of the call targets.
     // Also update the function description to record that this call is one of their callers.
     for (rose_addr_t t : targets) {
-      FunctionDescriptor* fd = fdmap.get_func(t);
+      FunctionDescriptor* fd = ds.get_rw_func(t); // in update_connections()
       if (fd != NULL) {
         fd->propagate(function_descriptor);
         fd->add_caller(addr);
@@ -385,95 +377,27 @@ void CallDescriptor::update_connections() {
 }
 
 void CallDescriptor::update_call_type(CallType ct, GenericConfidence conf) {
+  auto && guard = write_guard(mutex);
   call_type = ct;
   confidence = conf;
 }
 
-// Analyze whether a call is virtual or not, and update the type and call_info.  This way of
-// doing it was added for the new Prolog OOAnalyzer, and the "old way" is still around as well.
-void CallDescriptor::update_virtual_call(PDG* pdg) {
-  if (get_call_type() == CallVirtualFunction) return;
-  SgAsmX86Instruction* xinsn = isSgAsmX86Instruction(get_insn());
-  VirtualFunctionCallAnalyzer vcall(xinsn, pdg);
-  if (vcall.analyze(call_info)) {
-    update_call_type(CallVirtualFunction, ConfidenceGuess);
-  }
-}
-
-void CallDescriptor::read_config(const boost::property_tree::ptree& tree,
-                                 ImportNameMap* import_names) {
-  // Address.  I'm somewhat uncertain about when we would need to override this.
-  boost::optional<rose_addr_t> addr = tree.get_optional<rose_addr_t>("address");
-  if (addr) {
-    if (address != 0 && address != *addr) {
-      GWARN << "Contradictory address in call " << addr_str(address) << "!=" << addr_str(*addr) << LEND;
-    }
-    else {
-      address = *addr;
-    }
-  }
-
-  // Call type.
-  boost::optional<std::string> typestr = tree.get_optional<std::string>("type");
-  if (typestr) {
-    call_type = Str2Enum<CallType > (*typestr, CallUnknown);
-    // Currently no confidence for type.
-  }
-
-  // Call location.
-  boost::optional<std::string> locstr = tree.get_optional<std::string>("location");
-  if (locstr) {
-    call_location = Str2Enum<CallTargetLocation>(*locstr, CallLocationUnknown);
-    // Currently no confidence for location.
-  }
-
-  // Import
-  boost::optional<std::string> impstr = tree.get_optional<std::string>("import");
-  if (impstr) {
-    ImportNameMap::iterator ifinder = import_names->find(*impstr);
-    if (ifinder != import_names->end()) {
-      import_descriptor = ifinder->second;
-      //GINFO << "Found import descriptor for: " << *impstr << LEND;
-    } else {
-      GERROR << "Unrecognized import '" << *impstr << "'." << LEND;
-    }
-
-    // There's currently no confidence for the import descriptor explicitly.  But the current
-    // implementation makes defining an import equaivalent to having an empty target list, and
-    // there is a confidence level for the target list which sortof applies to the import.
-    confidence = ConfidenceUser;
-  }
-
-  // Read the function descriptor from the ptree branch "function".
-  boost::optional<const boost::property_tree::ptree&> ftree = tree.get_child_optional("function");
-  if (ftree) {
-    function_override = new FunctionDescriptor();
-    function_override->read_config(ftree.get());
-  }
-
-  // Targets needs to be copied from function callers.
-  read_config_addr_set("targets", tree, targets);
-}
-
-void CallDescriptor::write_config(boost::property_tree::ptree* tree) {
-  tree->put("address", address_string());
-  tree->put("type", Enum2Str(call_type));
-  tree->put("location", Enum2Str(call_location));
-
-  write_config_addr_set("targets", tree, targets);
-
-  if (function_allocated) {
-    boost::property_tree::ptree ftree;
-    function_descriptor->write_config(&ftree);
-    tree->add_child("function", ftree);
-  }
-
-  if (import_descriptor != NULL) {
-    tree->put("import", import_descriptor->get_long_name());
-  }
+void
+CallDescriptor::add_virtual_resolution(
+  VirtualFunctionCallInformation& vci,
+  GenericConfidence conf)
+{
+  auto && guard = write_guard(mutex);
+  // Begin by marking the call as a virtual function call.
+  call_type = CallVirtualFunction;
+  confidence = conf;
+  // Add the virtual call information to the descriptor.
+  virtual_calls.push_back(vci);
 }
 
 void CallDescriptor::print(std::ostream &o) const {
+  auto && guard = read_guard(mutex);
+
   if (insn != NULL) {
     o << "Call: insn=" << debug_instruction(insn, 7);
   }
@@ -513,8 +437,8 @@ void CallDescriptor::analyze() {
   // note, a far call could actually have 2 operands, a segment and the
   // address, but let's just ignore that for now:
   if (elist.size() != 1) {
-    GWARN << "Call descriptor at " << addr_str(address) << " has "
-          << elist.size() << " parameters, skipping" << LEND;
+    GWARN << "Call descriptor at " << debug_instruction(insn) << " has "
+          << elist.size() << " operands, skipping" << LEND;
     return;
   }
 
@@ -526,7 +450,7 @@ void CallDescriptor::analyze() {
       SgAsmIntegerValueExpression* addr_value = isSgAsmIntegerValueExpression(addr_expr);
       if (addr_value != NULL) {
         uint64_t v = addr_value->get_absoluteValue();
-        ImportDescriptor *id = global_descriptor_set->get_import(v);
+        ImportDescriptor *id = ds.get_rw_import(v); // Set in CD
         if (id) {
           // We'd like to call add_import_target() here, but it calls update_connections, which
           // we're not ready for yet. Try to keep this in sync with add_import_target() :-(
@@ -546,7 +470,7 @@ void CallDescriptor::analyze() {
       break;
     }
     case V_SgAsmIntegerValueExpression: {
-      size_t arch_bits = global_descriptor_set->get_arch_bits();
+      size_t arch_bits = ds.get_arch_bits();
       SgAsmIntegerValueExpression* int_expr = isSgAsmIntegerValueExpression(expr);
       if (int_expr->get_significantBits() != arch_bits) {
         GWARN << "Unexpected size for fixed call target address at" << address_string() << LEND;
@@ -571,7 +495,7 @@ CallParamInfo CallParamInfoBuilder::create(CallDescriptor const & cd) const {
     auto & type = param.get_type();
     auto tref = type.empty() ? std::make_shared<typedb::UnknownType>("<unknown>")
                 : db.lookup(type);
-    values.push_back(tref->get_value(value, &*cd.get_state()));
+    values.push_back(tref->get_value(value, memory, &*cd.get_state()));
   }
   return CallParamInfo(cd, std::move(values));
 }

@@ -15,8 +15,13 @@
 #include <boost/range/adaptor/transformed.hpp>
 
 #include "state.hpp"
+#include "memory.hpp"
 
 namespace pharos {
+
+class DescriptorSet;
+extern size_t global_arch_bytes;
+
 namespace types {
 
 enum class Objectness {
@@ -145,7 +150,7 @@ class Type : public std::enable_shared_from_this<Type> {
     return name;
   }
 
-  size_t arch_bytes() const;
+  size_t arch_bytes() const { return global_arch_bytes; }
 
   TypeRef ptr() const {
     return shared_from_this();
@@ -170,6 +175,7 @@ class Type : public std::enable_shared_from_this<Type> {
 
   Value get_value(
     const SymbolicValuePtr & value,
+    const Memory & image,
     const SymbolicState * memory = nullptr) const;
 
  private:
@@ -352,8 +358,11 @@ class IllegalConversion : public std::logic_error
 
 class Value {
  private:
+  // A reference to the memory image
+  Memory const & image ;
+
   // Memory.  Might be NULL.
-  const SymbolicState * memory;
+  const SymbolicState * memory = nullptr;
 
   // Type
   TypeRef type;
@@ -388,15 +397,15 @@ class Value {
   };
 
  public:
-  Value() : Value(std::make_shared<UnknownType>("<unknown>")) {}
+  Value(Memory const & img) : Value(img, std::make_shared<UnknownType>("<unknown>")) {}
 
-  Value(const TypeRef & t) : memory(nullptr), type(t)
-  {}
+  Value(Memory const & img, const TypeRef & t)
+    : image(img), type(t) { }
 
   template <typename TR>
-  Value(TR && t, const SymbolicValuePtr & n, const SymbolicState * mem = nullptr)
-    : memory(mem), type(std::forward<TR>(t)), node(n)
-  {}
+  Value(Memory const & img, TR && t, const SymbolicValuePtr & n,
+        const SymbolicState * mem = nullptr)
+    : image(img), memory(mem), type(std::forward<TR>(t)), node(n) { }
 
   const SymbolicValuePtr & get_raw() const {
     return node;

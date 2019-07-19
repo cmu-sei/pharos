@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/algorithm/string.hpp>
 #include <boost/tokenizer.hpp>
@@ -16,6 +16,7 @@
 #include "util.hpp"
 #include "options.hpp"
 #include "cdg.hpp"
+#include "masm.hpp"
 
 namespace pharos {
 
@@ -25,9 +26,9 @@ namespace pharos {
 #define MAX_LOOP 5
 
 // Enable convergence algorithm debugging, but not full state debugging.
-//#define CONVERGE_DEBUG
+// #define CONVERGE_DEBUG
 // Enable full state debugging (for merge logic etc).
-//#define STATE_DEBUG
+// #define STATE_DEBUG
 
 #ifdef CONVERGE_DEBUG
 #define DSTREAM OINFO
@@ -46,11 +47,16 @@ BlockAnalysis::BlockAnalysis(DUAnalysis & _du, const ControlFlowGraph& cfg,
   block = get(boost::vertex_name, cfg, vertex);
   address = block->get_address();
   iterations = 0;
-  bad = false;
   pending = true;
 
-  // Set bad to true if we've rejected analysis of the block for any reason.
-  check_for_bad_code();
+  // The meaning of this boolean has evolved gradually. It used to include blocks that were bad
+  // because they had no proper control flow predecessors, but that's not handled by which CFG
+  // we're using for the analysis (with certain blocks excluded completely).  This boolean
+  // still marks blocks that don't appear to be legitimate code.  It's unclear whether we
+  // really want this however.  In the less rigorous analysis, we already checked this when we
+  // filtered the pharos CFG, and perhaps we don't want to filter at all for the more rigorous
+  // analysis?  The next commit may attempt to remove this boolean entirely.
+  bad = check_for_bad_code(du.ds, block);
 
   // Create entry condition variables for this block.  Pre-computing this is a bit problematic
   // because it kind of prevents us from adding additional predecessors as we analyze.  Perhaps
@@ -59,6 +65,11 @@ BlockAnalysis::BlockAnalysis(DUAnalysis & _du, const ControlFlowGraph& cfg,
   size_t degree = boost::in_degree(vertex, cfg);
   size_t num_conds = degree ? degree - 1 : 0;
   conditions.reserve(num_conds);
+
+  // assume every block can be entered
+  entry_condition = SymbolicValue::treenode_instance(Rose::BinaryAnalysis::SymbolicExpr::makeBoolean(true));
+  exit_condition =  SymbolicValue::treenode_instance(Rose::BinaryAnalysis::SymbolicExpr::makeBoolean(true));
+
   size_t i = 0;
   for (const SgAsmBlock *pblock : cfg_in_bblocks(cfg, vertex)) {
     if (i == num_conds) {
@@ -87,32 +98,65 @@ BlockAnalysis::BlockAnalysis(DUAnalysis & _du, const ControlFlowGraph& cfg,
   }
 }
 
-// Mark the block as being "bad".  Bad typically means that the instructions don't appear to be
-// legitimate code, but there could be other reasons for excluding a block from analysis. These
-// decisions should really be made in the Partitioner in the general case, but there are
-// circumstances where this code may be better prepared to make that decision than the
-// parititoner.  In particular, the partitioner is motivated to create as much code as possible
-// so that we can even consider it, while this analysis pass is more inclined to remove
-// quuestionable code, especially if it creates additional problems such as stack delta
-// analysis failures.
+// New algorithm discussed with Duggan merges all instruction acceses into the DUAnalysis
+// accesses map in one pass, utilizing move semantics and other optimizations.
 void
-BlockAnalysis::check_for_bad_code()
+DUAnalysis::update_accesses(
+  SgAsmX86Instruction *insn,
+  SymbolicRiscOperatorsPtr& rops)
 {
-  // This logic was from Wes.  If the block is less than 80% likely to be code, call the
-  // isBadCode analyzer.
-  if (block->get_code_likelihood() <= 0.8) {
-    SgAsmStatementPtrList il = block->get_statementList();
-    rose_addr_t baddr = block->get_address();
-    BadCodeMetrics bc;
-    if (bc.isBadCode(il)) {
-      // If the analyze decided that the code is "bad", then add it to the bad block set.
-      // So Cory found an instance of this in the SHA256 beginning a21de440ac315d92390a...
-      // In that case the determination that the code was "bad" was incorrect.
-      GERROR << "The code at " << addr_str(baddr) << " has been deemed bad by the oracle." << LEND;
-      GERROR << "If you see this message, please let Cory know this feature is being used." << LEND;
-      bad = true;
+  auto it = accesses.find(insn);
+  if (it == accesses.end()) {
+    accesses[insn] = std::move(rops->insn_accesses);
+    // Clear vector to avoid accessing moved elements.
+  }
+  else {
+    for (auto && aa : rops->insn_accesses) {
+      auto ait = std::find(it->second.begin(), it->second.end(), aa);
+#if 1
+      // This code if order does matter (it may still).
+      if (ait != it->second.end()) {
+
+#if 0
+        // Enable some debugging about the cases that we are discarding.
+        AbstractAccess& oaa = *ait;
+        if (!aa.exact_match(oaa)) {
+          OINFO << "Insn " << debug_instruction(insn) << " accesses:" << LEND;
+          if (!(aa.value->get_expression()->isEquivalentTo(oaa.value->get_expression()))) {
+            OINFO << "  Value1: " << aa << LEND;
+            OINFO << "  Value2: " << oaa << LEND;
+          }
+          else {
+            OINFO << "  Instruction counts " << aa.latest_writers.size()
+                  << " vs " << oaa.latest_writers.size() << LEND;
+            for (auto writer : aa.latest_writers) {
+              OINFO << "  LW1: " << debug_instruction(writer) << LEND;
+            }
+            for (auto writer : oaa.latest_writers) {
+              OINFO << "  LW2: " << debug_instruction(writer) << LEND;
+            }
+          }
+        }
+#endif
+
+        // Remove the existing access with a similar "key", because it should be older in terms
+        // of the iteration algorithm.  We'll add the new access to replace it before returning.
+        it->second.erase(ait);
+      }
+      it->second.push_back(std::move(aa));
+#else
+      // This code if order doesn't matter (it may still).
+      if (ait == it->second.end()) {
+        it->second.push_back(std::move(aa));
+      } else {
+        *ait = std::move(aa);
+      }
+#endif
     }
   }
+
+  // Clear vector to avoid accessing moved elements.
+  rops->insn_accesses.clear();
 }
 
 // Record the reads and writes performed by each instruction in the form of a list of abstract
@@ -120,180 +164,135 @@ BlockAnalysis::check_for_bad_code()
 // Finally, record reads and writes for all global variables.
 //
 // This method updates all_regs, du.accesses, du.depends_on, and du.dependents_of.
-
 void
-BlockAnalysis::record_dependencies(SgAsmX86Instruction *insn,
-                                   const SymbolicStatePtr& cstate)
+BlockAnalysis::record_dependencies(
+  SgAsmX86Instruction *insn,
+  const SymbolicStatePtr& cstate)
 {
   SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(du.dispatcher->get_operators());
 
-  SDEBUG << "reads size=" << rops->reads.size() << " writes size=" << rops->writes.size() << LEND;
-  // Get the list of registers read
-  AbstractAccessVector all_regs;
-  for (const AbstractAccess & aa : rops->reads) {
-    if (!aa.is_reg()) continue;
-    SDEBUG << debug_instruction(insn) << " reads "
-           << aa.reg_name() << " = " << *(aa.value) << LEND;
-    all_regs.push_back(aa);
-    du.add_access(insn, aa);
-  }
+  du.update_accesses(insn, rops);
+  //du.print_accesses(insn); // Debugging
 
-  // Register writes.
-  for (const AbstractAccess & aa : rops->writes) {
-    if (!aa.is_reg()) continue;
-    SDEBUG << debug_instruction(insn) << " writes "
-           << aa.reg_name() << " = " << *(aa.value) << LEND;
-    du.add_access(insn, aa);
-  }
-
+  // Ensure that there's always an entry in the depends_on map for this instruction.
   if (du.depends_on.find(insn) == du.depends_on.end()) {
     du.depends_on[insn] = DUChain();
   }
 
-  // Build the def-use chains
-  for (const AbstractAccess &aa : all_regs) {
-    RegisterDescriptor rd = aa.register_descriptor;
-    // Skip the instruction pointer, since every instruction reads and writes to it.
-    if (rd == global_descriptor_set->get_ip_reg()) continue;
-    SymbolicValuePtr sv = cstate->read_register(rd);
+  AbstractAccessVector all_regs;
+  SDEBUG << "insn accesses size=" << du.accesses[insn].size() << LEND;
+  for (const AbstractAccess & aa : du.accesses[insn]) {
+    // Reads
+    if (aa.isRead) {
+      // ----------------------------------------------------------------------------------
+      // Register reads
+      // ----------------------------------------------------------------------------------
+      if (aa.is_reg()) {
+        // Update list of all registers.
+        all_regs.push_back(aa);
 
-    if (aa.latest_writers.size() == 0) {
-      std::string regname = unparseX86Register(rd, NULL);
-      SDEBUG << "Warning: Use of uninitialized register "
-             << regname << " by " << debug_instruction(insn) << LEND;
-      Definition reg_def(NULL, aa);
-      du.depends_on[insn].insert(reg_def);
-      // Should probably be add_dependency_pair(insn, NULL, aa);
-    }
+        // Build the def-use chains
+        RegisterDescriptor rd = aa.register_descriptor;
+        // Skip the instruction pointer, since every instruction reads it.
+        // The writes to EIP are kept now so that they can be inspected for branch conditions.
+        if (rd == du.ds.get_ip_reg()) continue;
+        SymbolicValuePtr sv = cstate->read_register(rd);
 
-    for (SgAsmInstruction* winsn : aa.latest_writers) {
-      // Create a use-chain entry
-      SgAsmX86Instruction *definer = isSgAsmX86Instruction(winsn);
-      du.add_dependency_pair(insn, definer, aa);
-    }
-  }
-
-  // Get the list of addresses written
-  for (const AbstractAccess & aa : rops->writes) {
-    if (!aa.is_mem()) continue;
-
-    // We're looking for global fixed memory writes here...
-    if (aa.memory_address->is_number() && aa.memory_address->get_width() <= 64) {
-      rose_addr_t known_addr = aa.memory_address->get_number();
-      // We're only interested in constants that are likely to be memory addresses.
-      if (possible_global_address(known_addr)) {
-        ImportDescriptor *id = global_descriptor_set->get_import(known_addr);
-        if (id == NULL) {
-          GlobalMemoryDescriptor* gmd = global_descriptor_set->get_global(known_addr);
-          if (gmd == NULL) {
-            // This message is really debugging for a case that Cory is interested in, not
-            // something that's useful to general users, so he moved it back to SDEBUG. :-(
-            SDEBUG << "Unexpected global memory write to address " << addr_str(known_addr)
-                   << " at " << debug_instruction(insn) << LEND;
-          }
-          else {
-            gmd->add_write(insn, aa.size);
-            SDEBUG << "Added global memory write: " << gmd->address_string() << LEND;
-          }
-        }
-        // This is where we used to test for overwrites of imports, that's now more clearly
-        // (but perhaps less cleanly) in RiscOps::readMemory().
-      }
-    }
-
-#if 0
-    // Long ago, Cory believed that there should not be any cases where there was a write
-    // to an address that wasn't in the memory map (or at least if there were, he wanted to
-    // know more about them).  As a more careful review of situations involving loops and
-    // incomplete values ocurred, it became obvious that this was no longer a meaningful
-    // test because sometimes the addresses were incomplete, and so it's not surprising
-    // that there are writes to addreses not actually in the map.  The existing code didn't
-    // do anything other than generate an ERROR, and (probably incorrectly) prevented the
-    // write from being logged in the writes map.  This is unlikely to be the correct place
-    // to handle this error.  To transition to the complete removal of this code, I've
-    // disabled it and revised this comment.
-
-    const SymbolicMemoryMapStatePtr& mtate =
-      SymbolicMemoryMapState::promote(pstate->memoryState());
-    const SymbolicMemoryCellPtr memcell = mstate->get_cell(aa.memory_address);
-    if (memcell == NULL) {
-      SINFO << "Memory write to " << *(aa.memory_address->get_expression())
-            << " not found in cell list for insn " << debug_instruction(insn) << LEND;
-    }
-#endif
-
-    SDEBUG << "--> Memory write at: " << debug_instruction(insn)
-           << " addr=" << *(aa.memory_address) << " value=" << *(aa.value) << LEND;
-
-    // Update the mem writes history
-    du.add_access(insn, aa);
-  }
-
-  // Get the list of addresses read
-  for (const AbstractAccess &aa : rops->reads) {
-    if (!aa.is_mem()) continue;
-
-    // Find the corresponding data value for this address
-    InsnSet modifiers;
-    SDEBUG << "--> Memory read at " << *(aa.memory_address) << LEND;
-
-    // We're looking for global fixed memory reads here...
-    if (aa.memory_address->is_number() &&
-        aa.memory_address->get_width() <= 64 &&
-        !insn_is_control_flow(insn)) {
-      rose_addr_t known_addr = aa.memory_address->get_number();
-      // We're only interested in constants that are likely to be memory addresses.
-      if (possible_global_address(known_addr)) {
-        ImportDescriptor *id = global_descriptor_set->get_import(known_addr);
-        if (id == NULL) {
-          GlobalMemoryDescriptor* gmd = global_descriptor_set->get_global(known_addr);
-          if (gmd == NULL) {
-            SDEBUG << "Unexpected global memory read from address " << addr_str(known_addr)
-                   << " at " << debug_instruction(insn) << LEND;
-          }
-          else {
-            gmd->add_read(insn, aa.size);
-            SDEBUG << "Added global memory read: " << gmd->address_string() << LEND;
-          }
+        if (aa.latest_writers.size() == 0) {
+          std::string regname = unparseX86Register(rd, NULL);
+          SDEBUG << "Warning: Use of uninitialized register "
+                 << regname << " by " << debug_instruction(insn) << LEND;
+          Definition reg_def(NULL, aa);
+          du.depends_on[insn].insert(reg_def);
+          // Should probably be add_dependency_pair(insn, NULL, aa);
         }
         else {
-          // It's not really all that curious after all...  It mostly turns out to be that
-          // situation where an import is moved into a register, and then the call is made
-          // to the value in the register several times.
-          SDEBUG << "Curious read of import address 0x" << addr_str(known_addr)
-                 << " at instruction " << debug_instruction(insn) << LEND;
+          for (SgAsmInstruction* winsn : aa.latest_writers) {
+            // Create a use-chain entry
+            SgAsmX86Instruction *definer = isSgAsmX86Instruction(winsn);
+            du.add_dependency_pair(insn, definer, aa);
+          }
+        }
+      }
+      // ----------------------------------------------------------------------------------
+      // Memory reads
+      // ----------------------------------------------------------------------------------
+      else {
+        // Find the corresponding data value for this address
+        // InsnSet modifiers;
+
+        // We're looking for global fixed memory reads here...
+        if (aa.memory_address->is_number() &&
+            aa.memory_address->get_width() <= 64 &&
+            !insn_is_control_flow(insn)) {
+          rose_addr_t known_addr = aa.memory_address->get_number();
+          // We're only interested in constants that are likely to be memory addresses.
+          if (possible_global_address(known_addr)) {
+            const ImportDescriptor *id = du.ds.get_import(known_addr);
+            if (id == NULL) {
+              GlobalMemoryDescriptor* gmd = du.ds.get_rw_global(known_addr); // add_read()
+              if (gmd == NULL) {
+                SDEBUG << "Unexpected global memory read from address " << addr_str(known_addr)
+                       << " at " << debug_instruction(insn) << LEND;
+              }
+              else {
+                gmd->add_read(insn, aa.size);
+              }
+            }
+            // When we read memory in the import table, it's often the because we've loaded the
+            // address of the import into a register, and then called the value pointed to by
+            // the register.
+          }
+        }
+
+        // If there are no latest writers for this address, add a NULL definer.
+        if (aa.latest_writers.size() == 0) {
+          du.add_dependency_pair(insn, NULL, aa);
+          SDEBUG << "--> Memory read at " << *(aa.memory_address)
+                 << " of " <<  *(aa.value) << " from NULL definer." << LEND;
+        }
+        else {
+          for (SgAsmInstruction *winsn : aa.latest_writers) {
+            SgAsmX86Instruction *definer = isSgAsmX86Instruction(winsn);
+            du.add_dependency_pair(insn, definer, aa);
+            SDEBUG << "--> Memory read at " << *(aa.memory_address) << " of " << *(aa.value)
+                   << " definer is " << debug_instruction(definer) << LEND;
+          }
         }
       }
     }
-
-    // Ensure that we have an entry in the map.
-    du.add_access(insn, aa);
-
-#if 0
-    // See the more detailed comment above where a similar message is generated for writes
-    // not found in the cell list.  In summary, this test is no longer really useful.
-    const SymbolicMemoryMapStatePtr& mstate =
-      SymbolicMemoryMapState::promote(pstate->memoryState());
-    const SymbolicMemoryCellPtr memcell = mstate->get_cell(aa.memory_address);
-    if (memcell == NULL) {
-      SINFO << "Memory read of " << *(aa.memory_address->get_expression())
-            << " not found in cell list for insn " << debug_instruction(insn) << LEND;
-    }
-#endif
-
-    // If there are no latest writers for this address, add a NULL definer.
-    if (aa.latest_writers.size() == 0) {
-      du.add_dependency_pair(insn, NULL, aa);
-      SDEBUG << "--> Memory read at " << *(aa.memory_address)
-             << " of " <<  *(aa.value) << " from NULL definer." << LEND;
-    }
+    // Writes
     else {
-      for (SgAsmInstruction *winsn : aa.latest_writers) {
-        SgAsmX86Instruction *definer = isSgAsmX86Instruction(winsn);
-        du.add_dependency_pair(insn, definer, aa);
-        SDEBUG << "--> Memory read at " << *(aa.memory_address)
-               << " of " << *(aa.value) << " definer is "
-               << debug_instruction(definer) << LEND;
+      // ----------------------------------------------------------------------------------
+      // Memory writes
+      // ----------------------------------------------------------------------------------
+      if (!aa.is_reg()) {
+        // We're looking for global fixed memory writes here...
+
+        if (aa.memory_address->is_number() && aa.memory_address->get_width() <= 64) {
+          rose_addr_t known_addr = aa.memory_address->get_number();
+          // We're only interested in constants that are likely to be memory addresses.
+          if (possible_global_address(known_addr)) {
+            const ImportDescriptor *id = du.ds.get_import(known_addr);
+            if (id == NULL) {
+              GlobalMemoryDescriptor* gmd = du.ds.get_rw_global(known_addr); // add_write()
+              if (gmd == NULL) {
+                // This message is really debugging for a case that Cory is interested in, not
+                // something that's useful to general users, so he moved it back to SDEBUG. :-(
+                SDEBUG << "Unexpected global memory write to address " << addr_str(known_addr)
+                       << " at " << debug_instruction(insn) << LEND;
+              }
+              else {
+                // Always record that there was a write to the global variable.
+                gmd->add_write(insn, aa.size);
+                // Record the possible value (which will only be saved if it's a new value).
+                gmd->add_value(aa.value);
+              }
+            }
+            // This is where we used to test for overwrites of imports, that's now more clearly
+            // (but perhaps less cleanly) in RiscOps::readMemory().
+          }
+        }
       }
     }
   }
@@ -350,7 +349,7 @@ BlockAnalysis::check_for_invalid_code(SgAsmX86Instruction *insn, size_t i)
     SgAsmStatementPtrList ri;
     // The size_t i, is the current instruction in the basic block being analyzed.
     for (size_t qq = i+1; qq < insns.size(); qq++) ri.push_back(insns[qq]);
-    BadCodeMetrics bc;
+    BadCodeMetrics bc(du.ds);
     size_t repeated = 0, deadstores = 0, badjmps = 0, unusualInsns = 0;
 
     SDEBUG << "Testing possible jmp to packed section " << debug_instruction(insn) << LEND;
@@ -384,9 +383,9 @@ BlockAnalysis::analyze(bool with_context)
 
   SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(
     du.dispatcher->get_operators());
-  size_t arch_bits = global_descriptor_set->get_arch_bits();
-  RegisterDescriptor eiprd = global_descriptor_set->get_ip_reg();
-  RegisterDescriptor esprd = global_descriptor_set->get_stack_reg();
+  size_t arch_bits = du.ds.get_arch_bits();
+  RegisterDescriptor eiprd = du.ds.get_ip_reg();
+  RegisterDescriptor esprd = du.ds.get_stack_reg();
 
   const SgAsmStatementPtrList &insns = block->get_statementList();
 
@@ -401,7 +400,7 @@ BlockAnalysis::analyze(bool with_context)
     SymbolicStatePtr cstate = rops->get_sstate()->sclone();
     if (with_context && insn_is_call(insn)) {
       SDEBUG << "Stack value before call is " <<  *rops->read_register(esprd) << LEND;
-      CallDescriptor* cd = global_descriptor_set->get_call(insn->get_address());
+      CallDescriptor* cd = du.ds.get_rw_call(insn->get_address()); // set_state()
       assert(cd != NULL);
       cd->set_state(cstate);
     }
@@ -481,22 +480,22 @@ BlockAnalysis::handle_stack_delta(SgAsmBlock *bb, SgAsmX86Instruction* insn,
                                   SymbolicStatePtr& before_state, bool downgrade)
 {
   rose_addr_t iaddr = insn->get_address();
-  CallDescriptor* cd = global_descriptor_set->get_call(iaddr);
+  const CallDescriptor* cd = du.ds.get_call(iaddr);
 
   SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(
     du.dispatcher->get_operators());
   SymbolicStatePtr after_state = rops->get_sstate();
 
   // We'll need to know the delta for this instruction.
-  StackDelta olddelta = du.sp_tracker->get_delta(iaddr);
+  StackDelta olddelta = du.sp_tracker.get_delta(iaddr);
   SDEBUG << "Stack delta=" << olddelta << " insn=" << debug_instruction(insn) << LEND;
 
   // By default, we have wrong knowledge of the stack pointer.
   StackDelta newdelta(0, ConfidenceWrong);
   // Get the stack register descriptor.
-  size_t arch_bits = global_descriptor_set->get_arch_bits();
-  size_t arch_bytes = global_descriptor_set->get_arch_bytes();
-  RegisterDescriptor esprd = global_descriptor_set->get_stack_reg();
+  size_t arch_bits = du.ds.get_arch_bits();
+  size_t arch_bytes = du.ds.get_arch_bytes();
+  RegisterDescriptor esprd = du.ds.get_stack_reg();
   // Are confident in our current knowledge of the stack pointer based on emulation?  With
   // value sets and the current flawed merging algorithm based on defining instructions,
   // I'm not sure that this test is really sufficient, but that fix will have to wait.
@@ -565,7 +564,7 @@ BlockAnalysis::handle_stack_delta(SgAsmBlock *bb, SgAsmX86Instruction* insn,
       if (insn_is_call(insn)) {
         if (target == fallthru) {
           // Ask the stack tracker what the delta for this call was.
-          StackDelta calldelta = du.sp_tracker->get_call_delta(iaddr);
+          StackDelta calldelta = du.get_call_delta(iaddr);
           GenericConfidence newconfidence = calldelta.confidence;
           // Downgrade confidence if required.
           if (newdelta.confidence < newconfidence) newconfidence = newdelta.confidence;
@@ -585,7 +584,7 @@ BlockAnalysis::handle_stack_delta(SgAsmBlock *bb, SgAsmX86Instruction* insn,
           auto dvalue = calldelta.delta + arch_bytes;
           TreeNodePtr sum = oldesp->get_expression() + dvalue;
           if (cd && calldelta.confidence == ConfidenceMissing) {
-            auto & sdv = cd->get_stack_delta_variable();
+            auto sdv = cd->get_stack_delta_variable();
             if (sdv) {
               using Rose::BinaryAnalysis::SymbolicExpr::OP_ADD;
               sum = InternalNode::create(arch_bits, OP_ADD, sum, sdv,
@@ -599,7 +598,7 @@ BlockAnalysis::handle_stack_delta(SgAsmBlock *bb, SgAsmX86Instruction* insn,
           SDEBUG << "Yielding newesp=" << *newesp << LEND;
           rops->writeRegister(esprd, newesp);
           // Update the stack tracker and report on our actions.
-          du.sp_tracker->update_delta(fallthru, fallthrudelta);
+          du.update_delta(fallthru, fallthrudelta);
           SDEBUG << "Setting stack delta following call to " << fallthrudelta
                  << " insnaddr=" << addr_str(fallthru) << LEND;
           // We're handled this case.
@@ -627,7 +626,7 @@ BlockAnalysis::handle_stack_delta(SgAsmBlock *bb, SgAsmX86Instruction* insn,
     // real function.  The common example is finally handlers in C++ code.  The behavior is
     // still the same though, which is to propagate our stack delta.
     STRACE << "Setting stack delta=" << newdelta << " insnaddr=" << addr_str(target) << LEND;
-    du.sp_tracker->update_delta(target, newdelta);
+    du.update_delta(target, newdelta);
   }
 
   // In cases where we've failed to process the instructio correctly, we now want to downgrade
@@ -639,10 +638,10 @@ BlockAnalysis::handle_stack_delta(SgAsmBlock *bb, SgAsmX86Instruction* insn,
     // Forcibly downgrade the confidence to guess since we didn't emulate correctly.  This
     // should probably be handled as a minimum confidence parameter to handle stack delta or
     // something like that.
-    StackDelta osd = du.sp_tracker->get_delta(iaddr);
+    StackDelta osd = du.sp_tracker.get_delta(iaddr);
     if (osd.confidence > ConfidenceGuess) {
       osd.confidence = ConfidenceGuess;
-      du.sp_tracker->update_delta(iaddr, osd);
+      du.update_delta(iaddr, osd);
     }
   }
 }
@@ -667,36 +666,46 @@ void print_definitions(DUChain duc) {
   }
 }
 
-DUAnalysis::DUAnalysis(FunctionDescriptor* f, spTracker* s) {
+// =========================================================================================
+// Definition and Usage Analysis
+// =========================================================================================
+
+DUAnalysis::DUAnalysis(DescriptorSet& ds_, FunctionDescriptor & f)
+  : sp_tracker(ds_), rops_callbacks(ds_), ds(ds_)
+{
   // We've always got a real function to analyze.
-  current_function = f;
+
+  const ProgOptVarMap& vm = ds.get_arguments();
+
+  propagate_conditions = (vm.count("propagate-conditions") > 0);
+
+  current_function = &f;
   output_valid = false;
   all_returns = false;
-  assert(current_function != NULL);
+
   // Currently hard coded to do the traditional style of analysis.
   rigor = false;
 
   // The RiscOps can be obtained from the dispatcher once it's created.
   SymbolicRiscOperatorsPtr rops;
+
+  auto ip = ds.get_partitioner().instructionProvider();
   if (rigor) {
     // This is the new bit that instantiates the list-based memory state instead of the map based state.
-    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance();
+    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(ip);
     SymbolicMemoryListStatePtr mstate = SymbolicMemoryListState::instance();
     SymbolicStatePtr state = SymbolicState::instance(rstate, mstate);
-    rops = SymbolicRiscOperators::instance(state);
+    rops = SymbolicRiscOperators::instance(ds, state, &rops_callbacks);
   }
   else {
-    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance();
+    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(ip);
     SymbolicMemoryMapStatePtr mstate = SymbolicMemoryMapState::instance();
     SymbolicStatePtr state = SymbolicState::instance(rstate, mstate);
-    rops = SymbolicRiscOperators::instance(state);
+    rops = SymbolicRiscOperators::instance(ds, state, &rops_callbacks);
   }
 
-  size_t arch_bits = global_descriptor_set->get_arch_bits();
+  size_t arch_bits = ds.get_arch_bits();
   dispatcher = RoseDispatcherX86::instance(rops, arch_bits, NULL);
-
-  // A stack pointer tracker object to advise us on stack deltas for calls.
-  sp_tracker = s;
 
   // Configure the limit analysis.  The func_limit instance is local, but we still need to
   // configure the global limits of the analysis of all functions as well.
@@ -711,6 +720,21 @@ DUAnalysis::DUAnalysis(FunctionDescriptor* f, spTracker* s) {
   }
 }
 
+// For debugging accessess
+void DUAnalysis::print_accesses(SgAsmX86Instruction* insn) const {
+  OINFO << "Instruction accesses for: " << debug_instruction(insn) << LEND;
+  auto iter = accesses.find(insn);
+  if (iter == accesses.end()) {
+    OERROR << "Instruction " << addr_str(insn->get_address()) << " has no accesses!" << LEND;
+  }
+  else {
+    for (const AbstractAccess & aa : iter->second) {
+      OINFO << "  " << aa.str() << LEND;
+    }
+  }
+}
+
+// For debugging dependencies
 void DUAnalysis::print_dependencies() const {
   OINFO << "Dependencies (Inst I, value read by I <=== instruction that defined value):" << LEND;
   for (const Insn2DUChainMap::value_type &p : depends_on) {
@@ -719,6 +743,7 @@ void DUAnalysis::print_dependencies() const {
   }
 }
 
+// For debugging dependents
 void DUAnalysis::print_dependents() const {
   OINFO << "Dependents (Inst I, value defined by I <=== instruction that read value):" << LEND;
   for (const Insn2DUChainMap::value_type &p : dependents_of) {
@@ -767,8 +792,8 @@ DUAnalysis::fake_read(SgAsmX86Instruction* insn, const AbstractAccess& aa) const
   // look for a specific subexpression.
 
   // JSG updated this with Robb M's guideance on searching for a subexpression.
-  typedef Rose::BinaryAnalysis::SymbolicExpr::VisitAction VisitAction;
-  typedef Rose::BinaryAnalysis::SymbolicExpr::Visitor Visitor;
+  using VisitAction = Rose::BinaryAnalysis::SymbolicExpr::VisitAction;
+  using Visitor = Rose::BinaryAnalysis::SymbolicExpr::Visitor;
 
   TreeNodePtr read_tn = aa.value->get_expression();
 
@@ -842,25 +867,9 @@ void DUAnalysis::update_call_targets(SgAsmX86Instruction* insn, SymbolicRiscOper
     if (regval->is_loader_defined()) {
       SDEBUG << "Call is to loader defined value: " << *regval << LEND;
       for (const TreeNodePtr& tn : regval->get_possible_values()) {
-        // It's a annoying that we have to convert back to a SymbolicValue here, but we can't
-        // currently define methods on tree node pointers, and I'm not sure that I want to
-        // reference the LOADER_DEFINED constant from here either.  We'd also have to change
-        // the API to get_import_by_variable(), but at least it's only ever used from here.
-        // Perhaps more NEWWAY fixups are needed?
         SymbolicValuePtr v = SymbolicValue::treenode_instance(tn);
         if (v->is_loader_defined()) {
-          SDEBUG << "Call target is to loader defined value: " << *v << LEND;
-          ImportDescriptor* id = global_descriptor_set->get_import_by_variable(v);
-          // Yes, it's a call to an import.  Update the call target list with a new target.
-          if (id != NULL) {
-            SDEBUG << "The call " << debug_instruction(insn)
-                   << " was to import " << id->get_long_name() << LEND;
-            CallDescriptor* cd = global_descriptor_set->get_call(insn->get_address());
-            cd->add_import_target(id);
-          }
-          else {
-            SDEBUG << "The constant call target was not resolved." << LEND;
-          }
+          ds.update_import_target(v, insn);
         }
       }
     }
@@ -900,6 +909,7 @@ SymbolicValuePtr create_return_value(SgAsmX86Instruction* insn,
 }
 
 void create_overwritten_register(SymbolicRiscOperatorsPtr rops,
+                                 DescriptorSet const & ds,
                                  RegisterDescriptor rd,
                                  bool return_code,
                                  SymbolicValuePtr value,
@@ -909,7 +919,7 @@ void create_overwritten_register(SymbolicRiscOperatorsPtr rops,
   // Update the value of the register in the current state...
   rops->writeRegister(rd, value);
   // Record the write, since it didn't happen during semantics.
-  rops->writes.push_back(AbstractAccess(false, rd, value, rops->get_sstate()));
+  rops->insn_accesses.push_back(AbstractAccess(ds, false, rd, value, rops->get_sstate()));
 
   // Set the return value in the call descriptor.  Return values are more complicated than our
   // current design permits.  For now, there's just one, which is essentially EAX.
@@ -919,12 +929,12 @@ void create_overwritten_register(SymbolicRiscOperatorsPtr rops,
     ParameterList& params = cd->get_rw_parameters();
     SDEBUG << "Creating return register parameter " << unparseX86Register(rd, NULL)
            << " with value " << *value << LEND;
-    ParameterDefinition* rpd = params.create_return_reg(rd, value);
+    ParameterDefinition & rpd = params.create_return_reg(rd, value);
     // If the upstream parameters list has only a single return value, assume that this is it,
     // and transfer the type.
-    if (rpd && pl.get_returns().size() == 1) {
-      const ParameterDefinition& upstream_pd = pl.get_returns().front();
-      rpd->type = upstream_pd.type;
+    if (pl.get_returns().size() == 1) {
+      const ParameterDefinition& upstream_pd = *pl.get_returns().begin();
+      rpd.set_type(upstream_pd.get_type());
     }
   }
 }
@@ -939,7 +949,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
   SDEBUG << "Creating parameter dependencies for " << debug_instruction(insn) << LEND;
 
   // Get the call descriptor for this call.  Should we do this externally?
-  CallDescriptor* cd = global_descriptor_set->get_call(insn->get_address());
+  CallDescriptor* cd = ds.get_rw_call(insn->get_address()); // multiple
   if (cd == NULL) {
     SERROR << "No call descriptor for " << debug_instruction(insn) << LEND;
     return;
@@ -954,10 +964,10 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
   // nasty bit of confusion here that still needs some additional cleanup.  This value can be
   // non-NULL even when the call is to an import descriptor, and so until we can figure out
   // where the bogus values are coming from (id == NULL) should be checked first.
-  FunctionDescriptor* cfd = cd->get_function_descriptor();
+  FunctionDescriptor* cfd = cd->get_rw_function_descriptor(); // Adds caller
 
   // But the call can also be to an import.   If it is, this will be the import descriptor.
-  ImportDescriptor* id = cd->get_import_descriptor();
+  const ImportDescriptor* id = cd->get_import_descriptor();
 
   // If the call is to an import, the parameters will come from the function descriptor in the
   // import descriptor.  This description may contain useful types, etc. from the API database.
@@ -966,18 +976,20 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
   }
   // There's some nasty thunk logic here that I'd like to be elsewhere.
   else if (cfd != NULL) {
-    FunctionDescriptor* dethunked_cfd = cfd->follow_thunks_fd();
+    const FunctionDescriptor* dethunked_cfd = cfd->follow_thunks_fd();
     // If we successfully followed thunks, it's easy.
     if (dethunked_cfd != NULL) {
       param_fd = dethunked_cfd;
-      cfd = dethunked_cfd;
+      // A little hackish code to work around some ongoing const design issues.
+      FunctionDescriptor* non_const_cfd = ds.get_rw_func(dethunked_cfd->get_address()); // for call updates
+      cfd = non_const_cfd;
     }
     // But there might have been thunks to addresses that are imports.  This is a corner
     // condition that we're still hacking for in places like this. :-(
     else {
       // The worst this can do is set ID to NULL (again).
       rose_addr_t iaddr = cfd->follow_thunks();
-      id = global_descriptor_set->get_import(iaddr);
+      id = ds.get_import(iaddr);
       if (id != NULL) {
         GDEBUG << "Got parameters for " << debug_instruction(insn) << " from thunked import." << LEND;
         param_fd = id->get_function_descriptor();
@@ -1007,14 +1019,14 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
   // Register return code analysis...
   // =========================================================================================
 
-  size_t arch_bits = global_descriptor_set->get_arch_bits();
+  size_t arch_bits = ds.get_arch_bits();
 
   // This where we'll be storing the new value of EAX, get a handle to the state now.
   SymbolicStatePtr state = rops->get_sstate();
 
-  RegisterDescriptor esprd = global_descriptor_set->get_stack_reg();
-  RegisterDescriptor eaxrd = global_descriptor_set->get_arch_reg("eax");
-  RegisterDescriptor ecxrd = global_descriptor_set->get_arch_reg("ecx");
+  RegisterDescriptor esprd = ds.get_stack_reg();
+  RegisterDescriptor eaxrd = ds.get_arch_reg("eax");
+  RegisterDescriptor ecxrd = ds.get_arch_reg("ecx");
 
   if (id != NULL) {
     // If we really are a call to an external import, just assume that we return a value.
@@ -1040,7 +1052,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
     SymbolicValuePtr rv = create_return_value(insn, arch_bits, real_return_value);
     // This call propogates the performs the actual write, creates the abstract access, sets
     // the return value in the call descriptor, propogates the parameter definition, etc.
-    create_overwritten_register(rops, eaxrd, real_return_value, rv, cd, fparams);
+    create_overwritten_register(rops, ds, eaxrd, real_return_value, rv, cd, fparams);
     SDEBUG << "Setting standard return value for " << addr_str(insn->get_address())
            << " to " << *(rops->read_register(eaxrd)) << LEND;
   }
@@ -1067,11 +1079,12 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
 
         // I re-enabled register overwritin, and we were passing tests, but I noticed that it
         // was doing some very bad things with tail-call optimized delete() methods, and
-        // thought this would be a good defensive measure until we investigated more.
+        // thought this would be a good defensive measure until we investigated more.  This is
+        // the other place where is_delete_method() is still required on a function descriptor.
         if (cfd->is_delete_method()) continue;
 
         SymbolicValuePtr rv = create_return_value(insn, rd.get_nbits(), false);
-        create_overwritten_register(rops, rd, false, rv, cd, fparams);
+        create_overwritten_register(rops, ds, rd, false, rv, cd, fparams);
         GDEBUG << "Setting changed register " << unparseX86Register(rd, NULL)
                << " for insn " << addr_str(insn->get_address())
                << " to value=" << *(rops->read_register(rd)) << LEND;
@@ -1084,14 +1097,14 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
         // Assign to EAX in the current state, the value of ECX from the previous state.
         // Read the value of ecx from the current state at the time of the call.
         SymbolicValuePtr ecx_value = cstate->read_register(ecxrd);
-        create_overwritten_register(rops, eaxrd, true, ecx_value, cd, fparams);
+        create_overwritten_register(rops, ds, eaxrd, true, ecx_value, cd, fparams);
         GDEBUG << "Setting return value for " << addr_str(insn->get_address())
                << " to ECX prior to call, value=" << *(rops->read_register(eaxrd)) << LEND;
       }
       else {
         // Create a new symbolic value to represent the modified return code value.
         SymbolicValuePtr eax_value = create_return_value(insn, arch_bits, true);
-        create_overwritten_register(rops, eaxrd, true, eax_value, cd, fparams);
+        create_overwritten_register(rops, ds, eaxrd, true, eax_value, cd, fparams);
         GDEBUG << "Setting standard return value for " << addr_str(insn->get_address())
                << " to " << *(rops->read_register(eaxrd)) << LEND;
       }
@@ -1114,7 +1127,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
   // =========================================================================================
 
   // What was our stack delta going into the call instruction?
-  StackDelta sd = sp_tracker->get_delta(insn->get_address());
+  StackDelta sd = sp_tracker.get_delta(insn->get_address());
 
   // How many parameters does the call have?
   StackDelta params = cd->get_stack_parameters();
@@ -1130,7 +1143,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
           << " due to low confidence of stack delta." << LEND;
     SWARN << "Stack delta was: " << sd << " at instruction: " << debug_instruction(insn) << LEND;
     // This wrongness was a consequence of earlier wrongness, but there's more wrong now.
-    sp_tracker->add_failure();
+    ++sd_failures;
     return;
   }
 
@@ -1140,7 +1153,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
     SERROR << "Skipping creation of " << params.delta << " bytes of parameter dependencies"
            << " due to high parameter count for call: " << debug_instruction(insn) << LEND;
     // We know we didn't do the right thing, so let's tick failures.
-    sp_tracker->add_failure();
+    ++sd_failures;
     return;
   }
 
@@ -1165,21 +1178,21 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
     // list. Now that we're also creating parameter definitions for register values, this code
     // needs to be a little more complicated.  The very first iteration is to simply ignore
     // register parameters.
-    if (pd.reg.is_valid()) {
+    if (pd.is_reg()) {
       // =====================================================================================
       // Register parameter definitions and instruction dependencies (move to a new function?)
       // =====================================================================================
 
-      SDEBUG << "Found register parameter: " << unparseX86Register(pd.reg, NULL)
+      SDEBUG << "Found register parameter: " << unparseX86Register(pd.get_register(), NULL)
              << " for call " << cd->address_string() << LEND;
 
       // Create a dependency between the instructions that last modifier the value of the
       // register, and the call instruction that uses the value (or the memory at the value?)
 
       // Read the value out of the current states
-      SymbolicValuePtr rv = state->read_register(pd.reg);
+      SymbolicValuePtr rv = state->read_register(pd.get_register());
       // The call reads the register value.
-      AbstractAccess aa = AbstractAccess(true, pd.reg, rv, state);
+      AbstractAccess aa = AbstractAccess(ds, true, pd.get_register(), rv, state);
       SgAsmX86Instruction *latest_writer = NULL;
 
       // Create dependencies between all latest writers and the call instruction.  Converting
@@ -1200,7 +1213,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
       // I just had the create_reg_parameter() interface update the symbolic value and modified
       // instruction as well.  Maybe we should change the stack parameter interface to match?
       SymbolicValuePtr pointed_to = state->read_memory(rv, arch_bits);
-      call_params.create_reg_parameter(pd.reg, rv, latest_writer, pointed_to);
+      call_params.create_reg_parameter(pd.get_register(), rv, latest_writer, pointed_to);
 
       // We're done handling the register parameter.  The rest of the code after here is for
       // stack parameters.
@@ -1208,7 +1221,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
     }
 
     // From the old code for doing this...
-    size_t p = pd.stack_delta;
+    size_t p = pd.get_stack_delta();
 
     // The parameter will be found on the stack at [offset].  The sd.delta component is to
     // convert to stack deltas relative to the call.  And p is the variable part (the parameter
@@ -1279,7 +1292,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
     // that we read four bytes of memory, which is incorrect, and we should probably get around
     // to fixing this, but we'll need proper protoypes to know the type and size of the
     // parameter on the stack, which we presently don't have.
-    AbstractAccess aa = AbstractAccess(true, mca, 4, mcv, state);
+    AbstractAccess aa = AbstractAccess(ds, true, mca, 4, mcv, state);
 
     // The most common case is for there to be only one writer.  This is the typical scenario
     // where the arguments all pushed onto the stack immediately before the call.  If any of
@@ -1292,7 +1305,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
     // Now get the writers for just this one cell.  There's been some recent email discussion
     // with Robb that this approach is defective, and there's a fix pending in ROSE.
     for (rose_addr_t waddr : writers.values()) {
-      SgAsmInstruction* winsn = global_descriptor_set->get_insn(waddr);
+      SgAsmInstruction* winsn = ds.get_insn(waddr);
       assert(winsn);
       writer = isSgAsmX86Instruction(winsn);
       assert(writer);
@@ -1315,9 +1328,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
       // but we should fix this by enhancing parameter definitions to have complete lists.
       cpd->set_stack_attributes(mcv, mca, writer, pointed_to);
       // Copy names, types and directions from the function descriptor parameter definition.
-      cpd->name = pd.name;
-      cpd->type = pd.type;
-      cpd->direction = pd.direction;
+      cpd->copy_parameter_description(pd);
       //OINFO << " CPD:";
       //cpd->debug();
       //OINFO << " CPD:";
@@ -1326,14 +1337,13 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
   }
 }
 
-// Wow, this definately should have been done a long time ago, but I don't know exactly where
-// yet, so we'll just do it here.  Basically, this code makes "jmp [import]" have a non-NULL
-// successor list.  I have no idea what to do with this broken code now that I see that there's
-// no add successsor.  I guess I'll have to create a ThunkDescriptor or something.
-void update_jump_targets(SgAsmInstruction* insn) {
+// This code was supposed to make "jmp [import]" have a non-NULL successor list.
+// Unfortunately, there no easy way to update successors on the import.  I presume this
+// function (which is neve called) was left here as a reminder to eventually fix this.
+void update_jump_targets(const DescriptorSet& ds, SgAsmInstruction* insn) {
   rose_addr_t target = insn_get_jump_deref(insn);
   if (target != 0) {
-    ImportDescriptor* id = global_descriptor_set->get_import(target);
+    const ImportDescriptor* id = ds.get_import(target);
     if (id != NULL) {
       // There's NO add_successor()!!!
     }
@@ -1350,7 +1360,8 @@ void DUAnalysis::update_function_delta() {
   // This is the number on the RETN instruction and is also our expected stack delta.
   int64_t retn_size = 0;
 
-  for (const SgAsmBlock *block : fd->get_return_blocks()) {
+  for (CFGVertex vertex : fd->get_return_vertices()) {
+    const SgAsmBlock *block = convert_vertex_to_bblock(cfg, vertex);
     // Find the return instruction.
     const SgAsmStatementPtrList &insns = block->get_statementList();
     assert(insns.size() > 0);
@@ -1360,7 +1371,7 @@ void DUAnalysis::update_function_delta() {
       continue;
     }
     SDEBUG << "Last instruction in ret-block:" << debug_instruction(last) << LEND;
-    StackDelta ld = sp_tracker->get_delta(last->get_address());
+    StackDelta ld = sp_tracker.get_delta(last->get_address());
     SDEBUG << "Stack delta going into last instruction: " << ld << LEND;
     // Not all blocks returned by get_return_blocks() end with return instructions.  It also
     // includes blocks that jump (jmp or jcc) outside the current function.  We'll start by
@@ -1403,7 +1414,7 @@ void DUAnalysis::update_function_delta() {
       rose_addr_t target = insn_get_jump_deref(last);
       StackDelta td;
       if (target != 0) {
-        ImportDescriptor* id = global_descriptor_set->get_import(target);
+        const ImportDescriptor* id = ds.get_import(target);
         if (id != NULL) {
           td = id->get_stack_delta();
           SDEBUG << "Branch target is to " << *id << LEND;
@@ -1412,7 +1423,7 @@ void DUAnalysis::update_function_delta() {
       // If that failed, maybe we're just a branch directly to some other function.
       else {
         target = insn_get_branch_target(last);
-        td = sp_tracker->get_delta(target);
+        td = sp_tracker.get_delta(target);
       }
 
       SDEBUG << "Branch target is: 0x" << std::hex << target << std::dec
@@ -1509,7 +1520,7 @@ bool DUAnalysis::saved_register(SgAsmX86Instruction* insn, const Definition& def
   SDEBUG << "Checking for saved register for:" << debug_instruction(insn) << LEND;
 
   // We need a register descriptor for ESP, because it's special.
-  RegisterDictionary regdict = global_descriptor_set->get_regdict();
+  RegisterDictionary regdict = ds.get_regdict();
   RegisterDescriptor resp = regdict.lookup("esp");
 
   const AbstractAccess* saveloc = NULL;
@@ -1579,8 +1590,8 @@ void DUAnalysis::analyze_return_code() {
   // Check to see whether we're returning the initial value of EAX in ECX.  This is basically a
   // hack to make up for a lack of real calling convention detection.  We have sufficient
   // calling convention data to improve this code now, but that's not my current goal.
-  RegisterDescriptor eaxrd = global_descriptor_set->get_arch_reg("eax");
-  RegisterDescriptor ecxrd = global_descriptor_set->get_arch_reg("ecx");
+  RegisterDescriptor eaxrd = ds.get_arch_reg("eax");
+  RegisterDescriptor ecxrd = ds.get_arch_reg("ecx");
 
   SymbolicValuePtr retvalue = output_state->read_register(eaxrd);
   SymbolicValuePtr initial_ecx = input_state->read_register(ecxrd);
@@ -1597,8 +1608,6 @@ void DUAnalysis::analyze_return_code() {
   SDEBUG << "Returns thisptr=" << fd->get_returns_this_pointer()
          << " function=" << fd->address_string() << LEND;
 }
-
-typedef std::vector<SgAsmBlock*> BlockVector;
 
 // This function attempts to assign a value to the function summary output state variable.  In
 // theory, it does this by merging all return blocks into a single consistent result.  Wes'
@@ -1621,14 +1630,15 @@ DUAnalysis::update_output_state()
 
   // This list isn't really the return blocks, but rather all "out" edges in the control flow
   // graph which can contain jumps, and other strange things as a result of bad partitioning.
-  BlockSet out_blocks = fd->get_return_blocks();
+  std::vector<CFGVertex> out_vertices = fd->get_return_vertices();
 
   // Create an empty output state when we don't know what else to do...  In this case because
   // there are no out edges from the function...  For example a jump to itself...  This choice
   // can result in confusing downstream behavior, because the output state is not related to the input
-  if (out_blocks.size() == 0) {
+  if (out_vertices.size() == 0) {
     SERROR << "Function " << fd->address_string() << " has no out edges." << LEND;
-    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance();
+    auto ip = ds.get_partitioner().instructionProvider();
+    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(ip);
     SymbolicMemoryMapStatePtr mstate = SymbolicMemoryMapState::instance();
     output_state = SymbolicState::instance(rstate, mstate);
     output_valid = false;
@@ -1636,9 +1646,11 @@ DUAnalysis::update_output_state()
   }
 
   // Make a list of real return blocks that are worth merging into the outout state.
-  BlockVector ret_blocks;
-  for (SgAsmBlock* block : out_blocks) {
+  std::vector<const SgAsmBlock*> ret_blocks;
+  for (CFGVertex vertex : out_vertices) {
+    const SgAsmBlock* block = convert_vertex_to_bblock(cfg, vertex);
     rose_addr_t addr = block->get_address();
+    // The call to at() should not throw unless our code is using the wrong CFG.
     const BlockAnalysis & analysis = blocks.at(addr);
 
     // Blocks that we've previously identified as "bad" are not valid return blocks.
@@ -1677,7 +1689,8 @@ DUAnalysis::update_output_state()
   // If no blocks ended with return instructions, return an empty output_state.
   if (ret_blocks.size() == 0) {
     SDEBUG << "Function " << fd->address_string() << " has no valid return blocks." << LEND;
-    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance();
+    auto ip = ds.get_partitioner().instructionProvider();
+    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(ip);
     SymbolicMemoryMapStatePtr mstate = SymbolicMemoryMapState::instance();
     output_state = SymbolicState::instance(rstate, mstate);
     output_valid = false;
@@ -1692,7 +1705,7 @@ DUAnalysis::update_output_state()
   // discarded one or more for being bad code, or lacking return statements.  That means that
   // there's something a wrong with the function, and we should only indicate that it has a
   // well formed return block structure if every block ended with a return.
-  if (ret_blocks.size() == out_blocks.size()) all_returns = true;
+  if (ret_blocks.size() == out_vertices.size()) all_returns = true;
 
   // Regardless of whether all or just some of the blocks ended in returns, we can still create
   // an output state.  Do that now by beginning with the first state, and merging into it all
@@ -1700,10 +1713,10 @@ DUAnalysis::update_output_state()
   // because w did that when filtering the blocks earlier.
   rose_addr_t addr = ret_blocks[0]->get_address();
   output_state = blocks.at(addr).output_state->sclone();
-  for (SgAsmBlock *block : ret_blocks) {
+  for (const SgAsmBlock *block : ret_blocks) {
     addr = block->get_address();
-    output_state->merge(blocks.at(addr).output_state, global_rops.get(),
-                        SymbolicValue::incomplete(1));
+    SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->get_operators());
+    output_state->merge(blocks.at(addr).output_state, rops.get(), SymbolicValue::incomplete(1));
   }
 }
 
@@ -1719,61 +1732,15 @@ void DUAnalysis::save_treenodes() {
 void
 DUAnalysis::create_blocks()
 {
-  // Get the master control flow graph for this function.
-  cfg = current_function->get_rose_cfg();
-
   // The entry block is always zero when it exists (see more detailed test in CDG constructor).
-  CFGVertex entry_vertex = 0;
+  static constexpr CFGVertex entry_vertex = 0;
 
-  // Create a block analysis object for every block, regardless of whether it's in the control
-  // flow, it has predecessors, it's a catch block, it's a NOP pad instruction, or it's bad
-  // code.  This way we can analyze everything in a function if we choose to, even if we can't
-  // place it in control flow context right now.  This also makes it safe to lookup any block
-  // in the CFG in the blocks map without first checking that it's actually in the map.
+  // Which control flow graph we're using here depends on how we were called.  If we're using
+  // the trimmed Pharos CFG, we won't even know about "bad" blocks, but if we're using the ROSE
+  // CFG they'll still be in there.  Either way, the block list will match the CFG.
   for (auto vertex : cfg_vertices(cfg)) {
     BlockAnalysis block = BlockAnalysis(*this, cfg, vertex, vertex == entry_vertex);
     blocks.emplace(block.get_address(), std::move(block));
-  }
-}
-
-void
-DUAnalysis::cleanup_cfg(ControlFlowGraph &in_cfg) const
-{
-  // The entry block is always zero when it exists (see more detailed test in CDG constructor).
-  CFGVertex entry_vertex = 0;
-
-  // But for the control-flow graph portions of the analysis we need a set of edges that are
-  // consistent with our algorithm.  Presently, we've determined that blocks which lack
-  // predecessors (other than the entry block) are not permitted, even thought they commonly
-  // occur for a variety of reasons (e.g. catch blocks).  It is permitted however to have
-  // multiple blocks with no successors (e.g. multiple returns, indeterminate jumps, etc.)
-  // This algorithm recursively removes the edges for vertexes if they're bad or have no
-  // predecessors.  It needs to do so recursively so that edges are also removed from blocks
-  // that only follow removed blocks, since they might flow into blocks that are in the control
-  // flow.
-  bool changed = true;
-  while (changed) {
-    changed = false;
-    for (const BlockAnalysis& block : boost::adaptors::values(blocks)) {
-      size_t degree = boost::in_degree(block.vertex, in_cfg);
-      // The entry block is permitted to be deemed as bad code.
-      if ((degree == 0 && block.vertex != entry_vertex) || block.bad) {
-        // If the block isn't in the control flow, remove both the in and out edges.
-        SDEBUG << "Removing block " << block.address_string()
-               << " in function " << current_function->address_string()
-               << " from control flow graph because it was bad or unreachable." << LEND;
-        size_t out_degree = boost::out_degree(block.vertex, in_cfg);
-        if (out_degree) {
-          remove_out_edge_if(block.vertex, [](...){return true;}, in_cfg);
-          changed = true;
-        }
-        size_t in_degree = boost::in_degree(block.vertex, in_cfg);
-        if (in_degree) {
-          remove_in_edge_if(block.vertex, [](...){return true;}, in_cfg);
-          changed = true;
-        }
-      }
-    }
   }
 }
 
@@ -1827,6 +1794,38 @@ DUAnalysis::debug_state_replaced(UNUSED const rose_addr_t baddr) const
 #endif
 }
 
+SymbolicValuePtr
+DUAnalysis::get_eip_condition(const BlockAnalysis& pred_analysis,
+                              SgAsmBlock* pblock, const rose_addr_t bb_addr)
+{
+  using namespace Rose::BinaryAnalysis;
+
+  if (insn_is_call(last_x86insn_in_block(pblock))) {
+    return SymbolicValue::treenode_instance(SymbolicExpr::makeBoolean(true));
+  }
+
+  if (!pred_analysis.output_state) {
+    return SymbolicValuePtr();
+  }
+  SymbolicRegisterStatePtr eip_reg_state = pred_analysis.output_state->get_register_state();
+
+  if (!eip_reg_state) {
+    return SymbolicValuePtr();
+  }
+
+  // RegisterDescriptor eiprd = global_descriptor_set->get_arch_reg("eip");
+  RegisterDescriptor eiprd = ds.get_ip_reg();
+  SymbolicValuePtr eip_sv = eip_reg_state->read_register(eiprd);
+
+  SymbolicValuePtr final_condition;
+  std::vector<TreeNodePtr> condition_list;
+  get_expression_condition(eip_sv, bb_addr, condition_list, final_condition);
+
+  return final_condition;
+}
+
+// Merge all predecessor block's output states into a single state that becomes the input state
+// for the next this block.
 // Merge all predecessor block's output states into a single state that becomes the input state
 // for the next this block.
 SymbolicStatePtr
@@ -1837,7 +1836,6 @@ DUAnalysis::merge_predecessors(CFGVertex vertex)
 
   SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->get_operators());
 
-  SgAsmFunction *func = current_function->get_func();
   SgAsmBlock *bblock = get(boost::vertex_name, cfg, vertex);
   assert(bblock!=NULL);
   rose_addr_t baddr = bblock->get_address();
@@ -1871,13 +1869,105 @@ DUAnalysis::merge_predecessors(CFGVertex vertex)
     ++edge_cnt;
   }
 
-  FunctionDescriptor* fd = current_function;
   DSTREAM << "Merging " << merge_cnt << " predecessors for block " << addr_str(baddr)
-          << " in function " << fd->address_string()  << " (loop #" << func_limit.get_counter()
-          << ") took " << merge_limit.get_relative_clock().count() << " seconds." << LEND;
+          << " in function " << current_function->address_string()
+          << " (loop #" << func_limit.get_counter() << ") took "
+          << merge_limit.get_relative_clock().count() << " seconds." << LEND;
 
   if (!cstate) {
-    if (bblock != func->get_entry_block()) {
+    if (bblock != current_function->get_entry_block()) {
+      GERROR << "Block " << addr_str(baddr) << " has no predecessors." << LEND;
+    }
+    // This is apparently not the same as input_state. :-(
+    return initial_state;
+  }
+
+  return cstate;
+}
+
+// Merge the predecessor block's output state while *preserving* condtions. The other merge
+// predecessory routine uses fresh expressions for condtions rather than accumulating
+// conditions during analysis. This is performant and suitable for certain types of analysis,
+// but it will not work for other types of analysis
+SymbolicStatePtr
+DUAnalysis::merge_predecessors_with_conditions(CFGVertex vertex)
+{
+  using namespace Rose::BinaryAnalysis;
+
+  // The merged state that we return.
+  SymbolicStatePtr cstate;
+
+  SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->get_operators());
+
+  SgAsmBlock *bblock = get(boost::vertex_name, cfg, vertex);
+  assert(bblock!=NULL);
+  rose_addr_t baddr = bblock->get_address();
+
+  // The loop to merge predecessors.
+  size_t merge_cnt = 0;
+  BlockAnalysis & analysis = blocks.at(baddr);
+  ResourceLimit merge_limit;
+
+  // The entry condition treenode, which will include ancestors
+  TreeNodePtr entry_cond_tnp;
+
+  for (SgAsmBlock *pblock : cfg_in_bblocks(cfg, vertex)) {
+    rose_addr_t paddr = pblock->get_address();
+
+    DSTREAM << "Merging states for predecessor " << addr_str(paddr)
+            << " into block " << addr_str(baddr) << LEND;
+
+    // Every direct predecessor must be and'd with the current analysis
+    const BlockAnalysis & pred_analysis = blocks.at(paddr);
+    if (pred_analysis.output_state) {
+
+      merge_cnt++;
+      debug_state_merge(cstate, "STATE BEFORE MERGE");
+      debug_state_merge(pred_analysis.output_state, "STATE BEING MERGED");
+
+      // This is a predecessor condition that must be conjoined with
+      SymbolicValuePtr prev_cond = pred_analysis.entry_condition;
+      SymbolicValuePtr eip_cond = get_eip_condition(pred_analysis, pblock, baddr);
+      SymbolicValuePtr merge_cond =
+        SymbolicValue::treenode_instance(
+          SymbolicExpr::makeAnd(eip_cond->get_expression(),
+                                prev_cond->get_expression()));
+      DSTREAM << "Merged condition addr=" << addr_str(baddr)
+              << " cond=" << *merge_cond << LEND;
+
+      if (cstate) {
+        // There is a state, so it must be disjoined with the previous state
+        entry_cond_tnp =
+          SymbolicExpr::makeOr(merge_cond->get_expression(), entry_cond_tnp);
+
+        SymbolicValuePtr inverted_merge_cond = SymbolicValue::treenode_instance(
+          SymbolicExpr::makeInvert(merge_cond->get_expression()));
+
+        cstate->merge(pred_analysis.output_state, rops.get(), inverted_merge_cond);
+      }
+      else {
+        // First time through the loop the complete condition is the merge condition; on
+        // subsequent iterations it will be disjoined
+        entry_cond_tnp = merge_cond->get_expression();
+        cstate = pred_analysis.output_state->sclone();
+      }
+      debug_state_merge(cstate, "STATE AFTER MERGE");
+    }
+  }
+
+  if (entry_cond_tnp) {
+    DSTREAM << "Final condition addr=" << addr_str(baddr)
+            << " cond=" << *entry_cond_tnp << LEND;
+    analysis.entry_condition = SymbolicValue::treenode_instance(entry_cond_tnp);
+  }
+
+  DSTREAM << "Merging " << merge_cnt << " predecessors for block " << addr_str(baddr)
+          << " in function " << current_function->address_string()
+          << " (loop #" << func_limit.get_counter() << ") took "
+          << merge_limit.get_relative_clock().count() << " seconds." << LEND;
+
+  if (!cstate) {
+    if (bblock != current_function->get_entry_block()) {
       GERROR << "Block " << addr_str(baddr) << " has no predecessors." << LEND;
     }
     // This is apparently not the same as input_state. :-(
@@ -1908,9 +1998,20 @@ DUAnalysis::process_block_with_limit(CFGVertex vertex)
   // Incoming rops for the block.  This is the merge of all out policies of predecessor
   // vertices, with special consideration for the function entry block.
   SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->get_operators());
-  SymbolicStatePtr cstate = merge_predecessors(vertex);
+
+  // There is now a setting to determine whether the conditions computed for basic blocks are
+  // preserved and propogated when merging predecessors. Real conditions are needed for certain
+  // classes of analysis, such as path finding where program state
+  SymbolicStatePtr cstate = nullptr;
+  if (propagate_conditions) {
+    cstate = merge_predecessors_with_conditions(vertex);
+  }
+  else {
+    cstate = merge_predecessors(vertex);
+  }
   analysis.input_state = cstate->sclone();
   rops->currentState(cstate);
+
 
   analysis.analyze(true);
 
@@ -1931,6 +2032,7 @@ DUAnalysis::process_block_with_limit(CFGVertex vertex)
     }
   }
 
+
   DSTREAM << "Analysis of basic block " << addr_str(baddr) << " in function "
           << current_function->address_string() << " (loop #" << func_limit.get_counter()
           << ") took " << block_limit.get_relative_clock().count() << " seconds." << LEND;
@@ -1947,15 +2049,16 @@ DUAnalysis::process_block_with_limit(CFGVertex vertex)
 //   struct EdgeCondition {
 //     SymbolicValuePtr condition;
 //   };
-//   typedef boost::adjacency_list<boost::vecS, boost::vecS,
-//                                 boost::bidirectionalS, boost::vertex_name_t, EdgeCondition> Cfg2;
+//   using Cfg2 = boost::adjacency_list<boost::vecS, boost::vecS,
+//                                      boost::bidirectionalS,
+//                                      boost::vertex_name_t, EdgeCondition>;
 
-//   typedef boost::graph_traits<Cfg2>::vertex_descriptor Cfg2Vertex;
-//   typedef boost::graph_traits<Cfg2>::vertex_iterator Cfg2VertexIter;
-//   typedef boost::graph_traits<Cfg2>::out_edge_iterator Cfg2OutEdgeIter;
-//   typedef boost::graph_traits<Cfg2>::in_edge_iterator Cfg2InEdgeIter;
-//   typedef boost::graph_traits<Cfg2>::edge_descriptor Cfg2Edge;
-//   typedef boost::graph_traits<Cfg2>::edge_iterator Cfg2EdgeIter;
+//    using Cfg2Vertex = boost::graph_traits<Cfg2>::vertex_descriptor;
+//    using Cfg2VertexIter = boost::graph_traits<Cfg2>::vertex_iterator;
+//    using Cfg2OutEdgeIter = boost::graph_traits<Cfg2>::out_edge_iterator;
+//    using Cfg2InEdgeIter = boost::graph_traits<Cfg2>::in_edge_iterator;
+//    using Cfg2Edge = boost::graph_traits<Cfg2>::edge_descriptor;
+//    using Cfg2EdgeIter = boost::graph_traits<Cfg2>::edge_iterator;
 
 //   Cfg2 cfg2;
 //   boost::copy_graph(cfg, cfg2);
@@ -1975,7 +2078,7 @@ DUAnalysis::process_block_with_limit(CFGVertex vertex)
 //     SymbolicRegisterStatePtr tgt_reg_state = tgt_analysis.output_state->get_register_state();
 //     SymbolicRegisterStatePtr src_reg_state = src_analysis.output_state->get_register_state();
 //     if (tgt_reg_state && src_reg_state) {
-//       RegisterDescriptor eiprd = global_descriptor_set->get_arch_reg("eip");
+//       RegisterDescriptor eiprd = ds.get_arch_reg("eip");
 
 //       SymbolicValuePtr src_eip = src_reg_state->read_register(eiprd);
 //       SymbolicValuePtr tgt_eip = tgt_reg_state->read_register(eiprd);
@@ -2004,17 +2107,11 @@ DUAnalysis::loop_over_cfg()
   // Because it's shorter than current_function...
   FunctionDescriptor* & fd = current_function;
 
-  // Remove selected blocks from the control flow graph, specifically bad code blocks and those
-  // with no predecessors.
-  cfg = current_function->get_rose_cfg();
-  cleanup_cfg(cfg);
-
   // add_edge_conditions();
 
   // Now that the control flow graph has been cleaned up, we can construct a flow order list of
   // the blocks reachable from the entry point.  This graph should now be internally consistent.
-  Rose::BinaryAnalysis::ControlFlow& cfg_analyzer = fd->get_cfg_analyzer();
-  std::vector<CFGVertex> flowlist = cfg_analyzer.flow_order(cfg, 0);
+  std::vector<CFGVertex> flowlist = fd->get_vertices_in_flow_order();
   if (blocks.size() != flowlist.size()) {
     GWARN << "Function " << fd->address_string() << " includes only " << flowlist.size()
           << " of " << num_vertices(cfg) << " blocks in the control flow." << LEND;
@@ -2039,6 +2136,7 @@ DUAnalysis::loop_over_cfg()
       SgAsmBlock *bblock = convert_vertex_to_bblock(cfg, vertex);
       assert(bblock!=NULL);
       rose_addr_t baddr = bblock->get_address();
+      // The call to at() should not throw unless our code is using the wrong CFG.
       BlockAnalysis& analysis = blocks.at(baddr);
 
       // If the block is a "bad" block, then skip it.
@@ -2115,12 +2213,17 @@ DUAnalysis::solve_flow_equation_iteratively()
   // global variable.   Go read about it in SymbolicValue::scopy().
   discarded_expressions = 0;
 
+  // This analysis requires the filtered version of the control flow graph because we don't
+  // know how to merge predecessors in cases where there are none.
+  cfg = current_function->get_pharos_cfg();
+
   // Create a BlockAnalysis object for every basic block in function.  Create conditions for
   // each of the predecessor edges, and analyze the blocks to see if they look like bad code.
   create_blocks();
 
   // Set the stack delta of the first instruction to zero, with confidence Certain (by definition).
-  sp_tracker->update_delta(current_function->get_address(), StackDelta(0, ConfidenceCertain));
+  sp_tracker.update_delta(current_function->get_address(), StackDelta(0, ConfidenceCertain),
+                          sd_failures);
 
   // Do most of the real work.  Visit each block in the control flow graph, possibly multiple
   // times, merging predecessor states, emulating each block, and updating state histories.
@@ -2157,40 +2260,32 @@ DUAnalysis::analyze_basic_blocks_independently()
   LimitCode rstatus = func_limit.check();
   if (rstatus != LimitSuccess) return rstatus;
 
+  // Because it's shorter than current_function...
+  FunctionDescriptor* & fd = current_function;
+
+  // In analyze_flow_equation_iteratively() we discarded blocks with various problems such as
+  // not having predecessors.  We don't want that filter here because we're computing per-block
+  // semantics, and can do so even if we don't understand how they fit into the control flow.
+  // Most of the otehr fields in the function descriptor are based on the Pharos (filtered)
+  // control flow graph, so some extra caution is required qhen using this CFG.
+  cfg = fd->get_rose_cfg();
+
   // Create a BlockAnalysis object for every basic block in function.  Create conditions for
   // each of the predecessor edges, and analyze the blocks to see if they look like bad code.
   create_blocks();
 
   // Set the stack delta of the first instruction to zero, with confidence Certain (by definition).
-  sp_tracker->update_delta(current_function->get_address(), StackDelta(0, ConfidenceCertain));
+  sp_tracker.update_delta(current_function->get_address(), StackDelta(0, ConfidenceCertain),
+                          sd_failures);
 
   // Instead of loop_over_cfg(), this algorithm is going to be simpler, so it's right here.
-
-  // Because it's shorter than current_function...
-  FunctionDescriptor* & fd = current_function;
-
-  // In loop_over_cfg() we discarded blocks with various problems such as not having
-  // predecessors.  We probably don't really want that filter here.
-  cfg = current_function->get_rose_cfg();
-  cleanup_cfg(cfg);
-
-  // This code was designed to give us the blocks in the control flow graph in roughly flow
-  // order, which is a performance enhancement for the convergence algorithm that's not
-  // relevant here.  As with the code to cleanup the CFG, this is convenient now, but it would
-  // be better to just process all of the blocks in an arbitrary order, and maybe even in
-  // parallel.  This code is a reasonable approximation however, and it's known to work.
-
-  Rose::BinaryAnalysis::ControlFlow& cfg_analyzer = fd->get_cfg_analyzer();
-  std::vector<CFGVertex> flowlist = cfg_analyzer.flow_order(cfg, 0);
-  if (blocks.size() != flowlist.size()) {
-    GWARN << "Function " << fd->address_string() << " includes only " << flowlist.size()
-          << " of " << num_vertices(cfg) << " blocks in the control flow." << LEND;
-  }
 
   // The RISC operators were built in the constructor based on how much rigor we wanted.
   SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->get_operators());
 
-  for (auto vertex : flowlist) {
+  // Visit each basic block in the function without regard to the ordering in the control flow,
+  // or even whether the blocks are connected to the control flow.
+  for (auto vertex : cfg_vertices(cfg)) {
     SgAsmBlock *bblock = convert_vertex_to_bblock(cfg, vertex);
     assert(bblock!=NULL);
     rose_addr_t baddr = bblock->get_address();
@@ -2231,6 +2326,71 @@ DUAnalysis::analyze_basic_blocks_independently()
   }
 
   return rstatus;
+}
+
+bool
+get_expression_condition(SymbolicValuePtr sv, rose_addr_t next_addr, std::vector<TreeNodePtr>& condition_list,
+                         SymbolicValuePtr& final_condition,
+                         bool direction) {
+
+  using namespace Rose::BinaryAnalysis;
+
+  TreeNodePtr tn = sv->get_expression();
+
+  // We are at a leaf, is it the target?
+  if (tn->isLeafNode() && tn->isLeafNode()->isNumber()) {
+    rose_addr_t node_addr = address_from_node(tn->isLeafNode());
+    if (next_addr == node_addr) {
+      // if we came here on the false branch, invert the last condition
+      if (false==direction) {
+        TreeNodePtr& last_condition = condition_list.back();
+        last_condition = SymbolicExpr::makeInvert(last_condition);
+      }
+      final_condition = SymbolicValue::treenode_instance(SymbolicExpr::makeBoolean(true));
+      return true;
+    }
+    final_condition = SymbolicValue::treenode_instance(SymbolicExpr::makeBoolean(false));
+    return false;
+  }
+
+  const InternalNodePtr in = tn->isInteriorNode();
+  // If an ITE, then recurse through the branches
+  if (in && in->getOperator() == SymbolicExpr::OP_ITE) {
+
+    const TreeNodePtrVector& children = in->children();
+
+    // Camee from a false branch, so invert the last controlling condition
+    if (false == direction && !condition_list.empty()) {
+      TreeNodePtr& last_condition = condition_list.back();
+      last_condition = SymbolicExpr::makeInvert(last_condition);
+    }
+
+    // Save this condition on the path and continue the search through the subtrees
+    condition_list.push_back(children[0]);
+
+    if (get_expression_condition(SymbolicValue::treenode_instance(children[1]), next_addr, condition_list, final_condition, true) ||
+        get_expression_condition(SymbolicValue::treenode_instance(children[2]), next_addr, condition_list, final_condition, false)) {
+
+      // found the target in a subtree, now conjoin the path
+      TreeNodePtr and_cond = condition_list.at(0);
+      if (condition_list.size()>1) {
+        size_t i=1;
+        while (i<condition_list.size()) {
+          and_cond = SymbolicExpr::makeAnd(and_cond, condition_list.at(i));
+          i++;
+        }
+      }
+      final_condition = SymbolicValue::treenode_instance(and_cond);
+      return true;
+    }
+  }
+
+  // next address not in this subtree
+  if (!condition_list.empty()) condition_list.pop_back();
+
+  // the default is to simply return an incomplete expression.
+  final_condition = SymbolicValue::incomplete(1);
+  return false;
 }
 
 } // Namespace pharos

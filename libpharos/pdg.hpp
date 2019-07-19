@@ -1,4 +1,4 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_PDG_H
 #define Pharos_PDG_H
@@ -10,7 +10,6 @@ class PDG;
 } // namespace pharos
 
 #include "defuse.hpp"
-#include "sptrack.hpp"
 #include "cdg.hpp"
 
 namespace pharos {
@@ -18,7 +17,7 @@ namespace pharos {
 // PDG node
 struct PDGNode {
   // Instruction that this node represents
-  SgAsmx86Instruction* insn;
+  SgAsmX86Instruction* insn;
   // Data dependencies
   DUChain ddeps;
   // Control flow dependencies
@@ -32,18 +31,20 @@ struct ltPDGNode {
   }
 };
 
-typedef std::set<PDGNode, ltPDGNode> Slice;
-typedef std::set<std::string> StringSet;
-typedef std::map<rose_addr_t, StringSet> Addr2StringSetMap;
-typedef std::vector<rose_addr_t> AddrVector;
-typedef std::vector<std::string> StringVector;
+using Slice = std::set<PDGNode, ltPDGNode>;
+using StringSet = std::set<std::string>;
+using Addr2StringSetMap = std::map<rose_addr_t, StringSet>;
+using AddrVector = std::vector<rose_addr_t>;
+using StringVector = std::vector<std::string>;
 
-typedef uint16_t MnemonicCode;
-typedef uint32_t FunctionID;
+using MnemonicCode = uint16_t;
+using FunctionID = uint32_t;
 
 class PDG {
 
 protected:
+  DescriptorSet& ds;
+
   // The function descriptor that we're analyzing.
   FunctionDescriptor* fd;
 
@@ -53,33 +54,33 @@ protected:
 
   Insn2InsnSetMap control_deps;
 
-  std::string getInstructionString(SgAsmx86Instruction *insn, AddrVector &constants);
-  StringVector getInstructionString(SgAsmx86Instruction *insn);
-  std::string makeVariableStr(SgAsmx86Instruction *cur_insn);
-  void buildDotNode(SgAsmx86Instruction *cur_insn, std::stringstream &sout, X86InsnSet& processed);
-  void toDot(std::string dotOutputFile);
-  void hashSubPaths(SgAsmx86Instruction *cur_insn, std::string path, X86InsnSet processed,
+  std::string getInstructionString(SgAsmX86Instruction *insn, AddrVector &constants) const;
+  StringVector getInstructionString(SgAsmX86Instruction *insn) const;
+  std::string makeVariableStr(SgAsmX86Instruction *cur_insn) const;
+  void buildDotNode(SgAsmX86Instruction *cur_insn, std::stringstream &sout, X86InsnSet& processed) const;
+  void toDot(std::string dotOutputFile) const;
+  void hashSubPaths(SgAsmX86Instruction *cur_insn, std::string path, X86InsnSet processed,
                     StringVector& hashedPaths, size_t maxSubPathLen, size_t curLen,
                     StringVector* ss_dump = NULL, AddrSet filter_addresses = AddrSet(),
                     Addr2StringSetMap filter_constants = Addr2StringSetMap(),
-                    bool includeSubPath = true);
+                    bool includeSubPath = true) const;
 
-  StringVector getPaths(size_t maxSubPathLen);
-  std::string dumpOperand(SgAsmExpression *exp, AddrVector& constants);
-  std::string dumpOperands(SgAsmx86Instruction *insn, AddrVector& constants);
-  size_t hashSlice(SgAsmx86Instruction *insn, size_t nHashFunc, std::vector<unsigned int> & hashes);
-  size_t getNumInstr();
+  StringVector getPaths(size_t maxSubPathLen) const;
+  std::string dumpOperand(SgAsmExpression *exp, AddrVector& constants) const;
+  std::string dumpOperands(SgAsmX86Instruction *insn, AddrVector& constants) const;
+  size_t hashSlice(SgAsmX86Instruction *insn, size_t nHashFunc, std::vector<unsigned int> & hashes) const;
+  size_t getNumInstr() const;
 
   // Get a chop? Not really a chop?
-  X86InsnSet chop_insns(SgAsmx86Instruction *insn);
-  AccessMap chop_full(SgAsmx86Instruction *insn);
+  X86InsnSet chop_insns(SgAsmX86Instruction *insn) const;
+  AccessMap chop_full(SgAsmX86Instruction *insn) const;
 
   // A convenient way to get a single read (with some error checking).
-  AbstractAccess get_single_mem_read(SgAsmx86Instruction* insn);
+  AbstractAccess get_single_mem_read(SgAsmX86Instruction* insn) const;
 
 public:
 
-  PDG(FunctionDescriptor* f, spTracker* sp_tracker);
+  PDG(DescriptorSet& ds, FunctionDescriptor& f);
   //~PDG();
 
   // Only export the usedef analysis read-only.
@@ -88,16 +89,20 @@ public:
   const CDG& get_cdg() const { return cdg; }
 
   // Must be public for buildKeys() in indexer.cpp.
-  Insn2InsnSetMap getControlDeps() { return control_deps; }
+  Insn2InsnSetMap getControlDeps() const { return control_deps; }
 
   // Get a slice for specified instruction.
   // This has a peculiar API -- returning a string and updating the passed reference.
   // Perhaps there should be two methods here.
-  std::string getSlice(SgAsmx86Instruction *insn, Slice &s);
+  std::string getSlice(SgAsmX86Instruction *insn, Slice &s) const;
 
   // Return the hash.  Must be public for FunctionDescriptor::get_pdg_hash(), which should be
   // used as the official API instead.
-  std::string getWeightedMaxHash(size_t nHashFunc);
+  std::string getWeightedMaxHash(size_t nHashFunc) const;
+
+  size_t get_delta_failures() const {
+    return du.get_delta_failures();
+  }
 
 };
 

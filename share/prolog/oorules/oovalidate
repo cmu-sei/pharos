@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# We have to preserve the correct paths to the arguments first.
+FIRST=${1:0:1}
+if [ $FIRST == '/' ]
+then
+  F1=$1
+else
+  F1="$(pwd)/${1}"
+fi
+
+FIRST=${2:0:1}
+if [ $FIRST == '/' ]
+then
+  F2=$2
+else
+  F2="$(pwd)/${2}"
+fi
+
+# Then get the path where this script is...
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# And then run the "helper"...
+source "$DIR/../helper.bash" "$DIR"
+
+# And finally invoke XSB....  Thanks XSB!
+$XSB -e "[util],[validate],load_dyn('${F1}'),load_dyn('${F2}'),validateResults,halt."

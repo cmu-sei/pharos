@@ -27,7 +27,7 @@ using namespace pharos;
 // The global CERT message facility.  This may change.
 Sawyer::Message::Facility glog("APIG");
 
-const std::string VERSION  = "1.0";
+const std::string VERSION  = "1.01";
 
 // add extra command line options for apianalyzer
 ProgOptDesc apianalyzer_options() {
@@ -51,8 +51,6 @@ int main(int argc, char* argv[]) {
   apiod.add(csod);
 
   ProgOptVarMap vm = parse_cert_options(argc, argv, apiod);
-  SgAsmInterpretation* interp = get_interpretation(vm);
-  if (interp == NULL) return 1;
 
   std::ostringstream file_name;
   file_name << vm["graphviz"].as<std::string>();
@@ -61,7 +59,7 @@ int main(int argc, char* argv[]) {
   // end configuration, begin analysis
 
   // Find calls, functions, and imports.
-  DescriptorSet ds(interp, &vm);
+  DescriptorSet ds(&vm);
   // Resolve imports, load API data, etc.
   ds.resolve_imports();
 

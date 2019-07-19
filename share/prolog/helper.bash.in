@@ -1,0 +1,13 @@
+#!/usr/bin/bash
+
+# Include the following lines in your XSB script:
+#DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+#source "$DIR/../helper.bash" "$DIR"
+
+# And this script will ensure that xwam files are removed, that XSB is
+# run from the correct location, etc.
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+#rm -f "$1"/*.xwam
+cd "$1"
+XSB="${XSB:-@XSB_PROGRAM@}"

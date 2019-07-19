@@ -1,3 +1,5 @@
+// Copyright 2017-2019 Carnegie Mellon University.  See LICENSE file for terms.
+
 #ifndef Pharos_OOVFTable_H
 #define Pharos_OOVFTable_H
 
@@ -23,7 +25,7 @@
 //
 namespace pharos {
 
-typedef std::shared_ptr<TypeRTTICompleteObjectLocator> TypeRTTICompleteObjectLocatorPtr;
+using TypeRTTICompleteObjectLocatorPtr = std::shared_ptr<TypeRTTICompleteObjectLocator>;
 
 class OOVirtualFunctionTable {
  private:
@@ -43,18 +45,21 @@ class OOVirtualFunctionTable {
   TypeRTTICompleteObjectLocatorPtr rtti_col_;
 
   // virtual function calls made through this virtual function table
-  std::vector<CallDescriptor*> vcalls_;
+  std::vector<const CallDescriptor*> vcalls_;
+  // A map of virtual calls and the targets that they resolve to.
+  std::map<const CallDescriptor*, AddrSet> vcall_targets_;
 
   // virtual functions in this table and their offsets within the table
   OOVirtualMethodMap vfuncs_;
 
-  void load_rtti_col();
+  //void load_rtti_col();
 
  public:
 
   OOVirtualFunctionTable() : address_(INVALID), size_(0), rtti_address_(INVALID),rtti_col_(nullptr) { }
 
-  OOVirtualFunctionTable(rose_addr_t a, size_t s, rose_addr_t ra);
+  OOVirtualFunctionTable(rose_addr_t a, size_t s, rose_addr_t ra,
+    TypeRTTICompleteObjectLocatorPtr rc);
 
   OOVirtualFunctionTable(rose_addr_t a);
 
@@ -68,15 +73,17 @@ class OOVirtualFunctionTable {
 
   rose_addr_t get_rtti_address() const;
 
-  void set_rtti_address(rose_addr_t rtti);
+  void set_rtti(rose_addr_t ra, TypeRTTICompleteObjectLocatorPtr rc);
 
   size_t get_size() const;
 
   void set_size(size_t s);
 
-  void add_virtual_call(CallDescriptor *vcd);
+  void add_virtual_call(const CallDescriptor *vcd, rose_addr_t target);
 
-  const std::vector<CallDescriptor*>& get_virtual_calls();
+  const std::vector<const CallDescriptor*>& get_virtual_calls() const;
+
+  const std::map<const CallDescriptor*, AddrSet> get_virtual_call_targets() const;
 
   void add_virtual_function(OOVirtualFunctionTableEntry entry);
 
@@ -95,7 +102,7 @@ class OOVfptr : public OOMember {
 
   OOVfptr();
 
-  OOVfptr(size_t s, size_t o, OOVirtualFunctionTablePtr vft);
+  OOVfptr(size_t s, OOVirtualFunctionTablePtr vft);
 
   OOVfptr(OOVirtualFunctionTablePtr vft);
 
@@ -103,10 +110,10 @@ class OOVfptr : public OOMember {
 
   virtual ~OOVfptr();
 
-  virtual void set_default_name();
-
   OOVirtualFunctionTablePtr get_vftable() const;
 };
+
+TypeRTTICompleteObjectLocatorPtr read_RTTI(const DescriptorSet& ds, rose_addr_t addr);
 
 } // end pharos
 

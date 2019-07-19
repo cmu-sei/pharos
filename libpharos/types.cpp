@@ -1,5 +1,4 @@
-
-// Copyright 2016-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
 // Author: Jeff Gennari
 
 #include <boost/range/adaptor/map.hpp>
@@ -10,19 +9,19 @@
 #include "defuse.hpp"
 #include "stkvar.hpp"
 #include "demangle.hpp"
+#include "ooanalyzer.hpp"
 
 // set up local logging
 namespace {
-Sawyer::Message::Facility mlog("TYPEA");
+Sawyer::Message::Facility mlog;
 }
-struct InitTypeLogger {
-  InitTypeLogger() {
-    Sawyer::Message::mfacilities.insert(mlog);
-  }
-};
-static InitTypeLogger _turnon;
 
 namespace pharos {
+
+void init_type_logging() {
+  mlog.initialize("TYPA");
+  Sawyer::Message::mfacilities.insert(mlog);
+}
 
 // Enumerations to support prolog queries
 enum type_enum { IS, ISNOT, BOTTOM, TOP };
@@ -67,7 +66,7 @@ const std::string THISCALL_CONVENTION = "__thiscall";
 
 using namespace prolog;
 
-typedef impl::xsb::xsb_term XsbTerm;
+using XsbTerm = impl::xsb::xsb_term;
 
 bool
 has_type_descriptor(TreeNodePtr tnp) {
@@ -492,7 +491,7 @@ TypeSolver::assert_arch_fact() {
 
   if (!session_) return;
 
-  session_->add_fact(ARCH_FACT, global_descriptor_set->get_arch_bits());
+  session_->add_fact(ARCH_FACT, du_analysis_.ds.get_arch_bits());
 }
 
 // This function asserts facts for actual values on tree nodes
@@ -525,17 +524,17 @@ TypeSolver::assert_global_variable_facts() {
 
   // ======================================================
   // Emit global variable facts. These facts capture the fact that
-  const GlobalMemoryDescriptorMap& globals = global_descriptor_set->get_global_map();
-  const FunctionDescriptorMap& funcs = global_descriptor_set->get_func_map();
+  const GlobalMemoryDescriptorMap& globals = du_analysis_.ds.get_global_map();
+  const FunctionDescriptorMap& funcs = du_analysis_.ds.get_func_map();
   for (const GlobalMemoryDescriptorMap::value_type & pair : globals) {
 
-    GlobalMemoryDescriptor global_var = pair.second;
+    GlobalMemoryDescriptor const & global_var = pair.second;
 
     // is this is a function, then it is not really a global variable
     if (funcs.find(global_var.get_address()) != funcs.end()) continue;
 
     SymbolicValuePtr global_address = global_var.get_memory_address();
-    const std::vector<SymbolicValuePtr>& global_values = global_var.get_values();
+    auto global_values = global_var.get_values();
 
     if (global_values.empty() || !global_address) continue;
 
@@ -581,9 +580,11 @@ TypeSolver::assert_global_variable_facts() {
     // this to make sense
 
     if (global_values.size() > 1) {
-      for (unsigned int i=0; i < global_values.size()-1; i++) {
-        const SymbolicValuePtr& cur_val = global_values.at(i);
-        const SymbolicValuePtr& nxt_val = global_values.at(i+1);
+      auto cur_i = global_values.begin();
+      auto nxt_i = std::next(cur_i);;
+      for (; nxt_i != global_values.end(); ++cur_i, ++nxt_i) {
+        const SymbolicValuePtr& cur_val = *cur_i;
+        const SymbolicValuePtr& nxt_val = *nxt_i;
 
         if (!cur_val || !nxt_val) continue;
 
@@ -607,8 +608,8 @@ TypeSolver::assert_global_variable_facts() {
 void
 TypeSolver::assert_objectness_facts(const CallDescriptor *cd) {
 
-  FunctionDescriptor *target_fd = cd->get_function_descriptor();
-  RegisterDescriptor ecx_thisptr = global_descriptor_set->get_arch_reg("ecx");
+  const FunctionDescriptor *target_fd = cd->get_function_descriptor();
+  RegisterDescriptor ecx_thisptr = du_analysis_.ds.get_arch_reg("ecx");
 
   MTRACE << "Generating objectness facts for call at " << addr_str(cd->get_address()) << LEND;
 
@@ -617,22 +618,20 @@ TypeSolver::assert_objectness_facts(const CallDescriptor *cd) {
   if (target_fd && target_fd->get_address() != 0) {
 
     // Is this a call to the new operator? If so, emit facts that the value is an object
-    if (target_fd->is_new_method()) {
+    if (ooa->is_new_method(target_fd->get_address())) {
 
       MTRACE << "Found call to static new method (" << target_fd->address_string() << ")"
             << " at call " << addr_str(cd->get_address()) << LEND;
 
       // This is how we must get the return value for new() at the call point
-      SgAsmx86Instruction* call_insn = isSgAsmX86Instruction(cd->get_insn());
+      SgAsmX86Instruction* call_insn = isSgAsmX86Instruction(cd->get_insn());
       SymbolicValuePtr new_retval;
       access_filters::aa_range reg_writes = du_analysis_.get_reg_writes(call_insn);
-      if (std::begin(reg_writes) != std::end(reg_writes)) {
-        for (const AbstractAccess &rwaa : reg_writes) {
-          std::string regname = unparseX86Register(rwaa.register_descriptor, NULL);
-          if (regname == "eax") {
-            new_retval = rwaa.value;
-            break;
-          }
+      for (const AbstractAccess &rwaa : reg_writes) {
+        std::string regname = unparseX86Register(rwaa.register_descriptor, NULL);
+        if (regname == "eax") {
+          new_retval = rwaa.value;
+          break;
         }
       }
 
@@ -659,14 +658,14 @@ TypeSolver::assert_objectness_facts(const CallDescriptor *cd) {
       MDEBUG << "Function call at " << addr_str(cd->get_address()) << " to "
              << addr_str(target_fd->get_address()) << " not new(), checking for thiscall" << LEND;
 
-      ParamVector callee_params = target_fd->get_parameters().get_params();
+      auto callee_params = target_fd->get_parameters().get_params();
 
       // In the case where this is a regular call (i.e. the function body is in this program),
       // then assert the objectness on the callee parameters
 
-      const CallingConventionPtrVector& conventions = target_fd->get_calling_conventions();
-      if (conventions.size() == 1) {
-        const CallingConvention* conv = conventions.at(0);
+      auto conventions = target_fd->get_calling_conventions();
+      if (!conventions.empty()) {
+        const CallingConvention* conv = *conventions.begin();
 
         MDEBUG << "The calling convention for " << addr_str(target_fd->get_address())
                << " is " << conv->get_name() << LEND;
@@ -677,10 +676,10 @@ TypeSolver::assert_objectness_facts(const CallDescriptor *cd) {
                  << addr_str(target_fd->get_address()) << " called from "
                  << addr_str(cd->get_address()) << LEND;
 
-          for (auto callee_param : callee_params) {
-            if (callee_param.value && callee_param.reg == ecx_thisptr) {
+          for (auto & callee_param : callee_params) {
+            if (callee_param.get_value() && callee_param.get_register() == ecx_thisptr) {
 
-              TreeNodePtr ecx_tnp = callee_param.value->get_expression();
+              TreeNodePtr ecx_tnp = callee_param.get_expression();
               if (ecx_tnp) {
                 MDEBUG << "Adding KNOWN OBJECT fact for regular __thiscall method" << LEND;
                 session_->add_fact(KNOWN_OBJECT_FACT, treenode_to_xsb(ecx_tnp), IS);
@@ -698,9 +697,9 @@ TypeSolver::assert_objectness_facts(const CallDescriptor *cd) {
 
   else {
 
-    ImportDescriptor* id = cd->get_import_descriptor();
+    const ImportDescriptor* id = cd->get_import_descriptor();
     if (id != NULL) {
-      if (id->is_new_method()) {
+      if (ooa->is_new_method(id->get_address())) {
 
         MINFO << "Found call to imported new method at "
               << cd->address_string() << " called from " << addr_str(cd->get_address()) << LEND;
@@ -739,13 +738,13 @@ TypeSolver::assert_objectness_facts(const CallDescriptor *cd) {
                      << addr_str(cd->get_address()) << LEND;
 
               // Duggan says get the params from the import descriptor
-              const ParamVector& caller_params = cd->get_parameters().get_params();
+              auto caller_params = cd->get_parameters().get_params();
 
               for (const ParameterDefinition &param : caller_params) {
 
-                if (param.value  && param.reg == ecx_thisptr) {
+                if (param.get_value() && param.get_register() == ecx_thisptr) {
 
-                  TreeNodePtr ecx_tnp = param.value->get_expression();
+                  TreeNodePtr ecx_tnp = param.get_expression();
                   if (ecx_tnp) {
                     MDEBUG << "Adding KNOWN OBJECT fact for imported __thiscall method" << LEND;
                     session_->add_fact(KNOWN_OBJECT_FACT, treenode_to_xsb(ecx_tnp), IS);
@@ -773,7 +772,7 @@ TypeSolver::assert_local_variable_facts() {
   // For each stack variable, emit the "pointsTo" facts. These facts
   // capture the stack variable memory addresses refer to stack
   // variable values (if present)
-  for (StackVariable *stkvar : stack_vars) {
+  for (auto & stkvar : stack_vars) {
 
     MTRACE << "Emitting facts for stack variable: " << stkvar->to_string() << LEND;
 
@@ -845,11 +844,13 @@ TypeSolver::assert_function_call_facts() {
   // To make the reasoning work for the entire program, all the facts for each call must be
   // available at every function
 
-  for (auto call_pair : global_descriptor_set->get_call_map()) {
-    CallDescriptor cd = call_pair.second;
+  for (auto & call_pair : du_analysis_.ds.get_call_map()) {
+    CallDescriptor const & cd = call_pair.second;
 
-    const ParamVector& caller_params = cd.get_parameters().get_params();
-    ParamVector callee_params;
+    auto caller_params = cd.get_parameters().get_params();
+    ParamVector::const_iterator caller_iter = caller_params.begin();
+    ParamVector::const_iterator callee_iter;
+    ParamVector::const_iterator callee_iter_end;
 
     // if this is an import, then there are no interprocedural facts, but there are caller-perspective facts
     const ImportDescriptor *imp = cd.get_import_descriptor(); // is this an import?
@@ -857,34 +858,33 @@ TypeSolver::assert_function_call_facts() {
       // import
       const FunctionDescriptor* impfd = imp->get_function_descriptor();
       if (impfd) {
-        callee_params = impfd->get_parameters().get_params();
+        callee_iter = impfd->get_parameters().get_params().begin();
+        callee_iter_end = impfd->get_parameters().get_params().end();
       }
     }
     else {
       // Not import
-      FunctionDescriptor *target_fd = cd.get_function_descriptor();
+      const FunctionDescriptor *target_fd = cd.get_function_descriptor();
       if (target_fd) {
-        callee_params = target_fd->get_parameters().get_params();
+        callee_iter = target_fd->get_parameters().get_params().begin();
+        callee_iter_end = target_fd->get_parameters().get_params().end();
       }
     }
 
-    ParamVector::const_iterator callee_iter = callee_params.begin();
-    ParamVector::const_iterator caller_iter = caller_params.begin();
-
-    while (caller_iter != caller_params.end() && callee_iter != callee_params.end()) {
+    while (caller_iter != caller_params.end() && callee_iter != callee_iter_end) {
 
       const ParameterDefinition &caller_param = *caller_iter;
       const ParameterDefinition &callee_param = *callee_iter;
 
       // the parameters map to each other
-      if (caller_param.num == callee_param.num) {
+      if (caller_param.get_num() == callee_param.get_num()) {
 
-        if (caller_param.value != NULL && callee_param.value != NULL) {
+        if (caller_param.get_value() != NULL && callee_param.get_value() != NULL) {
 
-          TreeNodePtr caller_tnp = caller_param.value->get_expression(); // the caller is this function
+          TreeNodePtr caller_tnp = caller_param.get_expression(); // the caller is this function
           TypeDescriptorPtr caller_td = fetch_type_descriptor(caller_tnp);
 
-          TreeNodePtr callee_tnp = callee_param.value->get_expression();
+          TreeNodePtr callee_tnp = callee_param.get_expression();
           TypeDescriptorPtr callee_td = fetch_type_descriptor(callee_tnp);
 
           // Emit all the known facts about the callee to ensure the type is correct
@@ -932,12 +932,12 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
   //
   const StackVariablePtrList& stack_vars = current_function_->get_stack_variables();
 
-  const ParamVector& cd_rets = cd->get_parameters().get_returns();
+  auto cd_rets = cd->get_parameters().get_returns();
   for (const ParameterDefinition &retval : cd_rets) {
 
-    if (retval.value) {
+    if (retval.get_value()) {
 
-      TreeNodePtr retval_tnp = retval.value->get_expression();
+      TreeNodePtr retval_tnp = retval.get_value()->get_expression();
 
       if (false == has_type_descriptor(retval_tnp)) {
         recursively_assert_facts(retval_tnp);
@@ -950,7 +950,7 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
 
       // ======================================================================================
       // Tie return values to stack variables
-      for (StackVariable *stkvar : stack_vars) {
+      for (auto & stkvar : stack_vars) {
         if (!stkvar) continue;
 
         std::vector<SymbolicValuePtr> var_vals = stkvar->get_values();
@@ -961,7 +961,7 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
 
             if (!varval_tnp) continue;
 
-            if (smart_can_be_equal(retval.value, varval_sv) == true) {
+            if (smart_can_be_equal(retval.get_value(), varval_sv) == true) {
               MDEBUG << "Emitting sameType fact for stackvar/ret val: (retval==stackvar) "
                      << *retval_tnp << " == " << *varval_tnp << LEND
                      << addr_str(treenode_to_xsb(retval_tnp)) << " == " << addr_str(treenode_to_xsb(varval_tnp))
@@ -985,20 +985,20 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
       // }
 
       // Check the global value against the return value
-      const GlobalMemoryDescriptorMap& globals = global_descriptor_set->get_global_map();
-      const FunctionDescriptorMap& funcs = global_descriptor_set->get_func_map();
+      const GlobalMemoryDescriptorMap& globals = du_analysis_.ds.get_global_map();
+      const FunctionDescriptorMap& funcs = du_analysis_.ds.get_func_map();
 
        for (const GlobalMemoryDescriptorMap::value_type & pair : globals) {
 
-         GlobalMemoryDescriptor global_var = pair.second;
+         GlobalMemoryDescriptor const & global_var = pair.second;
 
          // is this is a function, then it is not really a global variable
          if (funcs.find(global_var.get_address()) != funcs.end()) continue;
 
          SymbolicValuePtr global_address = global_var.get_memory_address();
-         const std::vector<SymbolicValuePtr>& global_values = global_var.get_values();
+         auto global_values = global_var.get_values();
 
-         if (smart_can_be_equal(global_address,retval.value) == true) {
+         if (smart_can_be_equal(global_address,retval.get_value()) == true) {
            TreeNodePtr global_addr_tnp = global_address->get_expression();
 
            session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(retval_tnp), treenode_to_xsb(global_addr_tnp));
@@ -1010,7 +1010,7 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
          }
          else {
            for (auto global_val : global_values) {
-             if (smart_can_be_equal(global_val,retval.value) == true) {
+             if (smart_can_be_equal(global_val,retval.get_value()) == true) {
                TreeNodePtr global_val_tnp = global_val->get_expression();
 
                session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(retval_tnp), treenode_to_xsb(global_val_tnp));
@@ -1038,21 +1038,21 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
   // ======================================================================================================
   // Emit facts about parameters as they relate to stack and global variables. We are
   // looking for pass byte value and pass by reference relationships
-  const ParamVector& caller_params = cd->get_parameters().get_params();
+  auto caller_params = cd->get_parameters().get_params();
 
   MDEBUG << "This function has " << stack_vars.size() << " stack variables and "
          << caller_params.size() << " parameters" << LEND;
 
   for (const ParameterDefinition &param : caller_params) {
 
-    if (!param.value || !param.address) continue;
+    if (!param.get_value() || !param.get_address()) continue;
 
-    TreeNodePtr par_val_tnp = param.value->get_expression();
-    TreeNodePtr par_mem_tnp = param.address->get_expression();
+    TreeNodePtr par_val_tnp = param.get_value()->get_expression();
+    TreeNodePtr par_mem_tnp = param.get_address()->get_expression();
     uint64_t par_val_id = reinterpret_cast<uint64_t>(&*par_val_tnp);
 
     session_->add_fact(FNCALL_ARG_FACT,
-                       cd->get_address(), param.num, treenode_to_xsb(par_val_tnp));
+                       cd->get_address(), param.get_num(), treenode_to_xsb(par_val_tnp));
 
     MTRACE << "===" << LEND;
     MTRACE << "Evaluating TNP Param: (" << addr_str(par_val_id) << ") " << *par_val_tnp << LEND;
@@ -1069,7 +1069,7 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
     session_->add_fact(POINTS_TO_FACT,
                        treenode_to_xsb(par_mem_tnp), treenode_to_xsb(par_val_tnp));
 
-    for (StackVariable *stkvar : stack_vars) {
+    for (auto & stkvar : stack_vars) {
 
       if (!stkvar) continue;
 
@@ -1093,7 +1093,7 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
             << *var_addr_tnp << " : " << addr_str(var_addr_id)
             << ", par_val: " << *par_val_tnp << " : " << addr_str(par_val_id) << LEND;
 
-      if (smart_can_be_equal(var_addr, param.value) == true) {
+      if (smart_can_be_equal(var_addr, param.get_value()) == true) {
         if (var_addr_id != par_val_id) {
           MTRACE << "*** Detected stack variable pass by reference" << LEND;
           session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(var_addr_tnp), treenode_to_xsb(par_val_tnp));
@@ -1133,7 +1133,7 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
               // If the two values are equal but not identical, check
               // their lineage to see if they are related (i.e. have
               // commong defining instructions).
-              const InsnSet& par_definers = param.value->get_defining_instructions();
+              const InsnSet& par_definers = param.get_value()->get_defining_instructions();
               const InsnSet& var_definers = var_val->get_defining_instructions();
               InsnSet intersect;
 
@@ -1166,18 +1166,18 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
 
     // ======================================================================================
     // check for PBV and PBR in global vars
-    const GlobalMemoryDescriptorMap& globals = global_descriptor_set->get_global_map();
-    const FunctionDescriptorMap& funcs = global_descriptor_set->get_func_map();
+    const GlobalMemoryDescriptorMap& globals = du_analysis_.ds.get_global_map();
+    const FunctionDescriptorMap& funcs = du_analysis_.ds.get_func_map();
 
     for (const GlobalMemoryDescriptorMap::value_type & pair : globals)  {
 
-      GlobalMemoryDescriptor global_var = pair.second;
+      GlobalMemoryDescriptor const & global_var = pair.second;
 
       // Again, skip function pointers
       if (funcs.find(global_var.get_address()) != funcs.end()) continue;
 
       SymbolicValuePtr global_address = global_var.get_memory_address();
-      const std::vector<SymbolicValuePtr>& global_values = global_var.get_values();
+      auto global_values = global_var.get_values();
 
       if (global_values.empty() || !global_address) continue;
 
@@ -1189,7 +1189,7 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
         if (!global_val_tnp || !global_mem_tnp) continue;
 
         MDEBUG << "Global variable val = " << *global_val_tnp << ", mem = " << *global_mem_tnp << LEND;
-        MDEBUG << "Param "  << param.num << " variable val = " << *par_val_tnp << ", mem = " << *par_mem_tnp << LEND;
+        MDEBUG << "Param "  << param.get_num() << " variable val = " << *par_val_tnp << ", mem = " << *par_mem_tnp << LEND;
 
         // if the memory address of the global is the value of the parameter, then this is PBR
         if (global_mem_tnp->isEquivalentTo(par_val_tnp)) {
@@ -1292,7 +1292,7 @@ TypeSolver::assert_api_facts(const CallDescriptor *cd) {
 
   // Now assert facts for treenodes associated with this function call
 
-  const ParamVector& cd_params = cd->get_parameters().get_params();
+  auto cd_params = cd->get_parameters().get_params();
   for (const ParameterDefinition &param : cd_params) { // for each param on the call
 
     TreeNodePtr tnp = param.get_value()->get_expression();
@@ -1304,27 +1304,28 @@ TypeSolver::assert_api_facts(const CallDescriptor *cd) {
 
       dir_enum dir = IN;
       // parameters that receive a (persistent) value are OUT or IN/OUT.
-      if (param.direction == ParameterDefinition::DIRECTION_OUT ||
-          param.direction == ParameterDefinition::DIRECTION_INOUT) {
+      if (param.get_direction() == ParameterDefinition::DIRECTION_OUT ||
+          param.get_direction() == ParameterDefinition::DIRECTION_INOUT) {
         dir = OUT;
       }
 
       assert_type_facts(ref);
 
       // name the parameter type by ordinal
-      session_->add_fact(API_PARAM_TYPE_FACT, imp_ss.str(), param.num, ref->get_name(), dir);
+      session_->add_fact(
+        API_PARAM_TYPE_FACT, imp_ss.str(), param.get_num(), ref->get_name(), dir);
     }
   } // foreach param
 
   // emit facts about return types for functions ... the "by-convention" return type
-  RegisterDescriptor eax_reg = global_descriptor_set->get_arch_reg("eax");
+  RegisterDescriptor eax_reg = du_analysis_.ds.get_arch_reg("eax");
 
   // Emit a fact about return type for the API
-  const ParamVector& cd_rets = cd->get_parameters().get_returns();
+  auto cd_rets = cd->get_parameters().get_returns();
   for (const ParameterDefinition &retval : cd_rets) {
 
     // for now just track eax and the "return value"
-    if (retval.reg == eax_reg) {
+    if (retval.get_register() == eax_reg) {
       typedb::TypeRef ret_type = typedb_.lookup(retval.get_type());
       // emit a fact about return type
 
@@ -1532,64 +1533,14 @@ void TypeSolver::set_output_file(std::string fn) {
   save_to_file_ = true;
 }
 
-// Find new methods by examining imports.
-void find_imported_new_methods() {
-  MTRACE << "Finding imported new methods..." << LEND;
-
-  // Make a list of names that represent new in it's various forms.
-  StringSet new_method_names;
-  new_method_names.insert("??2@YAPAXI@Z");
-  new_method_names.insert("??2@YAPAXIHPBDH@Z");
-  // From notepad++5.6.8:
-  // void *__cdecl operator new(size_t Size, const struct std::nothrow_t *)
-  new_method_names.insert("??2@YAPAXIABUnothrow_t@std@@@Z");
-
-  // Get the import map out of the provided descriptor set.
-  ImportDescriptorMap& im = global_descriptor_set->get_import_map();
-
-  // For each new() name...
-  for (const std::string & name : new_method_names) {
-    // Find all the import descriptors that match.
-
-    for (ImportDescriptor* id : im.find_name(name)) {
-      MTRACE << "Imported new '" << name << "' found at address "
-            << id->address_string() << "."<< LEND;
-      id->set_new_method(true);
-      id->get_rw_function_descriptor()->set_new_method(true);
-
-      // This part is kind-of icky.  Maybe we should make a nice set of backward links to all
-      // the imports from all the thunks that jump to them...  For now Cory's going to brute
-      // force it and move on.
-      FunctionDescriptorMap& fdmap = global_descriptor_set->get_func_map();
-      for (FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
-        // If it's not a thunk to the import, move on to the next function.
-        if (fd.get_jmp_addr() != id->get_address()) continue;
-        // If this function is a thunk to the import, it's a new method.
-        MTRACE << "Function at " << fd.address_string()
-              << " is a thunk to a new() method." << LEND;
-        fd.set_new_method(true);
-        // Also any functions that are thunks to this function are new methods.  This is
-        // another example of why thunks are tricky.  In this case we want to access them
-        // backwards.  We don't currently have an inverted version of follow_thunks().
-        for (FunctionDescriptor* tfd : fd.get_thunks()) {
-          MTRACE << "Function at " << tfd->address_string()
-                << " is a thunk to a thunk to a new() method." << LEND;
-          tfd->set_new_method(true);
-        }
-      }
-    }
-  }
-}
-
 // When the typesolver is created, so is the prolog session
 TypeSolver::TypeSolver(const DUAnalysis& du, const  FunctionDescriptor* f)
   : du_analysis_(du), current_function_(f),
     typerules_("types/typerules"), save_to_file_(false) {
 
+  const ProgOptVarMap& vm = du_analysis_.ds.get_arguments();
+
   try {
-
-    const ProgOptVarMap& vm = global_descriptor_set->get_arguments();
-
     typedb_ = typedb::DB::create_standard(vm);
 
     // Get the session
@@ -1601,9 +1552,13 @@ TypeSolver::TypeSolver(const DUAnalysis& du, const  FunctionDescriptor* f)
     session_ = NULL;
   }
 
-  // TODO: This code is literally copied from ooanalyzer and should be
-  // moved into a Known Function Analyzer
-  find_imported_new_methods();
+  // This should call a new class named FunctionFinder() or something like that, but let's at
+  // least not needlessly duplicate the code while the OOAnalyzer class can be mildly abused to
+  // get the job done in the meantime.
+  AddrSet new_addrs = option_addr_list(vm, "new-method");
+
+  // Simply calling the constructor does the OO method detection steps.
+  ooa = new OOAnalyzer(du.ds, vm, new_addrs);
 
   assert_arch_fact();
 }
@@ -1611,6 +1566,8 @@ TypeSolver::TypeSolver(const DUAnalysis& du, const  FunctionDescriptor* f)
 
 // The only thing to do here is invalidate the session
 TypeSolver::~TypeSolver() {
+  if (ooa) delete ooa;
+  ooa = NULL;
   tree_nodes_.clear();
 }
 

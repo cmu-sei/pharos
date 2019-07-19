@@ -1,19 +1,23 @@
-// Copyright 2016-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Analyzes function call points in binaries, attempting to determine
 // their argument values.
 
 #include <libpharos/descriptors.hpp>
 #include <libpharos/typedb.hpp>
+#include <libpharos/json.hpp>
+#include <libpharos/bua.hpp>
 #include <boost/range/combine.hpp>
 
+// Move our code out of the global namespace to avoid a conflict with clog() from complex.h
+namespace {
 using namespace pharos;
 
 // The CallAnalyzer message facility.
-Sawyer::Message::Facility clog("CLLA");
+Sawyer::Message::Facility clog;
 
 // Stack strings debugging
-Sawyer::Message::Facility mlog("CDBG");
+Sawyer::Message::Facility mlog;
 
 #define CINFO_STREAM clog[Sawyer::Message::INFO]
 #define CINFO (CINFO_STREAM) && CINFO_STREAM
@@ -23,13 +27,17 @@ Sawyer::Message::Facility mlog("CDBG");
 ProgOptDesc get_options() {
   namespace po = boost::program_options;
 
-  ProgOptDesc opt("callanalyzer 0.01 Options");
+  ProgOptDesc opt("callanalyzer 0.8 Options");
 
   opt.add_options()
     ("allow-unknown", po::bool_switch(),
      "Output call information even when there is no useful parameter information")
     ("show-symbolic", po::bool_switch(),
      "Output symbolic values for <abstr> values")
+    ("json,j", po::value<std::string>(),
+     "Output json representation to given file ('-' for stdout)")
+    ("pretty-json,p", po::value<unsigned>()->implicit_value(4),
+     "Pretty-print json.  Argument is the indent width")
     ("calls", po::value<std::vector<std::string>>(),
      "File containing a list of calls to output information about")
     ;
@@ -52,6 +60,93 @@ class CallFilter {
 
   bool operator()(const CallDescriptor & call) const;
   void from_stream(std::istream & stream);
+};
+
+class Outputter {
+ protected:
+  bool allow_unknown;
+  bool show_raw;
+
+ public:
+  Outputter(ProgOptVarMap const &vm) {
+    allow_unknown = vm["allow-unknown"].as<bool>();
+    show_raw = vm["show-symbolic"].as<bool>();
+  }
+
+  virtual ~Outputter() = default;
+
+  virtual void operator()(
+    const CallDescriptor & call,
+    const CallParamInfo & info) = 0;
+};
+
+class TextOutputter : public Outputter {
+  std::ostringstream str;
+
+ public:
+  using Outputter::Outputter;
+
+  void operator()(
+    const CallDescriptor & call,
+    const CallParamInfo & info) override;
+
+ private:
+
+  using printable_t = bool;
+
+  printable_t output_raw(const typedb::Value & value);
+  printable_t output_value(const typedb::Value & value, bool wide);
+  printable_t output_param(const std::string & name, const typedb::Value & value, bool wide);
+};
+
+class JsonOutputter : public Outputter {
+  json::BuilderRef builder;
+  json::ArrayRef calls;
+  json::ObjectRef main;
+  std::ostream & out;
+
+ public:
+  JsonOutputter(ProgOptVarMap const &vm, std::ostream & stream);
+  ~JsonOutputter() override;
+
+  void operator()(
+    const CallDescriptor & call,
+    const CallParamInfo & info) override;
+
+ private:
+  bool build_value(json::ObjectRef & ob, const typedb::Value & value, bool wide);
+};
+
+class CallAnalyzer : public BottomUpAnalyzer {
+ private:
+  CallParamInfoBuilder builder;
+
+  std::function<bool(const CallDescriptor &)> filter;
+  std::unique_ptr<std::ofstream> out;
+  std::unique_ptr<Outputter> outputter;
+
+ public:
+  CallAnalyzer(DescriptorSet& ds_, ProgOptVarMap & vm_);
+
+  void visit (FunctionDescriptor *fd) override
+  {
+    fd->get_pdg();
+    auto callset = fd->get_outgoing_calls();
+    for (CallDescriptor * call : callset) {
+      handleCall(*call);
+    }
+  }
+
+ public:
+
+  void handleCall(const CallDescriptor & call)
+  {
+    if (!filter(call)) {
+      return;
+    }
+    CallParamInfo info = builder(call);
+    (*outputter)(call, info);
+  }
 };
 
 bool CallFilter::operator()(const CallDescriptor & call) const
@@ -97,240 +192,346 @@ void CallFilter::from_stream(std::istream & stream)
   }
 }
 
-class CallAnalyzer : public BottomUpAnalyzer {
- private:
-  CallParamInfoBuilder builder;
+TextOutputter::printable_t TextOutputter::output_raw(const typedb::Value & value)
+{
+  auto & raw = value.get_expression();
+  if (raw) {
+    if (show_raw) {
+      str << *raw;
+      return true;
+    }
+    str << "<abstr>";
+  } else {
+    str << "<unknown>";
+  }
+  return false;
+}
 
-  bool allow_unknown;
-  bool show_raw;
-  std::function<bool(const CallDescriptor &)> filter;
-  std::ostream * out = &OUTPUT_STREAM;
-
-  using printable_t = bool;
-
- public:
-  CallAnalyzer(DescriptorSet * ds_, ProgOptVarMap & vm_)
-    : BottomUpAnalyzer(ds_, vm_), builder(vm_)
-  {
-    allow_unknown = vm_["allow-unknown"].as<bool>();
-    show_raw = vm_["show-symbolic"].as<bool>();
-    if (vm_.count("calls")) {
-      auto cf = CallFilter();
-      auto & paths = vm_["calls"].as<std::vector<std::string>>();
-      for (auto & path : paths) {
-        if (path == "-") {
-          cf.from_stream(std::cin);
-        } else {
-          std::ifstream stream(path);
-          cf.from_stream(stream);
-        }
-      }
-      filter = cf;
+TextOutputter::printable_t TextOutputter::output_value(const typedb::Value & value, bool wide)
+{
+  printable_t printable = false;
+  str << '{'
+      << '(' << value.get_type()->get_name() << ')';
+  if (value.is_string()) {
+    if (value.is_nullptr()) {
+      str << "NULL";
+      printable = true;
     } else {
-      filter = [](const CallDescriptor &){return true;};
+      auto v = value.as_string(wide);
+      if (v) {
+        str << '\"' << *v << '\"';
+        printable = true;
+      } else {
+        printable = output_raw(value);
+      }
+    }
+  } else if (value.is_unsigned()) {
+    auto v = value.as_unsigned();
+    if (v) {
+      str << *v;
+      printable = true;
+    } else {
+      printable = output_raw(value);
+    }
+  } else if (value.is_signed()) {
+    auto v = value.as_signed();
+    if (v) {
+      str << *v;
+      printable = true;
+    } else {
+      printable = output_raw(value);
+    }
+  } else if (value.is_bool()) {
+    auto v = value.as_bool();
+    if (v) {
+      str << *v;
+      printable = true;
+    } else {
+      printable = output_raw(value);
+    }
+  } else if (value.is_pointer()) {
+    if (value.is_nullptr()) {
+      str << "NULL";
+      printable = true;
+    } else {
+      auto raw = value.get_expression();
+      if (raw && raw->isNumber()) {
+        auto f = str.flags();
+        str << "0x" << std::hex << raw->toInt();
+        str.flags(f);
+        printable = true;
+      } else {
+        printable = output_raw(value);
+      }
+      str << " -> ";
+      printable |= output_value(value.dereference(), wide);
+    }
+  } else if (value.is_struct()) {
+    str << '{';
+    bool comma = false;
+    for (auto pv : value.members()) {
+      if (comma) {
+        str << ", ";
+      } else {
+        comma = true;
+      }
+      str << tget<typedb::Param>(pv).name << ": ";
+      printable |= output_value(tget<typedb::Value>(pv), wide);
+    }
+    str << '}';
+  } else if (value.is_unknown()) {
+    str << "<unknown>";
+  }
+  str << '}';
+  return printable;
+}
+
+TextOutputter::printable_t TextOutputter::output_param(
+  const std::string & name,
+  const typedb::Value & value,
+  bool wide)
+{
+  str << "  Param: " << name << " Value: ";
+  printable_t printable = output_value(value, wide);
+  str << '\n';
+  return printable;
+}
+
+void TextOutputter::operator()(
+  const CallDescriptor & call,
+  const CallParamInfo & info)
+{
+  printable_t printable = false;
+  bool wide = false;
+
+  auto id = call.get_import_descriptor();
+  if (id) {
+    const std::string & name = id->get_name();
+    if (!name.empty() && name.back() == 'W') {
+      wide = true;
+    }
+  }
+  str << "Call: ";
+  if (id) {
+    str << id->get_name() << ' ';
+  } else {
+    auto fd = call.get_function_descriptor();
+    if (fd) {
+      str << fd->get_name() << ' ';
     }
   }
 
-  void visit (FunctionDescriptor *fd) override
-  {
-    fd->get_pdg();
-    const CallDescriptorSet & callset = fd->get_outgoing_calls();
-    for (CallDescriptor * call : callset) {
-      handleCall(*call);
+  str << '(' << call.address_string() << ")\n";
+  for (auto vp : boost::combine(info.names(), info.values())) {
+    printable |= output_param(get<0>(vp), get<1>(vp), wide);
+  }
+  if (printable || allow_unknown) {
+    OUTPUT_STREAM << str.str() << std::flush;
+  }
+  str.str(std::string());
+  str.clear();
+}
+
+JsonOutputter::JsonOutputter(ProgOptVarMap const & vm, std::ostream & stream)
+  : Outputter(vm), out(stream)
+{
+  builder = json::simple_builder();
+  main = builder->object();
+  main->add("tool", "callanalyzer");
+  auto args = builder->array();
+  for (auto & arg : vm.args()) {
+    args->add(arg);
+  }
+  main->add("invocation", std::move(args));
+  main->add("analyzed_file", vm["file"].as<std::string>());
+  calls = builder->array();
+  if (vm.count("pretty-json")) {
+    out << json::pretty(vm["pretty-json"].as<unsigned>());
+  }
+}
+
+JsonOutputter::~JsonOutputter()
+{
+  main->add("analysis", std::move(calls));
+  out << *main;
+}
+
+void JsonOutputter::operator()(
+  const CallDescriptor & call,
+  const CallParamInfo & info)
+{
+  bool wide = false;
+  bool output = false;
+  auto jsoncall = builder->object();
+  auto id = call.get_import_descriptor();
+  if (id) {
+    const std::string & name = id->get_name();
+    if (!name.empty() && name.back() == 'W') {
+      wide = true;
+    }
+    jsoncall->add("name", id->get_name());
+  } else {
+    auto fd = call.get_function_descriptor();
+    if (fd) {
+      jsoncall->add("name", fd->get_name());
     }
   }
+  jsoncall->add("address", call.address_string());
+  auto params = builder->array();
+  for (auto vp : boost::combine(info.names(), info.values())) {
+    auto pob = builder->object();
+    auto const & name = get<0>(vp);
+    if (!name.empty()) {
+      pob->add("name", name);
+    }
+    output |= build_value(pob, get<1>(vp), wide);
+    params->add(std::move(pob));
+  }
+  jsoncall->add("params", std::move(params));
+  if (output || allow_unknown) {
+    calls->add(std::move(jsoncall));
+  }
+}
 
- public:
-
-  printable_t output_raw(const typedb::Value & value)
-  {
-    auto & raw = value.get_expression();
-    if (raw) {
-      if (show_raw) {
-        if (out) {
-          *out << *raw;
-        }
+bool JsonOutputter::build_value(
+  json::ObjectRef & ob,
+  const typedb::Value & value,
+  bool wide)
+{
+  static char const * vkey = "value";
+  bool output = false;
+  auto raw = [this, &value]
+             (json::ObjectRef & obj, char const * key) -> bool {
+    if (show_raw) {
+      auto & r = value.get_expression();
+      if (r) {
+        std::ostringstream os;
+        auto vo = builder->object();
+        os << *r;
+        vo->add("raw", os.str());
+        obj->add(key, std::move(vo));
         return true;
-      }
-      if (out) {
-        *out << "<abstr>";
-      }
-    } else {
-      if (out) {
-        *out << "<unknown>";
       }
     }
     return false;
-  }
+  };
 
-  printable_t output_value(const typedb::Value & value, bool wide)
-  {
-    printable_t printable = false;
-    if (out) {
-      *out << '{';
-      *out << '(' << value.get_type()->get_name() << ')';
-    }
-    if (value.is_string()) {
-      if (value.is_nullptr()) {
-        if (out) {
-          *out << "NULL";
-        }
-        printable = true;
-      } else {
-        auto v = value.as_string(wide);
-        if (v) {
-          if (out) {
-            *out << '\"' << *v << '\"';
-          }
-          printable = true;
-        } else {
-          printable = output_raw(value);
-        }
-      }
-    } else if (value.is_unsigned()) {
-        auto v = value.as_unsigned();
-        if (v) {
-          if (out) {
-            *out << *v;
-          }
-          printable = true;
-        } else {
-          printable = output_raw(value);
-        }
-    } else if (value.is_signed()) {
-        auto v = value.as_signed();
-        if (v) {
-          if (out) {
-            *out << *v;
-          }
-          printable = true;
-        } else {
-          printable = output_raw(value);
-        }
-    } else if (value.is_bool()) {
-        auto v = value.as_bool();
-        if (v) {
-          if (out) {
-            *out << *v;
-          }
-          printable = true;
-        } else {
-          printable = output_raw(value);
-        }
-    } else if (value.is_pointer()) {
-      if (value.is_nullptr()) {
-        if (out) {
-          *out << "NULL";
-        }
-        printable = true;
-      } else {
-        auto raw = value.get_expression();
-        if (raw && raw->isNumber()) {
-          if (out) {
-            auto f = out->flags();
-            *out << "0x" << std::hex << raw->toInt();
-            out->flags(f);
-          }
-          printable = true;
-        } else {
-          printable = output_raw(value);
-        }
-        if (out) {
-          *out << " -> ";
-        }
-        printable |= output_value(value.dereference(), wide);
-      }
-    } else if (value.is_struct()) {
-      if (out) {
-        *out << '{';
-      }
-      bool comma = false;
-      for (auto pv : value.members()) {
-        if (comma) {
-          if (out) {
-            *out << ", ";
-          }
-        } else {
-          comma = true;
-        }
-        if (out) {
-          *out << tget<typedb::Param>(pv).name << ": ";
-        }
-        printable |= output_value(tget<typedb::Value>(pv), wide);
-      }
-      if (out) {
-        *out << '}';
-      }
-    } else if (value.is_unknown()) {
-      if (out) {
-        *out << "<unknown>";
-      }
-    }
-    if (out) {
-      *out << '}';
-    }
-    return printable;
+  if (value.is_unknown()) {
+    return false;
   }
-
-  void output_param(const std::string & name, const typedb::Value & value, bool wide)
-  {
-    if (out) {
-      *out << "  Param: " << name << " Value: ";
-    }
-    output_value(value, wide);
-    if (out) {
-      *out << '\n';
-    }
-  }
-
-  void handleCall(const CallDescriptor & call)
-  {
-    if (!filter(call)) {
-      return;
-    }
-    bool wide = false;
-    auto id = call.get_import_descriptor();
-    if (id) {
-      const std::string & name = id->get_name();
-      if (!name.empty() && std::tolower(name.back()) == 'w') {
-        wide = true;
-      }
-    }
-    CallParamInfo info = builder(call);
-    std::vector<std::pair<const std::string *, typedb::Value>> pvalues;
-    bool printable = false;
-    auto tmp = out;
-    out = nullptr;
-    for (auto vp : boost::combine(info.names(), info.values())) {
-      auto & name = get<0>(vp);
-      auto v = get<1>(vp);
-      if (!printable && v) {
-        printable = output_value(v, wide);
-      }
-      pvalues.emplace_back(&name, std::move(v));
-    }
-    out = tmp;
-    if (!allow_unknown && !printable) {
-      return;
-    }
-    *out << "Call: ";
-    if (id) {
-      *out <<  id->get_name() << ' ';
+  ob->add("type", value.get_type()->get_name());
+  if (value.is_string()) {
+    if (value.is_nullptr()) {
+      ob->add(vkey, builder->null());
+      output = true;
     } else {
-      auto fd = call.get_function_descriptor();
-      if (fd) {
-        *out <<  fd->get_name() << ' ';
+      auto v = value.as_string(wide);
+      if (v) {
+        ob->add(vkey, *v);
+        output = true;
+      } else {
+        output = raw(ob, vkey);
       }
     }
-
-    *out << '(' << call.address_string() << ")\n";
-    for (auto & pvalue : pvalues) {
-      output_param(*pvalue.first, pvalue.second, wide);
+  } else if (value.is_unsigned()) {
+    auto v = value.as_unsigned();
+    if (v) {
+      ob->add(vkey, *v);
+      output = true;
+    } else {
+      output = raw(ob, vkey);
     }
-    *out << std::flush;
+  } else if (value.is_signed()) {
+    auto v = value.as_signed();
+    if (v) {
+      ob->add(vkey, *v);
+      output = true;
+    } else {
+      output = raw(ob, vkey);
+    }
+  } else if (value.is_bool()) {
+    auto v = value.as_bool();
+    if (v) {
+      ob->add(vkey, *v);
+      output = true;
+    } else {
+      output = raw(ob, vkey);
+    }
+  } else if (value.is_pointer()) {
+    if (value.is_nullptr()) {
+      ob->add(vkey, builder->null());
+    } else {
+      bool aout = false;
+      auto pob = builder->object();
+      auto rawv = value.get_expression();
+      if (rawv && rawv->isNumber()) {
+        std::ostringstream os;
+        os << "0x" << std::hex << rawv->toInt();
+        pob->add("address", os.str());
+        aout = true;
+      } else {
+        aout = raw(pob, "address");
+      }
+      auto vob = builder->object();
+      bool vout = build_value(vob, value.dereference(), wide);
+      if (vout) {
+        pob->add("pointee", std::move(vob));
+        output = true;
+      }
+      if (aout || vout) {
+        ob->add(vkey, std::move(pob));
+        output = true;
+      }
+    }
+  } else if (value.is_struct()) {
+    auto sarray = builder->array();
+    for (auto pv : value.members()) {
+      auto val = builder->object();
+      auto const & name = tget<typedb::Param>(pv).name;
+      if (!name.empty()) {
+        val->add("name", name);
+      }
+      output |= build_value(val, tget<typedb::Value>(pv), wide);
+      sarray->add(std::move(val));
+    }
+    ob->add(vkey, std::move(sarray));
   }
-};
+  return output;
+}
 
+CallAnalyzer::CallAnalyzer(DescriptorSet& ds_, ProgOptVarMap & vm_)
+  : BottomUpAnalyzer(ds_, vm_), builder(vm_, ds_.memory)
+{
+  if (vm_.count("calls")) {
+    auto cf = CallFilter();
+    auto & paths = vm_["calls"].as<std::vector<std::string>>();
+    for (auto & path : paths) {
+      if (path == "-") {
+        cf.from_stream(std::cin);
+      } else {
+        std::ifstream stream(path);
+        if (stream.fail()) {
+          throw std::runtime_error("Could not open for reading: " + path);
+        }
+        cf.from_stream(stream);
+      }
+    }
+    filter = cf;
+  } else {
+    filter = [](const CallDescriptor &){return true;};
+  }
+  if (vm_.count("json")) {
+    auto & arg = vm_["json"].as<std::string>();
+    if (arg == "-") {
+      outputter = make_unique<JsonOutputter>(vm_, std::cout);
+    } else {
+      out = make_unique<std::ofstream>(arg);
+      outputter = make_unique<JsonOutputter>(vm_, *out);
+    }
+  } else {
+    outputter = make_unique<TextOutputter>(vm_);
+  }
+}
 
 static int callanalyzer_main(int argc, char **argv)
 {
@@ -342,6 +543,7 @@ static int callanalyzer_main(int argc, char **argv)
     ->showElapsedTime(true)
     ->showFacilityName(Sawyer::Message::Prefix::SOMETIMES)
     ->showImportance(true);
+  mlog.initialize("CDBG");
   mlog.initStreams(mout->prefix(mprefix));
   Sawyer::Message::mfacilities.insert(mlog);
 
@@ -353,6 +555,7 @@ static int callanalyzer_main(int argc, char **argv)
     ->showElapsedTime(false)
     ->showFacilityName(Sawyer::Message::Prefix::NEVER)
     ->showImportance(false);
+  clog.initialize("CLLA");
   clog.initStreams(cout->prefix(cprefix));
   Sawyer::Message::mfacilities.insert(clog);
 
@@ -367,14 +570,10 @@ static int callanalyzer_main(int argc, char **argv)
 
   // Find calls, functions, and imports.
   DescriptorSet ds(vm);
-  if (ds.get_interp() == NULL) {
-    GFATAL << "Unable to analyze file (no executable content found)." << LEND;
-    return EXIT_FAILURE;
-  }
   // Resolve imports, load API data, etc.
   ds.resolve_imports();
 
-  CallAnalyzer analyzer(&ds, vm);
+  CallAnalyzer analyzer(ds, vm);
   analyzer.analyze();
 
   OINFO << "Complete." << LEND;
@@ -382,6 +581,7 @@ static int callanalyzer_main(int argc, char **argv)
 }
 
 
+} // unnamed namespace
 
 int main(int argc, char **argv)
 {

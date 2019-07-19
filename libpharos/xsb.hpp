@@ -1,4 +1,4 @@
-// Copyright 2016-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Michael Duggan
 
@@ -15,6 +15,7 @@
 namespace pharos {
 namespace prolog {
 namespace impl {
+inline
 namespace xsb {
 
 // This validity of these types are asserted in xsb.cpp.

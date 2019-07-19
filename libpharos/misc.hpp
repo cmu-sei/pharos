@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Misc_H
 #define Pharos_Misc_H
@@ -10,6 +10,8 @@
 #include <BinarySymbolicExpr.h>
 // For Semantics2 namespace.
 #include <SymbolicSemantics2.h>
+// For P2 namespace.
+#include <Partitioner2/Partitioner.h>
 #include <MemoryMap.h>
 
 #include <numeric>
@@ -17,7 +19,9 @@
 namespace pharos {
 
 using Rose::BinaryAnalysis::MemoryMap;
-
+namespace P2 = Rose::BinaryAnalysis::Partitioner2;
+namespace Semantics2 = Rose::BinaryAnalysis::InstructionSemantics2;
+namespace SymbolicSemantics = Semantics2::SymbolicSemantics;
 
 // Make sure overload resolution for operator<< can see into the global namespace
 // (Needed in funcs.cpp so
@@ -28,22 +32,44 @@ using Rose::BinaryAnalysis::MemoryMap;
 using ::operator<<;
 
 // Duplicative with funcs.hpp. :-(
-typedef std::set<rose_addr_t> AddrSet;
+using AddrSet = std::set<rose_addr_t>;
 
-typedef Rose::BinaryAnalysis::SymbolicExpr::Leaf LeafNode;
-typedef Rose::BinaryAnalysis::SymbolicExpr::LeafPtr LeafNodePtr;
-typedef Rose::BinaryAnalysis::SymbolicExpr::Interior InternalNode;
-typedef Rose::BinaryAnalysis::SymbolicExpr::InteriorPtr InternalNodePtr;
-typedef Rose::BinaryAnalysis::SymbolicExpr::Node TreeNode;
-typedef Rose::BinaryAnalysis::SymbolicExpr::Ptr TreeNodePtr;
+using LeafNode = Rose::BinaryAnalysis::SymbolicExpr::Leaf;
+using LeafNodePtr = Rose::BinaryAnalysis::SymbolicExpr::LeafPtr;
+using InternalNode = Rose::BinaryAnalysis::SymbolicExpr::Interior;
+using InternalNodePtr = Rose::BinaryAnalysis::SymbolicExpr::InteriorPtr;
+using TreeNode = Rose::BinaryAnalysis::SymbolicExpr::Node;
+using TreeNodePtr = Rose::BinaryAnalysis::SymbolicExpr::Ptr;
 
-typedef Rose::BinaryAnalysis::Disassembler RoseDisassembler;
+using LeafNodePtrSet = std::set<LeafNodePtr>;
+using TreeNodePtrSet = std::set<TreeNodePtr>;
 
-typedef std::set<LeafNodePtr> LeafNodePtrSet;
-typedef std::set<TreeNodePtr> TreeNodePtrSet;
+
+// These should all eventually be replaced by non-x86 specific calls.  When that time comes,
+// remove these, and the compiler will tell us what places we need to touch.
+constexpr auto x86_add          = Rose::BinaryAnalysis::x86_add;
+constexpr auto x86_call         = Rose::BinaryAnalysis::x86_call;
+constexpr auto x86_farcall      = Rose::BinaryAnalysis::x86_farcall;
+constexpr auto x86_farjmp       = Rose::BinaryAnalysis::x86_farjmp;
+constexpr auto x86_int3         = Rose::BinaryAnalysis::x86_int3;
+constexpr auto x86_ja           = Rose::BinaryAnalysis::x86_ja;
+constexpr auto x86_jmp          = Rose::BinaryAnalysis::x86_jmp;
+constexpr auto x86_js           = Rose::BinaryAnalysis::x86_js;
+constexpr auto x86_lea          = Rose::BinaryAnalysis::x86_lea;
+constexpr auto x86_leave        = Rose::BinaryAnalysis::x86_leave;
+constexpr auto x86_regclass_gpr = Rose::BinaryAnalysis::x86_regclass_gpr;
+constexpr auto x86_regclass_ip  = Rose::BinaryAnalysis::x86_regclass_ip;
+constexpr auto x86_mov          = Rose::BinaryAnalysis::x86_mov;
+constexpr auto x86_pop          = Rose::BinaryAnalysis::x86_pop;
+constexpr auto x86_push         = Rose::BinaryAnalysis::x86_push;
+constexpr auto x86_ret          = Rose::BinaryAnalysis::x86_ret;
+constexpr auto x86_sub          = Rose::BinaryAnalysis::x86_sub;
+constexpr auto x86_xor          = Rose::BinaryAnalysis::x86_xor;
+constexpr auto x86_rep_insb     = Rose::BinaryAnalysis::x86_rep_insb;
+constexpr auto x86_repne_scasw  = Rose::BinaryAnalysis::x86_repne_scasw;
 
 // Some Nodes are actually stored in a vector
-typedef std::vector<TreeNodePtr> TreeNodePtrVector;
+using TreeNodePtrVector = std::vector<TreeNodePtr>;
 
 // Comparator for TreeNodePtrs
 struct TreeNodePtrCompare {
@@ -77,23 +103,64 @@ std::string MyHex(const SgUnsignedCharList& data);
 // Create s string from an address
 std::string addr_str(rose_addr_t addr);
 
+rose_addr_t address_from_node(LeafNodePtr tnp);
+
 // Make the ROSE Semantics2 namespace a little shorter to type...
 namespace Semantics2 = Rose::BinaryAnalysis::InstructionSemantics2;
 
+// Expression printers (very useful from a debugger)
+void print_expression(std::ostream & stream, TreeNode & e);
+void print_expression(TreeNode & e);
+void print_expression(std::ostream & stream, TreeNodePtr & e);
+void print_expression(TreeNodePtr & e);
+void print_expression(std::ostream & stream, SymbolicSemantics::SValue const & e);
+void print_expression(SymbolicSemantics::SValue const & e);
+void print_expression(std::ostream & stream, SymbolicSemantics::SValuePtr const & e);
+void print_expression(SymbolicSemantics::SValuePtr const & e);
+
+template <typename Arg>
+void debug_print_expression(std::ostream & stream, Arg && arg)
+{
+  print_expression(stream, std::forward<Arg>(arg));
+  stream << std::endl;
+}
+
+template <typename Arg>
+void debug_print_expression(Arg && arg)
+{
+  debug_print_expression(std::cout, std::forward<Arg>(arg));
+}
+
+// Same as print_expression, but with a terminated newline
+extern template void debug_print_expression(std::ostream & stream, TreeNode & e);
+extern template void debug_print_expression(TreeNode & e);
+extern template void debug_print_expression(std::ostream & stream, TreeNodePtr & e);
+extern template void debug_print_expression(TreeNodePtr & e);
+extern template void debug_print_expression(
+  std::ostream & stream, SymbolicSemantics::SValue const & e);
+extern template void debug_print_expression(SymbolicSemantics::SValue const & e);
+extern template void debug_print_expression(
+  std::ostream & stream, SymbolicSemantics::SValuePtr const & e);
+extern template void debug_print_expression(SymbolicSemantics::SValuePtr const & e);
+
+
 // Import InsnSet from ROSE.
-typedef Semantics2::SymbolicSemantics::InsnSet InsnSet;
+using InsnSet = Semantics2::SymbolicSemantics::InsnSet;
 
 // A set of X86 instructions.
 class X86InsnCompare {
   public:
-  bool operator()(const SgAsmx86Instruction* x, const SgAsmx86Instruction* y)
+  bool operator()(const SgAsmX86Instruction* x, const SgAsmX86Instruction* y)
     const { return (x->get_address() < y->get_address()); }
 };
 
-typedef std::set<SgAsmx86Instruction*, X86InsnCompare> X86InsnSet;
+using X86InsnSet = std::set<SgAsmX86Instruction*, X86InsnCompare>;
+
+// Introduce RegiserDescriptor into the pharos namespace
+using Rose::BinaryAnalysis::RegisterDescriptor;
 
 // An ordered list of register descriptors.
-typedef std::vector<RegisterDescriptor> RegisterVector;
+using RegisterVector = std::vector<RegisterDescriptor>;
 
 // Limit the maximum number of parameters.  This is arbitrary and incorrect, but if we don't
 // limit it to some reasonable number, then we generate tons of error spew.  Some experience
@@ -102,17 +169,17 @@ typedef std::vector<RegisterDescriptor> RegisterVector;
 // parameter detection code always works.
 #define ARBITRARY_PARAM_LIMIT 60
 
-typedef std::set<RegisterDescriptor> RegisterSet;
+using RegisterSet = std::set<RegisterDescriptor>;
 
 // Wrapper for ROSE's RegisterDictionary that returns RegisterDescriptors instead of
 // RegisterDescriptor pointers
 class RegisterDictionary {
  private:
-  ::RegisterDictionary const * dict;
+  Rose::BinaryAnalysis::RegisterDictionary const * dict;
  public:
-  RegisterDictionary(::RegisterDictionary const * d) : dict(d) {}
+  RegisterDictionary(Rose::BinaryAnalysis::RegisterDictionary const * d) : dict(d) {}
 
-  RegisterDictionary & operator=(::RegisterDictionary const * d) {
+  RegisterDictionary & operator=(Rose::BinaryAnalysis::RegisterDictionary const * d) {
     dict = d;
     return *this;
   }
@@ -122,33 +189,17 @@ class RegisterDictionary {
     return reg ? *reg : RegisterDescriptor();
   }
 
-  operator ::RegisterDictionary const *() const {
+  operator Rose::BinaryAnalysis::RegisterDictionary const *() const {
     return dict;
   }
 };
 
 void set_glog_name(std::string const & name);
 
-// This wrapper object lets us defer naming the global logging facility as late as possible
-class GLogWrapper {
- private:
-  std::unique_ptr<Sawyer::Message::Facility> glog_;
- public:
-  void set_name(std::string const & name);
-  Sawyer::Message::Facility & operator()() {
-    if (!glog_) set_name("GLOG");
-    return *glog_;
-  }
-  template <typename T>
-  auto operator[](T && v)
-    -> decltype(std::declval<Sawyer::Message::Facility>()[std::forward<T>(v)]) {
-    return (*this)()[std::forward<T>(v)];
-  }
-};
 } // namespace pharos
 
 // The main program need to provide a global logging facility.
-namespace pharos { extern GLogWrapper glog; }
+namespace pharos { extern Sawyer::Message::Facility glog; }
 #define GCRAZY (pharos::glog[Sawyer::Message::DEBUG]) && pharos::glog[Sawyer::Message::DEBUG]
 #define GTRACE (pharos::glog[Sawyer::Message::TRACE]) && pharos::glog[Sawyer::Message::TRACE]
 #define GDEBUG (pharos::glog[Sawyer::Message::WHERE]) && pharos::glog[Sawyer::Message::WHERE]
@@ -185,7 +236,7 @@ namespace pharos { namespace prolog { extern Sawyer::Message::Facility plog; } }
 namespace pharos {
 
 void backtrace(
-  Sawyer::Message::Facility & log = glog(),
+  Sawyer::Message::Facility & log = glog,
   Sawyer::Message::Importance level = Sawyer::Message::FATAL,
   int maxlen = 20);
 
@@ -205,28 +256,28 @@ namespace pharos {
 // header.
 
 // Now shared between here (for Partitioner 1) and partitioner.cpp (for Partitioner 2).
-void customize_message_facility(const ProgOptVarMap& vm,
-                                Sawyer::Message::Facility facility, std::string name);
-// Get the Win32 interpretation out of a PE file project.
-SgAsmInterpretation* GetWin32Interpretation(SgProject* project);
+void customize_message_facility(Sawyer::Message::Facility facility, std::string name);
 
 // This should be a method on SgAsmX86Instruction and possibly on SgAsmInstruction as well.
-bool insn_is_call(const SgAsmx86Instruction* insn);
+bool insn_is_call(const SgAsmX86Instruction* insn);
 
 // I think we meant insn_is_call() in all of these cases...
-bool insn_is_callNF(const SgAsmx86Instruction* insn);
+bool insn_is_callNF(const SgAsmX86Instruction* insn);
 
 // Conditional jumps, but not uncoditional jumps.
-bool insn_is_jcc(const SgAsmx86Instruction* insn);
+bool insn_is_jcc(const SgAsmX86Instruction* insn);
 
 // Calls and conditional jumps, but not unconditional jumps.  Should be renamed?
-bool insn_is_branch(const SgAsmx86Instruction* insn);
+bool insn_is_branch(const SgAsmX86Instruction* insn);
 
 // All control flow instructions (calls, jumps, and conditional jumps).
-bool insn_is_control_flow(const SgAsmx86Instruction* insn);
+bool insn_is_control_flow(const SgAsmInstruction* insn);
+
+// Does this instruction have a valid repeat (REP/REPE/REPNE) prefix?
+bool insn_is_repeat(const SgAsmX86Instruction* insn);
 
 // Is the instruction an X86 nop?
-bool insn_is_nop(const SgAsmx86Instruction* insn);
+bool insn_is_nop(const SgAsmX86Instruction* insn);
 
 // Get the fallthru address of this instruction.
 rose_addr_t insn_get_fallthru(SgAsmInstruction* insn);
@@ -258,6 +309,10 @@ const std::vector< std::string > get_all_insn_generic_categories();
 SgAsmBlock* insn_get_block(const SgAsmInstruction* insn);
 // Get the function containing the instruction.
 SgAsmFunction* insn_get_func(const SgAsmInstruction* insn);
+
+// A hackish approch to 64-bit support...
+// If you have a descriptor set, it's easier to call the similar method on it.
+RegisterDescriptor get_arch_reg(RegisterDictionary &regdict, const std::string & name, size_t arch_bytes);
 
 // Determine whether an expression contains an additive offset
 class AddConstantExtractor {

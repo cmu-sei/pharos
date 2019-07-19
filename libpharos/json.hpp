@@ -1,29 +1,31 @@
-// Copyright 2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2017-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_json
 #define Pharos_json
 
 #include <cstddef>              // std::nullptr_t
 #include <memory>               // std::unique_ptr
-#include <ostream>              // std::ostrem
-#include <cstdint>              // std::nullptr_t
+#include <ostream>              // std::ostream
+#include <cstdint>              // std::nullptr_t, std::intmax_t, std::uintmax_t
 #include <string>               // std::string
 
+namespace pharos {
 namespace json {
-namespace wrapper {
 
 class Builder;
-class Simple;;
+class Simple;
+class Visitor;
 
 class Node {
  public:
-  virtual std::ostream & write(std::ostream & stream) const = 0;
+  virtual bool visit(Visitor & v) const = 0;
   virtual ~Node() = default;
+  virtual Builder & builder() const = 0;
 };
 
 using NodeRef = std::unique_ptr<Node>;
 
-class Array : public Node {
+class Array : public virtual Node {
  public:
   virtual void add(NodeRef o) = 0;
   virtual void add(Simple && v) = 0;
@@ -31,7 +33,7 @@ class Array : public Node {
 
 using ArrayRef = std::unique_ptr<Array>;
 
-class Object : public Node {
+class Object : public virtual Node {
  public:
   virtual void add(std::string const & str, NodeRef o) = 0;
   virtual void add(std::string const & str, Simple && v) = 0;
@@ -42,11 +44,16 @@ class Object : public Node {
 using ObjectRef = std::unique_ptr<Object>;
 
 class Simple {
+ public:
+  using integer = std::intmax_t;
+  using uinteger = std::uintmax_t;
+
  private:
-  enum type_t { INT, DOUBLE, BOOL, NULLP, STRING, CSTRING, STRINGRR };
+  enum type_t { INT, UINT, DOUBLE, BOOL, NULLP, STRING, CSTRING, STRINGRR };
   type_t type;
   union {
-    std::intmax_t i;
+    integer i;
+    uinteger u;
     double d;
     bool b;
     std::string const * s;
@@ -55,14 +62,14 @@ class Simple {
   };
 
  public:
-  Simple(short int v) : type(INT), i(std::intmax_t(v)) {}
-  Simple(unsigned short int v) : type(INT), i(std::intmax_t(v)) {}
-  Simple(int v) : type(INT), i(std::intmax_t(v)) {}
-  Simple(unsigned int v) : type(INT), i(std::intmax_t(v)) {}
-  Simple(long int v) : type(INT), i(std::intmax_t(v)) {}
-  Simple(unsigned long int v) : type(INT), i(std::intmax_t(v)) {}
-  Simple(long long int v) : type(INT), i(std::intmax_t(v)) {}
-  Simple(unsigned long long int v) : type(INT), i(std::intmax_t(v)) {}
+  Simple(short int v) : type(INT), i(integer(v)) {}
+  Simple(unsigned short int v) : type(UINT), i(uinteger(v)) {}
+  Simple(int v) : type(INT), i(integer(v)) {}
+  Simple(unsigned int v) : type(UINT), i(uinteger(v)) {}
+  Simple(long int v) : type(INT), i(integer(v)) {}
+  Simple(unsigned long int v) : type(UINT), i(uinteger(v)) {}
+  Simple(long long int v) : type(INT), i(integer(v)) {}
+  Simple(unsigned long long int v) : type(UINT), i(uinteger(v)) {}
   Simple(double v) : type(DOUBLE), d(v) {}
   Simple(bool v) : type(BOOL), b(v) {}
   Simple() : type(NULLP) {}
@@ -73,17 +80,41 @@ class Simple {
 
   ~Simple() {
     if (type == STRINGRR) {
-      r.std::string::~string();
+      // The commented out code is correct, but fails in older version of clang++ due to a
+      // compiler bug.
+
+      //r.std::string::~string();
+      r.~basic_string();
     }
   }
 
   NodeRef apply(Builder const & b);
 };
 
+class Visitor {
+ private:
+  static bool do_nothing() { return true; }
+ public:
+  virtual bool data_number(double) { return do_nothing(); }
+  virtual bool data_number(Simple::integer i) { return data_number(double(i)); }
+  virtual bool data_number(Simple::uinteger u) { return data_number(double(u)); }
+  virtual bool data_bool(bool) { return do_nothing(); }
+  virtual bool data_null() { return do_nothing(); }
+  virtual bool data_string(std::string const &) { return do_nothing(); }
+  virtual bool begin_array() { return do_nothing(); }
+  virtual bool end_array() { return do_nothing(); }
+  virtual bool begin_object() { return do_nothing(); }
+  virtual bool end_object() { return do_nothing(); }
+  virtual bool data_key(std::string const &) { return do_nothing(); }
+  virtual bool data_value(Node const & n) { return n.visit(*this); }
+};
+
 class Builder {
  public:
+  virtual ~Builder() = default;
 
-  virtual NodeRef simple(std::intmax_t i) const = 0;
+  virtual NodeRef simple(Simple::integer i) const = 0;
+  virtual NodeRef simple(Simple::uinteger i) const = 0;
   virtual NodeRef simple(double d) const = 0;
   virtual NodeRef simple(bool b) const = 0;
   virtual NodeRef null() const = 0;
@@ -103,13 +134,26 @@ class Builder {
   }
 };
 
+using BuilderRef = std::unique_ptr<Builder>;
+
 std::ostream & operator<<(std::ostream & stream, Node const & n);
+std::ostream & operator<<(std::ostream & stream, NodeRef const & n);
 
-} // namespace json::wrapper
+class pretty {
+ private:
+  unsigned indent;
+  unsigned initial_indent;
+ public:
+  explicit pretty(unsigned indent_ = 4, unsigned initial_indent_ = 0) :
+    indent(indent_), initial_indent(initial_indent_) {}
+  friend std::ostream & operator<<(std::ostream & s, pretty const & p);
+};
+std::ostream & operator<<(std::ostream & stream, pretty const & p);
 
-std::unique_ptr<wrapper::Builder> simple_builder();
+BuilderRef simple_builder();
 
 } // namespace json
+} // namespace pharos
 
 #endif // Pharos_json
 

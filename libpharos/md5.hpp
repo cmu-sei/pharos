@@ -1,4 +1,4 @@
-// Copyright 2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2017-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Md5_H
 #define Pharos_Md5_H
@@ -15,14 +15,14 @@ extern "C" {
 #else
 
 /* Any 32-bit or wider unsigned integer data type will do */
-typedef std::uint32_t MD5_u32plus;
+using MD5_u32plus = std::uint32_t;
 
-typedef struct {
+struct MD5_CTX{
   MD5_u32plus lo, hi;
   MD5_u32plus a, b, c, d;
   unsigned char buffer[64];
   MD5_u32plus block[16];
-} MD5_CTX;
+};
 #endif
 
 namespace pharos {

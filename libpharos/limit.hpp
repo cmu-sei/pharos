@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Limit_H
 #define Pharos_Limit_H
@@ -116,35 +116,31 @@ struct PharosLimits {
   void set_clock_limits(ResourceLimit &limit, limit_type ltype) const;
   void set_cpu_limits(ResourceLimit &limit, limit_type ltype) const;
   void set_counter_limit(ResourceLimit &limit, limit_type ltype) const;
-
-  void set_memory_limits(ResourceLimit &limit) const {
-    if (maxmem && relative_maxmem) {
-      limit.set_memory_limits(*relative_maxmem, *maxmem);
-    }
-  }
-
+  void set_memory_limits(ResourceLimit &limit, limit_type ltype) const;
 
   void set_limits(ResourceLimit &limit, limit_type ltype) const {
     set_counter_limit(limit, ltype);
     set_clock_limits(limit, ltype);
     set_cpu_limits(limit, ltype);
-    set_memory_limits(limit);
+    set_memory_limits(limit, ltype);
   }
 
   boost::optional<double> timeout;
   boost::optional<double> relative_timeout;
 
   boost::optional<double> partitioner_timeout;
-  boost::optional<double> relative_partitioner_timeout;
 
   boost::optional<double> maxmem;
   boost::optional<double> relative_maxmem;
 
   boost::optional<int> block_counter_limit;
   boost::optional<int> func_counter_limit;
+  boost::optional<size_t> node_condition_limit;
+
 };
 
 const PharosLimits &get_global_limits();
+void set_global_limits(const ProgOptVarMap& vm);
 
 } // namespace pharos
 

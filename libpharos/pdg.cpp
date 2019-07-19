@@ -1,17 +1,19 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "pdg.hpp"
 #include "md5.hpp"
+#include "masm.hpp"
 
 namespace pharos {
 
-PDG::PDG(FunctionDescriptor* f, spTracker *spt) : du(f, spt), cdg(f) {
+PDG::PDG(DescriptorSet& ds_, FunctionDescriptor& f) :
+  ds(ds_), du(ds_, f), cdg(f)
+{
   // We always have a function descriptor, and it always has a real function, or we won't
   // (shouldn't) have been called.
-  fd = f;
-  assert(fd != NULL);
-  UNUSED SgAsmFunction* func = fd->get_func();
-  assert(func != NULL);
+  fd = &f;
+  assert(fd->get_func() != NULL);
+  assert(fd->get_p2func() != NULL);
 
   // Get the control flow dependencies
   control_deps = cdg.getControlDependencies();
@@ -28,7 +30,7 @@ PDG::PDG(FunctionDescriptor* f, spTracker *spt) : du(f, spt), cdg(f) {
 // access and returns it.  When there are no reads of any kind for the instruction, there are
 // no memory reads for the instruction, or there are multiple memory reads for teh instruction,
 // this function returns an invalid abstract access.  Not currently called from anywhere.
-AbstractAccess PDG::get_single_mem_read(SgAsmX86Instruction* insn) {
+AbstractAccess PDG::get_single_mem_read(SgAsmX86Instruction* insn) const {
   auto mem_reads = du.get_mem_reads(insn);
   auto i = std::begin(mem_reads);
   if (i == std::end(mem_reads)) {
@@ -46,7 +48,7 @@ AbstractAccess PDG::get_single_mem_read(SgAsmX86Instruction* insn) {
 // This is kind stupid, and performs poorly, but Cory's goal was to cleanup the API a bit, and
 // understand where we needed the full structure, and where we just needed the instructions.
 // This function is apparently unused at present.
-X86InsnSet PDG::chop_insns(SgAsmX86Instruction *insn) {
+X86InsnSet PDG::chop_insns(SgAsmX86Instruction *insn) const {
   STRACE << "Chopping intruction: " << debug_instruction(insn) << LEND;
   X86InsnSet insns;
   AccessMap tainted = chop_full(insn);
@@ -61,7 +63,7 @@ X86InsnSet PDG::chop_insns(SgAsmX86Instruction *insn) {
 // so Cory changed it to be an unordered map.  The right fix is probably to have a separate
 // method that takes an AccessMap as a parameter and returns the intructions in the appropriate
 // order for symbolic emaulation.  This function is apparently unused at present.
-AccessMap PDG::chop_full(SgAsmX86Instruction *insn) {
+AccessMap PDG::chop_full(SgAsmX86Instruction *insn) const {
   AccessMap taintedInsns;
   assert(insn != NULL);
 
@@ -133,14 +135,14 @@ AccessMap PDG::chop_full(SgAsmX86Instruction *insn) {
 }
 
 // Instruction string with abstracted operands
-std::string PDG::getInstructionString(SgAsmX86Instruction *insn, AddrVector& constants) {
+std::string PDG::getInstructionString(SgAsmX86Instruction *insn, AddrVector& constants) const {
   return insn->get_mnemonic() + dumpOperands(insn,constants);
 }
 
 // Return a list with the disassembly of this instruction
 // Each string contains the mnenomic and 0 or more concrete values for constants
 // The first string does not contain concrete values for constants (i.e., CMP [REG+CONSTANT], CONSTANT)
-StringVector PDG::getInstructionString(SgAsmX86Instruction *insn) {
+StringVector PDG::getInstructionString(SgAsmX86Instruction *insn) const {
   AddrVector constants;
   StringVector insn_str;
 
@@ -174,7 +176,7 @@ StringVector PDG::getInstructionString(SgAsmX86Instruction *insn) {
 }
 
 // Only called from buildDotNode, which is only used from toDot().
-std::string PDG::makeVariableStr(SgAsmX86Instruction *cur_insn) {
+std::string PDG::makeVariableStr(SgAsmX86Instruction *cur_insn) const {
   std::stringstream variable;
   // The variable representing this node in the graph
   variable << "N" << cur_insn->get_address();
@@ -182,7 +184,9 @@ std::string PDG::makeVariableStr(SgAsmX86Instruction *cur_insn) {
 }
 
 // Only called from toDot, which is unused!
-void PDG::buildDotNode(SgAsmX86Instruction *cur_insn, std::stringstream &sout, X86InsnSet& processed) {
+void PDG::buildDotNode(
+  SgAsmX86Instruction *cur_insn, std::stringstream &sout, X86InsnSet& processed) const
+{
   if (cur_insn == NULL || processed.find(cur_insn) != processed.end()) return;
   processed.insert(cur_insn);
 
@@ -208,7 +212,7 @@ void PDG::buildDotNode(SgAsmX86Instruction *cur_insn, std::stringstream &sout, X
 
   // Create the control flow edges
   if (control_deps.find(cur_insn) != control_deps.end()) {
-    for (SgAsmInstruction* ginsn : control_deps[cur_insn]) {
+    for (SgAsmInstruction* ginsn : control_deps.at(cur_insn)) {
       SgAsmX86Instruction *cinsn = isSgAsmX86Instruction(ginsn);
       assert(cinsn);
       sout << curvar << " -> " << makeVariableStr(cinsn) << " [label=\"c\"];\n";
@@ -218,7 +222,7 @@ void PDG::buildDotNode(SgAsmX86Instruction *cur_insn, std::stringstream &sout, X
 }
 
 // Unused!
-void PDG::toDot(std::string dotOutputFile) {
+void PDG::toDot(std::string dotOutputFile) const {
   X86InsnSet processed;
   std::stringstream sout;
 
@@ -248,7 +252,7 @@ void PDG::toDot(std::string dotOutputFile) {
 void PDG::hashSubPaths(SgAsmX86Instruction *cur_insn, std::string path, X86InsnSet processed,
                        StringVector &hashedPaths, size_t maxSubPathLen, size_t curLen,
                        StringVector *ss_dump, AddrSet filter_addresses,
-                       Addr2StringSetMap filter_constants, bool includeSubPath) {
+                       Addr2StringSetMap filter_constants, bool includeSubPath) const {
   if (cur_insn == NULL || processed.find(cur_insn) != processed.end())
     return;
 
@@ -317,7 +321,9 @@ void PDG::hashSubPaths(SgAsmX86Instruction *cur_insn, std::string path, X86InsnS
 
     // Create the control flow edges
     if (curLen < maxSubPathLen && control_deps.find(cur_insn) != control_deps.end()) {
-      for (InsnSet::iterator it = control_deps[cur_insn].begin(); it != control_deps[cur_insn].end(); it++) {
+      for (InsnSet::iterator it = control_deps.at(cur_insn).begin();
+           it != control_deps.at(cur_insn).end(); it++)
+      {
         SgAsmX86Instruction *cinsn = isSgAsmX86Instruction(*it);
         assert(cinsn);
         hashSubPaths(cinsn, new_path + "-c->", processed, hashedPaths, maxSubPathLen,
@@ -328,7 +334,7 @@ void PDG::hashSubPaths(SgAsmX86Instruction *cur_insn, std::string path, X86InsnS
 }
 
 // Unused!
-StringVector PDG::getPaths(size_t maxSubPathLen) {
+StringVector PDG::getPaths(size_t maxSubPathLen) const {
   StringVector hashes;
 
   for (SgAsmStatement* bs : fd->get_func()->get_statementList()) {
@@ -346,14 +352,14 @@ StringVector PDG::getPaths(size_t maxSubPathLen) {
 
 // Comparator for inserting InsnBoolPairs into sets.
 // Only needed in getSlice(), and perhaps not even there...
-typedef std::pair<SgAsmX86Instruction *, bool> InsnBoolPair;
+using InsnBoolPair = std::pair<SgAsmX86Instruction *, bool>;
 struct ltAsmInsn {
   bool operator()(InsnBoolPair a, InsnBoolPair b) const {
     return a.first->get_address() < b.first->get_address();
   }
 };
 
-std::string PDG::getSlice(SgAsmX86Instruction *insn, Slice &s) {
+std::string PDG::getSlice(SgAsmX86Instruction *insn, Slice &s) const {
   if (insn == NULL) return "";
 
   for (Slice::iterator it = s.begin(); it != s.end(); it++) {
@@ -377,7 +383,7 @@ std::string PDG::getSlice(SgAsmX86Instruction *insn, Slice &s) {
   }
   s.insert(pn);
 
-  typedef std::set<InsnBoolPair, ltAsmInsn> InsnBoolPairSet;
+  using InsnBoolPairSet = std::set<InsnBoolPair, ltAsmInsn>;
 
   InsnBoolPairSet dependencies;
 
@@ -413,7 +419,7 @@ std::string PDG::getSlice(SgAsmX86Instruction *insn, Slice &s) {
   return slice_str;
 }
 
-std::string PDG::dumpOperand(SgAsmExpression *exp, AddrVector& constants) {
+std::string PDG::dumpOperand(SgAsmExpression *exp, AddrVector& constants) const {
 
   if (isSgAsmIntegerValueExpression(exp)) {
     std::ostringstream convert;
@@ -445,7 +451,7 @@ std::string PDG::dumpOperand(SgAsmExpression *exp, AddrVector& constants) {
   }
 }
 
-std::string PDG::dumpOperands(SgAsmX86Instruction *insn, AddrVector& constants) {
+std::string PDG::dumpOperands(SgAsmX86Instruction *insn, AddrVector& constants) const {
   std::string opstr = "";
   SgAsmExpressionPtrList ops = insn->get_operandList()->get_operands();
 
@@ -458,7 +464,9 @@ std::string PDG::dumpOperands(SgAsmX86Instruction *insn, AddrVector& constants) 
   return opstr;
 }
 
-size_t PDG::hashSlice(SgAsmX86Instruction *insn, size_t nHashFunc, std::vector<unsigned int> & hashes) {
+size_t PDG::hashSlice(
+  SgAsmX86Instruction *insn, size_t nHashFunc, std::vector<unsigned int> & hashes) const
+{
   Slice s;
   std::string slice_str = getSlice(insn,s);
   size_t count = s.size();
@@ -493,7 +501,7 @@ size_t PDG::hashSlice(SgAsmX86Instruction *insn, size_t nHashFunc, std::vector<u
 
 // Return the number of instructions in the entire function, by summing each basic block.
 // Private.  Called only from getWeightedMaxHash().
-size_t PDG::getNumInstr() {
+size_t PDG::getNumInstr() const {
   size_t c = 0;
   for (SgAsmStatement* bs : fd->get_func()->get_statementList()) {
     SgAsmBlock *bb = isSgAsmBlock(bs);
@@ -506,8 +514,8 @@ size_t PDG::getNumInstr() {
 
 // Computed the weighted max hash (PDG hash) for a function.  Public because it's called from
 // FunctionDescriptor::get_pdg_hash().
-std::string PDG::getWeightedMaxHash(size_t nHashFunc) {
-  typedef std::vector<unsigned int> UIntVector;
+std::string PDG::getWeightedMaxHash(size_t nHashFunc) const {
+  using UIntVector = std::vector<unsigned int>;
   std::vector<UIntVector> slice_hashes;
   size_t ninstr = getNumInstr();
   size_t slice_num = 0;

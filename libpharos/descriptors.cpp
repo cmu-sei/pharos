@@ -1,4 +1,4 @@
-// Copyright 2015, 2016, 2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -6,6 +6,8 @@
 #include <boost/graph/depth_first_search.hpp>
 #include <boost/graph/visitors.hpp>
 #include <boost/graph/named_function_params.hpp>
+#include <boost/range/adaptors.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <rose.h>
 #include <boost/property_tree/json_parser.hpp>
@@ -17,108 +19,114 @@
 #include "apidb.hpp"
 #include "partitioner.hpp"
 #include "vftable.hpp"
+#include "imports.hpp"
+#include "masm.hpp"
+
+#include <mutex>
 
 namespace pharos {
 
-DescriptorSet* global_descriptor_set = NULL;
+size_t global_arch_bytes = 4;
 
-// This is called by all the DescriptorSet::DescriptorSet() constructors.
-void DescriptorSet::init()
+void set_global_arch_bytes(size_t arch_bytes)
 {
-  apidb = APIDictionary::create_standard(vm);
-}
+  static bool initialized = false;
+  static std::mutex mutex;
 
-// When passed a NULL interpretation, we'll analyze the file specified in the program options.
-// This is the standard way of constructing the descriptor set, despite the implementation
-// being the other way around.  This is because there are some special constraints in tracesem
-// that should really just be eliminated.
-DescriptorSet::DescriptorSet(const ProgOptVarMap& povm) :
-  DescriptorSet(povm, (SgAsmInterpretation*)NULL) { }
+  std::lock_guard<decltype(mutex)> lock(mutex);
 
-// This is where the real work gets done, but you should only call the constructor above.
-DescriptorSet::DescriptorSet(const ProgOptVarMap& povm,
-                             SgAsmInterpretation* passed_interp) : vm(povm)
-{
-  // Set this immediately, because if we don't we can't use it from within
-  // specific descriptor types.  Hackish and ugly. :-(
-  global_descriptor_set = this;
-
-  // This may be improved upon later if we're running paritioner version 2.
-  engine = NULL;
-
-  // Call communal init
-  init();
-
-  // Go analyze the file and obtain the program "interpretation".  Move the testing for
-  // partitioner1 versus partitioner2 into the descriptor set, so that we have better
-  // flexibility going forward about different implementations for each.
-  interp = passed_interp;
-  if (interp == NULL) {
-    bool sp = vm.count("stockpart");
-    // Should this be a smart pointer?  It's pretty clear that the descriptor set owns it, so for
-    // now, my answer is no.  This should be cleaner when we more thoroughly integrate
-    // create_partitioner() into the descriptor set.
-    if (sp) {
-      engine = new P2::Engine();
-      GINFO << "Using stock version two of the function partitioner." << LEND;
+  if (initialized) {
+    if (arch_bytes != global_arch_bytes) {
+      GFATAL << "Cannot analyze a binary with a pointer-size of " << arch_bytes
+             << " when already analyzing binaries with a pointer size of "
+             << global_arch_bytes << ".\n"
+             << "This is a limitation with the current code that will may"
+             << " go away in a future version." << LEND;
+      throw std::runtime_error("Architecture size mismatch");
     }
-    else {
-      engine = new CERTEngine();
-    }
-
-    // This is where we should test for --stock, and it's a bit tricky because vm.get<> is mildly
-    // broken for boolean options.  Duggan is aware.
-    // auto limit = vm.get<bool/string>("stock", "pharos.partitioner");
-    // P2::Engine engine;
-
-    // And this is always a P2::Partitioner object (not a pointer) in the P2 way of doing things.
-    // This routine might throw an exception id the user didn't specify --allow-64bit.
-    partitioner = create_partitioner(vm, engine);
-    interp = engine->interpretation();
+  } else {
+    global_arch_bytes = arch_bytes;
+    initialized = true;
   }
 
-  // Populate the file and memmap object so that we can read the program image.
-  SgAsmGenericHeader *hdr = interp->get_headers()->get_headers()[0];
-  file = SageInterface::getEnclosingNode < SgAsmGenericFile > (hdr);
-  memmap = (interp->get_map());
-  assert(memmap);
-
-  // The recommended way to determine the architecture size is ask the disassembler.  We've
-  // already disassembled and partitioned the file into functions using a different instance of
-  // a disassembler, but we didn't keep a handle to it.  Perhaps we should have, but that's
-  // really part of switching fully to Partitioner 2, not part of the 64-bit change, so I'm not
-  // going to try and do it right now.  In the meantime make another temporary disassembler.
-  RoseDisassembler *disassembler = RoseDisassembler::lookup(interp)->clone();
-  arch_bytes = disassembler->wordSizeBytes();
-  // OINFO << "Input file is a " << get_arch_bits() << "-bit Windows PE executable!" << LEND;
   if (arch_bytes != 4 and arch_bytes != 8) {
     GFATAL << "Architecture has unrecognized word size of " << arch_bytes << " bytes." << LEND;
     // We should probably throw or exit, here since it's very unlikely that continuing will end
     // well.  On the other hand, nothing terrible has happened yet, so we can continue.
   }
+}
 
-  // This needs to be set before we do any emulation, and after we know our architecture size.
-  // Perhaps it's time to move this _into_ the global_descriptor set...
-  global_rops = SymbolicRiscOperators::instance();
+ImportDescriptor *DescriptorSet::add_import(
+  rose_addr_t addr, std::string dll, std::string name, size_t ord)
+{
+  ImportDescriptor * nid = &map_emplace_or_replace(
+    import_descriptors, addr, *this, addr, dll, name, ord);
 
-  // Robb Matzke did this instead.  Perhaps we shouldn't be ignoring the values other than [0]
-  // in the get_headers call above?
-#if 0
-  // IF THIS IS EVER ENABLED AGAIN, need to change these explicit stdout usages and the printf
-  // to use global_logging_fileno and/or real logging instead?
-  std::set<SgAsmGenericFile*> emittedFiles;
-  for (SgAsmGenericHeader *fileHeader : interp->get_headers()->get_headers()) {
-    SgAsmGenericFile *container = SageInterface::getEnclosingNode<SgAsmGenericFile>(fileHeader);
-    if (emittedFiles.insert(container).second) {
-      container->dump(stdout);
-      int i=0;
-      for (SgAsmGenericSection *section : container->get_sections()) {
-        printf("Section [%d]:\n", i++);
-        section->dump(stdout, "  ", -1);
-      }
+  // Get the expresison for the variable that was filled in by the loader.
+  TreeNodePtr tn = nid->get_loader_variable()->get_expression();
+  assert(tn != NULL);
+  // The expression should always be a LeafNode, or our code is inconsistent.
+  LeafNodePtr ln = tn->isLeafNode();
+  assert(ln != NULL);
+  // Key the import variable map by just the unique number of the variable.
+  uint64_t vnum = ln->nameId();
+  // The import variables map is just a pointer to the object in the other map.
+  import_variables[vnum] = nid;
+  return nid;
+}
+
+template <typename... Args>
+FunctionDescriptor *DescriptorSet::add_function_descriptor(rose_addr_t addr, Args &&... args)
+{
+  FunctionDescriptor & fd = map_emplace_or_replace(
+    function_descriptors, addr, *this, std::forward<Args>(args)...);
+  if (apidb) {
+    // If the address of this function has an API DB entry, incorporate it here.
+    auto apidef = apidb->get_api_definition(addr);
+    if (!apidef.empty()) {
+      fd.set_api(*apidef.front());
     }
   }
-#endif
+  return &fd;
+}
+
+// This is called by all the DescriptorSet::DescriptorSet() constructors (including the "usual"
+// one and the version in tracesem where we pass in an already built engine) but NOT by the
+// super ancient constructor where we "build" a function manually.
+void DescriptorSet::init()
+{
+  apidb = APIDictionary::create_standard(vm);
+
+  interp = engine->interpretation();
+  if (interp == NULL) {
+    throw std::runtime_error("Unable to analyze file (no executable content found).");
+  }
+
+  // Populate the file and memmap object so that we can read the program image.
+  SgAsmGenericHeader *hdr = interp->get_headers()->get_headers()[0];
+  auto file = SageInterface::getEnclosingNode < SgAsmGenericFile > (hdr);
+  memory.set_memmap(interp->get_map());
+  assert(memory);
+
+  // The recommended way to determine the architecture size is ask the disassembler.
+  RoseDisassembler *disassembler = engine->obtainDisassembler();
+  arch_bytes = disassembler->wordSizeBytes();
+  set_global_arch_bytes(arch_bytes);
+
+  // OINFO << "Input file is a " << get_arch_bits() << "-bit Windows PE executable!" << LEND;
+  // Set the architecture name.
+  arch_name = disassembler->name();
+
+  // This needs to be set before we do any emulation, and after we know our architecture size.
+  // Perhaps it's time to move this _into_ the global descriptor set (or eliminate it completely).
+  global_rops = NULL;
+  if (get_arch_name() != "i386" && get_arch_name() != "amd64") {
+    GWARN << "Analyzing executable with unsupported architecture '" << get_arch_name()
+          << "', results may be incorrect." << LEND;
+  }
+  else {
+    global_rops = SymbolicRiscOperators::instance(*this);
+  }
 
   // Find all SgAsmPEImportDirectory objects in the project.  Walk these, extracting the DLL
   // name, and the names of the imported functions.  Create an import descriptor for each.
@@ -133,15 +141,54 @@ DescriptorSet::DescriptorSet(const ProgOptVarMap& povm,
       SgAsmPEImportItem* item = isSgAsmPEImportItem(*iit);
       rose_addr_t iat_va = item->get_iat_entry_va();
       if (iat_va != 0) {
-        add_import(ImportDescriptor(dll, item));
+        add_import(iat_va, dll, item->get_name()->get_string(), item->get_ordinal());
       }
     }
   }
 
-  // Get the Win32Interpretation.  We only want to traverse this portion of the executable for
-  // finding functions and calls, so we don't mix the DOS stub into the analysis.
-  // BUG? Doesn't handle multiple files, assumes Win32 executables, etc. etc.
-  // interp = GetWin32Interpretation(project);
+  // Experimental new code to create "imports" based on ELF RelocEntry objects.
+  SgAsmElfFileHeader* elfHeader = isSgAsmElfFileHeader(hdr);
+  if (elfHeader) {
+    for (SgAsmGenericSection *section : elfHeader->get_sections()->get_sections()) {
+      if (SgAsmElfRelocSection *relocSection = isSgAsmElfRelocSection(section)) {
+        SgAsmElfSymbolSection *symbolSection = isSgAsmElfSymbolSection(relocSection->get_linked_section());
+        if (SgAsmElfSymbolList *symbols = symbolSection ? symbolSection->get_symbols() : NULL) {
+          for (SgAsmElfRelocEntry *rel : relocSection->get_entries()->get_entries()) {
+            if (rel->get_type() == SgAsmElfRelocEntry::R_X86_64_JUMP_SLOT ||
+                rel->get_type() == SgAsmElfRelocEntry::R_386_JMP_SLOT) {
+              rose_addr_t raddr = rel->get_r_offset();
+              // We should get the correct shared object name from the ELF header...
+              std::string dll("unknown");
+              // Start with a NULL name.  The import descriptor constructor will change it to
+              // '*INVALID*' if we're unable to find the symbol.
+              std::string name;
+              // But if there's a name in the ELF (and there should be) use it.
+              unsigned long symbolIdx = rel->get_sym();
+              if (symbolIdx < symbols->get_symbols().size()) {
+                SgAsmElfSymbol *symbol = symbols->get_symbols()[symbolIdx];
+                name = symbol->get_name()->get_string();
+              }
+              add_import(raddr, dll, name);
+              //OINFO << "Added ELF 'import':" << addr_str(raddr) << " " << name << LEND;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Partitioner being non-null here is short hand for we've in "Pharos" mode and not
+  // "tracesem" mode.
+
+  static SgAsmBlock *gblock = P2::Modules::buildAst(partitioner, interp);
+  if (gblock != NULL and interp != NULL) {
+    GTRACE << "done calling partitioner2" << LEND;
+    GTRACE << "calling set_global_block" << LEND;
+    interp->set_global_block(gblock);
+    GTRACE << "done calling set_global_block, calling set_parent" << LEND;
+    gblock->set_parent(interp);
+    GTRACE << "done calling set_parent" << LEND;
+  }
 
   GDEBUG << "building FCG" << LEND;
   Rose::BinaryAnalysis::FunctionCall().build_cg_from_ast(interp, function_call_graph);
@@ -149,43 +196,97 @@ DescriptorSet::DescriptorSet(const ProgOptVarMap& povm,
   // Traverse the AST looking for calls and functions.
   traverse(interp);
 
-  // create an spTracker to do stack analysis. This is required for update_connections
-  // or virtual function call tracking will not work.
-  sp_tracker = new spTracker(this);
+  // Since we need the call descriptors to create the new PDG graph, this seems like the right
+  // place to do that for now.  In the future, this might be better someplace else.
+  pdg_graph.populate(*this, partitioner);
 
   // Now make any connections that couldn't be made easily until we had complete data.
   update_connections();
 }
 
+// When passed a NULL interpretation, we'll analyze the file specified in the program options.
+// This is the standard way of constructing the descriptor set, despite the implementation
+// being the other way around.  This is because there are some special constraints in tracesem
+// that should really just be eliminated.
+DescriptorSet::DescriptorSet(const ProgOptVarMap& povm) :
+  DescriptorSet(povm,
+                povm.count("file")
+                ? std::vector<std::string>({povm["file"].as<std::string>()})
+                : std::vector<std::string>())
+{}
+
+
+DescriptorSet::DescriptorSet(const ProgOptVarMap& povm,
+                             std::vector<std::string> const & specimens)
+  : vm(povm), specimen_names(specimens)
+{
+  // Instantiate a partitioning engine as requested by the options/configuration.
+  boost::optional<std::string> pname = vm.get<std::string>("partitioner", "pharos.partitioner");
+  if (!pname) {
+    *pname = "pharos";
+  }
+
+  // The --stockpart option is deprecated, please use "--partitioner=rose" instead.
+  bool sp = vm.count("stockpart");
+  if (sp) {
+    *pname = "rose";
+    OWARN << "The option --stockpart has been deprecated.  Use --partitioner=rose instead." << LEND;
+  }
+  if (boost::iequals(*pname, "rose")) {
+    engine = new P2::Engine();
+    GINFO << "Using the standard ROSE function partitioner." << LEND;
+  }
+  else if (boost::iequals(*pname, "superset")) {
+    engine = new SupersetEngine();
+    GINFO << "Using the Pharos superset disassembly algorithm." << LEND;
+  }
+  else if (boost::iequals(*pname, "pharos")) {
+    engine = new CERTEngine();
+    GINFO << "Using the default Pharos function partitioner." << LEND;
+  }
+  else {
+    engine = new CERTEngine();
+    OERROR << "The partitioner '" << *pname << "' is not recognized, "
+           << "using the Pharos function partitioner." << LEND;
+  }
+
+  // And then partition...
+  partitioner = create_partitioner(vm, engine, specimen_names);
+
+  // Call communal init
+  init();
+}
+
+
+// This version of the constructor is only used by tracesem, which wants to pass in its own
+// engine.  Pharos programs should always call the first constructor.  I'm currently passing
+// both the engine and the partitioner in tracesem, but perhaps we don't really need both.
+DescriptorSet::DescriptorSet(const ProgOptVarMap& povm, P2::Engine& eng,
+                             P2::Partitioner&& par) : vm(povm), partitioner(std::move(par))
+{
+  engine = &eng;
+  init();
+}
+
 // Wes needed to be able to create a DescriptorSet from a single function because Wes loaded the
 // function from an assembly source file, and made the SgAsgInstruction objects himself.
 DescriptorSet::DescriptorSet(const ProgOptVarMap& povm, SgAsmFunction *func) : vm(povm) {
-  // This is still our "global" descriptor set even though it only has a single function in it.
-  // The need for a limied-scope descriptor set shows that we've been naughty in allowing the
-  // existing constructor to set the global value.  Cory figures we'll need to correct that.
-  global_descriptor_set = this;
-
   // Because the function based approach is so wildly hacked, just hard-code 32-bits and
   // construct our global_rops now.
   arch_bytes = 4;
-  global_rops = SymbolicRiscOperators::instance();
+  global_rops = SymbolicRiscOperators::instance(*this);
 
-  init();
+  // We want to load API data for an imports in the created code.  WARNING! We have no imports
+  // in this view of the world, so attempts to resolve imports will always fail.
+  apidb = APIDictionary::create_standard(vm);
 
   // The fact that these three values are NULL is very likely to be problematic.  In
   // particular, the lack of a memory map will cause us to be very confused about what
   // addresses are defined in memory if we ever try to use that functionality.
   interp = nullptr;
-  memmap = MemoryMap::Ptr();
-  file = nullptr;
-
-  sp_tracker = new spTracker(this);
 
   // Create a function descriptor for theone function.
   add_function_descriptor(func);
-
-  // WARNING! We have no imports in this view of the world, so attempts to resolve imports will
-  // always fail.
 
   // Add call descriptors, for each call instruction, even though the call targets don't
   // actually exist.
@@ -199,7 +300,7 @@ DescriptorSet::DescriptorSet(const ProgOptVarMap& povm, SgAsmFunction *func) : v
       SgAsmX86Instruction *insn = isSgAsmX86Instruction(ilist[y]);
 
       if (insn_is_call(insn)) {
-        call_descriptors[insn->get_address()] = CallDescriptor(insn);
+        call_descriptors.add(insn->get_address(), *this, insn);
       }
     }
   }
@@ -207,115 +308,17 @@ DescriptorSet::DescriptorSet(const ProgOptVarMap& povm, SgAsmFunction *func) : v
 
 DescriptorSet::~DescriptorSet() {
   if (engine != NULL) delete engine;
-  if (sp_tracker != NULL) delete sp_tracker;
-  // We own the pointers for the virtual tables (use smart pointers instead?)
-  for (auto&& p : vftables) { delete p.second; }
-  vftables.clear();
-  for (auto&& p : vbtables) { delete p.second; }
-  vbtables.clear();
 }
 
-void DescriptorSet::add_function_descriptor(rose_addr_t addr, FunctionDescriptor && fd)
-{
-  if (apidb) {
-    // If the address of this function has an API DB entry, incorporate it here.
-    auto apidef = apidb->get_api_definition(addr);
-    if (!apidef.empty()) {
-      fd.set_api(*apidef[0]);
-    }
-  }
-  auto & loc = function_descriptors[addr];
-  loc = std::move(fd);
-}
-
-void DescriptorSet::add_function_descriptor(SgAsmFunction * func)
-{
-  add_function_descriptor(func->get_entry_va(), FunctionDescriptor(func));
-}
-
-void DescriptorSet::add_import(ImportDescriptor id) {
-  // The map makes a copy of the Import Descriptor object that was passed...
-  import_descriptors[id.get_address()] = id;
-
-  // Get a pointer to the newly allocated copy in the map.
-  ImportDescriptor* nid = import_descriptors.get_import(id.get_address());
-  // Get the expresison for the variable that was filled in by the loader.
-  TreeNodePtr tn = nid->get_loader_variable()->get_expression();
-  assert(tn != NULL);
-  // The expression should always be a LeafNode, or our code is inconsistent.
-  LeafNodePtr ln = tn->isLeafNode();
-  assert(ln != NULL);
-  // Key the import variable map by just the unique number of the variable.
-  uint64_t vnum = ln->nameId();
-  // The import variables map is just a pointer to the object in the other map.
-  import_variables[vnum] = nid;
-}
-
-spTracker * DescriptorSet::get_spTracker() const { return sp_tracker; }
-
-// This method should really be a method on MemoryMap.
-bool DescriptorSet::memory_initialized(rose_addr_t addr) {
-  // The zero is a mask meaning we don't care what the protection bits are?
-  if (memmap->at(addr).exists(0)) {
-    // Cory has temporarily disabled this code, but he needs to harass Robb about it.
-
-    //const Sawyer::Container::AddressSegment<> seg = memmap->at(addr);
-    //const MemoryMap::Segments::Node& sinode = memmap->at(addr);
-    //const MemoryMap::Segment& seg = sinode.value();
-    //std::string bufname = seg.get_buffer()->get_name();
-    //if (bufname.compare(0, 5, "anon ") == 0)
-    //  return false;
-    //return true;
-    return false;
-  }
-  return false;
-}
-
-bool DescriptorSet::memory_in_image(rose_addr_t addr) {
-  // The zero is a mask meaning we don't care what the protection bits are?
-  return memmap->at(addr).exists(0);
-}
-
-std::pair<size_t, std::unique_ptr<Sawyer::Container::BitVector>>
-DescriptorSet::read_addr_bits(rose_addr_t addr, size_t bits)
-{
-  auto bv = make_unique<Sawyer::Container::BitVector>(bits);
-  size_t count = bits >> 3;
-  if (bits & 7) {
-    ++count;
-  }
-  size_t nread = file->read_content(memmap, addr, bv->data(), count, false);
-  size_t read_bits = nread << 3;
-  read_bits = std::min(bits, read_bits);
-
-  return std::make_pair(read_bits, std::move(bv));
-}
-
-rose_addr_t DescriptorSet::read_addr(rose_addr_t addr) {
-  rose_addr_t naddr = 0;
-  if (arch_bytes == 4) {
-    int32_t buff;
-    size_t nread = file->read_content(memmap, addr, &buff, sizeof(buff), false);
-    if (nread == sizeof(buff)) naddr = buff;
-  }
-  else if (arch_bytes == 8) {
-    int64_t buff;
-    size_t nread = file->read_content(memmap, addr, &buff, sizeof(buff), false);
-    if (nread == sizeof(buff)) naddr = buff;
-  }
-
-  return naddr;
-}
-
-// TODO - Cory says the proper way to do this is to call get_partitioner() on the
-// global_descriptor_set and then call instructionProvider[address]
+// TODO - Cory says the proper way to do this is to call get_partitioner() and then call
+// instructionProvider[address]
 SgAsmInstruction* DescriptorSet::get_insn(rose_addr_t addr) const {
   AddrInsnMap::const_iterator finder = insn_map.find(addr);
   if (finder == insn_map.end()) return NULL;
   return (*finder).second;
 }
 
-const RegisterDictionary DescriptorSet::get_regdict() {
+const RegisterDictionary DescriptorSet::get_regdict() const {
   return RegisterDictionary(partitioner.instructionProvider().registerDictionary());
 }
 
@@ -386,11 +389,11 @@ void DescriptorSet::preOrderVisit(SgNode* n) {
         ImportDescriptor *id = import_descriptors.get_import(v);
         if (id == NULL) {
           // Do we already have a global memory descriptor for this address?
-          GlobalMemoryDescriptor* gmd = get_global(addr);
+          GlobalMemoryDescriptor* gmd = get_rw_global(addr); // add_ref()
           // If not, then create one.
           if (gmd == NULL) {
-            global_descriptors[addr] = GlobalMemoryDescriptor(addr);
-            gmd = get_global(addr);
+            map_emplace_or_replace(global_descriptors, addr, addr, get_arch_bits());
+            gmd = get_rw_global(addr); // add_ref(), just created
           }
           // Either way, this instruction references the address...
           gmd->add_ref(insn);
@@ -403,38 +406,11 @@ void DescriptorSet::preOrderVisit(SgNode* n) {
 
     if (insn->get_kind() != x86_call && insn->get_kind() != x86_farcall) return;
     //OINFO << "Creating call descriptor for insn:" << debug_instruction(insn) << LEND;
-    call_descriptors[insn->get_address()] = CallDescriptor(insn);
+    map_emplace_or_replace(call_descriptors, insn->get_address(), *this, insn);
   } else if (isSgAsmFunction(n) != NULL) {
     SgAsmFunction *func = isSgAsmFunction(n);
     add_function_descriptor(func);
   }
-}
-
-void DescriptorSet::do_update_vf_call_descriptors(CallType t) {
-  CallDescMapPredicate p(t);
-  CallDescriptorMap::filtered_iterator it = calls_filter_begin(p);
-  CallDescriptorMap::filtered_iterator end = calls_filter_end(p);
-
-  while (it != end) {
-    rose_addr_t call_addr = it->first;
-    CallDescriptor &cd = it->second;
-
-    SgAsmFunction *func = insn_get_func(cd.get_insn());
-    assert(func);
-    FunctionDescriptor &fd = function_descriptors[func->get_entry_va()];
-    PDG * pdg = fd.get_pdg();
-    if (pdg != NULL && cd.check_virtual(pdg)) {
-      // this may be a virtual function call
-      call_descriptors[call_addr].update_call_type(CallVirtualFunction, ConfidenceGuess);
-    }
-    ++it;
-  }
-}
-
-// Refining the descriptor set currently means searching for virtual functions
-void DescriptorSet::update_vf_call_descriptors() {
-  do_update_vf_call_descriptors(CallRegister);
-  do_update_vf_call_descriptors(CallUnknown);
 }
 
 void DescriptorSet::update_connections() {
@@ -489,12 +465,6 @@ void DescriptorSet::dump(std::ostream &o) const {
 }
 
 void DescriptorSet::resolve_imports() {
-  // Use the old fashioned config file if requested.
-  auto import_config_file = vm.get<std::string>("imports", "pharos.json_config");
-  if (import_config_file) {
-    read_config(*import_config_file);
-  }
-
   // For each import in our file...
   for (auto & pair : import_descriptors) {
     ImportDescriptor &id = pair.second;
@@ -518,8 +488,7 @@ void DescriptorSet::resolve_imports() {
       fdesc = apidb->get_api_definition(root, id.get_ordinal());
     }
     if (!fdesc.empty()) {
-      std::unique_ptr<ImportDescriptor> dll_id(new ImportDescriptor(*fdesc[0]));
-      id.merge_export_descriptor(dll_id.get());
+      id.merge_api_definition(*fdesc.front());
     } else {
       GWARN << "No stack delta information for: " << id.get_best_name() << LEND;
     }
@@ -535,117 +504,6 @@ void DescriptorSet::resolve_imports() {
 
   // Now update the connections...  I'm not sure if this is really needed or not.
   update_connections();
-}
-
-void DescriptorSet::read_config(std::string filename) {
-  // Build a map of normalized import names to import descriptor objects so that names in the
-  // config file get associated with the correct descriptor.  This is the only place I know of
-  // so far where we'll want to lookup imports by name and not by address.  If it ends up being
-  // used more widely, I'll move the code elsewhere.
-  ImportNameMap import_names;
-  for (ImportDescriptorMap::value_type & pair : import_descriptors) {
-    import_names[pair.second.get_normalized_name()] = &(pair.second);
-  }
-  using boost::property_tree::ptree;
-  ptree config_tree;
-  read_json(filename, config_tree);
-
-  // For each descriptor type, parse the config tree to get the key and find the appropriate
-  // descriptor.  If the descriptor is not found, whine mildly, and then create a new
-  // descriptor.  We do this because we assume the use knows something about the future that we
-  // do not (yet).
-
-  // Functions.
-  for (ptree::value_type & v : config_tree.get_child("config.funcs")) {
-    // The value_type v is a pair.  First is the key and second is the data.
-
-    rose_addr_t addr = parse_number(v.first.data());
-    FunctionDescriptor* fd = function_descriptors.get_func(addr);
-    if (fd == NULL) {
-      GWARN << "No function found at address " << std::hex << addr << std::dec
-            << ", creating a new function descriptor." << LEND;
-      auto afd = FunctionDescriptor();
-      afd.read_config(v.second);
-      add_function_descriptor(addr, std::move(afd));
-    } else {
-      fd->read_config(v.second);
-    }
-  }
-
-  // Imports.
-  for (ptree::value_type & v : config_tree.get_child("config.imports")) {
-    std::string name = v.first.data();
-    GTRACE << "IMPORT:" << name << LEND;
-    ImportNameMap::iterator ifinder = import_names.find(name);
-    ImportDescriptor* id;
-    if (ifinder != import_names.end()) {
-      id = ifinder->second;
-      id->read_config(v.second);
-    } else {
-      GWARN << "No import named '" << name << "', creating a new import descriptor." << LEND;
-      id = new ImportDescriptor;
-      import_names[name] = id;
-      id->read_config(v.second);
-      // This is a little less wrong than it was before... but it's still not correct.  That's
-      // probably because I'm having trouble undersanding exactly when you'd want to add an
-      // import that wasn't in the import table.  It has something to do with obfuscated
-      // imports.  But would we always have an address to uniquely key the import in that case
-      // like we do currently for an import table?  If not, what would we uniquely key the
-      // imports by?
-      add_import(*id);
-    }
-  }
-
-  // Calls.
-  for (ptree::value_type & v : config_tree.get_child("config.calls")) {
-    rose_addr_t addr = parse_number(v.first.data());
-    GTRACE << "CALL:" << addr_str(addr) << LEND;
-    CallDescriptor* cd = call_descriptors.get_call(addr);
-    if (cd == NULL) {
-      GWARN << "No CALL instructon at address " << addr_str(addr)
-            << ", creating a new call descriptor." << LEND;
-      cd = new CallDescriptor;
-      call_descriptors[addr] = *cd;
-    }
-    cd->read_config(v.second, &import_names);
-  }
-
-  // Resolve imports.  Should the user be able to turn this off?
-  resolve_imports();
-
-  // Now update the connections...
-  update_connections();
-}
-
-void DescriptorSet::write_config(std::string filename) {
-  // The whole tree
-  boost::property_tree::ptree config_tree;
-
-  for (FunctionDescriptorMap::value_type & pair : function_descriptors) {
-    FunctionDescriptor* fd = &(pair.second);
-    boost::property_tree::ptree descriptor;
-    fd->write_config(&descriptor);
-    config_tree.put_child("config.funcs." + fd->address_string(), descriptor);
-  }
-  for (CallDescriptorMap::value_type & pair : call_descriptors) {
-    CallDescriptor* cd = &(pair.second);
-    boost::property_tree::ptree descriptor;
-    cd->write_config(&descriptor);
-    config_tree.put_child("config.calls." + cd->address_string(), descriptor);
-  }
-  for (ImportDescriptorMap::value_type & pair : import_descriptors) {
-    ImportDescriptor* id = &(pair.second);
-    boost::property_tree::ptree descriptor;
-    id->write_config(&descriptor);
-    typedef boost::property_tree::ptree::path_type PathType;
-    // We have to use an alternate character for the path separator, because there are usually
-    // dots in the DLL names.  Here we use slash, which should not occur in the DLL names or
-    // the import function names.
-    std::string key = "config/imports/" + id->get_long_name();
-    config_tree.put_child(PathType(key, '/'), descriptor);
-  }
-
-  write_json(filename, config_tree);
 }
 
 // Find an import descriptor given the symbolic value that the loader filled in for that
@@ -667,11 +525,26 @@ ImportDescriptor* DescriptorSet::get_import_by_variable(SymbolicValuePtr v) {
   return finder->second;
 }
 
+void DescriptorSet::update_import_target(SymbolicValuePtr& v, SgAsmX86Instruction* insn) {
+  SDEBUG << "Call target is to loader defined value: " << *v << LEND;
+  ImportDescriptor* id = get_import_by_variable(v);
+  // Yes, it's a call to an import.  Update the call target list with a new target.
+  if (id != NULL) {
+    SDEBUG << "The call " << debug_instruction(insn)
+           << " was to import " << id->get_long_name() << LEND;
+    CallDescriptor* cd = get_rw_call(insn->get_address()); // add_import_target()
+    cd->add_import_target(id);
+  }
+  else {
+    SDEBUG << "The constant call target was not resolved." << LEND;
+  }
+}
+
 //
 // Support for topo sorting the function list.
 //
 
-typedef boost::graph_traits<FCG>::vertex_descriptor FCGVertex;
+using FCGVertex = boost::graph_traits<FCG>::vertex_descriptor;
 
 template<typename OutputIterator>
 struct ptopo_sort_visitor: public boost::dfs_visitor<> {
@@ -704,7 +577,7 @@ template<typename VertexListGraph, typename OutputIterator, typename P,
          typename T, typename R>
 void ptopological_sort(VertexListGraph& g, OutputIterator result,
                        const boost::bgl_named_params<P, T, R>& params) {
-  typedef ptopo_sort_visitor<OutputIterator> PtopoVisitor;
+  using PtopoVisitor = ptopo_sort_visitor<OutputIterator>;
   depth_first_search(g, params.visitor(PtopoVisitor(result)));
 }
 
@@ -714,14 +587,15 @@ void ptopological_sort(VertexListGraph& g, OutputIterator result) {
                     boost::bgl_named_params<int, boost::buffer_param_t>(0)); // bogus
 }
 
-FuncDescVector DescriptorSet::funcs_in_bottom_up_order() {
+std::vector<const FunctionDescriptor *>
+DescriptorSet::const_funcs_in_bottom_up_order() const {
   // We should probably be caching the program fcg and and possibly even the sorted list.
 
   GDEBUG << "pseudo topo sort" << LEND;
   std::list<FCGVertex> funcvs;
   ptopological_sort(function_call_graph, std::back_inserter(funcvs));
 
-  FuncDescVector funcs;
+  std::vector<const FunctionDescriptor *> funcs;
   GTRACE << "new order:" << LEND;
 
   // there has got to be a better way to do this...
@@ -732,7 +606,7 @@ FuncDescVector DescriptorSet::funcs_in_bottom_up_order() {
       GERROR << "Unexpected non-function node in topo sort" << LEND;
       continue;
     }
-    FunctionDescriptor* fd = get_func(func->get_entry_va());
+    const FunctionDescriptor* fd = get_func(func->get_entry_va());
     funcs.push_back(fd);
     GTRACE << " " << fd->address_string() << LEND;
   }
@@ -740,8 +614,55 @@ FuncDescVector DescriptorSet::funcs_in_bottom_up_order() {
   return funcs;
 }
 
-FunctionDescriptor*
-DescriptorSet::get_fd_from_insn(const SgAsmInstruction *insn)
+std::vector<FunctionDescriptor *>
+DescriptorSet::rw_funcs_in_bottom_up_order() {
+  // We should probably be caching the program fcg and and possibly even the sorted list.
+
+  GDEBUG << "pseudo topo sort" << LEND;
+  std::list<FCGVertex> funcvs;
+  ptopological_sort(function_call_graph, std::back_inserter(funcvs));
+
+  std::vector<FunctionDescriptor *> funcs;
+  GTRACE << "new order:" << LEND;
+
+  // there has got to be a better way to do this...
+  for (const FCGVertex & fv : funcvs) {
+    SgNode *node = get(boost::vertex_name, function_call_graph, fv);
+    SgAsmFunction* func = isSgAsmFunction(node);
+    if (func == NULL) {
+      GERROR << "Unexpected non-function node in topo sort" << LEND;
+      continue;
+    }
+    FunctionDescriptor* fd = get_rw_func(func->get_entry_va()); // in rw_funcs_bottom_up_order()
+    funcs.push_back(fd);
+    GTRACE << " " << fd->address_string() << LEND;
+  }
+
+  return funcs;
+}
+
+const FunctionDescriptor*
+DescriptorSet::get_func_containing_address(rose_addr_t addr) const {
+  // This must be the entry VA or bad things happen
+  // ... it's a guess at best
+  SgAsmFunction* func = insn_get_func(get_insn(addr));
+  if (func)
+    return get_func(func->get_entry_va());
+  else
+    return NULL;
+}
+
+// For a while still we can just return the interpretation, but longer term, we're going to
+// want to actually return a generated AST here for the few (just dumpmasm?) tools that still
+// need it.
+SgAsmInterpretation*
+DescriptorSet::get_ast()
+{
+  return interp;
+}
+
+const FunctionDescriptor*
+DescriptorSet::get_fd_from_insn(const SgAsmInstruction *insn) const
 {
   SgAsmFunction* func = insn_get_func(insn);
   if (func == NULL) return NULL;
@@ -749,45 +670,35 @@ DescriptorSet::get_fd_from_insn(const SgAsmInstruction *insn)
 }
 
 // Find a general purpose register in an semi-architecture independent way.
+// Now implemented in terms of a method in misc.cpp that does the heavy lifting.
 RegisterDescriptor
 DescriptorSet::get_arch_reg(const std::string & name) const
 {
   RegisterDictionary regdict(partitioner.instructionProvider().registerDictionary());
-
-  // Wow.  Horrible embarassing hack.   We'll need to think about this much harder.
-  // 64-bit
-  if (name.size() > 1 and name[0] == 'e' and arch_bytes == 8) {
-    std::string large_name = name;
-    large_name[0] = 'r';
-    return regdict.lookup(large_name);
-  }
-  // 32-bit (and assorted other failure cases)...
-  return regdict.lookup(name);
+  return pharos::get_arch_reg(regdict, name, arch_bytes);
 }
 
-// Find the stack pointer register in an architecture independent way.
-RegisterDescriptor
-DescriptorSet::get_stack_reg() const
+unsigned int DescriptorSet::get_concurrency_level(ProgOptVarMap const & vm)
 {
-  // Partitioner 1
-  if (!engine) {
-    return get_arch_reg("esp");
+  auto level_opt = vm.get<int>("threads", "concurrency_level");
+  if (!level_opt) {
+    return 1;
   }
-  // Partitioner 2.
-  return partitioner.instructionProvider().stackPointerRegister();
+  auto level = *level_opt;
+  if (level > 0) {
+    return unsigned(level);
+  }
+  auto hwc = std::thread::hardware_concurrency();
+  if (level == 0) {
+    return hwc;
+  }
+  auto inverted_level = unsigned(-level);
+  if (hwc <= inverted_level) {
+    return 1;
+  }
+  return hwc - inverted_level;
 }
 
-// Find the instruction pointer register in an architecture independent way.
-RegisterDescriptor
-DescriptorSet::get_ip_reg() const
-{
-  // Partitioner 1
-  if (!engine) {
-    return get_arch_reg("eip");
-  }
-  // Partitioner 2.
-  return partitioner.instructionProvider().instructionPointerRegister();
-}
 
 } // namespace pharos
 

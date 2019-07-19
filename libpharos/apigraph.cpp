@@ -1,10 +1,9 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Jeff Gennari
 // Date: 2015-06-22
 // Version: 2.0
 
-#include <rose.h>
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
@@ -14,6 +13,9 @@
 #include <boost/graph/iteration_macros.hpp>
 #include <boost/graph/copy.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/range/adaptors.hpp>
+
+#include <rose.h>
 #include <Sawyer/GraphBoost.h>
 
 #include "pdg.hpp"
@@ -29,9 +31,62 @@ namespace pharos {
 using namespace Sawyer::Message::Common;
 
 // ********************************************************************************************
-// * Utility Functions
+// * Utility/Debugging Functions
 // ********************************************************************************************
 
+void debug_cfg(ApiCfg cfg) {
+  struct GraphvizVertexWriter {
+    const ApiCfg& cfg;
+    GraphvizVertexWriter(const ApiCfg &c): cfg(c) { }
+    void operator()(std::ostream &output, const ApiCfgVertex &v) {
+      const ApiVertexInfo& vi = (cfg)[v];
+      if (vi.block) {
+        output << "[ label=\"" << addr_str(vi.block->get_address()) << "\" ]";
+      }
+    }
+  };
+  boost::write_graphviz(std::cout, cfg, GraphvizVertexWriter(cfg));
+}
+
+void debug_print_xrefs(const XrefMap& xrefs, const AddrSet& api_calls) {
+OINFO << "XREFS:" << LEND;
+  for (const auto& p : xrefs) {
+    rose_addr_t to = p.second;
+    rose_addr_t from = p.first;
+    OINFO << "to = " << addr_str(to) << " from = " << addr_str(from) << LEND;
+  }
+
+  OINFO << "API Calls" << LEND;
+  for (const auto &a : api_calls) {
+    OINFO << "call = " << addr_str(a) << LEND;
+  }
+}
+
+void debug_print_match_table(const ApiParamMatchTable& match_table) {
+
+  OINFO << "ApiParamTable:" << LEND;
+
+  for (const ApiParamMatchPair & p : match_table) {
+    const std::string & func_label = p.first;
+    const ApiParamPtrListPtr plist = p.second;
+
+    assert(plist);
+
+    std::ostringstream pstr;;
+    for (const ApiParameterPtr apip : *plist) {
+      assert(apip);
+      if (apip->value) {
+        pstr << *(apip->value->get_expression()) << " | ";
+      }
+      else {
+        pstr << " INVALID | " << LEND;
+      }
+    }
+    OINFO << func_label << " ==> [" << pstr.str() << "]" << LEND;
+
+  }
+  OINFO << " --- " << LEND;
+}
 
 // Return the last instruction in a given basic block
 SgAsmX86Instruction* GetLastBlkInsn(const SgAsmBlock *blk) {
@@ -94,12 +149,9 @@ bool ApiSearchState::IsSearchComplete() {
 }
 
 void ApiSearchState::ClearState() {
-
+  GDEBUG << "Clearing search state" << LEND;
   ResetState();
-
-  sig.name.clear();
   results.clear();
-
   sig.api_calls.clear();
   sig.name.clear();
 }
@@ -111,28 +163,10 @@ void ApiSearchState::ResetState() {
 
   search_tree.clear();
   deadends.clear();
-
-  // free the parameter list
-  for (ApiParamMatchPair & mpair : match_table) {
-    ApiParamPtrList *plist = mpair.second;
-
-    for (ApiParameter *p : *plist) {
-      if (p) delete p;
-      p = NULL;
-    }
-
-    if (plist) delete plist;
-    plist = NULL;
-  }
-
   match_table.clear();
 
-  start_api.Clear();
   start_point.Reset();
-
   start_component = INVALID_ADDRESS;
-
-  goal_api.Clear();
   last_point.Reset();
 
   progress = 0;
@@ -140,19 +174,13 @@ void ApiSearchState::ResetState() {
 
 void ApiSearchState::ResetSearchState() {
 
-  GDEBUG << "Purging search state" << LEND;
+  GDEBUG << "ResetSearchState: Purging search state" << LEND;
 
   search_tree.clear();
   deadends.clear();
-
-  start_api.Clear();
   start_point.Reset();
-
   start_component = INVALID_ADDRESS;
-
-  goal_api.Clear();
   last_point.Reset();
-
   progress = 0;
 }
 
@@ -179,27 +207,31 @@ void ApiSearchState::RevertState(ApiCfgVertex revert_vertex, ApiWaypointDescript
   ApiWaypointDescriptor p = search_tree.back();
   start_point.component = p.component;
   last_point.component = p.component;
-
   start_point.block = p.block;
-  last_point.block = NULL;
+  last_point.block = nullptr;
 }
 
 // ********************************************************************************************
 // * Start of Visitor methods
 // ********************************************************************************************
 
-// the tree edge visitor is needed to remember the last vertex visited that made it to the
-// search tree
+// the tree edge visitor is needed to remember the last vertex visited
+// that made it to the search tree
 template <class Edge, class Graph>
 inline void ApiTreeEdgeVisitor::operator()( Edge e, const Graph &g ) {
+
+  GDEBUG << "Handling tree edge" << LEND;
 
   ApiCfgVertex tgt = boost::target(e,g);
   ApiCfgVertex src = boost::source(e,g);
 
   ApiSearchState *state = search_executor_->GetState();
+  assert(state);
 
-  const ApiVertexInfo & src_info = g[src];
-  const ApiVertexInfo & tgt_info = g[tgt];
+  assert(boost::num_vertices(g)>0);
+
+  const ApiVertexInfo& src_info = g[src];
+  const ApiVertexInfo& tgt_info = g[tgt];
 
   // this is where the sub search shall begin
   if (tgt_info.GetType() == ApiVertexInfo::CALL) {
@@ -209,6 +241,7 @@ inline void ApiTreeEdgeVisitor::operator()( Edge e, const Graph &g ) {
              << ", tgt: " << tgt_info.ToString() << LEND;
 
       ApiGraph *graph = search_executor_->GetGraph();
+      assert(graph);
       ApiCfgComponentPtr tgt_cmp = graph->GetComponent(tgt_info.target_address);
       ApiCfgComponentPtr src_cmp = graph->GetComponent(state->start_component);
 
@@ -221,6 +254,7 @@ inline void ApiTreeEdgeVisitor::operator()( Edge e, const Graph &g ) {
         // It is unclear why the same call is encountered twice, but it happens
 
         SgAsmX86Instruction *call_insn = GetLastBlkInsn(tgt_info.block);
+        assert(call_insn);
         rose_addr_t caller_addr = call_insn->get_address();
         rose_addr_t callee_addr = tgt_info.target_address;
 
@@ -234,7 +268,6 @@ inline void ApiTreeEdgeVisitor::operator()( Edge e, const Graph &g ) {
         std::vector<ApiMergeInfo>::iterator mi=std::find_if(state->merged_list.begin(),
                    state->merged_list.end(),
                    ApiMergeFindPredicate(src_addr, tgt_addr, caller_addr, callee_addr));
-                   //ApiMergeFindPredicate(src_addr, tgt_addr, tgt_info.block->get_address(), call_addr));
 
         if (mi == state->merged_list.end()) {
 
@@ -246,10 +279,18 @@ inline void ApiTreeEdgeVisitor::operator()( Edge e, const Graph &g ) {
     }
   }
 
+  if (!(src_info.block)) {
+    GERROR << "Source vertex info was NULL." << LEND;
+    return;
+  }
+  if (!(tgt_info.block)) {
+    GERROR << "Target vertex info was NULL." << LEND;
+    return;
+  }
   GDEBUG << "Tree edge: " << addr_str(src_info.block->get_address()) << " -> "
-         << addr_str(tgt_info.block->get_address()) << LEND;
+        << addr_str(tgt_info.block->get_address()) << LEND;
 
-  // Determine if this current segment is a  deadend by searching the list of deadends. If it
+  // Determine if this current segment is a deadend by searching the list of deadends. If it
   // is a deadend, then ignore it so that it doesn't factor into the search goals
 
   DeadendList::iterator di = std::find_if(state->deadends.begin(),state->deadends.end(),
@@ -289,22 +330,26 @@ inline void ApiTreeEdgeVisitor::operator()( Edge e, const Graph &g ) {
 template <class Edge, class Graph>
 inline void ApiBackEdgeVisitor::operator()(Edge e, const Graph &g) {
 
+  GDEBUG << "Handling back edge" << LEND;
+
   ApiCfgVertex tgt = boost::target(e,g);
   ApiCfgVertex src = boost::source(e,g);
 
   ApiSearchState *state = search_executor_->GetState();
+  assert(state);
 
   const ApiVertexInfo & src_info = g[src];
   const ApiVertexInfo & tgt_info = g[tgt];
 
-  if (state->goal_api == state->start_api) {
+  // if (state->start_api && state->goal_api) {
+  if (boost::iequals(state->start_api.name, state->goal_api.name)) {
     // are we at the goal
     if (src == tgt && src_info.api_name == state->goal_api.name) {
 
       GDEBUG << "Detected self loop: "
-          << addr_str(tgt_info.block->get_address()) << "->"
-          << addr_str(src_info.block->get_address())
-          << LEND;
+            << addr_str(tgt_info.block->get_address()) << "->"
+            << addr_str(src_info.block->get_address())
+            << LEND;
 
       state->last_point.vertex = tgt;
       state->last_point.component = state->start_point.component;
@@ -314,6 +359,7 @@ inline void ApiBackEdgeVisitor::operator()(Edge e, const Graph &g) {
     }
   }
 }
+
 
 // ********************************************************************************************
 // * Start of ApiSearchResult methods
@@ -375,20 +421,30 @@ bool ApiSearchExecutor::CheckMatch(const ApiVertexInfo &match_vertex) {
 
   // First check if the APIs match
   if (false == boost::iequals(match_vertex.api_name, state_.goal_api.name)) {
+    GDEBUG << "CheckMatch name mismatch! match_vertex.api_name= "
+          << match_vertex.api_name << " != state_.goal_api.name= " << state_.goal_api.name << LEND;
     return false;
   }
   // If the APIs match, then check parameters if there are any
   if (true == state_.goal_api.has_params || true == state_.goal_api.has_retval) {
-    return EvaluateApiMatchTable(state_.goal_api,match_vertex);
+    bool res = EvaluateApiMatchTable(state_.goal_api, match_vertex);
+    if (!res) {
+      GDEBUG << "CheckMatch name EvaluateMatchTable mismatch!" << LEND;
+      return res;
+    }
   }
+  GDEBUG << "CheckMatch OK: "
+        << match_vertex.api_name << " != state_.goal_api.name= "
+        << state_.goal_api.name << LEND;
+
   // No params/retval to match, default to function names
   return true;
 }
 
 void ApiSearchExecutor::Initialize(ApiGraph *g) {
-
   state_.ClearState();
   graph_ = g;
+  assert(graph_);
 }
 
 void ApiSearchExecutor::UpdateSearchTree(PredecessorMap pred_map) {
@@ -402,7 +458,8 @@ void ApiSearchExecutor::UpdateSearchTree(PredecessorMap pred_map) {
     return;
   }
 
-  ApiCfg *graph = comp->GetCfg();
+  ApiCfgPtr graph = comp->GetCfg();
+  assert(graph);
   const ApiVertexInfo &start_info = (*graph)[state_.start_point.vertex];
 
   // check to see if this update is a self-loop
@@ -476,7 +533,8 @@ bool ApiSearchExecutor::IsNewResult(rose_addr_t addr) {
 // inlined in the Search function. I'm keeping this here for posterity
 void ApiSearchExecutor::FindSearchStart(ApiSigFunc &start_api, ApiCfgComponentPtr comp, ApiCfgVertexVector &starts) {
 
-  ApiCfg *cfg = comp->GetCfg();
+  ApiCfgPtr cfg = comp->GetCfg();
+  assert(cfg);
 
   if (comp->ContainsApi(start_api.name) == true) {
 
@@ -494,17 +552,22 @@ void ApiSearchExecutor::FindSearchStart(ApiSigFunc &start_api, ApiCfgComponentPt
 
 void ApiSearchExecutor::PrintSearchTree() {
 
-  OINFO << "Printing search tree " << state_.search_tree.size() << LEND;
+  GDEBUG << "Printing search tree " << state_.search_tree.size() << LEND;
 
   for (const ApiWaypointDescriptor & path : state_.search_tree) {
     rose_addr_t vertex_addr = path.block->get_address();
     rose_addr_t comp_addr = path.component;
 
     ApiCfgComponentPtr comp = graph_->GetComponent(comp_addr);
-    ApiCfg *cfg = comp->GetCfg();
+    if (comp == NULL) {
+      GERROR << "CRASH." << LEND;
+      return;
+    }
+    ApiCfgPtr cfg = comp->GetCfg();
+    assert(cfg);
     ApiVertexInfo & vi = (*cfg)[path.vertex];
 
-    OINFO << "path = " << addr_str(vertex_addr) << " in " << addr_str(comp_addr)
+    GDEBUG << "path = " << addr_str(vertex_addr) << " in " << addr_str(comp_addr)
     << " " << ((vi.GetType() == ApiVertexInfo::API) ? vi.api_name : "") << LEND;
   }
 }
@@ -519,7 +582,12 @@ bool ApiSearchExecutor::CheckConnected(const ApiWaypointDescriptor &src,
     }
 
     ApiCfgComponentPtr comp = graph_->GetComponent(src.component);
-    ApiCfg *cfg = comp->GetCfg();
+    if (comp == NULL) {
+      GERROR << "CRASH." << LEND;
+      return false;
+    }
+    ApiCfgPtr cfg = comp->GetCfg();
+    assert(cfg);
 
     return boost::edge(src.vertex, dst.vertex, *cfg).second;
 
@@ -531,7 +599,7 @@ bool ApiSearchExecutor::CheckConnected(const ApiWaypointDescriptor &src,
 
 bool ApiSearchExecutor::Backtrack() {
 
-  GINFO << "Backtracking ... " << LEND;
+  GDEBUG << "Backtracking ... " << LEND;
 
   if (state_.search_tree.size() < 2) {
     return false;
@@ -558,7 +626,8 @@ bool ApiSearchExecutor::Backtrack() {
 
     state_.RevertState(next_to_last.vertex, state_.start_point);
 
-    ApiCfg *cfg = comp->GetCfg();
+    ApiCfgPtr cfg = comp->GetCfg();
+    assert(cfg);
     const ApiVertexInfo & revert_info = (*cfg)[state_.start_point.vertex];
 
     GDEBUG << "start vertex = " << addr_str(revert_info.block->get_address()) << LEND;
@@ -574,18 +643,45 @@ void ApiSearchExecutor::AddDeadends(ApiWaypointDescriptor &next_to_last, ApiWayp
             << addr_str(next_to_last.block->get_address())
             << "->" << addr_str(last.block->get_address()) << LEND;
 
-     state_.deadends.insert(std::make_pair(next_to_last, last));
+     state_.deadends.emplace(next_to_last, last);
 }
 
 
 // Run the depth-first for the current segment
 bool ApiSearchExecutor::RunSearch() {
 
-
+  rose_addr_t start_address = state_.start_point.block->get_address();
   GDEBUG << "Running new search for " << state_.goal_api.name
-         << " starting from " << addr_str(state_.start_point.block->get_address()) << LEND;
+        << " starting from " << addr_str(start_address) << LEND;
 
-  ApiCfg *cfg = graph_->GetComponent(state_.start_point.component)->GetCfg();
+  assert(graph_);
+  ApiCfgComponentPtr comp = graph_->GetComponent(state_.start_point.component);
+
+  assert(comp != nullptr);
+
+  if (!comp->ContainsAddress(start_address)) {
+    OERROR << "Starting block not found in component, terminating search" << LEND;
+    return false;
+  }
+  ApiCfgPtr cfg = comp->GetCfg();
+
+  assert(cfg);
+  if (boost::num_vertices(*cfg) == 0) {
+    GERROR << "Graph is empty." << LEND;
+    return false;
+  }
+
+  // There is no need to search a 1-vertex graph for a multi-API
+  // signature. It will never match. In fact, this scenario is an
+  // indication of corruption on this particular search. Throwing an
+  // exception here to terminate the search and prevent backtracking
+  // seems like a step in the right direction
+
+  if (boost::out_degree(state_.start_point.vertex, *cfg)==0 &&
+      boost::in_degree(state_.start_point.vertex, *cfg)==0 &&
+      state_.sig.api_count>1) {
+    throw AbortSearchException();
+  }
 
   std::vector<boost::default_color_type> colors(boost::num_vertices(*cfg));
   IndexMap indexMap = boost::get(boost::vertex_index, *cfg);
@@ -594,22 +690,22 @@ bool ApiSearchExecutor::RunSearch() {
 
   try {
 
-     boost::depth_first_visit(*cfg,
-        state_.start_point.vertex,
-        boost::make_dfs_visitor(
-           boost::make_list(
-             boost::record_predecessors(predecessors, boost::on_tree_edge()),
-             ApiTreeEdgeVisitor(this),
-             ApiBackEdgeVisitor(this))),
-             boost::make_iterator_property_map(colors.begin(),
-             boost::get(boost::vertex_index, *cfg)));
+    boost::depth_first_visit(*cfg,
+                             state_.start_point.vertex,
+                             boost::make_dfs_visitor(
+                               boost::make_list(
+                                 boost::record_predecessors(predecessors, boost::on_tree_edge()),
+                                 ApiTreeEdgeVisitor(this),
+                                 ApiBackEdgeVisitor(this))),
+                             boost::make_iterator_property_map(colors.begin(),
+                                                               boost::get(boost::vertex_index, *cfg)));
   }
   catch (MergeAndRestartSearchException mrse) {
 
      // There are cases when the merge will fail. In that case, abort this search
      if (graph_->MergeComponents(mrse.merge_info,false) == true) {
 
-        UpdateApiMatchTable(mrse.merge_info.from_addr, mrse.merge_info.tgt_cmp_addr); // 1st: was to_addr
+        UpdateApiMatchTable(mrse.merge_info.from_addr, mrse.merge_info.tgt_cmp_addr);
 
         // update the list of addresses that have already been merged. For some, unknown, reason
         // addresses may be repeated.
@@ -653,7 +749,7 @@ void ApiSearchExecutor::SaveResult() {
 
     if (start_comp != NULL) {
 
-      ApiCfg *start_graph = start_comp->GetCfg();
+      ApiCfgPtr start_graph = start_comp->GetCfg();
       if (start_graph != NULL) {
 
         if (false == IsNewResult(addr)) {
@@ -670,8 +766,8 @@ void ApiSearchExecutor::SaveResult() {
 
     res->match_start = state_.search_tree.front().block->get_address();
     res->match_component_start = state_.start_component;
-    res->match_name.assign(state_.sig.name);
-    res->match_category.assign(state_.sig.category);
+    res->match_name = state_.sig.name;
+    res->match_category = state_.sig.category;
 
     state_.results.push_back(res);
   }
@@ -686,52 +782,43 @@ void ApiSearchExecutor::UpdateApiMatchTable(rose_addr_t caller, rose_addr_t call
     return;
   }
 
-  GDEBUG << "Updating match table for " << addr_str(caller) << " -> " << addr_str(callee) << LEND;
+  // debug_print_match_table(state_.match_table);
 
-  GDEBUG << " --- " << LEND;
-  GDEBUG <<"Current ApiParamTable:" << LEND;
-
-  for (const ApiParamMatchPair & p : state_.match_table) {
-
-    const std::string & func_label = p.first;
-    const ApiParamPtrList *plist = p.second;
-
-    std::ostringstream pstr;;
-    for (const ApiParameter * apip : *plist) {
-      pstr << *(apip->value) << " | " << LEND;
-    }
-    GDEBUG << func_label << " ==> [" << pstr.str() << "]" << LEND;
-
-  }
-  GDEBUG << " --- " << LEND;
-
-  CallDescriptor * cd = global_descriptor_set->get_call(caller);
-  FunctionDescriptor *fd = global_descriptor_set->get_func(callee);
+  const CallDescriptor * cd = ds.get_call(caller);
+  assert(cd);
+  const FunctionDescriptor *fd = ds.get_func(callee);
+  assert(fd);
 
   if (cd == NULL || fd == NULL) {
     OWARN << "Cannot find call or function descriptor to update parameters" << LEND;
     return;
   }
 
-  const ParamVector& cd_params = cd->get_parameters().get_params();
-  const ParamVector& fd_params = fd->get_parameters().get_params();
+  auto cd_params = cd->get_parameters().get_params();
+  auto fd_params = fd->get_parameters().get_params();
 
   // For each api, update the set of values per parameter across calls.
   // These are the aliases for the value of interest. The result it a
   // table that maps a label to the set of values associated with that label
-  for (ApiParamMatchPair & match_pair : state_.match_table) {
-    ApiParamPtrList *cur_list = match_pair.second; // list of aliases
+  for (ApiParamMatchPair& match_pair : state_.match_table) {
+    ApiParamPtrListPtr cur_list = match_pair.second; // list of aliases
+    assert(cur_list);
 
-    for (const ApiParameter *cur_pd : *cur_list) { // for each recorded alias
+    for (ApiParameterPtr cur_pd : *cur_list) { // for each recorded alias
+      if (!cur_pd) {
+        continue;
+      }
+
+      assert(cur_pd);
 
       for (const ParameterDefinition &call_pd : cd_params) { // for each param on the call
 
-        if (cur_pd->value && call_pd.value) {
+        if (cur_pd->value && call_pd.get_value()) {
 
-          if (cur_pd->value->can_be_equal(call_pd.value)) {
+          if (cur_pd->value->can_be_equal(call_pd.get_value())) {
             for (const ParameterDefinition &callee_pd : fd_params) {
-              if (call_pd.num == callee_pd.num) {
-                cur_list->push_back(new ApiParameter(callee_pd));
+              if (call_pd.get_num() == callee_pd.get_num()) {
+                cur_list->push_back(std::make_shared<ApiParameter>(callee_pd));
               }
             }
           }
@@ -743,17 +830,18 @@ void ApiSearchExecutor::UpdateApiMatchTable(rose_addr_t caller, rose_addr_t call
 
   GDEBUG << "Updating returns" << LEND;
 
-  RegisterDescriptor eax_reg = global_descriptor_set->get_arch_reg("eax");
-  const ParamVector& cd_rets = cd->get_parameters().get_returns();
+  RegisterDescriptor eax_reg = ds.get_arch_reg("eax");
+  auto cd_rets = cd->get_parameters().get_returns();
 
   for (ApiParamMatchPair & match_pair : state_.match_table) {
-    ApiParamPtrList *cur_list = match_pair.second;
+    ApiParamPtrListPtr cur_list = match_pair.second;
+    assert(cur_list);
 
     for (const ParameterDefinition &rv : cd_rets) {
 
       // for now just track eax and the "return value"
-      if (rv.reg == eax_reg) {
-        cur_list->push_back(new ApiParameter(rv));
+      if (rv.get_register() == eax_reg) {
+        cur_list->push_back(std::make_shared<ApiParameter>(rv));
         break;
       }
     }
@@ -761,44 +849,28 @@ void ApiSearchExecutor::UpdateApiMatchTable(rose_addr_t caller, rose_addr_t call
 }
 
 // Evaluate whether the parameters passed/returned match with the signature
-bool ApiSearchExecutor::EvaluateApiMatchTable(const ApiSigFunc &sig_func,
-    const ApiVertexInfo &vertex_info) {
+bool ApiSearchExecutor::EvaluateApiMatchTable(const ApiSigFunc& sig_func,
+                                              const ApiVertexInfo &vertex_info) {
 
-  GDEBUG << "Evaluate: At Vertex " << addr_str(vertex_info.block->get_address()) << LEND;
-  GDEBUG << " " << LEND;
-  GDEBUG << " --- " << LEND;
-  GDEBUG <<"Current ApiParamTable:" << LEND;
-  for (const ApiParamMatchPair & p : state_.match_table) {
-
-    const std::string & func_label = p.first;
-    const ApiParamPtrList *plist = p.second;
-
-    std::ostringstream pstr;;
-    for (const ApiParameter *apip : *plist) {
-      pstr << *(apip->value) << " | ";
-    }
-    GDEBUG << func_label << " ==> [" << pstr.str() << "]" << LEND;
-
-  }
-  GDEBUG << " --- " << LEND;
+  // debug_print_match_table(state_.match_table);
 
   // the function names match, check parameters and return values
 
   std::vector<ApiParamMatchPair> candidate_matches;
 
   SgAsmX86Instruction *insn = GetLastBlkInsn(vertex_info.block);
+  assert(insn);
   rose_addr_t call_addr = insn->get_address();
-  CallDescriptor * cd = global_descriptor_set->get_call(call_addr);
+  const CallDescriptor * cd = ds.get_call(call_addr);
 
   if (!cd) {
     OWARN << "Could not find call descriptor for " << addr_str(call_addr) << LEND;
     return false;
   }
 
-  const ParamVector& cd_params = cd->get_parameters().get_params();
-
+  auto cd_params = cd->get_parameters().get_params();
   ApiCfgComponentPtr comp = graph_->GetContainingComponent(call_addr);
-  FunctionDescriptor * fd = global_descriptor_set->get_func(comp->GetEntryAddr());
+  const FunctionDescriptor * fd = ds.get_func(comp->GetEntryAddr());
 
   if (!fd) OWARN << "No FD found" << LEND;
 
@@ -807,9 +879,9 @@ bool ApiSearchExecutor::EvaluateApiMatchTable(const ApiSigFunc &sig_func,
 
     // For the params associated with this signature, determine if each
     // has been added to the param match table
-    for (const ApiSigFuncParam & sig_param : sig_func.params)  {
+    for (const ApiSigFuncParam& sig_param : sig_func.params)  {
 
-      const ApiParamMatchTableIter & sig_entry = state_.match_table.find(sig_param.name);
+      const ApiParamMatchTableIter& sig_entry = state_.match_table.find(sig_param.name);
 
       if (sig_entry == state_.match_table.end()) {
 
@@ -817,23 +889,24 @@ bool ApiSearchExecutor::EvaluateApiMatchTable(const ApiSigFunc &sig_func,
 
         for (const ParameterDefinition &pd : cd_params) {
 
-          if (sig_param.index == pd.num) {
+          if (sig_param.index == pd.get_num()) {
 
-            ApiParameter *api_param = NULL;
+            ApiParameterPtr api_param = nullptr;
             if (sig_param.type == ApiParamType::OUT) {
               // output parameters are pointers - dereference them
               GDEBUG << "Detected new output parameter - " << sig_param.name << LEND;
-              DereferenceParameter(api_param, pd);
+
+              api_param = DereferenceParameter(pd);
             }
             else {
-              api_param = new ApiParameter(pd);
+              api_param = std::make_shared<ApiParameter>(pd);
             }
 
             if (api_param) {
 
               GDEBUG << "Saving new param: " << sig_param.ToString() << LEND;
 
-              ApiParamPtrList *new_params = new ApiParamPtrList();
+              ApiParamPtrListPtr new_params = std::make_shared<ApiParamPtrList>();
               new_params->push_back(api_param);
               candidate_matches.push_back(ApiParamMatchPair(sig_param.name, new_params));
             }
@@ -849,13 +922,15 @@ bool ApiSearchExecutor::EvaluateApiMatchTable(const ApiSigFunc &sig_func,
 
         for (const ParameterDefinition &call_pd : cd_params) {
 
-          if (sig_param.index == call_pd.num) {
+          if (sig_param.index == call_pd.get_num()) {
 
-            ApiParamPtrList *sig_list = sig_entry->second;
+            ApiParamPtrListPtr sig_list = sig_entry->second;
+            assert(sig_list);
 
             bool found_match = false;
-            for (const ApiParameter * sig_pd : *sig_list) {
-              if (call_pd.value->can_be_equal(sig_pd->value)) {
+            for (const ApiParameterPtr sig_pd : *sig_list) {
+              assert(sig_pd);
+              if (call_pd.get_value()->can_be_equal(sig_pd->value)) {
                 found_match = true;
                 break;
               }
@@ -878,8 +953,8 @@ bool ApiSearchExecutor::EvaluateApiMatchTable(const ApiSigFunc &sig_func,
 
     GDEBUG << "Checking retn value: " << sig_func.retval.name << LEND;
 
-    RegisterDescriptor eax_reg = global_descriptor_set->get_arch_reg("eax");
-    const ParamVector& cd_rets = cd->get_parameters().get_returns();
+    RegisterDescriptor eax_reg = ds.get_arch_reg("eax");
+    auto cd_rets = cd->get_parameters().get_returns();
 
     const ApiParamMatchTableIter & ret_entry = state_.match_table.find(sig_func.retval.name);
 
@@ -891,11 +966,11 @@ bool ApiSearchExecutor::EvaluateApiMatchTable(const ApiSigFunc &sig_func,
       for (const ParameterDefinition &rv : cd_rets) {
 
         // for now just track eax
-        if (rv.reg == eax_reg) {
+        if (rv.get_register() == eax_reg) {
 
           // New return value, add the param def to the table
-          ApiParamPtrList *new_rets = new ApiParamPtrList();
-          new_rets->push_back(new ApiParameter(rv));
+          ApiParamPtrListPtr new_rets = make_unique<ApiParamPtrList>();
+          new_rets->push_back(make_unique<ApiParameter>(rv));
           candidate_matches.push_back(ApiParamMatchPair(sig_func.retval.name, new_rets));
           break;
         }
@@ -909,16 +984,18 @@ bool ApiSearchExecutor::EvaluateApiMatchTable(const ApiSigFunc &sig_func,
       GDEBUG << "Checking existing retn: "  << LEND;
 
       for (const ParameterDefinition &rv : cd_rets) {
-        if (rv.reg == eax_reg) {
+        if (rv.get_register() == eax_reg) {
 
           bool rv_found_match = false;
-          ApiParamPtrList *rlist = ret_entry->second;
-          for (const ApiParameter *sig_rv : *rlist) {
+          ApiParamPtrListPtr rlist = ret_entry->second;
+          assert(rlist);
+          for (const ApiParameterPtr sig_rv : *rlist) {
+            assert(sig_rv);
 
-            if (sig_rv->value && rv.value) {
+            if (sig_rv->value && rv.get_value()) {
 
               const TreeNodePtr & sig_rv_tnp = sig_rv->value->get_expression();
-              const TreeNodePtr & rv_tnp = rv.value->get_expression();
+              const TreeNodePtr & rv_tnp = rv.get_value()->get_expression();
 
               if (sig_rv_tnp && rv_tnp) {
                 if (sig_rv_tnp == rv_tnp) {
@@ -946,30 +1023,32 @@ bool ApiSearchExecutor::EvaluateApiMatchTable(const ApiSigFunc &sig_func,
   return true;
 }
 
-void ApiSearchExecutor::DereferenceParameter(ApiParameter * &apip, const ParameterDefinition &pd) {
+ApiParameterPtr
+ApiSearchExecutor::DereferenceParameter(const ParameterDefinition &pd) {
 
-  SymbolicValuePtr ptr = pd.value_pointed_to;
-
-  GDEBUG << "Dereferencing parameter at "<< *(pd.value)  << LEND;
-
-  if (NULL != ptr) {
-    GDEBUG << " refers to " << *ptr << LEND;
-
-    if (apip==NULL) {
-      apip = new ApiParameter(pd.num, ptr, pd.name);
-    }
-    else {
-      apip->MakeParam(pd);
-    }
+  if (!pd.get_value() || !pd.get_value_pointed_to()) {
+    OERROR << "Invalid parameter cannot dereference" << LEND;
+    return nullptr;
   }
+
+  ApiParameterPtr apip = std::make_shared<ApiParameter>(
+    pd.get_num(), pd.get_value_pointed_to(), pd.get_name());
+  if (!apip) {
+    OERROR << "Could not deference paramater: " << *(pd.get_value()) << LEND;
+    return nullptr;
+  }
+
+  apip->MakeParam(pd);
+
+  return apip;
 }
 
-bool ApiSearchExecutor::Search(ApiSig &sig, ApiSearchResultVector *result_list ) {
+bool ApiSearchExecutor::Search(ApiSig sig, ApiSearchResultVector *result_list ) {
 
-  GINFO << "Searching for signature: " << sig.name << LEND;
+  GDEBUG << "Searching for signature: " << sig.name << LEND;
 
-  typedef std::vector<rose_addr_t> WorkList;
-  typedef std::vector<rose_addr_t>::iterator WorkListIter;
+  using WorkList = std::vector<rose_addr_t>;
+  using WorkListIter = WorkList::iterator;
 
   if (!sig.api_calls.empty()) {
 
@@ -982,22 +1061,28 @@ bool ApiSearchExecutor::Search(ApiSig &sig, ApiSearchResultVector *result_list )
       worklist.push_back(comp.first);
     }
 
-    ApiSigFunc start_api = sig.api_calls.at(0);
+    const ApiSigFunc& start_api = sig.api_calls.at(0);
 
     while (!worklist.empty()) {
 
       bool purge_state = false;
+      bool aborted = false;
       WorkListIter workitem = worklist.begin();
       rose_addr_t start_comp_addr = *workitem;
       ApiCfgComponentPtr start_comp = graph_->GetComponent(start_comp_addr);
+      if (start_comp == nullptr) {
+        GERROR << "A start component could not be found." << LEND;
+        return false;
+      }
 
-      GINFO << "Working on function " << addr_str(start_comp_addr)
+      GDEBUG << "Working on function " << addr_str(start_comp_addr)
             << ". Looking for starting API function: " << start_api.name << LEND;
 
       if (start_comp->ContainsApi(start_api.name)) {
-        GINFO << "Found search start in function " << addr_str(start_comp_addr) << LEND;
+        GDEBUG << "Found search start in function " << addr_str(start_comp_addr) << LEND;
 
-        ApiCfg *cfg = start_comp->GetCfg();
+        ApiCfgPtr cfg = start_comp->GetCfg();
+        assert(cfg);
 
         // Locate the starting vertex for this search
 
@@ -1012,7 +1097,7 @@ bool ApiSearchExecutor::Search(ApiSig &sig, ApiSearchResultVector *result_list )
         }
         if (startv == NULL_VERTEX) {
 
-          GWARN << "Could not find starting vertex in "
+          OWARN << "Could not find starting vertex in "
                 << addr_str(start_comp->GetEntryAddr()) << LEND;
 
           worklist.erase(workitem);
@@ -1065,12 +1150,26 @@ bool ApiSearchExecutor::Search(ApiSig &sig, ApiSearchResultVector *result_list )
           } while (continue_search);
 
         }
+        catch(AbortSearchException) {
+
+          // there are indications that the search is corrputed in
+          // some way. The safest thing to do is to abort the current
+          // search segment, prevent this search from continuing,
+          // reset everything and proceed
+
+          GERROR << "Warning: Search aborted in function " << addr_str(start_comp_addr)
+                 << " while looking for starting API function: " << start_api.name
+                 << " due to possible corruption!" << LEND;
+
+          aborted=true;
+          purge_state=true;
+        }
         catch (SearchCompleteException) {
 
           // the search completed and we every segment of the signature, this means that the
           // search was successful.
 
-          GINFO << "Found " << state_.sig.name << ", saving results" << LEND;
+          GDEBUG << "Found " << state_.sig.name << ", saving results" << LEND;
 
           SaveResult();
 
@@ -1083,7 +1182,7 @@ bool ApiSearchExecutor::Search(ApiSig &sig, ApiSearchResultVector *result_list )
       // elements of the signature matched, but subsequent matches were not made. Process the
       // references to the last function encountered looking for the complete match
 
-      if (state_.progress >= 1 && false == state_.IsSearchComplete()) {
+      if (state_.progress >= 1 && false == state_.IsSearchComplete() && !aborted) {
 
         GDEBUG << "Partial match on " << addr_str(start_comp->GetEntryAddr()) << LEND;
 
@@ -1121,6 +1220,7 @@ bool ApiSearchExecutor::Search(ApiSig &sig, ApiSearchResultVector *result_list )
 
             if (true == graph_->MergeComponents(mi,true)) {
 
+              GDEBUG << "Updating APIs  after merge" << LEND;
               UpdateApiMatchTable(mi.from_addr, mi.tgt_cmp_addr);
 
               // update the list of addresses that have already been merged. For some, unknown,
@@ -1145,7 +1245,7 @@ bool ApiSearchExecutor::Search(ApiSig &sig, ApiSearchResultVector *result_list )
               }
             }
             else {
-               OWARN << "Search aborted due to control flow graph corruption" << LEND;
+              GERROR << "Search aborted due to control flow graph corruption" << LEND;
             }
             xref++;
           }
@@ -1182,14 +1282,16 @@ void ApiSearchExecutor::GetXrefsTo(ApiCfgComponentPtr comp, XrefMap &candidates)
     rose_addr_t from = x.first;
 
     if (comp->GetEntryAddr() == to) {
-      candidates.insert(XrefMapEntry(from, to));
+      candidates.emplace(from, to);
     }
   }
 }
 
-void ApiSearchExecutor::InitializeSearch(ApiCfgComponentPtr comp, ApiCfgVertex startv, ApiSig &sig) {
-
-  ApiCfg *cfg = comp->GetCfg();
+void ApiSearchExecutor::InitializeSearch(ApiCfgComponentPtr comp,
+                                         ApiCfgVertex startv,
+                                         const ApiSig& sig) {
+  ApiCfgPtr cfg = comp->GetCfg();
+  assert(cfg);
   const ApiVertexInfo &vi = (*cfg)[startv];
   rose_addr_t caddr = comp->GetEntryAddr();
 
@@ -1206,7 +1308,7 @@ void ApiSearchExecutor::InitializeSearch(ApiCfgComponentPtr comp, ApiCfgVertex s
   state_.progress = 1;   // Found the start so update the progress
 
   GDEBUG << "Starting search at " << addr_str(vi.block->get_address())
-            << ", which calls " << vi.api_name << LEND;
+        << ", which calls " << vi.api_name << LEND;
 
   // the start is the first element of the API signature
   state_.search_tree.push_back(
@@ -1221,6 +1323,11 @@ void ApiSearchExecutor::InitializeSearch(ApiCfgComponentPtr comp, ApiCfgVertex s
 
   // there is more than one part to the signature - set the goal
   state_.goal_api = sig.api_calls[1];
+
+  GDEBUG << "Initialized search state. start_api->name= " <<  state_.start_api.name
+        << ", state.goal_api.>name= " << state_.goal_api.name
+        << ", sig= " << sig.ToString() << LEND;
+
 }
 
 bool ApiSearchExecutor::GetResults(ApiSearchResultVector *result_list) {
@@ -1238,8 +1345,8 @@ bool ApiSearchExecutor::GetResults(ApiSearchResultVector *result_list) {
 
 ApiOutputManager::~ApiOutputManager() {
 
-  if (formatter_ != NULL) delete formatter_;
-  formatter_ = NULL;
+  if (formatter_ != nullptr) delete formatter_;
+  formatter_ = nullptr;
 }
 
 
@@ -1288,9 +1395,8 @@ void ApiOutputManager::SetOutputFormat(ApiOutputManager::OutputFormat f) {
 
 void ApiResultTextFormatter::Format(ApiSearchResultVector &results, ApiOutputManager::PathLevel path_level) {
 
-  typedef std::map<std::string, ApiSearchResultVector> FilterMap;
-  typedef std::pair<std::string, ApiSearchResultVector> FilterMapPair;
-  typedef std::map<std::string, ApiSearchResultVector>::iterator FilterMapIter;
+  using FilterMap = std::map<std::string, ApiSearchResultVector>;
+  using FilterMapIter = FilterMap::iterator;
 
   // categorize the results
   FilterMap categorized_results;
@@ -1300,10 +1406,10 @@ void ApiResultTextFormatter::Format(ApiSearchResultVector &results, ApiOutputMan
     if (cri == categorized_results.end()) {
       ApiSearchResultVector srv;
       srv.push_back(new ApiSearchResult(res));
-      categorized_results.insert(FilterMapPair(res.match_category, srv));
+      categorized_results.emplace(res.match_category, srv);
     }
     else {
-      ApiSearchResultVector &cats =  cri->second;
+      ApiSearchResultVector &cats = cri->second;
       cats.push_back(new ApiSearchResult(res));
     }
   }
@@ -1467,9 +1573,9 @@ bool ApiResultJsonFormatter::ToFile(std::string ofile_name) {
 ApiVertexInfo::ApiVertexInfo() {
 
   type = UNKN;
-  import_fd = NULL;
+  import_fd = nullptr;
   target_address = INVALID_ADDRESS;
-  block = NULL;
+  block = nullptr;
   api_name = "";
 }
 
@@ -1485,26 +1591,6 @@ std::string ApiVertexInfo::ToString() const {
   else if (type==UNKN) { out += "UNKN"; }
 
   return out;
-}
-
-ApiVertexInfo& ApiVertexInfo::operator=(const ApiVertexInfo &rhs) {
-
-  type = rhs.type;
-  import_fd = rhs.import_fd;
-  target_address = rhs.target_address;
-  api_name = rhs.api_name;
-  block = rhs.block;
-
-  return *this;
-}
-
-ApiVertexInfo::ApiVertexInfo(const ApiVertexInfo& other) {
-
-  type = other.type;
-  import_fd = other.import_fd;
-  target_address = other.target_address;
-  api_name = other.api_name;
-  block = other.block;
 }
 
 // returns true if the last instruction of a basic block is a retn
@@ -1523,6 +1609,8 @@ bool ApiVertexInfo::EndsInCall() const {
 
 bool ApiVertexInfo::ContainsAddress(const rose_addr_t addr) const {
 
+  if (!block) return false;
+
   SgAsmStatementPtrList& ins_list = block->get_statementList();
 
   for (const SgAsmStatementPtrList::value_type & ins_entry : ins_list)  {
@@ -1540,13 +1628,13 @@ bool ApiVertexInfo::ContainsAddress(const rose_addr_t addr) const {
 // * Start of ApiCfgComponent methods
 // ********************************************************************************************
 
-void ApiCfgComponent::Initialize(FunctionDescriptor &fd, AddrSet &api_calls, XrefMap &xrefs) {
+void ApiCfgComponent::Initialize(const FunctionDescriptor &fd, AddrSet &api_calls, XrefMap &xrefs) {
 
   // Build the information for this CFG
-  CFG &src = fd.get_pharos_cfg();
-  cfg_ = new ApiCfg();
+  CFG const &src = fd.get_pharos_cfg();
+  cfg_ = std::make_shared<ApiCfg>();
 
-  typedef boost::graph_traits<CFG>::vertex_descriptor CfgVertex;
+  using CfgVertex = boost::graph_traits<CFG>::vertex_descriptor;
 
   // map of vertex address to vertex
   std::map<rose_addr_t, ApiCfgVertex> node_map;
@@ -1562,11 +1650,11 @@ void ApiCfgComponent::Initialize(FunctionDescriptor &fd, AddrSet &api_calls, Xre
     info.block = isSgAsmBlock(boost::get(boost::vertex_name, src, vtx));
 
     if (!info.block) {
-      OINFO << "Found NULL basic block in CFG - ignoring" << LEND;
+      GERROR << "Found NULL basic block in CFG - ignoring" << LEND;
       continue;
     }
 
-    SgAsmx86Instruction *last_insn = GetLastBlkInsn(info.block);
+    SgAsmX86Instruction *last_insn = GetLastBlkInsn(info.block);
 
     AddrSet::iterator apii = api_calls.find(last_insn->get_address());
     if (apii != api_calls.end()) {
@@ -1574,12 +1662,12 @@ void ApiCfgComponent::Initialize(FunctionDescriptor &fd, AddrSet &api_calls, Xre
       XrefMapIter xi = xrefs.find(*apii);
       if (xi != xrefs.end()) {
 
-        CallDescriptor * cd = global_descriptor_set->get_call(xi->first);
+        const CallDescriptor * cd = fd.ds.get_call(xi->first);
         if (cd == NULL) {
           OWARN << "No call descriptor found" << LEND;
         }
 
-        ImportDescriptor * id = cd->get_import_descriptor();
+        const ImportDescriptor * id = cd->get_import_descriptor();
         if (id == NULL) {
           OWARN << "Could not find import descriptor for address " << addr_str(xi->second)
                 << LEND;
@@ -1659,7 +1747,7 @@ void ApiCfgComponent::Initialize(FunctionDescriptor &fd, AddrSet &api_calls, Xre
   // the other returns to refer to the primary return (if there are multiple retursn
 
   // pick a return address from the set of return blocks
-  BlockSet &retns = fd.get_return_blocks();
+  BlockSet retns = fd.get_return_blocks(); // Jeff, this should really use get_return_vertices()
   exit_ = INVALID_ADDRESS;
 
   // select the primary return
@@ -1701,22 +1789,22 @@ size_t ApiCfgComponent::GetSize() const {
 }
 
 // Make a complete, distinct & deep copy of the ApiCfg
-ApiCfg * ApiCfgComponent::CloneApiCfg(ApiCfg *src_cfg) {
+ApiCfgPtr ApiCfgComponent::CloneApiCfg(ApiCfgPtr src_cfg) {
 
-  ApiCfg *new_cfg = new ApiCfg();
+  ApiCfgPtr new_cfg = make_unique<ApiCfg>();
 
   // map of vertex address to vertex
   std::map<rose_addr_t, ApiCfgVertex> node_map;
 
-  // for each vertex in the old graph, copy it to the new graph and add the necessary properties
+  // for each vertex in the old graph, copy it to the new graph and
+  // add the necessary properties
   BGL_FORALL_VERTICES(vtx, *src_cfg, ApiCfg) {
-    ApiVertexInfo &src_vertex_info = (*src_cfg)[vtx];
-
+    ApiVertexInfo src_vertex_info = (*src_cfg)[vtx];
     ApiCfgVertex new_vtx = boost::add_vertex(*new_cfg); // add to the new graph type
-    ApiVertexInfo &new_vertex_info = (*new_cfg)[new_vtx];
 
     // copy over the other vertex properties
-    new_vertex_info = src_vertex_info;
+    (*new_cfg)[new_vtx] = src_vertex_info;
+    ApiVertexInfo new_vertex_info = (*new_cfg)[new_vtx];
 
     node_map[new_vertex_info.block->get_address()] = new_vtx;
   }
@@ -1724,13 +1812,11 @@ ApiCfg * ApiCfgComponent::CloneApiCfg(ApiCfg *src_cfg) {
   // Now connect the edges
   BGL_FORALL_EDGES(edge,*src_cfg,ApiCfg) {
 
-    // Now look up the source/target for each edge in the old graph (by address) and make the
-    // necessary connections in the new graph
-    ApiCfgVertex sv = boost::source(edge, *src_cfg);
-    ApiVertexInfo & src_info = (*src_cfg)[sv];
-
-    ApiCfgVertex tv = boost::target(edge, *src_cfg);
-    ApiVertexInfo & tgt_info = (*src_cfg)[tv];
+    // Now look up the source/target for each edge in the old graph
+    // (by address) and make the necessary connections in the new
+    // graph
+    const ApiVertexInfo& src_info = (*src_cfg)[boost::source(edge, *src_cfg)];
+    const ApiVertexInfo& tgt_info = (*src_cfg)[boost::target(edge, *src_cfg)];
 
     ApiCfgVertex new_src_vertex = node_map[src_info.block->get_address()];
     ApiCfgVertex new_tgt_vertex = node_map[tgt_info.block->get_address()];
@@ -1750,8 +1836,7 @@ ApiCfgComponent & ApiCfgComponent::operator=(const ApiCfgComponent & other) {
 }
 
 // Copy constructor creates a deep, distinct copy of the ApiCfgComponent
-ApiCfgComponent::ApiCfgComponent(const ApiCfgComponent &copy) {
-
+ApiCfgComponent::ApiCfgComponent(const ApiCfgComponent &copy) : ds(copy.ds) {
   entry_ = copy.entry_;
   exit_ = copy.exit_;
   cfg_ = CloneApiCfg(copy.cfg_);
@@ -1759,9 +1844,7 @@ ApiCfgComponent::ApiCfgComponent(const ApiCfgComponent &copy) {
 
 ApiCfgComponent::~ApiCfgComponent() {
 
-  if (cfg_ != NULL)
-    delete cfg_;
-  cfg_ = NULL;
+  cfg_ = nullptr;
 
   entry_ = INVALID_ADDRESS;
   exit_ = INVALID_ADDRESS;
@@ -1891,13 +1974,13 @@ ApiCfgVertex ApiCfgComponent::GetVertexByAddr(const rose_addr_t addr) const {
   return NULL_VERTEX;
 }
 
-ApiCfg* ApiCfgComponent::GetCfg() const {
-
+ApiCfgPtr ApiCfgComponent::GetCfg() const {
+  assert(cfg_);
   return cfg_;
 }
 
-void ApiCfgComponent::SetCfg(ApiCfg* cfg) {
-
+void ApiCfgComponent::SetCfg(ApiCfgPtr cfg) {
+  assert(cfg);
   this->cfg_ = cfg;
 }
 
@@ -1934,12 +2017,13 @@ ApiCfgVertex ApiCfgComponent::GetExitVertex() const {
 bool ApiCfgComponent::Merge(ApiCfgComponentPtr to_insert, rose_addr_t merge_addr,
     bool preserve_entry) {
 
-  typedef boost::property_map<ApiCfg, boost::vertex_index_t>::type index_map_t;
+  using index_map_t = boost::property_map<ApiCfg, boost::vertex_index_t>::type;
 
-  typedef boost::iterator_property_map<typename std::vector<ApiCfgVertex>::iterator,
-      index_map_t, ApiCfgVertex, ApiCfgVertex&> IsoMap;
+  using IsoMap = boost::iterator_property_map<typename std::vector<ApiCfgVertex>::iterator,
+                                              index_map_t, ApiCfgVertex, ApiCfgVertex&>;
 
-
+  assert(cfg_ != nullptr);
+  assert(to_insert != nullptr);
   GDEBUG << "Merging " << addr_str(entry_) << " (" << boost::num_vertices(*cfg_)
          << ") with " << addr_str(to_insert->GetEntryAddr())
          << " (" << boost::num_vertices(*(to_insert->GetCfg())) << ")"
@@ -1961,7 +2045,8 @@ bool ApiCfgComponent::Merge(ApiCfgComponentPtr to_insert, rose_addr_t merge_addr
   // The deep copy will generate new vertex ID's
 
   ApiCfgComponent to_insert_copy(*to_insert);
-  ApiCfg *cfg_copy = to_insert_copy.GetCfg();
+  ApiCfgPtr cfg_copy = to_insert_copy.GetCfg();
+  assert(cfg_copy);
 
   ApiCfgVertex orig_insert_entry_vertex = to_insert_copy.GetEntryVertex();
   ApiCfgVertex orig_insert_exit_vertex  = to_insert_copy.GetExitVertex();
@@ -2142,11 +2227,12 @@ void ApiCfgComponent::InsertBefore(ApiCfgVertex &before_vertex, ApiCfgVertex &in
 void ApiCfgComponent::Replace(ApiCfgVertex &out_vertex, ApiCfgVertex &in_entry_vertex,
     ApiCfgVertex &in_exit_vertex) {
 
+  assert(cfg_);
   ApiVertexInfo &in_entry_info = (*cfg_)[in_entry_vertex]; // entry block to insert
   ApiVertexInfo &in_exit_info = (*cfg_)[in_exit_vertex];    // exit block to insert
   ApiVertexInfo &out_info = (*cfg_)[out_vertex]; // the block to remove
 
-  GINFO << "Replacing vertices: " << addr_str(out_info.block->get_address())
+  GDEBUG << "Replacing vertices: " << addr_str(out_info.block->get_address())
          << " with " << addr_str(in_entry_info.block->get_address())
          << ":" << addr_str(in_exit_info.block->get_address()) << LEND;
 
@@ -2171,7 +2257,7 @@ void ApiCfgComponent::Replace(ApiCfgVertex &out_vertex, ApiCfgVertex &in_entry_v
     if ((*cfg_)[prev].block->get_address() == out_info.block->get_address()) {
       boost::add_edge(in_entry_vertex, in_entry_vertex, *cfg_);
 
-      GINFO << "Adding self edge from "
+      GDEBUG << "Adding self edge from "
              << addr_str((*cfg_)[prev].block->get_address()) << " to "
              << addr_str(out_info.block->get_address()) << LEND;
 
@@ -2198,7 +2284,7 @@ void ApiCfgComponent::Replace(ApiCfgVertex &out_vertex, ApiCfgVertex &in_entry_v
       // take the in edge and make it refer to next out edge vertex
       boost::add_edge(in_exit_vertex, next, *cfg_);
 
-      GINFO << "Adding edge from "
+      GDEBUG << "Adding edge from "
              << addr_str(in_exit_info.block->get_address()) << " to "
              << addr_str((*cfg_)[next].block->get_address()) << LEND;
     }
@@ -2211,30 +2297,40 @@ void ApiCfgComponent::Replace(ApiCfgVertex &out_vertex, ApiCfgVertex &in_entry_v
 
 void ApiCfgComponent::Print() {
 
-  GINFO << LEND << "Function: " << addr_str(entry_) << LEND;
+  std::stringstream ss;
+  ss << LEND << "Function: " << addr_str(entry_) << "\n";
 
   BGL_FORALL_VERTICES(vtx,*cfg_,ApiCfg) {
-    ApiVertexInfo &vertex_info = (*cfg_)[vtx];
-
-    GINFO << "   " << addr_str(vertex_info.block->get_address()) << " --> ";
-
-    BGL_FORALL_OUTEDGES(vtx,edge,*cfg_,ApiCfg) {
-      ApiCfgVertex ov = boost::target(edge,*cfg_);
-      ApiVertexInfo &out_vertex_info = (*cfg_)[ov];
-      GINFO << addr_str(out_vertex_info.block->get_address()) << " ";
+    const ApiVertexInfo& vertex_info = (*cfg_)[vtx];
+    ss << addr_str(vertex_info.block->get_address());
+    if (boost::out_degree(vtx,*cfg_)>0) {
+      ss << " -> ";
+      BGL_FORALL_OUTEDGES(vtx,edge,*cfg_,ApiCfg) {
+        ApiCfgVertex ov = boost::target(edge, *cfg_);
+        const ApiVertexInfo& out_vertex_info = (*cfg_)[ov];
+        if (out_vertex_info.block) {
+          ss << addr_str(out_vertex_info.block->get_address()) << " ";
+        }
+        else {
+          ss << "*Invalid target*";
+        }
+      }
+      if (vertex_info.GetType() == ApiVertexInfo::API) {
+        ss << " (calls API " << vertex_info.api_name << ")";
+      }
     }
-
-    if (vertex_info.GetType() == ApiVertexInfo::API) {
-      GINFO << " (calls API " << vertex_info.api_name << ")";
+    else {
+      ss << ".";
     }
-    GINFO << std::dec << LEND;
+    ss << "\n";
   }
+  GDEBUG << ss.str();
 }
 
 void ApiCfgComponent::ApiCfgComponentGraphvizVertexWriter::operator()(std::ostream &output,
-    const ApiCfgVertex &v) {
+                                                                      const ApiCfgVertex &v) {
 
-  ApiCfg *cfg = cfg_comp->GetCfg();
+  ApiCfgPtr cfg = cfg_comp->GetCfg();
   const ApiVertexInfo &vertex_info = (*cfg)[v];
 
   output << "[ label=\"Basic block " << addr_str(vertex_info.block->get_address());
@@ -2265,8 +2361,8 @@ void ApiCfgComponent::GenerateGraphViz(std::ostream &o) {
 // * Start of ApiGraph methods
 // ********************************************************************************************
 
-// Because a complete copy of the CFGs are made, they must be copied to be consolidated. This
-// memory is freed here
+// Because a complete  copy of the CFGs are made,  they must be copied
+// to be consolidated. This memory is freed here
 ApiGraph::~ApiGraph() {
   Reset();
 }
@@ -2292,17 +2388,17 @@ ApiCfgComponentPtr ApiGraph::GetComponent(rose_addr_t addr) {
 // function also builds a set of API call addresses for convenience
 void ApiGraph::BuildXrefs() {
 
-  const ImportDescriptorMap & idm = global_descriptor_set->get_import_map();
+  const ImportDescriptorMap & idm = ds.get_import_map();
   if (idm.size() == 0) {
     // No imports
     return;
   }
 
-  const CallDescriptorMap & cdm = global_descriptor_set->get_call_map();
+  const CallDescriptorMap & cdm = ds.get_call_map();
   for (const CallDescriptorMap::value_type & pair : cdm) {
 
     const CallDescriptor & cd = pair.second;
-    const CallTargetSet &call_targets = cd.get_targets();
+    auto call_targets = cd.get_targets();
 
     rose_addr_t from = cd.get_address();
 
@@ -2310,7 +2406,14 @@ void ApiGraph::BuildXrefs() {
     if (!call_targets.empty()) {
       // to address of (first) target   // from address of call
       rose_addr_t to =  *(call_targets.begin());
-      xrefs_.insert(XrefMapEntry(from, to));
+      // if there is no function descriptor associated with target,
+      // discard
+      if (ds.get_func(to) != nullptr || ds.get_import(to) != nullptr) {
+        xrefs_.emplace(from, to);
+      }
+      else {
+        GDEBUG << "Discarding suspect call target at " << addr_str(to) << LEND;
+      }
     }
 
     // check for API call (which will not have a target because the import code is not in the
@@ -2318,20 +2421,8 @@ void ApiGraph::BuildXrefs() {
     const ImportDescriptor *imp = cd.get_import_descriptor(); // is this an import?
     if (imp != NULL) {
       api_calls_.insert(from);
-      xrefs_.insert(XrefMapEntry(from, imp->get_address()));
+      xrefs_.emplace(from, imp->get_address());
     }
-  }
-
-  GDEBUG << "XREFS:" << LEND;
-  for (const XrefMap::value_type &p : xrefs_) {
-    rose_addr_t to = p.second;
-    rose_addr_t from = p.first;
-    GDEBUG << "to = " << addr_str(to) << " from = " << addr_str(from) << LEND;
-  }
-
-  GDEBUG << "API Calls" << LEND;
-  for (const AddrSet::value_type &p : api_calls_) {
-    GDEBUG << "call = " << addr_str(p) << LEND;
   }
 }
 
@@ -2372,18 +2463,18 @@ rose_addr_t ApiCfgComponent::ConsolidateReturns(BlockSet & retns) {
 // collapse empty functions (i.e. functions that do not contain API calls)
 void ApiGraph::ConsolidateEmptyFunctions() {
 
-  GINFO << "Consolidating empty functions" << LEND;
+  GDEBUG << "Consolidating empty functions" << LEND;
 
   std::set< rose_addr_t > kill_list;
 
-  CallDescriptorMap cdm = global_descriptor_set->get_call_map();
-  for (CallDescriptorMap::value_type & pair : cdm) {
+  const CallDescriptorMap & cdm = ds.get_call_map();
+  for (const CallDescriptorMap::value_type & pair : cdm) {
 
     const CallDescriptor & cd = pair.second;
     rose_addr_t call_address = cd.get_address();
 
-    FunctionDescriptor *call_target_fd = cd.get_function_descriptor();
-    FunctionDescriptor *containing_fd  = cd.get_containing_function();
+    const FunctionDescriptor *call_target_fd = cd.get_function_descriptor();
+    const FunctionDescriptor *containing_fd  = cd.get_containing_function();
 
     if (call_target_fd != NULL) {
 
@@ -2399,7 +2490,7 @@ void ApiGraph::ConsolidateEmptyFunctions() {
             // disconnect the call to the empty component. This will connect the vertices before
             // the call vertex directly to the subsequent vertices.
 
-            ApiCfg *calling_cfg = calling_cfg_comp->GetCfg();
+            ApiCfgPtr calling_cfg = calling_cfg_comp->GetCfg();
             ApiVertexInfo &call_vtx_info = (*calling_cfg)[call_vertex];
 
             if (call_vtx_info.block->get_address() == calling_cfg_comp->GetEntryAddr()) {
@@ -2441,18 +2532,18 @@ void ApiGraph::ConsolidateEmptyFunctions() {
       components_.erase(target);
     }
   }
-  GINFO << "All empty functions removed" << LEND;
+  GDEBUG << "All empty functions removed" << LEND;
 }
 
 void ApiGraph::ConsolidateThunks() {
 
-  GINFO << "Consolidating thunks " << LEND;
+  GDEBUG << "Consolidating thunks " << LEND;
 
   // The list of functions that were merged into other functions
   std::set< rose_addr_t > merge_list;
   ApiCfgComponentMap replace_list;
 
-  const CallDescriptorMap & cdm = global_descriptor_set->get_call_map();
+  const CallDescriptorMap & cdm = ds.get_call_map();
   for (const CallDescriptorMap::value_type & pair : cdm) {
 
     const CallDescriptor & cd = pair.second;
@@ -2460,8 +2551,8 @@ void ApiGraph::ConsolidateThunks() {
     ApiCfgComponentPtr insert_in=NULL;
     ApiCfgComponentPtr insert_to=NULL;
 
-    FunctionDescriptor *call_target_fd = cd.get_function_descriptor(); // FD of call target
-    FunctionDescriptor *containing_fd  = cd.get_containing_function(); // FD of containing function
+    const FunctionDescriptor *call_target_fd = cd.get_function_descriptor(); // FD of call target
+    const FunctionDescriptor *containing_fd  = cd.get_containing_function(); // FD of containing function
 
     if (call_target_fd != NULL) {
       if (call_target_fd->is_thunk()) {
@@ -2479,7 +2570,7 @@ void ApiGraph::ConsolidateThunks() {
         }
 
         // merge thunks into their calling positions
-        if (insert_in!=NULL && insert_to!=NULL) {
+        if (insert_in!=nullptr && insert_to!=nullptr) {
 
           GDEBUG << "Merging thunk call at " << addr_str(call_address) << LEND;
 
@@ -2490,7 +2581,7 @@ void ApiGraph::ConsolidateThunks() {
             // update the entry if it changed. If the entry changed, then the new merged component
             // should not be erased
             if (old_entry_addr != insert_in->GetEntryAddr()) {
-              replace_list.insert(ApiCfgComponentMapEntry(insert_in->GetEntryAddr(), insert_in));
+              replace_list.emplace(insert_in->GetEntryAddr(), insert_in);
               merge_list.insert(old_entry_addr);
             }
             if (merge_list.find(insert_to->GetEntryAddr()) == merge_list.end()) {
@@ -2522,10 +2613,10 @@ void ApiGraph::ConsolidateThunks() {
       components_[key] = value;
     }
     else {
-      components_.insert(ApiCfgComponentMapEntry(key, value));
+      components_.emplace(key, value);
     }
   }
-  GINFO << "All thunks removed" << LEND;
+  GDEBUG << "All thunks removed" << LEND;
 }
 
 bool ApiGraph::MergeComponents(ApiMergeInfo &merge_info, bool preserve_entry) {
@@ -2553,50 +2644,42 @@ bool ApiGraph::MergeComponents(ApiMergeInfo &merge_info, bool preserve_entry) {
   if (!merge_result) {
     OWARN << "Merge failed: " << merge_info.ToString() << LEND;
   }
+
+
   return merge_result;
 }
 
-
 size_t ApiGraph::Build() {
 
-  GINFO << "Building graphs" << LEND;
+  GDEBUG << "Building graphs" << LEND;
 
   if (graph_constructed_ == true) {
      GDEBUG << "Graph already constructed - Rebuilding" << LEND;
      Reset();
   }
 
-  FunctionDescriptorMap &fm = global_descriptor_set->get_func_map();
-
   // build all the xrefs needed to process the graph
   BuildXrefs();
 
   // In the first pass the CFGs are generated and copied into function map
-  for (FunctionDescriptorMap::value_type & fdpair : fm)  {
-
-    FunctionDescriptor& fd = fdpair.second;
-
+  const FunctionDescriptorMap& fdmap = ds.get_func_map();
+  for (const FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
     // At this point the true exit is not known
-    ApiCfgComponentPtr cfg_comp(new ApiCfgComponent());
+    ApiCfgComponentPtr cfg_comp = std::make_shared<ApiCfgComponent>(ds);
 
     cfg_comp->Initialize(fd, api_calls_, xrefs_);
 
     // save the simplified CFG
-    components_.insert(ApiCfgComponentMapEntry(cfg_comp->GetEntryAddr(), cfg_comp));
+    components_.emplace(cfg_comp->GetEntryAddr(), cfg_comp);
   }
 
-  // Once the components have been initialized and simplified to just API calls, run two analysis
-  // passes to collapse thunks and prune out routines that do not call APIs
+  // Once the components have been initialized and simplified to just
+  // API calls, run two analysis passes to collapse thunks and prune
+  // out routines that do not call APIs
 
   ConsolidateThunks();
 
   ConsolidateEmptyFunctions();
-
-  // Clean up xrefs based on simplification
-
-  for (const ApiCfgComponentMap::value_type & r : components_) {
-    GDEBUG << "Final component " << addr_str(r.first) << LEND;
-  }
 
   graph_constructed_ = true;
 
@@ -2637,7 +2720,7 @@ void ApiGraph::GenerateGraphViz(std::ostream & o) {
 }
 
 // The current search algorithm starts by using the connected_components function to determine
-bool ApiGraph::Search(ApiSig & sig, ApiSearchResultVector * results) {
+bool ApiGraph::Search(ApiSig sig, ApiSearchResultVector * results) {
 
   if (graph_constructed_ == false || sig.api_calls.empty() == true) {
     OWARN << "Invalid signature for " << sig.name << LEND;
@@ -2657,7 +2740,7 @@ void ApiGraph::Print() {
   if (!graph_constructed_)
     return;
 
-  GINFO << "Printing API Block Graph" << LEND;
+  GDEBUG << "Printing API Block Graph" << LEND;
 
   for (const ApiCfgComponentMap::value_type & f2b : components_)  {
     const ApiCfgComponentPtr & cfg_comp = f2b.second;
@@ -2697,16 +2780,16 @@ void ApiGraph::RemoveXref(rose_addr_t from, rose_addr_t to) {
 // ********************************************************************************************
 
 // Update the progress of the search and display the progress bar (if necessary)
-void ApiSearchManager::UpdateProgress(ApiSig &sig) {
+void ApiSearchManager::UpdateProgress(const ApiSig& sig) {
 
-  static Sawyer::ProgressBar<size_t, ApiSearchProgressSuffix> *progressBar = NULL;
+  static Sawyer::ProgressBar<size_t, ApiSearchProgressSuffix> *progressBar = nullptr;
   if (!progressBar) {
     Sawyer::ProgressBarSettings::initialDelay(0.0);
     Sawyer::ProgressBarSettings::minimumUpdateInterval(0.0);
     progressBar = new Sawyer::ProgressBar<size_t, ApiSearchProgressSuffix>(olog[MARCH], "");
 
   }
-  progressBar->suffix(ApiSearchProgressSuffix(&sig,sig_count_));
+  progressBar->suffix(ApiSearchProgressSuffix(sig, sig_count_));
   progressBar->value(sig_progress_);
 
   sig_progress_++;
@@ -2717,13 +2800,13 @@ std::ostream& operator<<(std::ostream &o, const ApiSearchProgressSuffix &suffix)
   return o;
 }
 
-bool ApiSearchManager::Search(SigPtrVector &sigs, ApiSearchResultVector &results) {
+bool ApiSearchManager::Search(const ApiSigVector &sigs, ApiSearchResultVector &results) {
 
   sig_count_ = sigs.size();
   sig_progress_ = 0;
 
-  for (ApiSig &sig : sigs) {
-    GINFO << "Processing signature: " << sig.name << LEND;
+  for (const ApiSig sig : sigs) {
+    GDEBUG << "Processing signature: " << sig.name << LEND;
 
     UpdateProgress(sig);
 

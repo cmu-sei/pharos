@@ -1,3 +1,5 @@
+// Copyright 2017-2019 Carnegie Mellon University.  See LICENSE file for terms.
+
 #ifndef Pharos_OOMember_H
 #define Pharos_OOMember_H
 
@@ -38,7 +40,7 @@ class OOMember : public OOElement {
 
   void assess_type_from_size();
 
-  virtual void generate_name();
+ protected:
 
  public:
 
@@ -48,9 +50,7 @@ class OOMember : public OOElement {
 
   OOMember(size_t s);
 
-  OOMember(size_t s, size_t o);
-
-  OOMember(size_t s, size_t o, InsnSet e);
+  OOMember(size_t s, InsnSet e);
 
   OOMember& operator=(const OOMember &other) = default;
 };

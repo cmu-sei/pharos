@@ -1,4 +1,4 @@
-// Copyright 2016-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Michael Duggan
 
@@ -56,7 +56,84 @@ std::string TypeMismatch::build_msg(xsb_term pt, const std::string & expected)
 }
 
 namespace impl {
+inline
 namespace xsb {
+
+std::ostream & output_atom(std::ostream & stream, const char * atom)
+{
+  const char *c;
+  if (std::islower(atom[0])) {
+    for (c = atom + 1; std::isalnum(*c) || *c == '_'; ++c);
+    if (*c == '\0') {
+      stream << atom;
+      return stream;
+    }
+  }
+  stream << '\'';
+  while ((c = std::strchr(atom, '\''))) {
+    stream << std::string(atom, c) << "''";
+    atom = c + 1;
+  }
+  stream << atom << '\'';
+  return stream;
+}
+
+std::ostream & term_to_stream(std::ostream & stream, xsb_term pt)
+{
+  auto && flag_guard = restore_flags(stream);
+  if (impl::is_int(pt)) {
+    int64_t sint = int64_t(impl::p2c_int(pt));
+    if (sint < 0) {
+      stream << '-';
+      sint = -sint;
+    }
+    stream << std::hex << std::showbase << sint;
+  } else if (impl::is_string(pt)) {
+    output_atom(stream, impl::p2c_string(pt));
+  } else if (impl::is_functor(pt)) {
+    output_atom(stream, impl::p2c_functor(pt));
+    stream << '(';
+    auto nargs = impl::p2c_arity(pt);
+    for (decltype(nargs) i = 1; i <= nargs; ++i) {
+      if (i != 1) {
+        stream << ", ";
+      }
+      term_to_stream(stream, impl::p2p_arg(pt, i));
+    }
+    stream << ')';
+  } else if (impl::is_list(pt)) {
+    bool nil;
+    stream << '[';
+    do {
+      term_to_stream(stream, impl::p2p_car(pt));
+      pt = impl::p2p_cdr(pt);
+      if (!(nil = impl::is_nil(pt))) {
+        stream << ", ";
+      }
+    } while (!nil);
+    stream << ']';
+  } else if (impl::is_nil(pt)) {
+    stream << "[]";
+  } else if (impl::is_var(pt)) {
+    stream << "_Var(" << pt << ')';
+  } else {
+    stream << "<unknown>";
+  }
+  return stream;
+}
+
+std::ostream & print_term_t::operator()(List const & arg) {
+  stream << '[';
+  for (std::size_t i = 0; i < arg.list.size(); ++i) {
+    if (i) {
+      stream << ", ";
+    }
+    arg.list[i]->print(*this);
+  }
+  stream << ']';
+  return stream;
+}
+
 namespace {
 // static convenience functions for xsb interaction
 

@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "globals.hpp"
 #include "masm.hpp"
@@ -10,36 +10,16 @@
 
 namespace pharos {
 
-GlobalMemoryDescriptor::GlobalMemoryDescriptor() {
-  address = 0;
-  initialized = false;
-  in_image = false;
-  confidence = ConfidenceNone;
-  type = DTypeNone;
-  size = 0;
-  access_size = 0;
-
-  // Because we have no concept of NULL symbolic values, empty will have to do
-
-  values.push_back(SymbolicValuePtr());
-  memory_address = SymbolicValuePtr();
-}
-
-GlobalMemoryDescriptor::GlobalMemoryDescriptor(rose_addr_t addr) {
+GlobalMemoryDescriptor::GlobalMemoryDescriptor(rose_addr_t addr, size_t bits) {
   address = addr;
   confidence = ConfidenceNone;
   type = DTypeNone;
   size = 0;
   access_size = 0;
-  analyze(addr);
 
-  // defaulting to the width of the architcture. This is not really right, but not really
-  // wrong either
-  size_t arch_bits = global_descriptor_set->get_arch_bits();
-  memory_address = SymbolicValue::constant_instance(arch_bits, addr);
-  values.push_back(SymbolicValue::variable_instance(arch_bits));
+  memory_address = SymbolicValue::constant_instance(bits, addr);
+  values.push_back(SymbolicValue::variable_instance(bits));
 }
-
 
 std::string
 GlobalMemoryDescriptor::to_string() const {
@@ -99,10 +79,26 @@ GlobalMemoryDescriptor::to_string() const {
 }
 
 void GlobalMemoryDescriptor::add_value(SymbolicValuePtr new_val) {
-  values.push_back(new_val);
+  auto && guard = write_guard(mutex);
+
+  // We should probably implement a std::set<SymbolicValuePtr> under some comparison operation
+  // that used to be can_be_equal(), and is now must_be_equal().
+  auto gvi = std::find_if(
+    values.begin(), values.end(),
+    [new_val](SymbolicValuePtr sv)
+    {
+      if (sv->get_width() != new_val->get_width()) return false;
+      return sv->must_equal(new_val);
+    });
+
+  if (gvi == values.end()) {
+    values.push_back(new_val);
+  }
 }
 
 void GlobalMemoryDescriptor::short_print(std::ostream &o) const {
+  auto && guard = read_guard(mutex);
+
   o << "Global: addr=" << address_string();
 
   o << " refs=[";
@@ -125,8 +121,9 @@ void GlobalMemoryDescriptor::short_print(std::ostream &o) const {
 }
 
 void GlobalMemoryDescriptor::print(std::ostream &o) const {
+  auto && guard = read_guard(mutex);
+
   o << "Global: addr=" << address_string()
-    << " image=" << in_image << " init=" << initialized
     << " asize=" << access_size << " tsize=" << size << LEND;
 
   for (const SgAsmInstruction* insn : refs) {
@@ -140,50 +137,42 @@ void GlobalMemoryDescriptor::print(std::ostream &o) const {
   }
 }
 
-const InsnSet& GlobalMemoryDescriptor::get_writes() { return writes; }
-const InsnSet& GlobalMemoryDescriptor::get_reads() { return reads; }
-const InsnSet& GlobalMemoryDescriptor::get_refs() { return refs; }
-
-// Analyze a memory address (most commonly during construction).
-void GlobalMemoryDescriptor::analyze(rose_addr_t addr) {
-  in_image = global_descriptor_set->memory_in_image(addr);
-  //GINFO << "Memory at " << address_string() << " in_image=" << in_image << LEND;
-
-  // Cory says: Robb changed our ability to detect whether an address was initialized or not,
-  // and since we weren't really using it for anything anayway, I disabled it.
-  initialized = false;
-  // initialized = global_descriptor_set->memory_initialized(addr);
-  //GINFO << "Memory at " << address_string() << " initialized=" << initialized << LEND;
-}
-
 // Are all known memory accesses reads?
 bool GlobalMemoryDescriptor::read_only() const {
+  auto && guard = read_guard(mutex);
   if (writes.size() == 0 && reads.size() > 0) return true;
   return false;
 }
 
 // Are there both read and write memory accesses?
 bool GlobalMemoryDescriptor::read_write() const {
+  auto && guard = read_guard(mutex);
   if (writes.size() > 0 && reads.size() > 0) return true;
   return false;
 }
 
 // Is the descriptor known to be used in memory accesses?
 bool GlobalMemoryDescriptor::known_memory() const {
+  auto && guard = read_guard(mutex);
   if (writes.size() > 0 || reads.size() > 0) return true;
   return false;
 }
 
 // Is the descriptor "suspicious"?  (One of several unlikely cases?)
 bool GlobalMemoryDescriptor::suspicious() const {
+  auto && guard = read_guard(mutex);
   // If we've got no reads, we're probably just missing them.
   if (reads.size() == 0) return true;
   return false;
 }
 
 void GlobalMemoryDescriptor::add_read(SgAsmInstruction* insn, int asize) {
+  auto && guard = write_guard(mutex);
   // Add the instruction to the reads list.
   reads.insert(insn);
+
+  SDEBUG << "Global memory read of " << address_string()
+         << " by " << debug_instruction(insn) << LEND;
 
   // Remove the instruction from refs now that we know that it's really a read.
   InsnSet::iterator it = refs.find(insn);
@@ -195,8 +184,12 @@ void GlobalMemoryDescriptor::add_read(SgAsmInstruction* insn, int asize) {
 }
 
 void GlobalMemoryDescriptor::add_write(SgAsmInstruction* insn, int asize) {
+  auto && guard = write_guard(mutex);
   // Add the instruction to the writes list.
   writes.insert(insn);
+
+  SDEBUG << "Global memory write of " << address_string()
+         << " by " << debug_instruction(insn) << LEND;
 
   // Remove the instruction from refs now that we know that it's really a read.
   InsnSet::iterator it = refs.find(insn);
@@ -216,17 +209,17 @@ void TypeBase::read(void *b) {
           << address << " size=0x" << size << std::dec << LEND;
     return;
   }
-  global_descriptor_set->read_mem(address, (char *)b, size);
+  memory.read_bytes_strict(address, (char *)b, Bytes(size));
 }
 
 void TypeBase::read(rose_addr_t a, void *b, size_t s) {
-  global_descriptor_set->read_mem(a, (char *)b, s);
+  memory.read_bytes_strict(a, (char *)b, Bytes(s));
 }
 
 void TypeString::read(rose_addr_t a) {
   size = 0;
   value.clear();
-  TypeByte ch(a);
+  TypeByte ch(memory, a);
   while (ch.read(a + size) != 0) {
     size += 1;
     value += ch.value;
@@ -235,10 +228,10 @@ void TypeString::read(rose_addr_t a) {
   size += 1;
 }
 
-TypeUnicodeString::TypeUnicodeString(rose_addr_t a): TypeBase(a, 0) {
+TypeUnicodeString::TypeUnicodeString(Memory const & mem, rose_addr_t a): TypeBase(mem, a, 0) {
   size = 0;
   value.clear();
-  TypeWideChar ch(a);
+  TypeWideChar ch(memory, a);
   while (ch.read(a + size) != 0) {
     size += 2;
     value += ch.value;
@@ -247,24 +240,24 @@ TypeUnicodeString::TypeUnicodeString(rose_addr_t a): TypeBase(a, 0) {
   size += 1;
 }
 
-TypeLen8String::TypeLen8String(rose_addr_t a): TypeString(a) {
-  TypeByte len(a);
+TypeLen8String::TypeLen8String(Memory const & mem, rose_addr_t a): TypeString(mem, a) {
+  TypeByte len(memory, a);
   char buffer[257];
   TypeBase::read(a + 1, buffer, len.value);
   size = len.value + 1;
   value = buffer;
 }
 
-TypeLen16String::TypeLen16String(rose_addr_t a): TypeString(a) {
-  TypeWord len(a);
+TypeLen16String::TypeLen16String(Memory const & mem, rose_addr_t a): TypeString(mem, a) {
+  TypeWord len(memory, a);
   char* buffer = (char *)alloca(len.value);
   TypeBase::read(a + 2, buffer, len.value);
   size = len.value + 2;
   value = buffer;
 }
 
-TypeLen32String::TypeLen32String(rose_addr_t a): TypeString(a) {
-  TypeDword len(a);
+TypeLen32String::TypeLen32String(Memory const & mem, rose_addr_t a): TypeString(mem, a) {
+  TypeDword len(memory, a);
   if (len.value <= 0x1000000) {
     char* buffer = (char *)alloca(len.value);
     TypeBase::read(a + 2, buffer, len.value);
@@ -318,7 +311,7 @@ void TypeSEH4ScopeTable::read(rose_addr_t a) {
   EHCookieOffset.read(a + 8);
   EHCookieXOROffset.read(a + 12);
 
-  TypeSEH4ScopeTableRecord scope;
+  TypeSEH4ScopeTableRecord scope{memory};
   do {
     scope.read(a + size);
     ScopeRecord.push_back(scope);
@@ -353,7 +346,7 @@ void TypeSEH4TryBlockMapEntry::read(rose_addr_t a) {
 
   //rose_addr_t handler_pointer = pHandlerArray.value;
   //for (int i = 0; i < maxState.value; i++) {
-  //  TypeSEH4UnwindMapEntry entry(unwind_map_pointer);
+  //  TypeSEH4UnwindMapEntry entry(memory, unwind_map_pointer);
   //  unwind_map.push_back(entry);
   //  GINFO << entry.str() << LEND;
   //  unwind_map_pointer += entry.size;
@@ -405,7 +398,7 @@ void TypeSEH4FuncInfo::read(rose_addr_t a) {
   pUnwindMap.read(a + 8);
   rose_addr_t unwind_map_pointer = pUnwindMap.value;
   for (unsigned int i = 0; i < maxState.value; i++) {
-    TypeSEH4UnwindMapEntry entry(unwind_map_pointer);
+    TypeSEH4UnwindMapEntry entry(memory, unwind_map_pointer);
     unwind_map.push_back(entry);
     unwind_map_pointer += entry.size;
   }
@@ -415,7 +408,7 @@ void TypeSEH4FuncInfo::read(rose_addr_t a) {
 
   rose_addr_t try_block_map_pointer = pTryBlocksMap.value;
   for (unsigned int i = 0; i < nTryBlocks.value; i++) {
-    TypeSEH4TryBlockMapEntry entry(try_block_map_pointer);
+    TypeSEH4TryBlockMapEntry entry(memory, try_block_map_pointer);
     try_block_map.push_back(entry);
     try_block_map_pointer += entry.size;
   }
@@ -475,7 +468,7 @@ void TypeRTCFrameDesc::read(rose_addr_t a) {
 
   rose_addr_t var_desc = variables.value;
   for (unsigned int i = 0; i < varCount.value; i++) {
-    TypeRTCVarDesc var(var_desc);
+    TypeRTCVarDesc var(memory, var_desc);
     vars.push_back(var);
     var_desc += var.size;
   }
@@ -542,8 +535,8 @@ void TypeRTTIClassHierarchyDescriptor::read(rose_addr_t a) {
 
   rose_addr_t base_class_array = pBaseClassArray.value;
   for (unsigned int i = 0; i < numBaseClasses.value; i++) {
-    TypeDwordAddr bcaddr(base_class_array);
-    TypeRTTIBaseClassDescriptor bcd(bcaddr.value);
+    TypeDwordAddr bcaddr(memory, base_class_array);
+    TypeRTTIBaseClassDescriptor bcd(memory, bcaddr.value);
     base_classes.push_back(bcd);
     base_class_array += bcaddr.size;
   }
@@ -581,7 +574,7 @@ void TypeRTTIBaseClassDescriptor::read(rose_addr_t a) {
   // to read it here because I wanted it to throw if there's a problem during reading, but it
   // turns out that even normal files have endless loops.
 
-  //TypeRTTIClassHierarchyDescriptor chd;
+  //TypeRTTIClassHierarchyDescriptor chd{memory};
   //chd.read(pClassDescriptor.value);
 }
 

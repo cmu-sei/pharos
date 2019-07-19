@@ -5,7 +5,15 @@
 
 cmake_minimum_required(VERSION 3.5)
 
-project(pharos CXX)
+# <Package>_ROOT variables are now added to the path by default.  We
+# were explicitly using our _ROOT variables for this purpose, so the
+# "NEW" policy should be fine, although we might want to revisit
+# whether we should be doing things differently under the new policy.
+if(POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW)
+endif()
+
+project(pharos CXX C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -13,7 +21,7 @@ set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
   "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 
 include(AddCXXCompilerFlags)
-add_cxx_compiler_flags(-Wall -Wextra -Wshadow -Wstrict-aliasing -Wno-misleading-indentation)
+add_cxx_compiler_flags(-Wall -Wextra -Wshadow -Wstrict-aliasing -Wno-misleading-indentation "-ftemplate-depth=1024")
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH true)
 
@@ -40,20 +48,15 @@ endif()
 message(STATUS "Using Build Type: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_CXX_EXTENSIONS off)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED on)
 set(THREADS_PREFER_PTHREAD_FLAG on)
-
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   set(PHAROS_RELEASE true)
 endif()
 
 # Rose
-find_package(Rose 0.9.10)
-if (NOT ROSE_FOUND)
-  include(BuildRose)
-  message(FATAL_ERROR "Should not get here")
-endif()
+find_package(Rose REQUIRED)
 
 # Find git
 find_package(Git REQUIRED)
@@ -67,14 +70,18 @@ set(CTEST_TEST_TIMEOUT 300)     # 5 minutes
 # Add pod building
 include(BuildPharosPod)
 
+# Individual tests (or groups of tests should add themselves as dependencies).
+if (PHAROS_BUILD_TESTS)
+  add_custom_target(tests ALL)
+else()
+  add_custom_target(tests)
+endif()
+
 # Add directories
 add_subdirectory(libpharos)
 add_subdirectory(tools)
 add_subdirectory(gtest)
 add_subdirectory(share)
 
-install(FILES README.md COPYRIGHT.md LICENSE.md DESTINATION share/doc/pharos
+install(FILES README.md CONTRIBUTING.md LICENSE.md DESTINATION share/doc/pharos
   PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
-install(DIRECTORY "${XSB_INSTALL_DIR}/"
-  DESTINATION share/pharos/XSB
-  USE_SOURCE_PERMISSIONS)

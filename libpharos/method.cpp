@@ -1,14 +1,15 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <rose.h>
 
 #include "pdg.hpp"
 #include "method.hpp"
 #include "vftable.hpp"
+#include "masm.hpp"
 
 namespace pharos {
 
-Member::Member(unsigned int o, unsigned int s, SgAsmx86Instruction* i, bool b) {
+Member::Member(unsigned int o, unsigned int s, SgAsmX86Instruction* i, bool b) {
   offset = o;
   size = s;
 
@@ -38,25 +39,8 @@ bool ThisCallMethodCompare::operator()(const ThisCallMethod *x, const ThisCallMe
 }
 
 // Find the value of ECX at the time of the call, by inspecting the state that was saved when
-// the call was evaluated.  Perhaps this should be a method on the call descriptor?  It uses
-// follow_oo_thunks() which is a messy entanglement.   Needs more cleanup.
+// the call was evaluated.  Uses the state from the call descriptor!
 SymbolicValuePtr get_this_ptr_for_call(const CallDescriptor* cd) {
-  // Try to decide if any of our targets are object oriented.  This should be a shared method
-  // somewhere. We've done the same thing while resolving virtual calls.
-  bool oo_target = false;
-  for (rose_addr_t target : cd->get_targets()) {
-    ThisCallMethod* tcm = follow_oo_thunks(target);
-    if (tcm != NULL) {
-      GDEBUG << "Call at " << cd->address_string() << " calls OO target "
-             << tcm->address_string() << LEND;
-      oo_target = true;
-      break;
-    }
-  }
-
-  // If we're not an oo method, then we don't have a this pointer...
-  if (!oo_target) return SymbolicValue::instance();
-
   const SymbolicStatePtr state = cd->get_state();
   if (state == NULL) {
     // Moved to warning importance because it appears to be a cascading failure from
@@ -65,7 +49,7 @@ SymbolicValuePtr get_this_ptr_for_call(const CallDescriptor* cd) {
     return SymbolicValue::instance();
   }
   // We should be able to find this globally somehow...
-  RegisterDescriptor this_reg = global_descriptor_set->get_arch_reg(THIS_PTR_STR);
+  RegisterDescriptor this_reg = cd->ds.get_arch_reg(THIS_PTR_STR);
   assert(this_reg.is_valid());
   // Read ECX from the state immediately before the call.
   SymbolicValuePtr this_value = state->read_register(this_reg);
@@ -150,19 +134,19 @@ bool ThisCallMethod::find_this_pointer()
 
   // For thunks, we used to fail through with not finding the appropriate references to ECX (in
   // the thunk function itself).  Then I made some changes to thunk propogation, and we ended
-  // up here more often, but it just generated more errors.  We should probably revisit _why_
-  // we don't need to find the this-pointer in thunks, but I'm not shocked by that.  This
-  // change will at least make it more explicit that this code isn't intended to be run against
-  // thunks, and if there's a fix in the future it will probably be to _follow_ thunks here,
-  // propagate the this-pointer from the target func, or maybe just to emit a new thunk fact.
+  // up here more often, but it just generated more errors.  Later we found that it is super
+  // inconvenient to follow thunks here when analyzing in parallel, so it's fortunate that we
+  // no longer need to do so in order to pass our tests.  If at some point in the future, we
+  // find that this did not result in the correct answer for a thunk, we should almost
+  // certainly correct the problem in Prolog using the thunks facts that are now exported.
   if (fd->is_thunk()) return false;
 
   // We should probably be using a RegisterDescriptor (or an AbstractAccess)
   // to describe the this pointer anyway.  Here we need it to pass to is_reg().
-  RegisterDescriptor this_reg = global_descriptor_set->get_arch_reg(THIS_PTR_STR);
-  RegisterDescriptor edx = global_descriptor_set->get_arch_reg("edx");
+  RegisterDescriptor this_reg = fd->ds.get_arch_reg(THIS_PTR_STR);
+  RegisterDescriptor edx = fd->ds.get_arch_reg("edx");
 
-  PDG *p = fd->get_pdg();
+  const PDG* p = fd->get_pdg();
   if (p == NULL) return false;
   //const Insn2DUChainMap& dd = p->get_usedef().get_dependencies();
 
@@ -230,7 +214,7 @@ bool ThisCallMethod::find_this_pointer()
         const TreeNodePtr & tnptr = aa.value->get_expression();
 
         // Cory's insisting that all valid this-pointer accesses be the "correct" size.
-        if (aa.size != global_descriptor_set->get_arch_bits()) {
+        if (aa.size != fd->ds.get_arch_bits()) {
           GDEBUG << "Bad thisptr (size): " << *tnptr << " at " << debug_instruction(insn) << LEND;
           continue;
         }
@@ -271,30 +255,25 @@ void ThisCallMethod::test_for_constructor() {
   // passed in ECX.  We originally thought that this rule was flawed, but have subsequently
   // decided that perhaps it's actually a sound rule (for the Visual Studio compiler).
 
-  // It's unclear to Cory if we should still be checking for a thunk here.  I suspect not.  We
-  // probably shouldn't be creating ThisCallMethods for the thunks, but that will require more
-  // analysis of Wes' code.
+  // See commentary in find_this_pointer() regarding thunks, which are now handled as
+  // separately exported facts in Prolog.
+  if (fd->is_thunk()) return;
 
-  // Check to see if this function is a thunk to another.  Should be calling follow_oo_thunks?
-  FunctionDescriptor *this_call_fd = fd->get_jmp_fd();
-  // If there's no thunk, just use the FD we were given.
-  if (this_call_fd == NULL) this_call_fd = fd;
-
-  PDG* p = this_call_fd->get_pdg();
+  const PDG* p = fd->get_pdg();
   if (p == NULL) return;
-  GDEBUG << "Evaluating constructor candidate " << this_call_fd->address_string() << LEND;
+  GDEBUG << "Evaluating constructor candidate " << fd->address_string() << LEND;
 
   // Get definition and usage analysis, so that we can access in the input and output states.
   const DUAnalysis& du = p->get_usedef();
   // Obtain the final value of eax (the return value).
-  RegisterDescriptor eaxrd = global_descriptor_set->get_arch_reg("eax");
+  RegisterDescriptor eaxrd = fd->ds.get_arch_reg("eax");
   // If we don't have an output state, it's because analysis failed.  Just return that the
   // function is not a constructor in the lack of any better evidence.
   const SymbolicStatePtr output_state = du.get_output_state();
   if (!output_state) return;
   SymbolicValuePtr final_eax = output_state->read_register(eaxrd);
   // And the initial value of ECX (the this pointer).
-  RegisterDescriptor ecxrd = global_descriptor_set->get_arch_reg(THIS_PTR_STR);
+  RegisterDescriptor ecxrd = fd->ds.get_arch_reg(THIS_PTR_STR);
   // Cory's unsure if it's even possible to be missing an input state, but returning false wil
   // be better than performing an invalid memory dereference.
   const SymbolicStatePtr input_state = du.get_input_state();
@@ -316,15 +295,13 @@ ThisCallMethod::test_for_uninit_reads() const
   // This is a new rule for eliminating constructors based on the idea that valid constructors
   // can't be reading values out of the object (before initialization) during construction.
 
-  // Same thunk logic as the previous rule...
-  // Check to see if this function is a thunk to another.  Should be calling follow_oo_thunks?
-  FunctionDescriptor *this_call_fd = fd->get_jmp_fd();
-  // If there's no thunk, just use the FD we were given.
-  if (this_call_fd == NULL) this_call_fd = fd;
+  // See commentary in find_this_pointer() regarding thunks, which are now handled as
+  // separately exported facts in Prolog.
+  if (fd->is_thunk()) return false;
 
-  PDG* p = this_call_fd->get_pdg();
+  const PDG* p = fd->get_pdg();
   if (p == NULL) return false;
-  //GDEBUG << "Evaluating constructor candidate " << this_call_fd->address_string() << LEND;
+  //GDEBUG << "Evaluating constructor candidate " << fd->address_string() << LEND;
 
   TreeNodePtr tptr = thisptr->get_expression();
 
@@ -392,13 +369,13 @@ ThisCallMethod::test_for_uninit_reads() const
         const Member& emem = existing_member_finder->second;
         // If the member is a virtual base table pointer, it's exempted from this rule.
         if (emem.base_table) {
-          //GDEBUG << "Method " << this_call_fd->address_string()
+          //GDEBUG << "Method " << fd->address_string()
           //       << " was exempted because the read was from a vbtable!" << LEND;
           continue;
         }
       }
 
-      GDEBUG << "Method " << this_call_fd->address_string() << " is not a constructor because of "
+      GDEBUG << "Method " << fd->address_string() << " is not a constructor because of "
              << debug_instruction(insn) << " which reads object offset " << cp << "." << LEND;
 
       // If we've made it this far, we're not a constructor because we're reading members from
@@ -415,7 +392,7 @@ ThisCallMethod::test_for_uninit_reads() const
 }
 
 void ThisCallMethod::find_members() {
-  PDG* p = fd->get_pdg();
+  const PDG* p = fd->get_pdg();
   if (p == NULL) return;
 
   auto & ud = p->get_usedef();
@@ -446,7 +423,7 @@ void ThisCallMethod::find_members() {
           if (!offset) continue;
 
           if (*offset >= 0) {
-            add_data_member(Member(*offset, aa.get_byte_size(), insn, NULL));
+            add_data_member(Member(*offset, aa.get_byte_size(), insn, false));
           }
           else {
             GDEBUG << "Ignoring negative object offset (" << *offset
@@ -470,7 +447,7 @@ void ThisCallMethod::find_members() {
           // Add the member to the method.  Calling get_byte_size() is more accurate than
           // reading sizes off of the operands (e.g. movsd) which we're probably not handling
           // correctly anyway, but it's also simpler.
-          add_data_member(Member(*offset, aa.get_byte_size(), insn, NULL));
+          add_data_member(Member(*offset, aa.get_byte_size(), insn, false));
         }
         else {
           GDEBUG << "Ignoring negative object offset (" << *offset
@@ -486,7 +463,7 @@ void ThisCallMethod::find_members() {
         if (!offset) continue;
 
         if (*offset >= 0) {
-          add_data_member(Member(*offset, aa.get_byte_size(), insn, NULL));
+          add_data_member(Member(*offset, aa.get_byte_size(), insn, false));
         }
         else {
           GDEBUG << "Ignoring negative object offset (" << *offset
@@ -497,6 +474,7 @@ void ThisCallMethod::find_members() {
   }
 }
 
+// This method is called in OOAnalyzer::finish(), not OOAnalyzer::visit().
 void ThisCallMethod::find_passed_func_offsets() {
   for (const CallDescriptor* cd : fd->get_outgoing_calls()) {
     SgAsmX86Instruction* insn = isSgAsmX86Instruction(cd->get_insn());
@@ -516,37 +494,25 @@ void ThisCallMethod::find_passed_func_offsets() {
     // approach.  if (*offset != 0) continue;
 
     for (rose_addr_t saddr : cd->get_targets()) {
-      // In order for follow_oo_thunks to work properly (only following thunks to OO methods,
-      // we need to have populated the oo_properties member on the function descriptor before
-      // calling this function.
-      ThisCallMethod* ctcm = follow_oo_thunks(saddr);
-      if (ctcm == NULL) continue;
-      rose_addr_t caddr = ctcm->get_address();
+      // Since we've changed the way that thunks are being handled, we probably shouldn't
+      // be following thunks at all here, but that's not the bug being fixed right now.
+      const FunctionDescriptor* tfd = fd->ds.get_func(saddr);
+      if (tfd == nullptr) continue;
+      bool endless = false;
+      rose_addr_t caddr = tfd->follow_thunks(&endless);
+      if (endless) continue;
 
       // If we've already processed this target, continue.
       if (passed_func_offsets.find(caddr) != passed_func_offsets.end()) continue;
 
       // Adding an entry to passed func offsets here, reading only in main().
-      FuncOffset fo(ctcm, *offset, insn);
+      FuncOffset fo(caddr, *offset, insn);
       passed_func_offsets.insert(FuncOffsetMap::value_type(caddr, fo));
-
-      // If we're passing an offset in the object to other methods, it seems to imply an
-      // embedded object (either due to inheritance or traditional embedding).  After
-      // considering various ways to represent this it appears that the most convenient way is
-      // to declare both kinds of objects "embedded" and rely on virtual function tables to
-      // differentiate between inheritance and traditional embedding.  In particular, in the
-      // case of multiple inheritance with virtual function tables, we'll have embedded objects
-      // for both classes AND virtual function tables for both.  It looks like the most
-      // problematic case is inherited versus ordinary embedded objects at offset zero, which
-      // it may be impossible to differentiate between without virtual functions anyway.
-      GDEBUG << "Embedded object at offset " << *offset << " in method at " << address_string()
-             << " is passed to " << addr_str(caddr) << LEND;
-      add_data_member(Member(*offset, 0, insn, NULL));
     }
   }
 }
 
-bool ThisCallMethod::validate_vtable(VirtualTableInstallationPtr install) {
+bool ThisCallMethod::validate_vtable(ConstVirtualTableInstallationPtr install) {
   // Short hand for the variable portion, or the object that the table was installed into.
   TreeNodePtr vp = install->written_to;
   //
@@ -618,24 +584,11 @@ bool ThisCallMethod::validate_vtable(VirtualTableInstallationPtr install) {
          << " in " << debug_instruction(insn) << LEND;
   GDEBUG << "Possible virtual table found at " << addr_str(install->table_address)
          << " installed by " << addr_str(insn->get_address()) << LEND;
-  size_t arch_bytes = global_descriptor_set->get_arch_bytes();
+  size_t arch_bytes = fd->ds.get_arch_bytes();
 
   SgAsmX86Instruction* x86insn = isSgAsmX86Instruction(insn);
   add_data_member(Member(install->offset, arch_bytes, x86insn, install->base_table));
   return true;
-}
-
-// A version of follow thunks that returns the final target if and only if it's an OO method.
-// This is determined by inspecting the oo_properties field of the function descriptor, so that
-// needs to have been set before calling this function.
-ThisCallMethod* follow_oo_thunks(rose_addr_t addr) {
-  // Find the function descriptor for the provided address.
-  FunctionDescriptor *fd = global_descriptor_set->get_func(addr);
-  if (fd == NULL) return NULL;
-  // Follow thunks.
-  fd = fd->follow_thunks_fd();
-  if (fd == NULL) return NULL;
-  return fd->get_oo_properties();
 }
 
 } // namespace pharos

@@ -1,3 +1,5 @@
+// Copyright 2017-2019 Carnegie Mellon University.  See LICENSE file for terms.
+
 #ifndef Pharos_OOClass_H
 #define Pharos_OOClass_H
 
@@ -61,7 +63,7 @@ class OOClassDescriptor : public OOElement {
 
   OOVirtualFunctionTablePtrList vftables_;
 
-  virtual void generate_name();
+  const DescriptorSet& ds;
 
  public:
 
@@ -69,9 +71,9 @@ class OOClassDescriptor : public OOElement {
                     rose_addr_t vft,
                     size_t csize,
                     rose_addr_t dtor,
-                    std::vector<rose_addr_t> method_list);
+                    std::vector<rose_addr_t> method_list,
+                    const DescriptorSet& d);
 
-  OOClassDescriptor();
 
   // JSG thinks the default will suffice because every pointer is a
   // shared pointer

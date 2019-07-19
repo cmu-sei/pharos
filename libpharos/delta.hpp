@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Delta_H
 #define Pharos_Delta_H
@@ -20,6 +20,7 @@ enum GenericConfidence {
   ConfidenceCertain,
   ConfidenceUnspecified
 };
+extern template std::string Enum2Str<GenericConfidence>(GenericConfidence);
 
 // A helper function to print negative hexadecimal values.
 std::string neghex(int x);
@@ -57,8 +58,6 @@ public:
     return o;
   }
 };
-
-typedef std::map<rose_addr_t, StackDelta> StackDeltaMap;
 
 } // namespace pharos
 

@@ -1,4 +1,4 @@
-// Copyright 2016, 2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Michael Duggan
 
@@ -51,14 +51,7 @@ using impl::Query;
 
 class Session {
  public:
-  Session() : Session(nullptr)
-  {}
-
   Session(const ProgOptVarMap & vm);
-
-  Session(const std::string & rule_filename) :
-    Session(global_descriptor_set->get_arguments(), rule_filename)
-  {}
 
   Session(const ProgOptVarMap & vm, const std::string & rule_filename) : Session(vm) {
     if (!consult(rule_filename)) {
@@ -78,6 +71,11 @@ class Session {
       std::cerr << "Prolog could not assert fact!" << std::endl;
     }
     return rv;
+  }
+
+  template <typename... T>
+  static auto make_fact(T &&... t) {
+    return impl::Session::make_fact(std::forward<T>(t)...);
   }
 
   template <typename... T>

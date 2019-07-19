@@ -57,13 +57,15 @@ debug_callback :- statistics, (statistics(summarize_idg) ; true).
 :- dynamic symbolProperty/2.
 :- index(thunk/2, [1,2]).
 :- dynamic thunk/2.
+:- index(intialMemory/2, [1,2]).
+:- dynamic initialMemory/2.
 
 :- index(funcParameter/3, [1,2,3]).
 :- dynamic funcParameter/3.
 :- index(funcReturn/3, [1,2,3]).
 :- dynamic funcReturn/3.
 :- index(callingConvention/2, [1,2]).
-:- dynamic callConvention/2.
+:- dynamic callingConvention/2.
 :- index(callTarget/3, [1,2,3]).
 :- dynamic callTarget/3.
 :- index(callParameter/4, [1,2,3,4]).
@@ -134,9 +136,7 @@ debug_callback :- statistics, (statistics(summarize_idg) ; true).
 :- dynamic factClassSizeLTE/2 as incremental.
 :- dynamic factClassHasNoBase/1 as incremental.
 :- dynamic factClassHasUnknownBase/1 as incremental.
-:- index(factMergeClasses/2, [1,2]).
-:- dynamic factMergeClasses/2 as incremental.
-:- index(factNOTMergeClasses/2, [1,2]).
+:- index(factNOTMergeClasses/2, [1+2]).
 :- dynamic factNOTMergeClasses/2 as incremental.
 :- index(factClassCallsMethod/2, [1,2]).
 :- dynamic factClassCallsMethod/2 as incremental.
@@ -267,9 +267,13 @@ classArgs(factClassSizeLTE/2, 1).
 
 % Numfacts keeps track of the number of currently recorded facts so we can show the user some
 % progress.  Super fancy.
+
+% Use conset/conget per Teri.
+
+:- import conset/2, conget/2 from machine.
 :- dynamic numfacts/1.
-:- assert(numfacts(0)).
-delta_numfacts(D) :- retract(numfacts(Y)), Z is Y+D, assert(numfacts(Z)).
+:- conset(numfacts,0).
+delta_numfacts(D) :- conget(numfacts,Y), Z is Y+D, conset(numfacts,Z).
 
 try_assert(X) :- X, !.
 try_assert(X) :- try_assert_real(X).
@@ -353,7 +357,6 @@ mergeClassBuilder((OldTerm,NewTerm), Out) :-
 
 % Explicitly merge two methods.  Only called from reasonAMergeClasses and tryAMergeClasses.
 mergeClasses(M1, M2) :-
-    factMergeClasses(M1, M2),
     iso_dif(M1, M2),
     makeIfNecessary(M1),
     makeIfNecessary(M2),
@@ -376,15 +379,6 @@ mergeClasses(M1, M2) :-
     all(Actions),
 
     debug_store(unionfind).
-
-% Merge all classes that there are facts for.
-mergeClassesRepeatedly :-
-    % Fact saying that we _should_ merge classes survive from one query to another.
-    factMergeClasses(M1, M2),
-    % If we should merge, then actually do the merge, and if that succeeds, try again.
-    mergeClasses(M1, M2) -> mergeClassesRepeatedly;
-    % But if we failed to merge a class, we're done, but we always succeed and never fail.
-    true.
 
 % It does not appear that the ordering of the reasoning rules is too important because we'll
 % eventually complete all reasoning before going to to guessing.  On the other hand, reasoning
@@ -438,7 +432,7 @@ reasonForwardAsManyTimesAsPossible :-
 %% reasonForwardAtLeastOnce :-
 %%     reasonForward, !, reasonForwardAsManyTimesAsPossible.
 
-countFacts(Total) :- numfacts(Total).
+countFacts(Total) :- conget(numfacts,Total).
 
 % Go forward: Make a guess, reason forward, and then sanity check
 reasoningLoop :-
@@ -556,8 +550,10 @@ solve :-
     loginfoln('No plausible guesses remain, finalizing answer.');
     logfatalln('No complete solution was found!')).
 
+% Per Teri
+:- import load_dync/2 from consult.
 solve(X) :-
-    load_dyn(X),
+    load_dync(X),
     solve.
 
 /* Local Variables:   */

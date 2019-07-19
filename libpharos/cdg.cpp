@@ -1,4 +1,4 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "cdg.hpp"
 #include "masm.hpp"
@@ -13,14 +13,15 @@ namespace pharos {
 #define NULL_VERTEX boost::graph_traits<ControlFlowGraph>::null_vertex()
 using DomIdx = typename boost::property_map<ControlFlowGraph, boost::vertex_index_t>::type;
 
-CDG::CDG(FunctionDescriptor *f) {
+CDG::CDG(FunctionDescriptor &f) {
   Rose::BinaryAnalysis::ControlFlow cfg_analysis;
 
-  // Save a copy of the SgAsmFunction.
-  func = f->get_func();
+  // Save a pointer to the FunctionDescriptor.
+  fd = &f;
 
   // Build the CFG and get the blocks in forward flow order
-  cfg = cfg_analysis.build_block_cfg_from_ast<ControlFlowGraph>(func);
+  cfg = fd->get_pharos_cfg();
+  forward_list = fd->get_vertices_in_flow_order();
 
   // Some sanity checking to prove that the true entry vertex is always zero.  This test still
   // fails in some rare cases where function's entry_block() is NULL.  This is apparently due
@@ -30,22 +31,20 @@ CDG::CDG(FunctionDescriptor *f) {
 
   // The entry block from the perspective of the control flow graph.
   SgAsmBlock *eblock = get(boost::vertex_name, cfg, entry);
-  // The entry block from the perspective of the SgAsmFunction object.
-  SgAsmBlock *feblock = func->get_entry_block();
+  // The entry block from the perspective of the function descriptor.
+  SgAsmBlock *feblock = fd->get_entry_block();
 
   // Now report various failures without asserting.
   if (eblock == NULL) {
-    GERROR << "CFG entry block is NULL for function: " << f->address_string() << LEND;
+    GERROR << "CFG entry block is NULL for function: " << fd->address_string() << LEND;
   }
   if (feblock == NULL) {
-    GERROR << "Entry block is NULL for function: " << f->address_string() << LEND;
+    GERROR << "Entry block is NULL for function: " << fd->address_string() << LEND;
   }
   if (eblock != NULL and feblock != NULL and eblock != feblock) {
     GERROR << "Unexpected entry block mismatch " << addr_str(eblock->get_address())
            << " != " << addr_str(feblock->get_address()) << "." << LEND;
   }
-
-  forward_list = cfg_analysis.flow_order(cfg,entry,NULL);
 
   // If building the dominance and post-dominance maps turns out to be expensive, we could
   // improve performance by deferring it's computation until someone asks a dominance question.
@@ -59,8 +58,7 @@ CDG::CDG(FunctionDescriptor *f) {
   // Dominance analysis failed
   // We won't have a correct dominance analysis
   if (imm_dom.size() == 0) {
-    GERROR << "Dominance analysis failed for function: "
-           << addr_str(func->get_entry_va()) << LEND;
+    GERROR << "Dominance analysis failed for function: " << fd->address_string() << LEND;
   }
 
   // Build the immediate-post-dominator array.
@@ -103,8 +101,7 @@ CDG::CDG(FunctionDescriptor *f) {
   // Post-dominance analysis failed
   // We won't have a correct dominance analysis
   if (imm_post_dom.size() == 0) {
-    GERROR << "Post-dominance analysis failed for function: "
-           << addr_str(func->get_entry_va()) << LEND;
+    GERROR << "Post-dominance analysis failed for function: " << fd->address_string() << LEND;
   }
 
   initialize_block_dependencies();
@@ -285,7 +282,7 @@ X86InsnSet CDG::getControlDependencies(const SgAsmX86Instruction *insn) const {
 
 Insn2InsnSetMap CDG::getControlDependencies() const {
   Insn2InsnSetMap out;
-  for (const SgAsmStatement* bs : func->get_statementList()) {
+  for (const SgAsmStatement* bs : fd->get_func()->get_statementList()) {
     const SgAsmBlock *bb = isSgAsmBlock(bs);
     assert(bb);
     for (SgAsmStatement* is : bb->get_statementList()) {
@@ -388,7 +385,7 @@ void CDG::dumpControlDependencies() const {
 }
 
 void CDG::dumpInsnDependencies() const {
-  for (const SgAsmStatement* bs : func->get_statementList()) {
+  for (const SgAsmStatement* bs : fd->get_func()->get_statementList()) {
     const SgAsmBlock *bb = isSgAsmBlock(bs);
     assert(bb);
     for (const SgAsmStatement* is : bb->get_statementList()) {

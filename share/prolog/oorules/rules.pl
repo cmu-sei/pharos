@@ -98,19 +98,31 @@ reasonMethod_K(Method) :-
 % Because the thisptr is known to be an object pointer.
 reasonMethod_L(Method) :-
     factMethod(Caller),
-    funcOffset(_Insn1, Caller, Method, 0).
+    % Intentionally NOT a validFuncOffset!
+    funcOffset(_Insn1, Caller, Method, 0),
+    debug('reasonMethod_L('), debug(Method), debugln(').'),
+    % Require that the Method also read/use the value.
+    funcParameter(Method, ecx, _SymbolicValue),
+    %debug('reasonMethod_L('), debug(Method), debugln(').'),
+    true.
 
 % Because direct data flow from new() makes the function a method.
 reasonMethod_M(Method) :-
     thisPtrAllocation(_Insn1, Func, ThisPtr, _Type, _Size),
-    thisPtrUsage(_Insn2, Func, ThisPtr, Method).
+    thisPtrUsage(_Insn2, Func, ThisPtr, Method),
+    % Require that the Method also read/use the value.
+    funcParameter(Method, ecx, _SymbolicValue),
+    %debug('reasonMethod_M('), debug(Method), debugln(').'),
+    true.
 
 % Because the thisptr is known to be an object pointer.
 reasonMethod_N(Func) :-
     thisPtrUsage(_Insn1, Func, ThisPtr, Method),
     factMethod(Method),
     % We explicitly don't care about certainty here, even it contradicts this rule.
-    thisCallMethod(Func, ThisPtr, _Certainty).
+    thisCallMethod(Func, ThisPtr, _Certainty),
+    %debug('reasonMethod_N('), debug(Method), debugln(').'),
+    true.
 
 % First attempt at guessing that a cdecl method is really an OO cdecl method.
 reasonMethod_O(Method) :-
@@ -124,7 +136,9 @@ reasonMethod_O(Method) :-
     callTarget(Insn, Proven, Target),
     dethunk(Target, Method),
     % And we're __cdecl.
-    callingConvention(Method, '__cdecl').
+    callingConvention(Method, '__cdecl'),
+    %debug('reasonMethod_O('), debug(Method), debugln(').'),
+    true.
 
 % Know this-pointers passed from one method to another within a function.
 reasonMethod_P(Method) :-
@@ -137,7 +151,14 @@ reasonMethod_P(Method) :-
     callParameter(Insn2, Func, 0, ThisPtr),
     callTarget(Insn2, Func, Target2),
     dethunk(Target2, Method),
-    callingConvention(Method, '__cdecl').
+    callingConvention(Method, '__cdecl'),
+    %debug('reasonMethod_P('), debug(Method), debugln(').'),
+    true.
+
+%reasonMethod_Q(Method) :-
+% Does this rule remove the need for dethunk in other reasonMethod.
+%    thunk(Method, Called),
+%    factMethod(Called).
 
 reasonMethodSet(Set) :-
     setof(Method, reasonMethod(Method), Set).
@@ -271,7 +292,7 @@ reasonNOTConstructor_E(Method) :-
 % ED_PAPER_INTERESTING
 reasonNOTConstructor_F(Method) :-
     factNOTConstructor(OtherMethod),
-    funcOffset(_Insn, OtherMethod, Method, _Offset),
+    validFuncOffset(_Insn, OtherMethod, Method, _Offset),
     % Debugging
     %not(factNOTConstructor(Method)),
     %debug('reasonFactNOTConstructor_F('), debug(Method),debugln(').'),
@@ -283,7 +304,7 @@ reasonNOTConstructor_F(Method) :-
 % ED_PAPER_INTERESTING
 reasonNOTConstructor_G(Method) :-
     % There's another method that calls this method on the same object pointer.
-    funcOffset(_, Caller, Method, 0),
+    validFuncOffset(_, Caller, Method, 0),
     % The caller is known to be a constructor or destructor.
     (factConstructor(Caller); factRealDestructor(Caller)),
     % The caller is already known to have a VFTable write.
@@ -388,7 +409,7 @@ reasonNOTRealDestructor_F(Method) :-
     find(Method, Class),
     find(Caller, Class),
     iso_dif(Method, Caller),
-    funcOffset(_Insn, Caller, Method, 0),
+    validFuncOffset(_Insn, Caller, Method, 0),
     factNOTDeletingDestructor(Caller),
     % Debugging
     %debug('reasonNOTRealDestructor_F('),
@@ -400,7 +421,7 @@ reasonNOTRealDestructor_F(Method) :-
 % PAPER: ??? NEW!
 reasonNOTRealDestructor_G(Method) :-
     % There's another method that calls this method on the same object pointer.
-    funcOffset(_, Caller, Method, 0),
+    validFuncOffset(_, Caller, Method, 0),
     % The caller is known to be a constructor or destructor.
     (factConstructor(Caller); factRealDestructor(Caller)),
     % The caller is already known to have a VFTable write.
@@ -485,7 +506,7 @@ reasonNOTDeletingDestructor_E(Method) :-
     factMethod(Method),
     factMethod(Caller),
     iso_dif(Method, Caller),
-    funcOffset(_Insn, Caller, Method, 0),
+    validFuncOffset(_Insn, Caller, Method, 0),
     % Debugging
     %debug('reasonNOTDeletingDestructor_E('),
     %debug(Method), debug(', '),
@@ -860,7 +881,7 @@ reasonVBTable(VBTable) :-
 % Because an entry was validated first, for example from RTTI.
 % PAPER: ??? NEW!
 reasonVBTable(VBTable) :-
-    factVBTableEntry(VBTable, Offset, _Method),
+    factVBTableEntry(VBTable, Offset, _Value),
     Offset >= 4,
     %debug('reasonVBTable_A('), debug(VBTable), debugln(').'),
     true.
@@ -935,13 +956,27 @@ reasonVBTableEntry(VBTable, Offset, Value) :-
 % rule makes no distinction.
 :- table reasonObjectInObject/3 as incremental.
 
+:- table reasonObjectInObject_A/3 as incremental.
+:- table reasonObjectInObject_B/3 as incremental.
+:- table reasonObjectInObject_C/3 as incremental.
+:- table reasonObjectInObject_D/3 as incremental.
+:- table reasonObjectInObject_E/3 as incremental.
+
+reasonObjectInObject(OuterClass, InnerClass, Offset) :-
+    or([reasonObjectInObject_A(OuterClass, InnerClass, Offset),
+        reasonObjectInObject_B(OuterClass, InnerClass, Offset),
+        reasonObjectInObject_C(OuterClass, InnerClass, Offset),
+        reasonObjectInObject_D(OuterClass, InnerClass, Offset),
+        reasonObjectInObject_E(OuterClass, InnerClass, Offset)
+      ]).
+
 % Because it is already known to be true.
 % PAPER: NA
-reasonObjectInObject(OuterClass, InnerClass, Offset) :-
+reasonObjectInObject_A(OuterClass, InnerClass, Offset) :-
     factObjectInObject(OuterClass, InnerClass, Offset).
 
 % Because an existing inhertance relationship exists.
-reasonObjectInObject(OuterClass, InnerClass, Offset) :-
+reasonObjectInObject_B(OuterClass, InnerClass, Offset) :-
     % While it's unusual to gain the derived class knowledge first, we should keep the fact
     % database consistent in cases where we do (e.g. from RTTI information).
     factDerivedClass(OuterClass, InnerClass, Offset),
@@ -952,7 +987,7 @@ reasonObjectInObject(OuterClass, InnerClass, Offset) :-
     true.
 
 % Because an existing embedded object relationship exists.
-reasonObjectInObject(OuterClass, InnerClass, Offset) :-
+reasonObjectInObject_C(OuterClass, InnerClass, Offset) :-
     % This case probably is used at all yet, but it might be someday.
     factEmbeddedObject(OuterClass, InnerClass, Offset),
     %debug('reasonObjectInObject_C('),
@@ -961,10 +996,12 @@ reasonObjectInObject(OuterClass, InnerClass, Offset) :-
     %debug(Offset),debugln(').'),
     true.
 
-% Because the outer constructor explicitly calls the inner constructor on that offset.
-% PAPER: Relate-1
-% ED_PAPER_INTERESTING
-reasonObjectInObject(OuterClass, InnerClass, Offset) :-
+% This rule is a special case of the reasonObjectInObject_E, that relies on the fact that it
+% does not matter whether the InnerClass and OuterClass are provably different or whether
+% they're just currently not assigned to the same class.  The key observation is that the
+% distinction only matters when offset is non-zero, because that fact alone rules out the
+% possibility that the two classes are in fact the same class.
+reasonObjectInObject_D(OuterClass, InnerClass, Offset) :-
     % We are certain that this member offset is passed to InnerConstructor.
     validFuncOffset(_CallInsn, OuterConstructor, InnerConstructor, Offset),
     factConstructor(OuterConstructor),
@@ -972,9 +1009,43 @@ reasonObjectInObject(OuterClass, InnerClass, Offset) :-
     iso_dif(InnerConstructor, OuterConstructor),
     find(InnerConstructor, InnerClass),
     find(OuterConstructor, OuterClass),
-    % It's not good enough for the methods to currently be on the same class.  What's really
-    % correct is that we know that they're on different classes.  To preserve the previous
-    % behavior, the weaker rule was moved to a guess.
+
+    % This constraint is the one that makes this rule different from ObjectInObject_E.
+    iso_dif(Offset, 0),
+    iso_dif(InnerClass, OuterClass),
+
+    % Prevent grand ancestors from being decalred object in object.  See commentary below.
+    % It's unclear of this constraint is really required in cases where Offset is non-zero.
+    not(reasonDerivedClassRelationship(OuterClass, InnerClass)),
+
+    %debug('reasonObjectInObject_D('),
+    %debug(OuterClass), debug(', '),
+    %debug(InnerClass), debug(', '),
+    %debug(Offset),debugln(').'),
+    true.
+
+% Because the outer constructor explicitly calls the inner constructor on that offset.
+% PAPER: Relate-1
+% ED_PAPER_INTERESTING
+reasonObjectInObject_E(OuterClass, InnerClass, Offset) :-
+    % We are certain that this member offset is passed to InnerConstructor.
+    validFuncOffset(_CallInsn, OuterConstructor, InnerConstructor, Offset),
+    factConstructor(OuterConstructor),
+    factConstructor(InnerConstructor),
+    iso_dif(InnerConstructor, OuterConstructor),
+    find(InnerConstructor, InnerClass),
+    find(OuterConstructor, OuterClass),
+
+    % It's not good enough for the methods to currently be assigned to different classes
+    % because they could actually be on the same class, and we just haven't merged them yet.
+    % What's really correct is that we know that they're on different classes (or more
+    % literally that we know that we're never going to merge the two classes).
+
+    % The weaker version of this rule without this additional constraint was moved to a guess,
+    % because there's a good chance that there's an ObjectInObject relationship even if we
+    % can't prove that the two methods are on different classes yet.  This additional strength
+    % is actually only required when the offset is zero, because it's always true that an
+    % object can't embed or inherit itself at a non-zero offset.
     (factNOTMergeClasses(InnerClass, OuterClass);
      factNOTMergeClasses(OuterClass, InnerClass)),
 
@@ -988,7 +1059,7 @@ reasonObjectInObject(OuterClass, InnerClass, Offset) :-
     % wanted.  This blocks that condition, but it's not clear that it does so optimally.
     not(reasonDerivedClassRelationship(OuterClass, InnerClass)),
 
-    %debug('reasonObjectInObject_A('),
+    %debug('reasonObjectInObject_E('),
     %debug(OuterClass), debug(', '),
     %debug(InnerClass), debug(', '),
     %debug(Offset),debugln(').'),
@@ -1024,14 +1095,26 @@ reasonObjectInObject(OuterClass, InnerClass, Offset) :-
 % the class EmbeddedClass.
 :- table reasonEmbeddedObject/3 as incremental.
 
+:- table reasonEmbeddedObject_A/3 as incremental.
+:- table reasonEmbeddedObject_B/3 as incremental.
+:- table reasonEmbeddedObject_C/3 as incremental.
+:- table reasonEmbeddedObject_D/3 as incremental.
+
+reasonEmbeddedObject(Class, EmbeddedClass, Offset) :-
+    or([reasonEmbeddedObject_A(Class, EmbeddedClass, Offset),
+        reasonEmbeddedObject_B(Class, EmbeddedClass, Offset),
+        reasonEmbeddedObject_C(Class, EmbeddedClass, Offset),
+        reasonEmbeddedObject_D(Class, EmbeddedClass, Offset)
+      ]).
+
 % Because it is already known to be true.
 % PAPER: NA
-reasonEmbeddedObject(Class, EmbeddedClass, Offset) :-
+reasonEmbeddedObject_A(Class, EmbeddedClass, Offset) :-
     factEmbeddedObject(Class, EmbeddedClass, Offset).
 
 % Because the object is there and we know it's not a case of inheritance.
 % PAPER: Logic
-reasonEmbeddedObject(Class, EmbeddedClass, Offset) :-
+reasonEmbeddedObject_B(Class, EmbeddedClass, Offset) :-
     factObjectInObject(Class, EmbeddedClass, Offset),
     % If this were true, we'd be inhertance instead.
     factNOTDerivedClass(Class, EmbeddedClass, Offset).
@@ -1039,9 +1122,35 @@ reasonEmbeddedObject(Class, EmbeddedClass, Offset) :-
 % Because if a constructor has no base, but there is an object inside an object, then that
 % object must be an embedded object (and not a base class).
 % PAPER: Relate-2 / logic
-reasonEmbeddedObject(Class, EmbeddedClass, Offset) :-
+reasonEmbeddedObject_C(Class, EmbeddedClass, Offset) :-
     factObjectInObject(Class, EmbeddedClass, Offset),
     factClassHasNoBase(Class).
+
+% Because there's an embedded object before this object in the enclosing class.  Base clases
+% are always located before the embedded objects, and so the first embedded object marks the
+% end of inheritance.  This rule is a specialization of the next rule, but should perform
+% better due to testing explicitly true facts rather than using "not()".
+reasonEmbeddedObject_D(Class, EmbeddedClass, Offset) :-
+    factObjectInObject(Class, EmbeddedClass, Offset),
+    not(factDerivedClass(Class, EmbeddedClass, Offset)),
+    iso_dif(Offset, 0),
+    factEmbeddedObject(Class, _, LowerOffset),
+    LowerOffset < Offset.
+
+% Because there's a member before this one that's not an object.  In other words, there's an
+% ordinary member before this object, which means that it can't be inheritance, because base
+% classes are always listed before all other members.  This turns out to be not strictly true
+% for cases of virtual inheritance, which can place ordinary members before the virtual base
+% class.  See the corresponding sanity rule which has also been disabled.
+%
+% Expressing this rule in terms of not(ObjectInObject(...)) requires those facts to be present,
+% and unfortunately they may not always been concluded in the correct order.  This also turned
+% out to be a non-trivial problem with this rule, and no completely satisfactory solution was
+% found (the problem was eventually worked around by making guesses in a better order).  There
+% might be a solution involving ValidFuncOffset, and proving that there can never be an object
+% at a given offset but that's stil proof based on the absence of evidence, which might not be
+% the best plan.  I decided in the end to remove the draft rule entirely, because it was a
+% mess, but to keep the comment because this line of thinking still has merit.
 
 % Add rule for: We must be an embedded object if the table we write was the certain normal
 % (unmodified) table of the embedded constructor.  Duplicate of inheritance NOT rule?
@@ -1075,13 +1184,15 @@ reasonNOTEmbeddedObject(Class, EmbeddedClass, Offset) :-
 :- table reasonDerivedClass_C/3 as incremental.
 :- table reasonDerivedClass_D/3 as incremental.
 :- table reasonDerivedClass_E/3 as incremental.
+:- table reasonDerivedClass_F/3 as incremental.
 
 reasonDerivedClass(DerivedClass, BaseClass, ObjectOffset) :-
     or([reasonDerivedClass_A(DerivedClass, BaseClass, ObjectOffset),
         reasonDerivedClass_B(DerivedClass, BaseClass, ObjectOffset),
         reasonDerivedClass_C(DerivedClass, BaseClass, ObjectOffset),
         reasonDerivedClass_D(DerivedClass, BaseClass, ObjectOffset),
-        reasonDerivedClass_E(DerivedClass, BaseClass, ObjectOffset)
+        reasonDerivedClass_E(DerivedClass, BaseClass, ObjectOffset),
+        reasonDerivedClass_F(DerivedClass, BaseClass, ObjectOffset)
       ]).
 
 % Because it is already known to be true.
@@ -1089,7 +1200,12 @@ reasonDerivedClass(DerivedClass, BaseClass, ObjectOffset) :-
 reasonDerivedClass_A(DerivedClass, BaseClass, ObjectOffset) :-
     factDerivedClass(DerivedClass, BaseClass, ObjectOffset).
 
-% Because reasons...
+% Because the derived class constructor calls the base class constructor, and both constructors
+% install VFTables into the same location.  The VFTable overwrite contraint is required because
+% otherwise the rule will match embedded object releationships as well.  Proof that the two
+% VFTable writes are to the same location is provided by the pointer math in validFuncOffset,
+% paried with the appropriatte offsets in the VFTable writes.
+
 % PAPER: Relate-3
 % ED_PAPER_INTERESTING
 reasonDerivedClass_B(DerivedClass, BaseClass, ObjectOffset) :-
@@ -1101,18 +1217,17 @@ reasonDerivedClass_B(DerivedClass, BaseClass, ObjectOffset) :-
     validFuncOffset(_, DerivedConstructor, BaseConstructor, ObjectOffset),
     factConstructor(DerivedConstructor),
     factConstructor(BaseConstructor),
+    % A constructor can't be it's own parent.
     iso_dif(DerivedConstructor, BaseConstructor),
 
     % Both methods wrote confirmed vtables into offsets in the object.  In the derived class,
     % the offset is the location of the object, but in the base class it will always be the
     % table written to offset zero.
-    factVFTableWrite(_Insn1, DerivedConstructor, _OtherObjectOffset, DerivedVFTable),
+    factVFTableWrite(_Insn1, DerivedConstructor, ObjectOffset, DerivedVFTable),
     factVFTableWrite(_Insn2, BaseConstructor, 0, BaseVFTable),
 
     % And the vtables values written were different
     iso_dif(DerivedVFTable, BaseVFTable),
-    % A constructor can't be it's own parent.
-    iso_dif(DerivedConstructor, BaseConstructor),
     find(DerivedConstructor, DerivedClass),
     find(BaseConstructor, BaseClass),
 
@@ -1249,6 +1364,25 @@ reasonDerivedClass_E(DerivedClass, BaseClass, Offset) :-
     %debug(DerivedClass), debug(', '),
     %debug(BaseClass), debug(', '),
     %debug(Offset), debugln(').'),
+    true.
+
+% An easier to understand version of E that builds on concluded VBTable facts instead of RTTI.
+reasonDerivedClass_F(DerivedClass, BaseClass, Offset) :-
+    factObjectInObject(DerivedClass, BaseClass, Offset),
+    % There's an entry in some VBTable somehere (only unified by Offset so far).
+    factVBTableEntry(VBTableAddress, _TableObjectOffset, Offset),
+    % And that VBTable is installed into an object in some Method.
+    factVBTableWrite(_Insn, Method, _VBTableOffset, VBTableAddress),
+    % Finally, check that the method is assigned to the Derived class.
+    % This is the unification that makes the VBTableEntry relevant.
+    find(Method, DerivedClass),
+    % Debugging
+    not(factDerivedClass(DerivedClass, BaseClass, Offset)),
+    debug('reasonDerivedClass_F('),
+    debug(DerivedClass), debug(', '),
+    debug(BaseClass), debug(', '),
+    debug(Offset), debug(', '),
+    debug(VBTableAddress), debugln(').'),
     true.
 
 % --------------------------------------------------------------------------------------------
@@ -1482,7 +1616,7 @@ reasonClassCallsMethod_B(Class1, Method2) :-
 % Because one method calls another method on the same this-pointer.
 % PAPER: Call-3
 reasonClassCallsMethod_C(Class1, Method2) :-
-    funcOffset(_Insn, Method1, Method2, 0),
+    validFuncOffset(_Insn, Method1, Method2, 0),
     iso_dif(Method1, Method2),
     find(Method1, Class1),
     % Don't propose assignments we already know.
@@ -1584,8 +1718,7 @@ reasonClassCallsMethod_F(Class, Method) :-
 :- table reasonMergeClasses_G/2 as incremental.
 :- table reasonMergeClasses_H/2 as incremental.
 
-reasonMergeClasses(C,M) :- or([reasonMergeClasses_A(C,M),
-                               reasonMergeClasses_B(C,M),
+reasonMergeClasses(C,M) :- or([reasonMergeClasses_B(C,M),
                                reasonMergeClasses_C(C,M),
                                reasonMergeClasses_D(C,M),
                                reasonMergeClasses_E(C,M),
@@ -1594,8 +1727,8 @@ reasonMergeClasses(C,M) :- or([reasonMergeClasses_A(C,M),
                                reasonMergeClasses_H(C,M)]).
 
 % Because the classes have already been merged.
-reasonMergeClasses_A(Method1, Method2) :-
-    factMergeClasses(Method1, Method2).
+%% reasonMergeClasses_A(Method1, Method2) :-
+%%     factMergeClasses(Method1, Method2).
 
 % If a constructor and a real destructor share the same vtable, they must be the same class.
 % We decided that reasonMergeClassesA was a special case of reasonMergeClassesD.
@@ -2148,7 +2281,7 @@ reasonNOTMergeClasses_P(Class1, Class2) :-
     factMethod(Caller),
     factMethod(Method),
     iso_dif(Method, Caller),
-    funcOffset(_Insn, Caller, Method, Offset),
+    validFuncOffset(_Insn, Caller, Method, Offset),
     iso_dif(Offset, 0),
     (factConstructor(Method); factDeletingDestructor(Method); factRealDestructor(Method)),
     find(Method, Class1),

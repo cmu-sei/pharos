@@ -12,16 +12,12 @@ namespace msg = ::Sawyer::Message;
 
 static std::map<std::string, msg::Importance> importance_map;
 
-msg::Facility plog{"PLOG"};
+msg::Facility plog;
 
 Session::Session(const ProgOptVarMap& vm)
 {
   Path libdir = get_library_path();
-#ifndef PHAROS_RELEASE
-  auto prolog_dir = absolute(Path(PHAROS_XSB_BUILD_LOCATION));
-#else // PHAROS_RELEASE
-  auto prolog_dir = libdir / "XSB"; // PHAROS_RELEASE
-#endif // PHAROS_RELEASE
+  auto prolog_dir = Path();
   auto pdir = vm.config().path_get("pharos.prolog_dir");
   if (pdir && !pdir.Scalar().empty()) {
     prolog_dir = pdir.Scalar();

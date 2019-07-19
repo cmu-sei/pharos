@@ -1,4 +1,4 @@
-// Copyright 2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2017-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_demangle_json
 #define Pharos_demangle_json
@@ -10,10 +10,10 @@ namespace demangle {
 
 class JsonOutput {
  public:
-  using Builder   = json::wrapper::Builder;
-  using Object    = json::wrapper::Object;
-  using ObjectRef = json::wrapper::ObjectRef;
-  using NodeRef   = json::wrapper::NodeRef;
+  using Builder   = pharos::json::Builder;
+  using Object    = pharos::json::Object;
+  using ObjectRef = pharos::json::ObjectRef;
+  using NodeRef   = pharos::json::NodeRef;
 
  public:
   JsonOutput(Builder const & b) : builder(b) {}

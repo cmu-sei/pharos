@@ -1,26 +1,30 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_CDG_H
 #define Pharos_CDG_H
 
 #include <rose.h>
+#include <Partitioner2/Partitioner.h>
 
 #include "misc.hpp"
 #include <boost/range/adaptor/transformed.hpp>
 
 namespace pharos {
 
-typedef std::map<SgAsmx86Instruction*, InsnSet> Insn2InsnSetMap;
-typedef Rose::BinaryAnalysis::ControlFlow::Graph ControlFlowGraph;
-typedef boost::graph_traits<ControlFlowGraph>::vertex_descriptor CFGVertex;
-typedef boost::graph_traits<ControlFlowGraph>::edge_descriptor CFGEdge;
-typedef std::set<CFGVertex> CFGVertexSet;
+using Insn2InsnSetMap = std::map<SgAsmX86Instruction*, InsnSet>;
+using ControlFlowGraph = Rose::BinaryAnalysis::ControlFlow::Graph;
+using CFGVertex = boost::graph_traits<ControlFlowGraph>::vertex_descriptor;
+using CFGEdge = boost::graph_traits<ControlFlowGraph>::edge_descriptor;
+using CFGVertexSet = std::set<CFGVertex>;
+
+class FunctionDescriptor;
 
 class CDG {
   std::vector<CFGVertex> forward_list;
   ControlFlowGraph cfg;
   std::map<SgAsmBlock *, CFGVertex> block_to_vertex;
-  SgAsmFunction *func;
+
+  FunctionDescriptor* fd;
 
   using DomVec = std::vector<CFGVertex>;
   // The immediate strict dominance graph of control flow graph vertexes.
@@ -38,7 +42,7 @@ class CDG {
   // This mapping is essentially unused at the present time.  Purpose unclear.
   std::map<CFGVertex, CFGVertexSet> dependents_of;
 
-  CDG(FunctionDescriptor* f);
+  CDG(FunctionDescriptor & f);
 
   // Ed's thesis made this clear in a way that I never understood from Wes.  A block D
   // dominates block B if and only if every path from the program entry point to the block B
@@ -50,21 +54,21 @@ class CDG {
     return dominance_helper(imm_dom, a, b);
   }
   // Return true if i1 dominates i2.
-  bool dominates(const SgAsmx86Instruction *i1, const SgAsmx86Instruction *i2) const;
+  bool dominates(const SgAsmX86Instruction *i1, const SgAsmX86Instruction *i2) const;
 
   // Return true if A post-dominates B.
   bool post_dominates(const CFGVertex& a, const CFGVertex& b) const {
     return dominance_helper(imm_post_dom, a, b);
   }
   // Return true if i1 post-dominates i2.
-  bool post_dominates(const SgAsmx86Instruction *i1, const SgAsmx86Instruction *i2) const;
+  bool post_dominates(const SgAsmX86Instruction *i1, const SgAsmX86Instruction *i2) const;
 
   // Dump dominance maps for debugging.
   void dump_dominance_maps() const;
 
   void get_dependents_between(const CFGVertex& a, const CFGVertex& b, CFGVertexSet &dependents) const;
-  SgAsmx86Instruction* getControllingInstruction(const CFGVertex& vertex) const;
-  X86InsnSet getControlDependencies(const SgAsmx86Instruction *insn) const;
+  SgAsmX86Instruction* getControllingInstruction(const CFGVertex& vertex) const;
+  X86InsnSet getControlDependencies(const SgAsmX86Instruction *insn) const;
   Insn2InsnSetMap getControlDependencies() const;
   void dumpBlock(const CFGVertex& vertex) const;
   void dumpControlDependencies() const;
@@ -121,18 +125,14 @@ convert_edge_to_vertex(const G & g, typename Convert_Edge_To_Vertex<G, forwards>
 }
 
 template <typename G>
-auto cfg_out_vertices(const G & cfg, typename boost::graph_traits<G>::vertex_descriptor v) ->
-  decltype(cfg_out_edges(cfg, v)
-           | boost::adaptors::transformed(convert_edge_to_vertex<true>(cfg)))
+auto cfg_out_vertices(const G & cfg, typename boost::graph_traits<G>::vertex_descriptor v)
 {
   return (cfg_out_edges(cfg, v)
           | boost::adaptors::transformed(convert_edge_to_vertex<true>(cfg)));
 }
 
 template <typename G>
-auto cfg_in_vertices(const G & cfg, typename boost::graph_traits<G>::vertex_descriptor v) ->
-  decltype(cfg_in_edges(cfg, v)
-           | boost::adaptors::transformed(convert_edge_to_vertex<false>(cfg)))
+auto cfg_in_vertices(const G & cfg, typename boost::graph_traits<G>::vertex_descriptor v)
 {
   return (cfg_in_edges(cfg, v)
           | boost::adaptors::transformed(convert_edge_to_vertex<false>(cfg)));
@@ -160,25 +160,20 @@ convert_vertex_to_bblock(const G & g, typename Convert_Vertex_To_BBlock<G>::vert
 }
 
 template <typename G>
-auto cfg_bblocks(const G & cfg) ->
-  decltype(cfg_vertices(cfg) | boost::adaptors::transformed(convert_vertex_to_bblock(cfg)))
+auto cfg_bblocks(const G & cfg)
 {
   return (cfg_vertices(cfg) | boost::adaptors::transformed(convert_vertex_to_bblock(cfg)));
 }
 
 template <typename G>
-auto cfg_out_bblocks(const G & cfg, typename boost::graph_traits<G>::vertex_descriptor v) ->
-  decltype(cfg_out_vertices(cfg, v)
-           | boost::adaptors::transformed(convert_vertex_to_bblock(cfg)))
+auto cfg_out_bblocks(const G & cfg, typename boost::graph_traits<G>::vertex_descriptor v)
 {
   return (cfg_out_vertices(cfg, v)
           | boost::adaptors::transformed(convert_vertex_to_bblock(cfg)));
 }
 
 template <typename G>
-auto cfg_in_bblocks(const G & cfg, typename boost::graph_traits<G>::vertex_descriptor v) ->
-  decltype(cfg_in_vertices(cfg, v)
-           | boost::adaptors::transformed(convert_vertex_to_bblock(cfg)))
+auto cfg_in_bblocks(const G & cfg, typename boost::graph_traits<G>::vertex_descriptor v)
 {
   return (cfg_in_vertices(cfg, v)
           | boost::adaptors::transformed(convert_vertex_to_bblock(cfg)));

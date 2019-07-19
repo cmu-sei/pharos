@@ -27,6 +27,7 @@ add_test(NAME apitests2_test COMMAND apitests2 ${PHAROS_TEST_OPS}
 add_executable(apitests3 apitests3.cpp)
 target_link_libraries(apitests3 gtest)
 add_test(NAME apitests3_test COMMAND apitests3 ${PHAROS_TEST_OPS}
+  --test-config ./tests/apitests3_sig.json
   "${APIANALYZER_TEST_DIR}/ApiGraphTestProgram3.exe"
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 

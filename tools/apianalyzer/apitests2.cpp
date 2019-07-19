@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <rose.h>
 #include <stdio.h>
@@ -17,6 +17,7 @@
 #include <libpharos/defuse.hpp>
 #include <libpharos/sptrack.hpp>
 #include <libpharos/options.hpp>
+#include <libpharos/bua.hpp>
 
 #include <gtest/gtest.h>
 
@@ -25,7 +26,7 @@
 
 using namespace pharos;
 
-Sawyer::Message::Facility glog("APIT");
+const DescriptorSet* global_ds = nullptr;
 
 // This is the main test fixture
 class ApiAnalyzerTest2 : public testing::Test {
@@ -34,7 +35,7 @@ protected:
 
   ApiGraph api_graph_;
 
-  ApiAnalyzerTest2() {  }
+  ApiAnalyzerTest2() : api_graph_(*global_ds) {  }
 
   virtual void SetUp() {
     // Code here will be called immediately after the constructor (right
@@ -71,8 +72,8 @@ TEST_F(ApiAnalyzerInterproceduralTest, TEST_SHOULD_NOT_FIND_INVALID_INTERPROCEDU
   // self-loop + additional APIs
   ApiSig sig;
   sig.name = "TEST_SHOULD_FIND_VALID_SIG_INTERPROCEDURAL";
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!GETSTARTUPINOFW"));
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!GARBAGE")); // Invalid
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!GETSTARTUPINOFW"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!GARBAGE")); // Invalid
 
   sig.api_count = sig.api_calls.size();
 
@@ -83,10 +84,10 @@ TEST_F(ApiAnalyzerInterproceduralTest, TEST_SHOULD_NOT_FIND_INVALID_INTERPROCEDU
   EXPECT_EQ(results.size(),ApiSearchResultVector::size_type(0));
 
   ApiSig sig2;
-   sig2.name = "TEST_SHOULD_FIND_VALID_SIG_INTERPROCEDURAL";
-   sig2.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!GETSTARTUPINOFW"));
-   sig2.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!READFILE")); // Invalid
-   sig2.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!Garbage")); // Valid
+  sig2.name = "TEST_SHOULD_FIND_VALID_SIG_INTERPROCEDURAL";
+  sig2.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!GETSTARTUPINOFW"));
+  sig2.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!READFILE")); // Invalid
+  sig2.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!Garbage")); // Valid
 
    sig2.api_count = sig2.api_calls.size();
 
@@ -104,10 +105,10 @@ TEST_F(ApiAnalyzerInterproceduralTest, TEST_SHOULD_HANDLE_INTERPROCEDURAL_BACKTR
 
   ApiSig sig1;
   sig1.name = "TEST_SHOULD_HANDLE_INTERPROCEDURAL_BACKTRACKING1";
-  sig1.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!GETTICKCOUNT"));
-  sig1.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!GETMODULEHANDLEA"));
-  sig1.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!EXITPROCESS"));
-  sig1.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!CLOSEHANDLE"));
+  sig1.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!GETTICKCOUNT"));
+  sig1.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!GETMODULEHANDLEA"));
+  sig1.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!EXITPROCESS"));
+  sig1.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!CLOSEHANDLE"));
 
   sig1.api_count = sig1.api_calls.size();
 
@@ -126,11 +127,11 @@ TEST_F(ApiAnalyzerInterproceduralTest, TEST_SHOULD_HANDLE_INTERPROCEDURAL_BACKTR
 TEST_F(ApiAnalyzerInterproceduralTest, TEST_SHOULD_FIND_VALID_INTERPROCEDURAL_SIG) {
 
   // self-loop + additional APIs
-  ApiSig sig;
+  ApiSig sig;;
   sig.name = "TEST_SHOULD_FIND_VALID_SIG_INTERPROCEDURAL";
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!PEEKNAMEDPIPE"));
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!READFILE")); // This is in a sub-component
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!WRITEFILE"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!PEEKNAMEDPIPE"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!READFILE")); // This is in a sub-component
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!WRITEFILE"));
 
   sig.api_count = sig.api_calls.size();
 
@@ -151,18 +152,17 @@ int main(int argc, char **argv) {
 
   ::testing::InitGoogleTest(&argc, argv);
 
+  set_glog_name("API2");
   ProgOptVarMap vm = parse_cert_options(argc, argv, cert_standard_options());
 
   // Find calls, functions, and imports.
   DescriptorSet ds(vm);
-  if (ds.get_interp() == NULL) {
-    GFATAL << "Unable to analyze file (no executable content found)." << LEND;
-    return EXIT_FAILURE;
-  }
   // Resolve imports, load API data, etc.
   ds.resolve_imports();
+  // Global for just this test program to make gtest happy.
+  global_ds = &ds;
 
-  BottomUpAnalyzer bua(&ds, vm);
+  BottomUpAnalyzer bua(ds, vm);
   bua.analyze();
 
   int rc = RUN_ALL_TESTS();

@@ -1,73 +1,116 @@
-# Building and Installing
+This file describes several ways to install (and optionally build) the
+Pharos static binary analysis framework tools.
 
-This file describes how to build and install the Pharos static
-binary analysis framework tools.
+# Pre-built Docker Images (Easiest)
 
-The primary difficulty involved in building the Pharos framework is an
-unfortunate C++11 application binary interface (ABI) compatibility
-issue where all C++ components linked into the final executable need
-to use the same ABI in order to link correctly.  Since the C++ ABI has
-been undergoing changes from GCC 4.8 through GCC 6.3, it's important
-to know which compiler was used to build all of your library
-dependencies.  Additionaly, there are build constraints on various
-packages for some of the very latest compilers.  Our solution has been
-to build all of our dependencies using GCC 4.8 in C++11 mode since the
-Pharos code uses C++11 features.  These instructions are therefore
-part instruction, part advice, and part a report of how we build
-Pharos.
+The easiest way to get started with Pharos is to use our pre-built
+Docker images.
 
-If your linux system/distribution was built using GCC 6 or later, the
-ABI should match, and you should be able to use your system's
-libraries without recompiling them.
+The first step is to download the image:
+```
+$ docker pull seipharos/pharos
+```
+
+To start an interactive session in which the host directory `/dir` is
+mapped to `/dir` inside your container, run the following
+command:
+```
+$ docker run --rm -it -v /dir:/dir seipharos/pharos
+```
+
+The pharos tools will be installed in `/usr/local/bin`.
+
+# Building the Docker Image (Easy)
+
+You can also build your own Docker image with:
+```
+$ docker build --build-arg NCPU 4 -t seipharos/pharos .
+```
+where 4 is the number of cores you wish to use for building.  You
+should probably use 1 unless you have a lot of RAM.
+
+You can then run the container using the same `docker run` command as above.
+
+# Build Script (Medium)
+
+You can also use our Docker build script to build Pharos outside of
+Docker.  This is only supported on the latest version of Ubuntu.
+
+First, install prerequisite packages:
+```
+$ sudo apt update
+$ sudo apt install build-essential wget flex ghostscript bzip2 \
+  git subversion automake libtool bison python libncurses-dev \
+  vim-common sqlite3 libsqlite3-0 libsqlite3-dev zlib1g-dev cmake \
+  libyaml-cpp-dev libboost-all-dev libboost-dev libxml2-dev
+```
+
+Then run the script:
+```
+NCPU=4 ./scripts/build.bash
+```
+Set `NCPU` to the number of cores you wish to use for building.  You
+should probably use 1 unless you have a lot of RAM.
+
+Note that the build script must be able to run `sudo` without being
+prompted for a password.
+
+# Manually Building from Source (Hard)
 
 We have tested several configurations, but have not extensively tested
 different build configurations.
 
+  * RedHat Enterprise Linux 7, GCC 8.3.1, Boost 1.61
   * RedHat Enterprise Linux 7, GCC 6.3.1, Boost 1.61
-  * RedHat Enterprise Linux 7, GCC 4.8.5, Boost 1.61
-  * Ubuntu 17.04, GCC 6.3, Boost 1.64
-  * Ubuntu 17.10, GCC 7.2, Boost 1.62
+  * Ubuntu 19.04, GCC 8.3.0, Boost 1.67
+  * Ubuntu 19.04, GCC 9.1.0, Boost 1.67
+  * OpenSUSE Leap 15.1/Tumbleweed, GCC 8.3.1, Boost 1.69
 
-Building Pharos requires a C++11 compliant compiler.  If you attempt
-to build Pharos (successfully or not) we'd like to hear about you
-experiences, and may be able to help with various build issues.
+Pharos requires C++14 support, so you'll need a compiler that's new
+enough.  If you have an older compiler that doesn't support C++14 by
+default, you may be able to add "--std=c++14" options in some places.
 
-# Build Script and Docker Container
+If you attempt to build Pharos (successfully or not) we'd like to hear
+about your experiences, and may be able to help with various build
+issues.
 
-A script that will attempt to download, build, and install the Pharos
-dependencies is located in scripts/build.bash.  There is also a
-Dockerfile in the root directory that can be used to build a Docker
-image with:
-```
-$ docker build -t pharos .
-```
+## Dependencies
 
-# Dependencies
+In addition to the general build dependencies listed earlier, several
+other important dependencies must be built or installed, including:
 
-First several important dependencies must be built or installed,
-including:
-
-  * ROSE
   * Boost
   * yaml-cpp
-  * SQLLite
+  * SQLite
   * Z3
+  * ROSE
+  * XSB Prolog
 
-## Boost
+### Boost
 
-We build with Boost version 1.61 currently, but we do not belive that
-either ROSE or Pharos is particularly senstive which version of Boost
-is used.  It does need to be compiled with a consistent ABI however,
-and it is important to ensure that this Boost distribution is the same
-Boost distribution used to build ROSE.
+We build with Boost version 1.61 currently, but we do not believe that
+either ROSE or Pharos is particularly sensitive which version of Boost
+is used.  It is important to ensure that this Boost distribution is
+the same Boost distribution used to build ROSE.
 
-We typically build with the folllowing Boost components: system,
+You should be able to use the standard operating system packages under
+most circumstances.
+
+```
+$ sudo yum install boost boost-devel
+-- or --
+$ sudo apt install libboost-dev libboost-all-dev
+-- or --
+$ sudo zypper install boost-devel
+```
+
+We typically build with the following Boost components: system,
 thread, program_options, iostreams, filesystem, regex, wave, chrono,
 date_time, atomic, and serialization.  It may be easier to just build
 and install all components.
 
 It is also important for Boost to be built with zlib support for
-boost::iostreams to function propertly, so ensure that zlib is
+boost::iostreams to function properly, so ensure that zlib is
 installed properly, including development headers.
 
 You can build Boost using these commands:
@@ -80,7 +123,7 @@ $ tar -xjvf boost_1_64_0.tar.bz2
 $ cd boost_1_64_0
 $ ./bootstrap.sh --prefix=/usr/local
 $ ./b2 clean
-$ ./b2 -j4 --without-python toolset=gcc cxxflags="-std=c++11" install
+$ ./b2 -j4 toolset=gcc install
 ```
 
 The latest versions of Boost can interact poorly the FindBoost.cmake
@@ -94,27 +137,14 @@ update CMake or patch patch it by hand.
 An alternative is to use an older distribution of boost.  Much of our
 testing has been done using version 1.61.
 
-You may be able to muddle through with the standard operating system
-packages under certain (unknown) circumstances.
+### yaml-cpp
 
-```
-$ sudo yum install boost boost-devel
--- or --
-$ sudo apt install libboost-dev libboost-all-dev
--- or --
-$ sudo zypper install boost-devel
-```
-
-## yaml-cpp
-
-YAML-cpp is also a C++ library, and has the same C++11 ABI compability
-concerns.  You can try installing the standard operating system
-distribution:
+You can try installing the standard operating system distribution:
 
 ```
 $ sudo yum install yaml-cpp yaml-cpp-devel
 --or--
-$ sudo apt install libyaml-cpp0.5v5 libyaml-cpp-dev
+$ sudo apt install libyaml-cpp0.6 libyaml-cpp-dev
 --or--
 $ sudo zypper install yaml-cpp-devel
 ```
@@ -131,77 +161,85 @@ $ make -j4
 $ make -j4 install
 ```
 
+### SQLite
 
-## Z3
+We recommend fulfilling the SQLite requirement by installing your
+standard operating system distribution of SQLite. Note that on
+most distributions, you must the executable is package separately
+from the library; both must be installed, as the examples below.
+
+```
+$ sudo yum install sqlite sqlite-devel
+-- or --
+$ sudo apt install sqlite3 libsqlite3-dev 
+-- or --
+$ sudo zypper install sqlite3 sqlite3-devel
+```
+
+### Z3
 
 The Z3 package is an SMT solver that can be optionally compiled into
 ROSE.  Z3 is used primarily in the binary analysis component to answer
 questions about symbolic expression equivalence.  Some of the pharos
-tools require Z3 to work.  A fairly recent version of Z3 is necessary,
-but an even more recent commit broke the Z3 ABI with respect to ROSE.
-Therefore, we currently use a very specific revision of Z3.
-Specifically, revision b81165167304c20e28bc42549c94399d70c8ae65.
+tools require Z3 to work.  Z3 is under active development, and some
+commits have broken compatibility with our code from time to time.
+The latest release version of Z3 (4.8.5) has passed our testing.
 
 We build Z3 using commands like these:
 ```
-$ git clone https://github.com/Z3Prover/z3.git
+$ git clone -b Z3-4.8.5 https://github.com/Z3Prover/z3.git
 $ cd z3
-$ git reset --hard b81165167304c20e28bc42549c94399d70c8ae65
 $ mkdir build
 $ cd build
-$ cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_INSTALL_LIBDIR=lib ..
+$ cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
 $ make -j4
-$ make -j4 install
+$ sudo make -j4 install
 ```
 
-## ROSE
+### ROSE
 
 ROSE is probably the most difficult package to build.  We track the
-current commit on the `develop` branch of ROSE on GitHub more or
+current commit on the development version of ROSE on GitHub more or
 less daily, but our own updates to GitHub are less frequent.  At the
-time of this release, ROSE `master` is a couple of months behind
-`develop`, so be sure to fetch the `develop` branch of ROSE.
+time of this release, ROSE master is a couple of months behind
+rose-develop, so be sure to fetch the "development" version of ROSE.
 
 You can obtain the latest version of ROSE from:
 
 ```
-$ git clone https://github.com/rose-compiler/rose rose
+$ git clone -b develop https://github.com/rose-compiler/rose rose
+$ cd rose
 ```
 
-Which has a reasonable chance of working or only having minor issues.
-If you want to be conservative, and use the version of ROSE that was
-known to compile with the latest major commit to the Pharos
-repository, you can checkout this commit (ROSE version 0.9.10.9):
+This version has a reasonable chance of working or only having minor
+issues.  If you want to be conservative, and use the version of ROSE
+that was known to compile with the latest major commit to the Pharos
+repository, you can checkout this commit (ROSE version 0.9.11.84):
 
 ```
-$ git reset --hard d3eaef2ad21687c294827d4471f2b0163af86978
+$ git checkout fc6bb3504961cd8cbe7d758eaa4a86069ad81589
 ```
-
-You may also be able to use the distribution packages from the ROSE
-website, although our code was updated to include a major renaming of
-the ROSE namespace shortly before our latest commit.
 
 ROSE can be configured in a multitude of ways, and some attention to
-the configuration parameters in your environment is recommended.  The
-flags option to specify C++11 is required for ABI compatibility with
-Pharos and other libraries.  We use a configure command very similar
-to this one:
+the configuration parameters in your environment is recommended. We
+build ROSE like this:
 
 ```
-$ cd rose
-$ ./build
 $ mkdir release
 $ cd release
-$ ../configure --prefix=/usr/local --with-java=no \
-  --with-z3=/usr/local --enable-languages=binaries \
-  --without-doxygen --enable-projects-directory \
-  --disable-tutorial-directory --disable-boost-version-check \
-  --with-boost=/usr/local CXXFLAGS=-std=c++11 --with-yaml=/usr/local
+$ cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+  -Denable-binary-analysis=yes -Denable-c=no \
+  -Denable-java=no -Denable-fortran=no \
+  -Ddisable-tutorial-directory=yes -Ddisable-tests-directory=yes ..
 ```
 
-Disabling Java, doxygen, and the tutorials, but enabling binaries and
-projects is related to generating a minimal and therefore faster
-build, so those confuration options should be optional.  To build use:
+Enabling binary analysis is very important.  Disabling C, Java and
+Fortran eliminate a dependency on a binary EDG file that must be
+downloaded from the Internet, but these options can be removed without
+impacting the Pharos build.  Disabling the tutorials and tests are
+optional, and suggested simply to reduce the build time.
+
+To actually begin the build use:
 
 ```
 $ make -j4
@@ -217,37 +255,34 @@ To install ROSE, run:
 $ sudo make -j4 install
 ```
 
-## XSB
+### XSB
 
-XSB is downloaded during the pharos cmake invocation, and is built as
-part of building pharos.  If you do not have network access or
-subversion, the configure process will fail.
+XSB Prolog is the backbone of the object analyzer's reasoning system.
+It needs to be downloaded, built, and optionally installed for use by
+Pharos.
 
-## SQLLite
+Assuming that you are installing XSB to $XSB_LOCATION, the build
+sequence follows.  Note: $XSB_LOCATION needs to be writable by the
+user during configuration, compilation, and installation.
 
-We recommend fulfilling the SQLLite requirement by installing your
-standard operating system distribution of SQLLite.  Because the
-SQLLite interface is not C++11 depdendent the ABI concerns do not
-apply to this package.
+$ svn checkout https://svn.code.sf.net/p/xsb/src/trunk/XSB
+$ cd XSB/build
+$ ./configure --prefix=$XSB_LOCATION
+$ ./makexsb
+$ ./makexsb install
 
-```
-$ sudo yum install sqlite sqlite-devel
--- or --
-$ sudo apt-get install libsqlite3-0 libsqlite3-dev 
--- or --
-$ sudo zypper install sqlite3-devel
-```
-# Building Pharos
+## Building Pharos
 
 If all of the dependencies have been built and properly installed,
 building Pharos should be pretty easy.  We use the standard CMake
-approach which boils down to:
+build approach listed below.  Please note that Pharos cannot find XSB
+reliably without a hint as to $XSB_LOCATION.
 
 ```
 $ cd pharos
 $ mkdir build
 $ cd build
-$ cmake ..
+$ cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DXSB_ROOT=$XSB_LOCATION ..
 $ make -j4
 ```
 
@@ -256,10 +291,11 @@ properly and is producing results identical to ours, you can run
 tests with the following command from the build directory:
 
 ```
+$ make tests
 $ ctest -j4
 ```
 
-# Installing Pharos
+## Installing Pharos
 
 Installing should also be easy.  Simply type:
 
@@ -268,4 +304,4 @@ $ make install
 ```
 
 The software installs into /usr/local by default, but can be
-configured with CMake in the usual way 
+configured with CMake in the usual way.

@@ -1,3 +1,4 @@
+// Copyright 2017-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "ooclass.hpp"
 #include "demangle.hpp"
@@ -5,24 +6,48 @@
 
 namespace pharos {
 
+#if 0
 OOClassDescriptor::OOClassDescriptor() : cid_(INVALID), dtor_(nullptr), primary_vftable_(nullptr) {
   set_type(OOElementType::STRUC);
 }
-
+#endif
 
 OOClassDescriptor::OOClassDescriptor(rose_addr_t cid,
                                      rose_addr_t vft,
                                      size_t csize,
                                      rose_addr_t dtor,
-                                     std::vector<rose_addr_t> method_list) : OOElement(csize) {
+                                     std::vector<rose_addr_t> method_list,
+                                     const DescriptorSet& d) : OOElement(csize), ds(d) {
   cid_ = cid;
-  generate_name();
+
+
+  std::stringstream name_ss;
+  name_ss << "cls_" << std::hex << std::noshowbase << cid_ << std::showbase << std::dec;
+  set_name(name_ss.str());
+
   set_type(OOElementType::STRUC);
 
-  // Process each method. Create the method list based on addresses
-  // Other properties will be filled in later
+  // Process each method. Find the function or import while we have the descriptor set.
   for (rose_addr_t m : method_list) {
-    OOMethodPtr meth = std::make_shared<OOMethod>(m);
+
+    OOMethodPtr meth;
+
+    const FunctionDescriptor* fd = ds.get_func(m);
+    if (fd) {
+      meth = std::make_shared<OOMethod>(fd);
+    }
+    else {
+      const ImportDescriptor* id = ds.get_import(m);
+      if (id) {
+        meth = std::make_shared<OOMethod>(id);
+      }
+    }
+
+    if (!meth) {
+      GERROR << "Method address " << addr_str(m) << " was not a function or import." << LEND;
+      continue;
+    }
+
     if (meth->get_address() == dtor) {
       meth->set_type(OOMethodType::DTOR);
       dtor_ = meth;
@@ -31,22 +56,11 @@ OOClassDescriptor::OOClassDescriptor(rose_addr_t cid,
     add_method(meth);
   }
 
-  // Add the nearly empty primary vftable, which is at offset 0
-  primary_vftable_ = std::make_shared<OOVirtualFunctionTable>(vft);
-  add_vftable(0, primary_vftable_);
-}
-
-// create a default name
-void
-OOClassDescriptor::generate_name() {
-
-  // The class must have an ID to be named
-  assert(cid_ != INVALID);
-
-  std::stringstream name_ss;
-  name_ss << "cls_" << std::hex << std::noshowbase << cid_ << std::showbase << std::dec;
-  std::string s = name_ss.str();
-  set_name(s);
+  if (vft!=0) {
+    // Add the nearly empty primary vftable, which is at offset 0
+    primary_vftable_ = std::make_shared<OOVirtualFunctionTable>(vft);
+    add_vftable(0, primary_vftable_);
+  }
 }
 
 bool
@@ -106,10 +120,8 @@ OOClassDescriptor::add_vftable(size_t off, OOVirtualFunctionTablePtr v) {
 
   vftables_.push_back(v);
 
-  size_t ptr_width = global_descriptor_set->get_arch_bits() >> 2;
-
   // add the virtual function table pointer at offset 0 for the primary vftable
-  std::shared_ptr<OOElement> vfptr = std::make_shared<OOVfptr>(ptr_width, off, v);
+  std::shared_ptr<OOElement> vfptr = std::make_shared<OOVfptr>(global_arch_bytes, v);
   add_member(off, vfptr);
 }
 
@@ -120,7 +132,8 @@ OOClassDescriptor::get_id() {
 
 void
 OOClassDescriptor::add_member(size_t off, OOElementPtr e) {
-  members_.insert(OOMemberEntry(off, e));
+
+  members_.emplace(off, e);
 }
 
 void
@@ -157,7 +170,7 @@ OOClassDescriptor::add_method(OOMethodPtr m) {
 
 void
 OOClassDescriptor::add_parent(size_t off, OOClassDescriptorPtr p) {
-  parents_.insert(OOParentPtrEntry(off,p));
+  parents_.emplace(off,p);
 }
 
 } // end namespace pharos

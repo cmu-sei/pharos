@@ -18,6 +18,7 @@
 #include <libpharos/defuse.hpp>
 #include <libpharos/sptrack.hpp>
 #include <libpharos/options.hpp>
+#include <libpharos/bua.hpp>
 
 #include <libpharos/apigraph.hpp>
 #include <libpharos/apisig.hpp>
@@ -26,7 +27,7 @@ using namespace pharos;
 
 using Path = boost::filesystem::path;
 
-const std::string VERSION  = "2.0.06";
+const std::string VERSION  = "2.0.07";
 
 // add extra command line options for apianalyzer
 ProgOptDesc apianalyzer_options() {
@@ -83,8 +84,10 @@ static int apianalyzer_main(int argc, char* argv[]) {
     sig_file = sigpath.string();
   }
 
-  ApiSigManager *sig_manager = new ApiSigManager(new ApiJsonSigParser());
-  if (sig_manager == NULL) {
+  std::unique_ptr<ApiSigManager> sig_manager =
+    make_unique<ApiSigManager>(std::make_shared<ApiJsonSigParser>());
+
+  if (sig_manager == nullptr) {
     OFATAL << "Could not create signature manager" << LEND;
     return -1;
   }
@@ -197,22 +200,18 @@ static int apianalyzer_main(int argc, char* argv[]) {
 
   // Find calls, functions, and imports.
   DescriptorSet ds(vm);
-  if (ds.get_interp() == NULL) {
-    GFATAL << "Unable to analyze file (no executable content found)." << LEND;
-    return EXIT_FAILURE;
-  }
   // Resolve imports, load API data, etc.
   ds.resolve_imports();
 
   // Build PDGs
-  BottomUpAnalyzer bua(&ds, vm);
+  BottomUpAnalyzer bua(ds, vm);
   bua.analyze();
 
   // end analysis, start graph generation
 
   GINFO << "Starting API Graph generation" << LEND;
 
-  ApiGraph graph;
+  ApiGraph graph(ds);
   size_t num_components = graph.Build();
 
   OINFO << "Completed API graph generation with " << num_components << " functions" << LEND;
@@ -220,8 +219,8 @@ static int apianalyzer_main(int argc, char* argv[]) {
   // using boost's pointer vector removes the need to manage memory
   ApiSearchResultVector results;
 
-  SigPtrVector sigs;
-  sig_manager->GetSigs(&sigs);
+  ApiSigVector sigs;
+  sig_manager->GetSigs(sigs);
 
   if (create_graphviz) {
     OINFO << "Generating graphviz file: " << gv_file << LEND;
@@ -250,9 +249,6 @@ static int apianalyzer_main(int argc, char* argv[]) {
   OINFO <<  "-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
         << LEND
         << "ApiAnalyzer complete." << LEND;
-
-  if (sig_manager != NULL) delete sig_manager;
-  sig_manager = NULL;
 
   return 0;
 }

@@ -3,6 +3,8 @@ set(PHAROS_SOURCES
   apidb.cpp
   apigraph.cpp
   apisig.cpp
+  badcode.cpp
+  bua.cpp
   calls.cpp
   cdg.cpp
   config.cpp
@@ -13,6 +15,7 @@ set(PHAROS_SOURCES
   descriptors.cpp
   funcs.cpp
   globals.cpp
+  graph.cpp
   imports.cpp
   ir.cpp
   json.cpp
@@ -20,6 +23,7 @@ set(PHAROS_SOURCES
   limit.cpp
   masm.cpp
   md5.cpp
+  memory.cpp
   method.cpp
   misc.cpp
   ooanalyzer.cpp
@@ -32,9 +36,11 @@ set(PHAROS_SOURCES
   revision.cpp
   riscops.cpp
   semantics.cpp
+  spacer.cpp
   sptrack.cpp
   state.cpp
   stkvar.cpp
+  threads.cpp
   typedb.cpp
   types.cpp
   usage.cpp
@@ -48,6 +54,8 @@ set(PHAROS_SOURCES
   oomethod.cpp
   oovftable.cpp
   path.cpp
+  wp.cpp
+  znode.cpp
   PHAROS_REVISION.ii
   config.yaml.ii
   )
@@ -67,14 +75,11 @@ configure_file(xsb_types.hpp.in xsb_types.hpp)
 configure_file(build.hpp.in build.hpp)
 
 # Create pharos library
-add_library(pharos SHARED ${PHAROS_SOURCES} ${XSB_OBJECT_FILE})
+add_library(pharos SHARED ${PHAROS_SOURCES})
 target_link_libraries(pharos PUBLIC
   Threads::Threads Boost::chrono Boost::timer Boost::iostreams ${CMAKE_DL_LIBS}
   Rose::Rose SQLite::SQLite ${CURSES_LIBRARIES})
-target_include_directories(pharos PRIVATE
-  ${XSB_INCLUDE_DIRS}
-  $<TARGET_PROPERTY:SQLite::SQLite,INTERFACE_INCLUDE_DIRECTORIES>)
-
+target_link_libraries(pharos PRIVATE XSB::XSB SQLite::SQLite)
 
 # curses and Rose include dirs
 target_include_directories(pharos SYSTEM PUBLIC

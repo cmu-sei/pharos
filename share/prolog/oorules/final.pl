@@ -165,6 +165,9 @@ finalVFTable(VFTable, CertainSize, LikelySize, RTTIAddressOrNull, RTTINameOrNull
     % It's a little unclear what the likely size means in a proper guessing framework.
     LikelySize is CertainSize.
 
+finalVFTableEntry(VFTable, Offset, Method) :-
+    factVFTableEntry(VFTable, Offset, Method).
+
 % --------------------------------------------------------------------------------------------
 :- table finalVBTable/4 as incremental.
 finalVBTable(VBTable, Class, Size, Offset) :-
@@ -173,6 +176,9 @@ finalVBTable(VBTable, Class, Size, Offset) :-
     findall(CertainOffset, factVBTableEntry(VBTable, CertainOffset, _Value), CertainOffsets),
     list_max(CertainOffsets, Size),
     find(Method, Class).
+
+finalVBTableEntry(VBTable, Offset, Value) :-
+    factVBTableEntry(VBTable, Offset, Value).
 
 % --------------------------------------------------------------------------------------------
 :- table finalEmbeddedObject/4 as incremental.

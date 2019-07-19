@@ -1,4 +1,4 @@
-// Copyright 2015, 2016, 2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Imports_H
 #define Pharos_Imports_H
@@ -14,30 +14,32 @@ namespace pharos {
 class ImportDescriptor;
 // Import name map (names to import descriptors).
 // There's no global map of this form currently, only local variables. :-(
-typedef std::map<std::string, ImportDescriptor*> ImportNameMap;
-// A set of import descriptors.
-typedef std::set<ImportDescriptor*> ImportDescriptorSet;
+using ImportNameMap = std::map<std::string, ImportDescriptor*>;
 
 } // namespace pharos
 
 #include "util.hpp"
-#include "masm.hpp"
 #include "funcs.hpp"
 #include "delta.hpp"
 #include "semantics.hpp"
+#include "threads.hpp"
 
 namespace pharos {
 
-class ImportDescriptor {
+class ImportDescriptor : private Immobile {
   static constexpr auto unknown_name = "*INVALID*";
+
+  DescriptorSet& ds;
+
+  mutable shared_mutex mutex;
 
   // The address of the import descriptor.  This can be NULL or invalid if the import
   // descriptor has not been found yet.
-  rose_addr_t address;
+  rose_addr_t address = 0;
 
   // The SgAsmImportItem object.  This member call be NULL if the import descriptor was created
   // by the user or resolved from so kind of import obfucsation technique.
-  SgAsmPEImportItem* item;
+  SgAsmPEImportItem* item = nullptr;
 
   // This is a private function descriptor that records the stack delta, calling convention,
   // etc. for the function that the import ultimately calls out to.  This information can not
@@ -50,7 +52,7 @@ class ImportDescriptor {
   // The name of the DLL as it appears in the import directory.
   std::string dll;
   // The import by ordinal number.
-  size_t ordinal;
+  size_t ordinal = 0;
 
   // A set of call instructions that call to this import.
   CallTargetSet callers;
@@ -65,80 +67,69 @@ class ImportDescriptor {
   // the loader when the import is resolved at load time.
   SymbolicValuePtr loader_variable;
 
-  // Our whole approach to marking methods as new, delete and purecall is getting messier and
-  // messier.   It's probably getting to be time for a new strategy involving the API database.
-  bool new_method;
-  bool delete_method;
-  bool purecall_method;
-
  public:
 
-  ImportDescriptor() {
-    address = 0;
-    item = NULL;
+  ImportDescriptor(DescriptorSet& ds_) : ds(ds_), function_descriptor(ds_) {
     name = unknown_name;
     dll = unknown_name;
-    ordinal = 0;
-    new_method = false;
-    delete_method = false;
-    purecall_method = false;
     loader_variable = SymbolicValue::loader_defined();
   }
 
-  ImportDescriptor(const APIDefinition &func);
+  ImportDescriptor(DescriptorSet& ds_, rose_addr_t addr_, std::string dll_, std::string name_, size_t ord_ = 0);
 
-  ImportDescriptor(std::string d, SgAsmPEImportItem *i);
-
-  CallTargetSet get_callers() const { return callers; }
-  bool is_name_valid() const { return name != unknown_name; }
-  bool is_dll_valid() const { return dll != unknown_name; }
-  const std::string & get_name() const { return name; }
-  size_t get_ordinal() const { return ordinal; }
-  const std::string & get_dll_name() const { return dll; }
-  std::string get_long_name() const { return dll + ":" + name; }
+  auto get_callers() const { return make_read_locked_range(callers, mutex); }
+  bool is_name_valid() const {
+    auto && guard = read_guard(mutex);
+    return name != unknown_name;
+  }
+  bool is_dll_valid() const {
+    auto && guard = read_guard(mutex);
+    return dll != unknown_name;
+  }
+  const std::string & get_name() const {
+    auto && guard = read_guard(mutex);
+    return name;
+  }
+  size_t get_ordinal() const {
+    auto && guard = read_guard(mutex);
+    return ordinal;
+  }
+  const std::string & get_dll_name() const {
+    auto && guard = read_guard(mutex);
+    return dll;
+  }
+  std::string get_long_name() const {
+    auto && guard = read_guard(mutex);
+    return dll + ":" + name;
+  }
   std::string get_normalized_name() const;
   std::string get_best_name() const;
   std::string get_ordinal_name() const {
-    return to_lower(dll) + ":" + str(boost::format("%d") % ordinal); }
+    auto && guard = read_guard(mutex);
+    return to_lower(dll) + ":" + str(boost::format("%d") % ordinal);
+  }
   rose_addr_t get_address() const { return address; }
-  void add_caller(rose_addr_t addr) { callers.insert(addr); }
   std::string address_string() const { return str(boost::format("0x%08X") % address); }
   FunctionDescriptor* get_rw_function_descriptor() { return &function_descriptor; }
   const FunctionDescriptor* get_function_descriptor() const { return &function_descriptor; }
   std::string get_dll_root() const;
   SymbolicValuePtr get_loader_variable() const { return loader_variable; }
-
-  void set_names_hack(std::string compund_name);
-
   StackDelta get_stack_delta() const { return function_descriptor.get_stack_delta(); }
-  const LeafNodePtr & get_stack_delta_variable() const {
+  LeafNodePtr get_stack_delta_variable() const {
     return function_descriptor.get_stack_delta_variable();
   }
   StackDelta get_stack_parameters() const { return function_descriptor.get_stack_parameters(); }
 
+  void add_caller(rose_addr_t addr) {
+    auto && guard = write_guard(mutex);
+    callers.insert(addr);
+  }
+
   // Validate the function description, complaining about any unusual.
-  void validate(std::ostream &o);
-
-  // Read and write from property tree config files.
-  void read_config(const boost::property_tree::ptree& tree);
-  void write_config(boost::property_tree::ptree* tree);
-
-  // Return whether we think we're a new() method.
-  bool is_new_method() const { return new_method; }
-  // Record whether we think we're a new() method.  Presumably called with true.
-  void set_new_method(bool n) { new_method = n; }
-
-  // If we're going to keep the new operator knowledge on the function descriptor, we might as
-  // well keep knowledge of the delete operator
-  bool is_delete_method() const { return delete_method; }
-  void set_delete_method(bool d) { delete_method = d; }
-
-  // This is getting repetive... :-(
-  bool is_purecall_method() const { return purecall_method; }
-  void set_purecall_method(bool p) { purecall_method = p; }
+  void validate(std::ostream &o) const;
 
   // Merge a DLL export descriptor with ourself.
-  void merge_export_descriptor(ImportDescriptor* did);
+  void merge_api_definition(APIDefinition const & def);
 
   void print(std::ostream &o) const;
   friend std::ostream& operator<<(std::ostream &o, const ImportDescriptor &id) {
@@ -151,6 +142,14 @@ class ImportDescriptorMap: public std::map<rose_addr_t, ImportDescriptor> {
 
  public:
 
+  const ImportDescriptor* get_import(rose_addr_t addr) const {
+    ImportDescriptorMap::const_iterator it = this->find(addr);
+    if (it != this->end())
+      return &(it->second);
+    else
+      return NULL;
+  }
+
   ImportDescriptor* get_import(rose_addr_t addr) {
     ImportDescriptorMap::iterator it = this->find(addr);
     if (it != this->end())
@@ -160,9 +159,11 @@ class ImportDescriptorMap: public std::map<rose_addr_t, ImportDescriptor> {
   }
 
   // Find the one descriptor matching a specific DLL and name?
-  ImportDescriptor* find_name(const std::string & dll, const std::string & name);
+  const ImportDescriptor* find_name(const std::string & dll,
+                                    const std::string & name) const;
   // Find all descriptors with a given name.
-  ImportDescriptorSet find_name(const std::string & name);
+  std::set<const ImportDescriptor*> find_name(
+    const std::string & name) const;
 };
 
 } // namespace pharos

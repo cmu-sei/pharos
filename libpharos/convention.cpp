@@ -1,4 +1,4 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/optional.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -61,7 +61,7 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, RegisterDesc
   // saved and restored register instruction.
   if (insn->get_kind() != x86_push && insn->get_kind() != x86_mov) return false;
 
-  PDG* p = fd->get_pdg();
+  const PDG* p = fd->get_pdg();
   if (p == NULL) return false;
   const DUAnalysis& du = p->get_usedef();
 
@@ -207,7 +207,7 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, RegisterDesc
   return true;
 }
 
-void RegisterUsage::analyze(FunctionDescriptor *f) {
+void RegisterUsage::analyze(FunctionDescriptor const *f) {
   // If we don't know which function to analyze, complain.  This shouldn't happen.
   if (f == NULL) {
     OFATAL << "RegisterUsage::analyze() called on NULL function." << LEND;
@@ -240,13 +240,14 @@ void RegisterUsage::analyze_parameters() {
   }
 
   // Get the PDG if we haven't already...
-  PDG* p = fd->get_pdg();
+  PDG const *p = fd->get_pdg();
+
   // If we're an excluded function, we don't know what the calling convention is.
   if (p == NULL) return;
   const Insn2DUChainMap& dd = p->get_usedef().get_dependencies();
 
   // Get a handle to the stack pointer register, because it's special.
-  const RegisterDictionary regdict = global_descriptor_set->get_regdict();
+  const RegisterDictionary regdict = fd->ds.get_regdict();
   RegisterDescriptor esp = regdict.lookup("esp");
 
   // This is for keeping track of which stack parameter deltas we've actually used, and which
@@ -254,9 +255,8 @@ void RegisterUsage::analyze_parameters() {
   // a good candidate for where to do it.
   std::set<int64_t> stack_params;
 
-  SgAsmFunction* func = fd->get_func();
   // For each instruction...
-  for (SgAsmStatement* bs : func->get_statementList()) {
+  for (SgAsmStatement* bs : fd->get_func()->get_statementList()) {
     SgAsmBlock *bb = isSgAsmBlock(bs);
     if (!bb) continue;
     for (SgAsmStatement* is : bb->get_statementList()) {
@@ -390,7 +390,7 @@ void RegisterUsage::analyze_parameters() {
 
 void RegisterUsage::analyze_changed() {
   // Get the PDG if we haven't already...
-  PDG* pdg = fd->get_pdg();
+  const PDG* pdg = fd->get_pdg();
   // If we're an excluded function, we don't know what the calling convention is.
   if (pdg == NULL) return;
 
@@ -411,7 +411,7 @@ void RegisterUsage::analyze_changed() {
 
   RegisterSet all_changed_registers = routput->diff(rinput);
 
-  const RegisterDictionary regdict = global_descriptor_set->get_regdict();
+  const RegisterDictionary regdict = fd->ds.get_regdict();
   RegisterDescriptor esp = regdict.lookup("esp");
   RegisterDescriptor ebp = regdict.lookup("ebp");
   RegisterDescriptor esi = regdict.lookup("esi");
@@ -553,81 +553,121 @@ void CallingConvention::report() const {
 }
 
 // The stack parameter form.
-ParameterDefinition::ParameterDefinition(size_t c, const SymbolicValuePtr& v, std::string n,
-                                         std::string t, const SgAsmInstruction* i,
-                                         const SymbolicValuePtr& a, size_t d) {
+ParameterDefinition::ParameterDefinition(
+  size_t c, const SymbolicValuePtr& v, std::string n,
+  std::string t, const SgAsmInstruction* i,
+  const SymbolicValuePtr& a, size_t delta)
+{
   // The parameter number.
-  num = c;
+  d.num = c;
 
   // If the caller didn't provide a name, make up a "generic" one.
   if (n != "") {
-    name = n;
+    d.name = n;
   }
   else {
-    name = boost::str(boost::format("p%d") % c);
+    d.name = boost::str(boost::format("p%d") % c);
   }
 
   if (t != "") {
-    type = t;
+    d.type = t;
   }
   else {
-    type = "unknown";
+    d.type = "unknown";
   }
 
-  value = v;
+  d.value = v;
   // Smart pointer for value_pointed_to is constructed with a "NULL" value.
-  stack_delta = d;
-  address = a;
-  insn = i;
-  direction = DIRECTION_NONE;
+  d.stack_delta = delta;
+  d.address = a;
+  d.insn = i;
+  d.direction = DIRECTION_NONE;
 }
 
 // The register parameter form.
-ParameterDefinition::ParameterDefinition(size_t c, const SymbolicValuePtr& v, std::string n,
-                                         std::string t, const SgAsmInstruction* i,
-                                         RegisterDescriptor r) {
+ParameterDefinition::ParameterDefinition(
+  size_t c, const SymbolicValuePtr& v, std::string n,
+  std::string t, const SgAsmInstruction* i,
+  RegisterDescriptor r)
+{
 
   // The parameter number.
-  num = c;
+  d.num = c;
 
   // If the caller didn't provide a name, make up a "generic" one.
   if (n != "") {
-    name = n;
+    d.name = n;
   }
   else {
-    name = boost::str(boost::format("r%d") % c);
+    d.name = boost::str(boost::format("r%d") % c);
   }
 
   if (t != "") {
-    type = t;
+    d.type = t;
   }
   else {
-    type = "unknown";
+    d.type = "unknown";
   }
 
-  value = v;
+  d.value = v;
   // Smart pointer for value_pointed_to is constructed with a "NULL" value.
-  reg = r;
-  insn = i;
-  stack_delta = 0;
-  address = SymbolicValuePtr();
+  d.reg = r;
+  d.insn = i;
+  d.stack_delta = 0;
+  d.address = SymbolicValuePtr();
 }
 
 // Called as we dynamically discover these attributes for a parameter.
-void ParameterDefinition::set_stack_attributes(const SymbolicValuePtr& v, const SymbolicValuePtr& a,
-                                               SgAsmInstruction* i, const SymbolicValuePtr& p) {
-  value = v;
-  value_pointed_to = p;
-  address = a;
-  insn = i;
+void ParameterDefinition::set_stack_attributes(
+  const SymbolicValuePtr& v, const SymbolicValuePtr& a,
+  SgAsmInstruction* i, const SymbolicValuePtr& p)
+{
+  auto && guard = write_guard(mutex);
+  d.value = v;
+  d.value_pointed_to = p;
+  d.address = a;
+  d.insn = i;
 }
 
-void ParameterDefinition::set_reg_attributes(const SymbolicValuePtr& v, const SgAsmInstruction* i,
-                                             const SymbolicValuePtr& p) {
+void ParameterDefinition::set_reg_attributes(
+  const SymbolicValuePtr& v, const SgAsmInstruction* i,
+  const SymbolicValuePtr& p)
+{
+  auto && guard = write_guard(mutex);
+  d.value = v;
+  d.value_pointed_to = p;
+  d.insn = i;
+}
 
-  value = v;
-  value_pointed_to = p;
-  insn = i;
+void ParameterDefinition::copy_parameter_description(ParameterDefinition const & other)
+{
+  if (this == &other) { return; }
+  auto && guard = write_guard(mutex);
+  auto && oguard = read_guard(other.mutex);
+  d.name = other.d.name;
+  d.type = other.d.type;
+  d.direction = other.d.direction;
+}
+
+void ParameterDefinition::copy_parameter_description(APIParam const & ap)
+{
+  auto && guard = write_guard(mutex);
+  if (!ap.name.empty()) {
+    d.name = ap.name;
+  }
+  if (!ap.type.empty()) {
+    d.type = ap.type;
+  }
+  d.direction = DirectionEnum(ap.direction);
+}
+
+void ParameterDefinition::set_parameter_description(
+  std::string n, std::string t, ParameterDefinition::DirectionEnum dir)
+{
+  auto && guard = write_guard(mutex);
+  d.name = std::move(n);
+  d.type = std::move(t);
+  d.direction = dir;
 }
 
 //void ParameterList::add_parameter(SymbolicValuePtr local_value) {
@@ -645,22 +685,24 @@ template<> char const* EnumStrings<ParameterDefinition::DirectionEnum>::data[] =
 // idea. Having a general to_string method that can be used to fetch a string representation
 // seems better.
 std::string ParameterDefinition::to_string() const {
+  auto && guard = read_guard(mutex);
+
   std::stringstream out;
-  out << "  num=" << num;
+  out << "  num=" << d.num;
   if (is_reg()) {
-    out << " reg=" << unparseX86Register(reg, NULL);
+    out << " reg=" << unparseX86Register(d.reg, NULL);
   }
   else {
-    out << " sd=" << stack_delta;
+    out << " sd=" << d.stack_delta;
   }
 
-  out << " name=" << name;
+  out << " name=" << d.name;
   // if (type.compare("unknown") != 0) {
   //   out << " type=" << type;
   // }
-  if (value && value->is_valid()) {
+  if (d.value && d.value->is_valid()) {
 
-    TreeNodePtr param_tnp = value->get_expression();
+    TreeNodePtr param_tnp = d.value->get_expression();
 
     // This is useful for debugging
     // uint64_t raw_param_id = reinterpret_cast<uint64_t>(&*param_tnp);
@@ -670,7 +712,8 @@ std::string ParameterDefinition::to_string() const {
 
     try {
 
-      TypeDescriptorPtr tdp = boost::any_cast< TypeDescriptorPtr >(value->get_expression()->userData());
+      TypeDescriptorPtr tdp = boost::any_cast< TypeDescriptorPtr >(
+        d.value->get_expression()->userData());
       if (tdp) {
         out << " td=(" << tdp->to_string() << ")";
       } else
@@ -682,44 +725,47 @@ std::string ParameterDefinition::to_string() const {
   else {
     GWARN << "Invalid paramater value used, reasoning may be incomplete" << LEND;
   }
-  if (value_pointed_to && value_pointed_to->is_valid()) {
-    out << " *value=" << *(value_pointed_to->get_expression());
+  if (d.value_pointed_to && d.value_pointed_to->is_valid()) {
+    out << " *value=" << *(d.value_pointed_to->get_expression());
   }
   else {
     GWARN << "Invalid paramater value_pointed_to used, reasoning may be incomplete" << LEND;
   }
-  if (insn != NULL) {
-    out << " insn=" << debug_instruction(insn);
+  if (d.insn != NULL) {
+    out << " insn=" << debug_instruction(d.insn);
   }
-  if (is_stack() && address && address->is_valid()) {
-    out << " addr=" << *(address->get_expression());
+  if (is_stack() && d.address && d.address->is_valid()) {
+    out << " addr=" << *(d.address->get_expression());
   }
-  if (direction != ParameterDefinition::DIRECTION_NONE) {
-    out << " dir=" << Enum2Str(direction);
+  if (d.direction != ParameterDefinition::DIRECTION_NONE) {
+    out << " dir=" << Enum2Str(d.direction);
   }
 
   return out.str();
 }
 
 void ParameterDefinition::debug() const {
-  OINFO << "  num=" << num;
+  auto && guard = read_guard(mutex);
+
+  OINFO << "  num=" << d.num;
   if (is_reg()) {
-    OINFO << " reg=" << unparseX86Register(reg, NULL);
+    OINFO << " reg=" << unparseX86Register(d.reg, NULL);
   }
   else {
-    OINFO << " sd=" << stack_delta;
+    OINFO << " sd=" << d.stack_delta;
   }
 
-  OINFO << " name=" << name;
-  if (type.compare("unknown") != 0) {
-    OINFO << " type=" << type;
+  OINFO << " name=" << d.name;
+  if (d.type.compare("unknown") != 0) {
+    OINFO << " type=" << d.type;
   }
-  if (value && value->is_valid()) {
-    OINFO << " value=" << *(value->get_expression());
+  if (d.value && d.value->is_valid()) {
+    OINFO << " value=" << *(d.value->get_expression());
 
     try {
 
-      TypeDescriptorPtr tdp = boost::any_cast< TypeDescriptorPtr >(value->get_expression()->userData());
+      TypeDescriptorPtr tdp = boost::any_cast< TypeDescriptorPtr >(
+        d.value->get_expression()->userData());
       if (tdp) {
         OINFO << " type descriptor=[" << tdp->to_string() << "]";
       } else
@@ -728,107 +774,69 @@ void ParameterDefinition::debug() const {
       OINFO << " type descriptor=MISSING";
     }
   }
-  if (value_pointed_to && value_pointed_to->is_valid()) {
-    OINFO << " *value=" << *(value_pointed_to->get_expression());
+  if (d.value_pointed_to && d.value_pointed_to->is_valid()) {
+    OINFO << " *value=" << *(d.value_pointed_to->get_expression());
   }
-  if (insn != NULL) {
-    OINFO << " insn=" << debug_instruction(insn);
+  if (d.insn != NULL) {
+    OINFO << " insn=" << debug_instruction(d.insn);
   }
-  if (is_stack() && address && address->is_valid()) {
-    OINFO << " addr=" << *(address->get_expression());
+  if (is_stack() && d.address && d.address->is_valid()) {
+    OINFO << " addr=" << *(d.address->get_expression());
   }
-  if (direction != ParameterDefinition::DIRECTION_NONE) {
-    OINFO << " dir=" << Enum2Str(direction);
+  if (d.direction != ParameterDefinition::DIRECTION_NONE) {
+    OINFO << " dir=" << Enum2Str(d.direction);
   }
 
   OINFO << LEND;
 }
 
-void ParameterList::read_config(const boost::property_tree::ptree& tree UNUSED, int64_t delta,
-                                const CallingConvention* conv) {
-  // This code is wrong, and is just a mock up while we transition to a better function
-  // prototype system complete with types, names, etc.  Right now we only support one case
-  // (stdcall for imports).  In practice, what this means is that we need to create a stack
-  // parameter for each 4-byte increment of the total delta, which is why we're passing it
-  // in addition to the tree, which we should really be reading.
-
-  // The read_config() in funcs.cpp go tthe convention from the JSON config and passed it to
-  // us?  This is all hackish, but this code needs to be replaced with something real anyway.
-  convention = conv;
-
-  // Just wildly assume that EAX was the return the value. :-(
-  const RegisterDictionary regdict = global_descriptor_set->get_regdict();
-  RegisterDescriptor eax = regdict.lookup("eax");
-
-  // Use a NULL pointer to represent a NULL value?  Replaces invalid SymbolicValue concept?
-  SymbolicValuePtr null_ptr;
-  size_t arch_bytes = global_descriptor_set->get_arch_bytes();
-  //SymbolicValuePtr null_ptr = SymbolicValue::variable_instance(arch_bytes * 8);
-  create_return_reg(eax, null_ptr);
-
-  // Create some arbitrary stack parameters.
-  if (delta < (int)arch_bytes || (delta % arch_bytes) != 0) return;
-  create_stack_parameter((size_t)(delta - arch_bytes));
-
-  // And because this is a lame stub of the real function, we're done.
-}
-
 // Find the parameter definition that matches a specific stack delta, or return NULL if it does
 // not exist.
-ParameterDefinition* ParameterList::get_rw_stack_parameter(size_t delta) {
-  for (ParameterDefinition& p : params) {
-    if (!p.reg.is_valid() && p.stack_delta == delta) {
+const ParameterDefinition* ParameterList::get_stack_parameter(size_t delta) const {
+  auto && guard = read_guard(mutex);
+  for (ParameterDefinition const & p : d.params) {
+    if (p.is_stack() && p.get_stack_delta() == delta) {
       return &p;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
-const ParameterDefinition* ParameterList::get_stack_parameter(size_t delta) const {
-  for (const ParameterDefinition& p : params) {
-    if (!p.reg.is_valid() && p.stack_delta == delta) {
-      return &p;
-    }
-  }
-  return NULL;
+ParameterDefinition* ParameterList::get_rw_stack_parameter(size_t delta) {
+  return const_cast<ParameterDefinition *>(
+    const_cast<const ParameterList *>(this)->get_stack_parameter(delta));
 }
 
 // Find the parameter definition that corresponds to a specific regsiter descriptior, or return
 // NULL if it does not exist.
-ParameterDefinition* ParameterList::get_rw_reg_parameter(RegisterDescriptor rd) {
-  for (ParameterDefinition& p : params) {
-    if (p.reg == rd) {
-      return &p;
-    }
-  }
-  return NULL;
-}
-
 const ParameterDefinition* ParameterList::get_reg_parameter(RegisterDescriptor rd) const {
-  for (const ParameterDefinition& p : params) {
-    if (p.reg == rd) {
+  auto && guard = read_guard(mutex);
+  for (ParameterDefinition const & p : d.params) {
+    if (p.get_register() == rd) {
       return &p;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
-ParameterDefinition* ParameterList::get_rw_return_reg(RegisterDescriptor rd) {
-  for (ParameterDefinition& p : returns) {
-    if (p.reg == rd) {
-      return &p;
-    }
-  }
-  return NULL;
+ParameterDefinition* ParameterList::get_rw_reg_parameter(RegisterDescriptor rd) {
+  return const_cast<ParameterDefinition *>(
+    const_cast<const ParameterList *>(this)->get_reg_parameter(rd));
 }
 
 const ParameterDefinition* ParameterList::get_return_reg(RegisterDescriptor rd) const {
-  for (const ParameterDefinition& p : returns) {
-    if (p.reg == rd) {
+  auto && guard = read_guard(mutex);
+  for (ParameterDefinition const & p : d.returns) {
+    if (p.get_register() == rd) {
       return &p;
     }
   }
-  return NULL;
+  return nullptr;
+}
+
+ParameterDefinition* ParameterList::get_rw_return_reg(RegisterDescriptor rd) {
+  return const_cast<ParameterDefinition *>(
+    const_cast<const ParameterList *>(this)->get_return_reg(rd));
 }
 
 // Get the stack parameter at a specific delta. Create it if it does not exist.  Further,
@@ -856,21 +864,23 @@ ParameterDefinition* ParameterList::create_stack_parameter(size_t delta) {
     return NULL;
   }
 
+  auto && guard = write_guard(mutex);
+
   // How many existing parameters are there?
-  size_t psize = params.size();
+  size_t psize = d.params.size();
   // By default, assume that there are no existing parameters.
   int64_t existing_delta = -4;
   int64_t existing_num = -1;
   // If there are some existing parameters, what's the last one?
   if (psize > 0) {
-    ParameterDefinition& last_param = params[psize - 1];
+    ParameterDefinition& last_param = d.params[psize - 1];
     // BUG?  This assumes that parameters are always passed registers first, and stack
     // parameters last, and that the source code ordering matches the stack delta ordering,
     // which is true in every (x86) case that Cory knows of.
-    existing_num = last_param.num;
+    existing_num = last_param.get_num();
     // The stack delta field is only populated if the parameter is a stack parameter.
-    if (!last_param.reg.is_valid()) {
-      existing_delta = last_param.stack_delta;
+    if (!last_param.is_reg()) {
+      existing_delta = last_param.get_stack_delta();
     }
   }
 
@@ -886,17 +896,16 @@ ParameterDefinition* ParameterList::create_stack_parameter(size_t delta) {
   size_t num = existing_num + 1;
   for (size_t sd = existing_delta + 4; sd <= delta; sd += 4) {
     // OINFO << "Creating parameter " << num << " at delta " << sd << " of " << delta << LEND;
-    params.push_back(ParameterDefinition(num, invalid, "", "", NULL, invalid, sd));
+    d.params.emplace_back(num, invalid, "", "", nullptr, invalid, sd);
     num++;
   }
 
-  // Finally, go find the parameter that we just created (which was copied into the list, so
-  // it's at a different address now) and return it.
-  return get_rw_stack_parameter(delta);
+  // Finally, go find the parameter that we just created and return it.
+  return &d.params.back();
 }
 
 //
-ParameterDefinition*
+ParameterDefinition &
 ParameterList::create_reg_parameter(RegisterDescriptor r, const SymbolicValuePtr v,
                                     const SgAsmInstruction* i, const SymbolicValuePtr p) {
   ParameterDefinition* retval;
@@ -906,17 +915,19 @@ ParameterList::create_reg_parameter(RegisterDescriptor r, const SymbolicValuePtr
   if (retval != NULL) {
     // Set the newly updates attributes in the existing parameter definition.
     retval->set_reg_attributes(v, i, p);
-    return retval;
+    return *retval;
   }
 
+  auto && guard = write_guard(mutex);
+
   // How many existing parameters are there?
-  size_t psize = params.size();
+  size_t psize = d.params.size();
   // By default, assume that there are no existing parameters.
   int64_t existing_num = -1;
   // If there are some existing parameters, what's the last one?
   if (psize > 0) {
-    ParameterDefinition& last_param = params[psize - 1];
-    existing_num = last_param.num;
+    ParameterDefinition& last_param = d.params[psize - 1];
+    existing_num = last_param.get_num();
   }
 
   size_t num = existing_num + 1;
@@ -930,12 +941,8 @@ ParameterList::create_reg_parameter(RegisterDescriptor r, const SymbolicValuePtr
     pname = boost::str(boost::format("unused%d") % num);
   }
 
-  params.push_back(ParameterDefinition(num, v, pname, "", i, r));
-
-  // Find the newly created value, so that we return a reference to the one that's allocated in
-  // the list, not the temporary that we created.
-  retval = get_rw_reg_parameter(r);
-  return retval;
+  d.params.emplace_back(num, v, pname, "", i, r);
+  return d.params.back();
 }
 
 // Cory is beginning to realize that there's a lot of code duplication going on here.
@@ -943,22 +950,24 @@ ParameterList::create_reg_parameter(RegisterDescriptor r, const SymbolicValuePtr
 // parameter/return numbers are consistent, and to keep the params and returns vectors private,
 // so I'm not sure that there's a cleaner way to do this.  Perhaps we should revisit this to
 // clean up the code a bit more.
-ParameterDefinition*
+ParameterDefinition &
 ParameterList::create_return_reg(RegisterDescriptor r, const SymbolicValuePtr v) {
   ParameterDefinition* retval;
 
   // Find and return an existing return value.
   retval = get_rw_return_reg(r);
-  if (retval != NULL) return retval;
+  if (retval != NULL) return *retval;
+
+  auto && guard = write_guard(mutex);
 
   // How many existing return values are there?
-  size_t psize = returns.size();
+  size_t psize = d.returns.size();
   // By default, assume that there are no existing return values.
   int64_t existing_num = -1;
   // If there are some existing return values, what's the last one?
   if (psize > 0) {
-    ParameterDefinition& last_param = params[psize - 1];
-    existing_num = last_param.num;
+    ParameterDefinition& last_param = d.params[psize - 1];
+    existing_num = last_param.get_num();
   }
   size_t num = existing_num + 1;
 
@@ -968,28 +977,28 @@ ParameterList::create_return_reg(RegisterDescriptor r, const SymbolicValuePtr v)
   // just one.  But for now, we're only able to hold one evidence instruction in the parameter
   // definition.  This code was broken when we removed modifiers, and rather than adding it
   // back with a single evidence instruction I should talk to JSG and decide how to proceed.
-  const SgAsmInstruction* i = NULL;
+  const SgAsmInstruction* i = nullptr;
   // Effectively, the previous code was: i = *(g->get_modifiers().begin());
   // Now we'll need to pass the instruction because writers don't follow the SymbolicValue. :-(
 
   // Create the parameter definition and put it in the list.
-  returns.push_back(ParameterDefinition(num, v, "", "", i, r));
+  d.returns.emplace_back(num, v, "", "", i, r);
 
-  // Find the newly created value, so that we return a reference to the one that's allocated in
-  // the list, not the temporary that we created.
-  retval = get_rw_return_reg(r);
-  return retval;
+  // Then return it.
+  return d.returns.back();
 }
 
 void ParameterList::debug() const {
-  if (params.size() == 0) {
+  auto && guard = read_guard(mutex);
+
+  if (d.params.size() == 0) {
     OINFO << "none" << LEND;
     return;
   }
   else {
     OINFO << LEND;
   }
-  for (const ParameterDefinition& p : params) {
+  for (const ParameterDefinition& p : d.params) {
     p.debug();
   }
 }
@@ -1009,7 +1018,7 @@ const CallingConvention* CallingConventionMatcher::find(size_t word_size, const 
 }
 
 CallingConventionPtrVector
-CallingConventionMatcher::match(FunctionDescriptor* fd,
+CallingConventionMatcher::match(const FunctionDescriptor* fd,
                                 bool allow_unused_parameters) const {
   CallingConventionPtrVector matches;
   if (fd == NULL) {
@@ -1019,15 +1028,15 @@ CallingConventionMatcher::match(FunctionDescriptor* fd,
 
   // Thunks get their calling convention from the target function.
   if (fd->is_thunk()) {
-    FunctionDescriptor* tfd = fd->follow_thunks_fd();
+    const FunctionDescriptor* tfd = fd->follow_thunks_fd();
     if (tfd == NULL) {
       // I think this scenario should be handled gracefully someplace else.
       rose_addr_t ta = fd->follow_thunks();
-      ImportDescriptor* id = global_descriptor_set->get_import(ta);
+      const ImportDescriptor* id = fd->ds.get_import(ta);
       if (id != NULL) {
         GDEBUG << "Function " << fd->address_string()
                << " is a thunk to " << id->get_long_name() << LEND;
-        size_t arch_bits = global_descriptor_set->get_arch_bits();
+        size_t arch_bits = fd->ds.get_arch_bits();
         const CallingConvention* stdcall = find(arch_bits, "__stdcall");
         if (stdcall != NULL) matches.push_back(stdcall);
         return matches;
@@ -1055,7 +1064,7 @@ CallingConventionMatcher::match(FunctionDescriptor* fd,
 
   for (const CallingConvention& cc : conventions) {
     // Only register usage patterns of the correct architecture size can match.
-    size_t arch_bits = global_descriptor_set->get_arch_bits();
+    size_t arch_bits = fd->ds.get_arch_bits();
     if (arch_bits != cc.get_word_size()) continue;
 
     // If the function changes a non-volatile register, then it can't match.
@@ -1163,7 +1172,7 @@ CallingConventionMatcher::match(FunctionDescriptor* fd,
 
 // Create a set of calling conventions used in real compilers.
 CallingConventionMatcher::CallingConventionMatcher()
-  : regdict(::RegisterDictionary::dictionary_pentium4())
+  : regdict(Rose::BinaryAnalysis::RegisterDictionary::dictionary_pentium4())
 {
   // ================================================================================
   // 16-bit calling conventions...
@@ -1273,7 +1282,7 @@ CallingConventionMatcher::CallingConventionMatcher()
   // 64-bit calling conventions
   // ================================================================================
 
-  regdict = ::RegisterDictionary::dictionary_amd64();
+  regdict = Rose::BinaryAnalysis::RegisterDictionary::dictionary_amd64();
 
   // Volatile versus non-volatile register usage:
   // http://msdn.microsoft.com/en-us/library/9z1stfyw.aspx

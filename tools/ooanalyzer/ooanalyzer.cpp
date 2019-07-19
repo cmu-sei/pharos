@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <rose.h>
 
@@ -11,12 +11,9 @@
 #include <libpharos/ooanalyzer.hpp>
 #include <libpharos/ooclass.hpp>
 
-#define VERSION "0.13"
+#define VERSION "1.0"
 
 using namespace pharos;
-
-// The global stack tracker.
-spTracker *sp_tracker;
 
 ProgOptDesc digger_options() {
   namespace po = boost::program_options;
@@ -70,21 +67,15 @@ static int ooanalyzer_main(int argc, char **argv)
 
   // Find calls, functions, and imports.
   DescriptorSet ds(vm);
-  if (ds.get_interp() == NULL) {
-    GFATAL << "Unable to analyze file (no executable content found)." << LEND;
-    return EXIT_FAILURE;
-  }
   // Resolve imports, load API data, etc.
   ds.resolve_imports();
-
-  sp_tracker = ds.get_spTracker();
 
   // =====================================================================================
   // Object oriented program analysis
   // =====================================================================================
 
   // Build interprocedural PDGs
-  OOAnalyzer ooa(&ds, vm, new_addrs);
+  OOAnalyzer ooa(ds, vm, new_addrs);
   ooa.analyze();
   std::vector<OOClassDescriptorPtr> ooclasses = ooa.get_result_classes();
 

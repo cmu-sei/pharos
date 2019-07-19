@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Globals_H
 #define Pharos_Globals_H
@@ -8,11 +8,12 @@
 #include "state.hpp"
 #include "semantics.hpp"
 #include "delta.hpp"
+#include "threads.hpp"
 
 namespace pharos {
 
 // duplicative...
-typedef std::set<SgAsmInstruction*> InsnSet;
+using InsnSet = std::set<SgAsmInstruction*>;
 
 // A procedural method that's defined here and used in several places.  This hack is not
 // related to initializing ESP to zero, but rather sorting out which constants are likely to be
@@ -67,7 +68,9 @@ enum DataType {
 // The real definition is in datatypes.hpp.
 //extern enum DataType;
 
-class GlobalMemoryDescriptor {
+class GlobalMemoryDescriptor : private Immobile {
+  mutable shared_mutex mutex;
+
   // The address of the global memory.  This is where the data or code
   // is at during execution.
   rose_addr_t address;
@@ -79,11 +82,6 @@ class GlobalMemoryDescriptor {
   // memory address.
   InsnSet reads;
   InsnSet writes;
-
-  // Is the memory address defined in the PE header?
-  bool in_image;
-  // Is the memory address initialized at program load?
-  bool initialized;
 
   // Our confidence in the data type.
   GenericConfidence confidence;
@@ -109,13 +107,13 @@ class GlobalMemoryDescriptor {
 
 public:
 
-  GlobalMemoryDescriptor();
+  GlobalMemoryDescriptor(rose_addr_t addr, size_t bits);
 
-  GlobalMemoryDescriptor(rose_addr_t addr);
+  SymbolicValuePtr get_memory_address() const { return memory_address; }
 
-  SymbolicValuePtr get_memory_address() { return memory_address; }
-
-  const std::vector<SymbolicValuePtr>& get_values() { return values; }
+  auto get_values() const {
+    return make_read_locked_range<const decltype(values)>(values, mutex);
+  }
 
   rose_addr_t get_address() const { return address; }
 
@@ -128,9 +126,15 @@ public:
 
   std::string to_string() const;
 
-  const InsnSet& get_writes();
-  const InsnSet& get_reads();
-  const InsnSet& get_refs();
+  auto get_writes() const {
+    return make_read_locked_range<const InsnSet>(writes, mutex);
+  }
+  auto get_reads() const {
+    return make_read_locked_range<const InsnSet>(reads, mutex);
+  }
+  auto get_refs() const {
+    return make_read_locked_range<const InsnSet>(refs, mutex);
+  }
 
   // Are all known memory accesses reads?
   bool read_only() const;
@@ -141,14 +145,16 @@ public:
   // Is the descriptor "suspicious"?  (One of several unlikely cases?)
   bool suspicious() const;
 
-  bool get_initialized() const { return initialized; }
-  bool get_in_image() const { return in_image; }
+  // We should pass in the something that knows how to read memory if we need these.
+  // bool get_initialized() const;
+  // bool get_in_image() const;
+  // The analyze() methods was only needed to set the two memory properties.
+  // Perhaps this should be set at construction in the future?
+  // void analyze(rose_addr_t addr);
 
-  size_t get_size() const { return size; }
-  void set_size(size_t s) { size = s; }
+  size_t get_size() const { auto && guard = read_guard(mutex); return size; }
+  void set_size(size_t s) { auto && guard = write_guard(mutex); size = s; }
   size_t get_access_size() const { return access_size; }
-
-  void analyze(rose_addr_t addr);
 
   void short_print(std::ostream &o) const;
   void print(std::ostream &o) const;
@@ -161,6 +167,14 @@ public:
 class GlobalMemoryDescriptorMap: public std::map<rose_addr_t, GlobalMemoryDescriptor> {
 
 public:
+
+  const GlobalMemoryDescriptor* get_global(rose_addr_t addr) const {
+    GlobalMemoryDescriptorMap::const_iterator it = this->find(addr);
+    if (it != this->end())
+      return &(it->second);
+    else
+      return NULL;
+  }
 
   GlobalMemoryDescriptor* get_global(rose_addr_t addr) {
     GlobalMemoryDescriptorMap::iterator it = this->find(addr);

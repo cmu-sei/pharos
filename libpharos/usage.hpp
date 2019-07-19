@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Usage_H
 #define Pharos_Usage_H
@@ -8,9 +8,12 @@
 
 namespace pharos {
 
+// Forward declaration of OOAnalyzer in lieu of including ooanalyzer.hpp
+class OOAnalyzer;
+
 // Maps the call instructions to the methods they call.  This is another way of representing
 // the method set above, but is needed (at least temporarily) for dominance analysis.
-typedef std::map<SgAsmInstruction* , ThisCallMethodSet> MethodEvidenceMap;
+using MethodEvidenceMap = std::map<SgAsmInstruction*, ThisCallMethodSet>;
 
 // Don't forget to update the EnumStrings in usage.cpp as well...
 enum AllocType {
@@ -20,6 +23,7 @@ enum AllocType {
   AllocGlobal,
   AllocParameter
 };
+extern template std::string Enum2Str<AllocType>(AllocType);
 
 // Allow others to use our utility function to pick a this-pointer out of an ITE expression.
 SymbolicValuePtr pick_this_ptr(SymbolicValuePtr& sv);
@@ -33,7 +37,7 @@ SymbolicValuePtr pick_this_ptr(SymbolicValuePtr& sv);
 class ThisPtrUsage {
 
   // The function that this usage appears in.
-  FunctionDescriptor* fd;
+  const FunctionDescriptor* fd;
 
   // This is an unordered set of all of the methods sharing the same this-pointer.
   MethodEvidenceMap method_evidence;
@@ -53,11 +57,11 @@ public:
   // The instruction that best represents the allocation.
   SgAsmInstruction* alloc_insn;
 
-  ThisPtrUsage(FunctionDescriptor* f, SymbolicValuePtr tptr,
-               ThisCallMethod* tcm, SgAsmInstruction* call_insn);
+  ThisPtrUsage(const FunctionDescriptor* f, SymbolicValuePtr tptr,
+               const ThisCallMethod* tcm, SgAsmInstruction* call_insn);
 
   // Add a method to both the methods set and the method evidence map.
-  void add_method(ThisCallMethod* tcm, SgAsmInstruction* call_insn) {
+  void add_method(const ThisCallMethod* tcm, SgAsmInstruction* call_insn) {
     // The semantics of the square brackets actually appear to be correct here.  If there's no
     // entry yet for call_insn, create an empty set.  Hooray, it worked like I wanted!
     method_evidence[call_insn].insert(tcm);
@@ -65,17 +69,17 @@ public:
 
   const MethodEvidenceMap& get_method_evidence() const { return method_evidence; }
 
-  FunctionDescriptor* get_fd() const { return fd; }
+  const FunctionDescriptor* get_fd() const { return fd; }
 
   void analyze_alloc();
 
   // Prolog mode constructor destructor test based on call order.
-  void update_ctor_dtor() const;
+  void update_ctor_dtor(OOAnalyzer& ooa) const;
 };
 
 // The ThisPtrUsage map is keyed by the get_hash() of the TreeNode, which is a 64-bit hash of
 // the expression.
-typedef std::map<SVHash, ThisPtrUsage> ThisPtrUsageMap;
+using ThisPtrUsageMap = std::map<SVHash, ThisPtrUsage>;
 
 // Cory's experimenting here.  This class will define the use of an object in a function,
 // regardless of whether that function is itself an object-oriented method itself.
@@ -83,24 +87,25 @@ class ObjectUse {
 
 public:
   // This is the function that contains the object uses.
-  FunctionDescriptor* fd;
+  const FunctionDescriptor* fd;
   // This is the list of ThisPtrUsages which records the this-pointer and the OO methods called
   // on each of them.
   ThisPtrUsageMap references;
 
   // Analyze the function and populate the references member.
-  ObjectUse(FunctionDescriptor* f);
+  // The ooanalyzer is non-const because of ooa.follow_thunks()
+  ObjectUse(OOAnalyzer& ooa, const FunctionDescriptor* f);
 
   // Analyze function to find object uses.
-  void analyze_object_uses();
+  void analyze_object_uses(OOAnalyzer const & ooa);
 
   // Prolog mode constructor destructor test based on call order.
-  void update_ctor_dtor() const;
+  void update_ctor_dtor(OOAnalyzer& ooa) const;
 
 };
 
 // Typedef for global map recording the use of various objects.
-typedef std::map<rose_addr_t, ObjectUse> ObjectUseMap;
+using ObjectUseMap = std::map<rose_addr_t, ObjectUse>;
 
 } // namespace pharos
 

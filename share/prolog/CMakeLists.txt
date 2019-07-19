@@ -10,10 +10,12 @@ function(compile_prolog)
       COMMAND ${XSB_PROGRAM} -e "catch(compile(${name}),X,halt(-1)),halt." > /dev/null 2>&1
       COMMAND ${CMAKE_COMMAND} -E
       copy "${CMAKE_CURRENT_SOURCE_DIR}/${xwam}" "${CMAKE_CURRENT_BINARY_DIR}/"
-      DEPENDS ${depends} xsb-install
+      DEPENDS ${depends}
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       VERBATIM)
   endforeach()
 endfunction()
+
+configure_file(helper.bash.in helper.bash @ONLY)
 
 add_subdirectory(oorules)

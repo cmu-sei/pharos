@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "state.hpp"
 #include "riscops.hpp"
@@ -19,9 +19,9 @@ extern SymbolicRiscOperatorsPtr global_rops;
 using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
 
 SymbolicRegisterState::SymbolicRegisterState(
-  const SymbolicValuePtr &proto,
-  const ::RegisterDictionary *rd):
-  RegisterStateGeneric(proto, rd)
+  const Rose::BinaryAnalysis::InstructionProvider& _ip,
+  const SymbolicValuePtr &proto):
+  RegisterStateGeneric(proto, _ip.registerDictionary()), ip(_ip)
 {
   // moving the global_rops creation to pharos_main caused this message to always come out:
   //STRACE << "SymbolicRegisterState::SymbolicRegisterState(proto, rd)" << LEND;
@@ -42,12 +42,6 @@ SymbolicRegisterState::SymbolicRegisterState(
 #else
   initialize_nonoverlapping(dispatcher->get_usual_registers(), false);
 #endif
-}
-
-SymbolicRegisterStatePtr SymbolicRegisterState::instance() {
-  SymbolicValuePtr svalue = SymbolicValue::instance();
-  const RegisterDictionary regdict = global_descriptor_set->get_regdict();
-  return SymbolicRegisterStatePtr(new SymbolicRegisterState(svalue, regdict));
 }
 
 // Compare the symbolic values of two register states.
@@ -104,6 +98,7 @@ SymbolicValuePtr SymbolicRegisterState::inspect_register(RegisterDescriptor rd) 
 RegisterSet SymbolicRegisterState::diff(const SymbolicRegisterStatePtr & other) {
   RegisterStateGeneric::AccessCreatesLocationsGuard(this, false);
   RegisterSet changed;
+
   // For each register in our state, compare it with the other.
   for (const RegisterStateGeneric::RegPairs& rpl : registers_.values()) {
     for (const RegisterStateGeneric::RegPair& rp : rpl) {
@@ -112,7 +107,7 @@ RegisterSet SymbolicRegisterState::diff(const SymbolicRegisterStatePtr & other) 
       // If there's no value at all in the output state, it must be unchanged.
       if (!ovalue) continue;
       // 64-bit issue! This should be the following code (but one thing at a time...)
-      if (rp.desc == global_descriptor_set->get_ip_reg()) continue;
+      if (rp.desc == ipreg) continue;
       // Report everything that's not guaranteed to match.  The caller can think harder about
       // the results if they want, but we shouldn't force more analysis than is required here.
       if (!(value->must_equal(ovalue, SmtSolverPtr()))) {
@@ -160,7 +155,7 @@ CellMapChunks::CellMapChunks(const DUAnalysis & usedef, bool df_flag) {
   }
 
   // The df f should be treated as a constant value when chunking addresses
-  const RegisterDictionary regdict = global_descriptor_set->get_regdict();
+  const RegisterDictionary regdict = usedef.ds.get_regdict();
   RegisterDescriptor df_reg = regdict.lookup("df");
   const auto & df_sym = const_cast<SymbolicStatePtr &>(input_state)->read_register(df_reg);
   const auto & df_tn = df_sym ? df_sym->get_expression() : TreeNodePtr();
@@ -243,8 +238,8 @@ void CellMapChunks::chunk_iterator::increment()
 
 // Type recovery test!
 
-typedef Rose::BinaryAnalysis::SymbolicExpr::Visitor TreeNodeVisitor;
-typedef Rose::BinaryAnalysis::SymbolicExpr::VisitAction VisitAction;
+using TreeNodeVisitor = Rose::BinaryAnalysis::SymbolicExpr::Visitor;
+using VisitAction = Rose::BinaryAnalysis::SymbolicExpr::VisitAction;
 
 class TypeRecoveryVisitor: public TreeNodeVisitor {
 
@@ -414,11 +409,16 @@ bool SymbolicMemoryMapState::equals(const SymbolicMemoryMapStatePtr& other) {
   return true;
 }
 
-typedef Semantics2::BaseSemantics::InputOutputPropertySet InputOutputPropertySet;
+using InputOutputPropertySet = Semantics2::BaseSemantics::InputOutputPropertySet;
 
 bool SymbolicMemoryMapState::merge(const BaseMemoryStatePtr& other_,
                                    BaseRiscOperators* addrOps,
                                    BaseRiscOperators* valOps) {
+
+  // The BaseMergerPtr is really a CERTMergerPtr.
+  const CERTMergerPtr& cert_merger = merger().dynamicCast<CERTMerger>();
+  // We should always have a CERTMerger object.
+  assert(cert_merger);
 
   std::set<CellKey> processed;
   // =====================================================================================
@@ -453,6 +453,12 @@ bool SymbolicMemoryMapState::merge(const BaseMemoryStatePtr& other_,
       if (thisCellChanged) {
         if (!newValue)
           newValue = thisValue->copy();
+
+        //SymbolicValuePtr thisCellSV = SymbolicValue::promote(thisCell->get_address());
+        //SymbolicValuePtr newValueSV = SymbolicValue::promote(newValue);
+        //OINFO << "Writing to memory 1 ADDR=  "
+        //      << *thisCellSV->get_expression() << ", VAL= " << *newValueSV->get_expression() << LEND;
+
         writeMemory(thisCell->get_address(), newValue, addrOps, valOps);
         latestWrittenCell_->setWriters(newWriters);
         latestWrittenCell_->ioProperties() = newProps;
@@ -467,10 +473,23 @@ bool SymbolicMemoryMapState::merge(const BaseMemoryStatePtr& other_,
     // in the other memory state that is not in this memory state.
     else {
       BaseSValuePtr otherValue = otherCell->get_value();
-      // Create the incomplete value.
+
+      // Create the incomplete value.  But first mark that we want to use the inverted
+      // condition, because we're calling other->merge(this) rather than this->merge(other) and
+      // the condition is tied to which object is this and which is other.  Immediately after
+      // completing the merge of this value, set inverted back to false.
+      cert_merger->inverted = true;
       BaseSValuePtr newValue = otherValue->createOptionalMerge(BaseSValuePtr(), merger(), valOps->solver()).orDefault();
+      cert_merger->inverted = false;
+
       if (!newValue) continue;
       // Write the merged cell into this memory state.
+
+      //SymbolicValuePtr otherCellSV = SymbolicValue::promote(otherCell->get_address());
+      //SymbolicValuePtr newValueSV = SymbolicValue::promote(newValue);
+      //OINFO << "Writing to memory 2 ADDR=  "
+      //      << *otherCellSV->get_expression() << ", VAL= " << *newValueSV->get_expression() << LEND;
+
       writeMemory(otherCell->get_address(), newValue, addrOps, valOps);
       latestWrittenCell_->setWriters(otherCell->getWriters());
       latestWrittenCell_->ioProperties() = otherCell->ioProperties();
@@ -492,6 +511,12 @@ bool SymbolicMemoryMapState::merge(const BaseMemoryStatePtr& other_,
     BaseSValuePtr newValue = thisValue->createOptionalMerge(BaseSValuePtr(), merger(), valOps->solver()).orDefault();
     if (!newValue) continue;
     // Write the merged cell into this memory state.
+
+    //SymbolicValuePtr thisCellSV = SymbolicValue::promote(thisCell->get_address());
+    //SymbolicValuePtr newValueSV = SymbolicValue::promote(newValue);
+    //OINFO << "Writing to memory 3 ADDR=  "
+    //      << *thisCellSV->get_expression() << ", VAL= " << *newValueSV->get_expression() << LEND;
+
     writeMemory(thisCell->get_address(), newValue, addrOps, valOps);
     latestWrittenCell_->setWriters(thisCell->getWriters());
     latestWrittenCell_->ioProperties() = thisCell->ioProperties();
@@ -549,7 +574,7 @@ using Semantics2::BaseSemantics::IO_READ_AFTER_WRITE;   // read after being writ
 using Semantics2::BaseSemantics::IO_READ_UNINITIALIZED; // read without having IO_WRITE or IO_INIT.
 
 // From the base list-based memory representation.
-typedef Semantics2::BaseSemantics::MemoryCellList::CellList CellList;
+using CellList = Semantics2::BaseSemantics::MemoryCellList::CellList;
 
 // Rose::BinaryAnalysis::InstructionSemantics2::BaseSemantics::MemoryCellList’ is not a namespace or unscoped enum
 

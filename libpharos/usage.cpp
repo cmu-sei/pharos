@@ -1,4 +1,4 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/format.hpp>
 #include <boost/range/adaptor/map.hpp>
@@ -15,6 +15,7 @@
 #include "usage.hpp"
 #include "method.hpp"
 #include "cdg.hpp"
+#include "ooanalyzer.hpp"
 
 namespace pharos {
 
@@ -25,7 +26,7 @@ template<> char const* EnumStrings<AllocType>::data[] = {
   "Global",
   "Param",
 };
-
+template std::string Enum2Str<AllocType>(AllocType);
 
 using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
 
@@ -48,12 +49,11 @@ SymbolicValuePtr pick_this_ptr(SymbolicValuePtr& sv) {
   }
 }
 
-ThisPtrUsage::ThisPtrUsage(FunctionDescriptor* f, SymbolicValuePtr tptr,
-                           ThisCallMethod* tcm, SgAsmInstruction* call_insn) {
+ThisPtrUsage::ThisPtrUsage(const FunctionDescriptor* f, SymbolicValuePtr tptr,
+                           const ThisCallMethod* tcm, SgAsmInstruction* call_insn) : fd(f) {
   assert(tptr);
   this_ptr = tptr;
 
-  fd = f;
   assert(fd != NULL);
 
   // We don't know anything about our allocation yet.
@@ -89,7 +89,7 @@ void ThisPtrUsage::analyze_alloc() {
     // Here's a place where we're having the age old debate about how to tell what is an
     // address with absolutely no context.  Cory still likes consistency.  Others have
     // suggested that we should be using the memory map despite all of it's flaws...
-    // if (!global_descriptor_set->memory_in_image(num)) return;
+    // if (!ds->memory_in_image(num)) return;
     if (num < 0x10000 || num > 0x7FFFFFFF) return;
     // Otherwise, we look like a legit global address?
     alloc_type = AllocGlobal;
@@ -107,7 +107,7 @@ void ThisPtrUsage::analyze_alloc() {
   // retiring.  Even though it's not clear that this code is required, I've updated it to use
   // latest definers in place of modifiers, only we haven't switch to just using the _latest_
   // definers yet so it needed some additional filtering to determine which definer to use.
-  PDG* pdg = fd->get_pdg();
+  const PDG* pdg = fd->get_pdg();
   // Shouldn't happen.
   if (!pdg) return;
   const DUAnalysis& du = pdg->get_usedef();
@@ -178,17 +178,17 @@ void ThisPtrUsage::analyze_alloc() {
   return;
 }
 
-ObjectUse::ObjectUse(FunctionDescriptor* f) {
+ObjectUse::ObjectUse(OOAnalyzer& ooa, const FunctionDescriptor* f) {
   fd = f;
   assert(fd != NULL);
-  analyze_object_uses();
+  analyze_object_uses(ooa);
 }
 
 using VertexFound = std::runtime_error;
 
 // Use a fancy std bidirectional thingie instead?
-typedef std::map<SgAsmInstruction*, CFGVertex> InsnVertexMap;
-typedef std::map<CFGVertex, SgAsmInstruction*> VertexInsnMap;
+using InsnVertexMap = std::map<SgAsmInstruction*, CFGVertex>;
+using VertexInsnMap = std::map<CFGVertex, SgAsmInstruction*>;
 
 class CallOrderVisitor: public boost::default_bfs_visitor {
  public:
@@ -235,18 +235,18 @@ class NonReturningCFGFilter {
   }
 };
 
-void ObjectUse::update_ctor_dtor() const {
+void ObjectUse::update_ctor_dtor(OOAnalyzer& ooa) const {
   // For each this-pointer... (since there can be multiple objects in a single function)
   for (const ThisPtrUsage& tpu : boost::adaptors::values(references)) {
     // A this-pointer usage (tpu) describes a particular object instance, including which
     // methods are called using the this pointer.
-    tpu.update_ctor_dtor();
+    tpu.update_ctor_dtor(ooa);
   }
 }
 
 // A new Prolog mode method to update the constructor/destructor booleans in the ThisCallMethod
 // based on whether there are other function calls that come before or after the method.
-void ThisPtrUsage::update_ctor_dtor() const {
+void ThisPtrUsage::update_ctor_dtor(OOAnalyzer& ooa) const {
   // =====================================================================================
   // Step 1. The key of the method evidence map is the call instruction that called the
   // method on the this-pointer.  Look through the CFG finding the vertex numbers for each of
@@ -261,19 +261,19 @@ void ThisPtrUsage::update_ctor_dtor() const {
   if (remaining == 0) return;
 
   // Get the control flow graph.
-  CFG& cfg = fd->get_rose_cfg();
+  CFG const & cfg = fd->get_rose_cfg();
 
   // For each vertex in the control flow graph.
   for (const CFGVertex& vertex : cfg_vertices(cfg)) {
     // Get the last instruction in the basic block.
     SgAsmBlock *bb = get(boost::vertex_name, cfg, vertex);
     const SgAsmInstruction* lastinsn = last_insn_in_block(bb);
-    const SgAsmx86Instruction* lastxinsn = isSgAsmX86Instruction(lastinsn);
+    const SgAsmX86Instruction* lastxinsn = isSgAsmX86Instruction(lastinsn);
 
     // If the instruction is a call
     if (lastxinsn && insn_is_call(lastxinsn)) {
       // Get the call descriptor
-      const CallDescriptor* cd = global_descriptor_set->get_call(lastinsn->get_address());
+      const CallDescriptor* cd = fd->ds.get_call(lastinsn->get_address());
       // If the call never returns, add it to the list of non-returning vertices.
       if (cd && cd->get_never_returns()) {
         //OINFO << "Adding vertex to non-returning hash list..." << LEND;
@@ -313,11 +313,14 @@ void ThisPtrUsage::update_ctor_dtor() const {
     CFGVertex s = cov.call2vertex[callinsn];
     //OINFO << "Considering call insn: " << addr_str(callinsn->get_address()) << LEND;
     // For each method called by that instruction... (usually just one)
-    for (ThisCallMethod* tcm : mpair.second) {
-      //OINFO << "Considering method: " << tcm->address_string() << LEND;
+    for (const ThisCallMethod* tcm : mpair.second) {
+      // Convert const tcm to non-const wtcm, so we can update the properties.
+      ThisCallMethod* wtcm = ooa.get_method_rw(tcm->get_address());
+
+      //OINFO << "Considering method: " << wtcm->address_string() << LEND;
       // If we still think that we're possibly a constructor...
-      if (tcm->no_calls_before) {
-        //OINFO << "Method " << tcm->address_string() << " is a possible constructor." << LEND;
+      if (wtcm->no_calls_before) {
+        //OINFO << "Method " << wtcm->address_string() << " is a possible constructor." << LEND;
         try {
           // Mark our starting vertex and then do a breadth first search for one of the other
           // calls.  Reverse the graph because we want to search backwards in the CFG.
@@ -328,17 +331,17 @@ void ThisPtrUsage::update_ctor_dtor() const {
         }
         // If the search threw VertexFound, there's another call before this method, so we're
         // not a constructor.   Update the ThisCallMethod to reflect this.
-        catch (VertexFound) {
-          GINFO << "Method " << tcm->address_string() << " is NOT a constructor because "
+        catch (VertexFound&) {
+          GINFO << "Method " << wtcm->address_string() << " is NOT a constructor because "
                 << "of the call at " << addr_str(callinsn->get_address()) << LEND;
           // Mark the method as not a constructor.
-          tcm->no_calls_before = false;
+          wtcm->no_calls_before = false;
         }
       }
 
       // If we still think that we're possibly a destructor...
-      if (tcm->no_calls_after) {
-        //OINFO << "Method " << tcm->address_string() << " is a possible destructor." << LEND;
+      if (wtcm->no_calls_after) {
+        //OINFO << "Method " << wtcm->address_string() << " is a possible destructor." << LEND;
         try {
           // Mark our starting vertex and then do a breadth first search for one of the other
           cov.current = s;
@@ -347,11 +350,11 @@ void ThisPtrUsage::update_ctor_dtor() const {
         }
         // If the search threw VertexFound, there's another call after this method, so we're
         // not a destructor.   Update the ThisCallMethod to reflect this.
-        catch (VertexFound) {
-          GINFO << "Method " << tcm->address_string() << " is NOT a destructor because "
+        catch (VertexFound&) {
+          GINFO << "Method " << wtcm->address_string() << " is NOT a destructor because "
                 << "of the call at " << addr_str(callinsn->get_address()) << LEND;
           // Mark the method as not a destructor.
-          tcm->no_calls_after = false;
+          wtcm->no_calls_after = false;
         }
       }
     }
@@ -359,10 +362,10 @@ void ThisPtrUsage::update_ctor_dtor() const {
 }
 
 // Analyze the function and populate the references member with information about each
-// this-pointer use in the function.  The approach is to use our knowledge about which methods
-// are object oriented, by calling follow_oo_thunks(), which requires that we've set the
-// oo_properties member on the function descriptor already.
-void ObjectUse::analyze_object_uses() {
+// this-pointer use in the function.  We were filtering based on which methods were known to be
+// object oriented by calling follow thunks, but that's heavily dependent on the order in which
+// the functions are analyzed.
+void ObjectUse::analyze_object_uses(OOAnalyzer const & ooa) {
   for (CallDescriptor* cd : fd->get_outgoing_calls()) {
     // The the value in the this-pointer location (ECX) before the call.
     SymbolicValuePtr this_ptr = get_this_ptr_for_call(cd);
@@ -379,8 +382,9 @@ void ObjectUse::analyze_object_uses() {
     // Go through each of the possible targets looking for OO methods.
     for (rose_addr_t target : cd->get_targets()) {
       // If we're not an OO method, we're not interested.
-      ThisCallMethod* tcm = follow_oo_thunks(target);
-      if (tcm == NULL) continue;
+      // We can't tell properly right now anyway because we're being called from visit()!!!
+      const ThisCallMethod* tcm = ooa.follow_thunks(target);
+      if (tcm == nullptr) continue;
 
       // Do we already have any entry for this this-pointer?
       ThisPtrUsageMap::iterator finder = references.find(hash);

@@ -1,13 +1,33 @@
+// Copyright 2017-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "ooelement.hpp"
 
 namespace pharos {
 
-OOElement::OOElement() : size_(0), offset_(INVALID), type_(OOElementType::UNKN), name_("") { }
+OOElement::OOElement()  {
 
-OOElement::OOElement(size_t s, OOElementType t) : size_(s), offset_(INVALID), type_(t), name_("") { }
+  // everything is default
+  set_size(0);
+  // set_offset(INVALID);
+  set_type(OOElementType::UNKN);
+  set_name("");
+}
 
-OOElement::OOElement(size_t s) : size_(s), offset_(INVALID), type_(OOElementType::UNKN), name_("") { }
+OOElement::OOElement(size_t s, OOElementType t) {
+  set_size(s);
+  set_type(t);
+
+  // defaults
+  // set_offset(INVALID);
+  set_name("");
+}
+
+OOElement::OOElement(size_t s) {
+  set_size(s);
+  // set_offset(INVALID);
+  set_type(OOElementType::UNKN);
+  set_name("");
+}
 
 // elements should know how to name themselves
 void
@@ -20,15 +40,15 @@ OOElement::get_name() const {
   return name_;
 }
 
-size_t
-OOElement::get_offset() const {
-  return offset_;
-}
+// size_t
+// OOElement::get_offset() const {
+//   return offset_;
+// }
 
-void
-OOElement::set_offset(size_t o) {
-  offset_=o;
-}
+// void
+// OOElement::set_offset(size_t o) {
+//   offset_=o;
+// }
 
 size_t
 OOElement::get_size() const { return size_; }

@@ -33,7 +33,7 @@ tryBinarySearchInt(PosPred, NegPred, List) :-
 
     tryBinarySearchInt(PosPred, NegPred, NewList).
 
-tryBinarySearchInt(_PP, _NP, L) :-
+tryBinarySearchInt(_PP, _NP, _L) :-
     %debug('tryBinarySearch completely failed on '), debug(L), debugln(' and will now backtrack to fix an upstream problem.'),
     fail.
 
@@ -239,10 +239,13 @@ tryNOTVFTableEntry(VFTable, Offset, Entry) :-
 % ED_PAPER_INTERESTING
 % --------------------------------------------------------------------------------------------
 guessDerivedClass(DerivedClass, BaseClass, Offset) :-
-    % It's a little unclear if we want to limit this to offset zero, or accept all embedded
-    % objects as base classes.  At present, we're back to accepting all classes.
-    % Offset = 0,
     factObjectInObject(DerivedClass, BaseClass, Offset),
+    % Over time we've had a lot of different theories about whether we intended to limit this
+    % guess to offset zero.  This logic says that the offset must either be zero, or have a
+    % proven instance of inheritance at a lower address already.  This isn't strictly correct,
+    % but it's sufficient to prevent the rule from making guesses in a really bad order (higher
+    % offsets before offset zero).  We can tighten it further in the future, if needed.
+    (Offset = 0; (factDerivedClass(DerivedClass, _BaseClass2, LowerO), LowerO < Offset)),
     not(factDerivedClass(DerivedClass, BaseClass, Offset)),
     not(factEmbeddedObject(DerivedClass, BaseClass, Offset)).
 
@@ -291,19 +294,32 @@ tryDerivedClass(DerivedClass, BaseClass, Offset) :-
 % Try guessing that an address is really method.
 % --------------------------------------------------------------------------------------------
 
-% This guess is necessary because the "certain" attribute is not currently 100% accurate.  The
-% problem that Cory explicitly found was that NOP instructions that look like object accesses
-% result in the thiscall calling convention for trivial NOP functions.  This can probably be
-% corrected upstream in fact generation, but for now an easy fix is to require at least a
-% little other evidence that that convention detection was legitimate.  Requiring a
-% validMethodMemberAccess is essentialy requiring that something in the object be accessed in
-% the method.  The justification for using 100 as the limit for the offset size here is a bit
-% complicated, but basically the thinking is that medium sized accesses are usually accompanied
-% by at least one small access, and we can exclude a few more false positives by reducing the
-% limit further beyond what would obviously be too limiting for validMethodMemberAccess.
+% This guess was: thisCallMethod(M, _T, certain), methodMemberAccess(_I, M, O, _S)...
+%
+% But changing it to require validMethodMemberAccess is complete nonense, because we're now
+% _requiring_ that factMethod() be true for the member access to be valid.  The size filter in
+% this rule is more restrictive than the one in validMethodMemberAccess, so we're not really
+% losing anything by testing the unvalidated member access.
+%
+% Additionally, we were testing thisCallMethod(M, _T, certain), but in the "new" way of doing
+% things, we should be more dependent on factMethod() and callingConvention(M, '__thiscall').
+% I didn't remove the thisCallMethod(M, _T, certain) clause, but we _do_ pass our tests with
+% the slightly weaker callingConvention clause, which is likely to be more portable.  We should
+% conduct some tests against larger files (like the paper test suite) before making the change.
+%
+% Requiring a validMethodMemberAccess is essentialy requiring that something in the object be
+% accessed in the method.  The justification for using 100 as the limit for the offset size
+% here is a bit complicated, but basically the thinking is that medium sized accesses are
+% usually accompanied by at least one small access, and we can exclude a few more false
+% positives by reducing the limit further beyond what would obviously be too limiting for
+% validMethodMemberAccess.
 guessMethodA(Method) :-
-    thisCallMethod(Method, _ThisPtr, certain),
-    validMethodMemberAccess(_Insn, Method, Offset, _Size),
+    %callingConvention(Method, '__thiscall'),
+    thisCallMethod(Method, _ThisPtr, uncertain),
+    % Intentionally use the _unvalidated_ access to guess that the Method is actually object
+    % oriented.  This will be a problem as we export more facts where we don't have the correct
+    % calling convention data (e.g. Linux executables)
+    methodMemberAccess(_Insn, Method, Offset, _Size),
     Offset < 100,
     not(factMethod(Method)),
     not(factNOTMethod(Method)).
@@ -338,10 +354,13 @@ guessMethod :-
 % logically.
 % ED_PAPER_INTERESTING
 guessMethodC(Method) :-
+    %callingConvention(Method, '__thiscall'),
     thisCallMethod(Method, _ThisPtr, uncertain),
-    validMethodMemberAccess(_Insn1, Method, Offset, _Size1),
+    % Also intentionally an unvalidated methodMemberAccess because we're guessing the
+    % factMethod() that is required for the validMethodMemberAccess.
+    methodMemberAccess(_Insn1, Method, Offset, _Size1),
     Offset < 100,
-    funcOffset(_Insn2, Caller, Method, _Size2),
+    validFuncOffset(_Insn2, Caller, Method, _Size2),
     factMethod(Caller),
     not(factMethod(Method)),
     not(factNOTMethod(Method)).
@@ -362,10 +381,10 @@ guessMethodD(Method) :-
     thisCallMethod(Method, _ThisPtr, uncertain),
     validMethodMemberAccess(_Insn0, Method, Offset, _Size0),
     Offset < 100,
-    funcOffset(_Insn1, Caller1, Method, _Size1),
-    funcOffset(_Insn2, Caller2, Method, _Size2),
+    validFuncOffset(_Insn1, Caller1, Method, _Size1),
+    validFuncOffset(_Insn2, Caller2, Method, _Size2),
     iso_dif(Caller1, Caller2),
-    funcOffset(_Insn3, Caller3, Method, _Size3),
+    validFuncOffset(_Insn3, Caller3, Method, _Size3),
     iso_dif(Caller1, Caller3),
     not(factMethod(Method)),
     not(factNOTMethod(Method)).
@@ -693,8 +712,8 @@ tryNOTMergeClasses(Class1, Class2) :-
 guessMergeClassesA(Class1, MethodClass) :-
     factMethod(Method),
     not(purecall(Method)), % Never merge purecall methods into classes.
-    funcOffset(_Insn1, Constructor1, Method, 0),
-    funcOffset(_Insn2, Constructor2, Method, 0),
+    validFuncOffset(_Insn1, Constructor1, Method, 0),
+    validFuncOffset(_Insn2, Constructor2, Method, 0),
     iso_dif(Constructor1, Constructor2),
     factConstructor(Constructor1),
     factConstructor(Constructor2),
@@ -896,10 +915,9 @@ tryMergeClasses(Method1, Method2) :-
 tryMergeClasses(Method1, Method2) :-
     find(Method1, Class1),
     find(Method2, Class2),
-    loginfo('Guessing factMergeClasses('),
+    loginfo('Guessing mergeClasses('),
     loginfo(Class1), loginfo(', '),
     loginfo(Class2), loginfoln(') ... '),
-    try_assert(factMergeClasses(Class1, Class2)),
     mergeClasses(Class1, Class2),
     try_assert(guessedMergeClasses(Class1, Class2)).
 

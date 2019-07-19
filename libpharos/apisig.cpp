@@ -6,7 +6,6 @@
 #include <boost/algorithm/string/erase.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/lexical_cast.hpp>
-
 #include "apisig.hpp"
 
 namespace pharos {
@@ -15,22 +14,8 @@ namespace pharos {
 // * Start of ApiSigParam methods
 // ********************************************************************************************
 
-ApiSigParam & ApiSigParam::operator=(const ApiSigParam & other) {
-
-  name.assign(other.name);
-  type = other.type;
-
-  return *this;
-}
-
 bool ApiSigParam::operator==(const ApiSigParam& other) {
   return (name == other.name && type == other.type);
-}
-
-ApiSigParam::ApiSigParam(const ApiSigParam &copy) {
-
-  name.assign(copy.name);
-  type = copy.type;
 }
 
 void ApiSigParam::Clear() {
@@ -39,16 +24,12 @@ void ApiSigParam::Clear() {
 }
 
 bool ApiSigParam::Validate() const {
-
   return (name!="" && type!=UNKN);
 }
 
 std::string ApiSigParam::ToString() const {
-
   std::ostringstream out_stream;
-
   out_stream << "Name: " << name << ", Type: " << ((type==ApiParamType::IN) ? "IN" : "OUT");
-
   return out_stream.str();
 }
 
@@ -56,19 +37,11 @@ std::string ApiSigParam::ToString() const {
 // * Start of ApiSigFuncParam methods
 // ********************************************************************************************
 
-ApiSigFuncParam & ApiSigFuncParam::operator=(const ApiSigFuncParam &other) {
-  ApiSigParam::operator=(other);
-  index = other.index;
-
-  return *this;
-}
-
 bool ApiSigFuncParam::operator==(const ApiSigFuncParam& other) {
   return (ApiSigParam::operator==(other) && index == other.index);
 }
 
 std::string ApiSigFuncParam::ToString() const {
-
   std::ostringstream out_stream;
   out_stream << ApiSigParam::ToString() << ", Index: " << index;
 
@@ -87,20 +60,16 @@ void ApiSigFuncParam::Clear() {
 // * Start of ApiSigFunc methods
 // ********************************************************************************************
 
-ApiSigFunc & ApiSigFunc::operator=(const ApiSigFunc & other) {
+ApiSigFunc::ApiSigFunc(std::string a) {
 
-  name.assign(other.name);
+    name = a;
+    boost::to_upper(name);
 
-  has_retval = other.has_retval;
-  if (has_retval) {
-    retval = other.retval;
-  }
+    has_params = false;
+    params.clear();
 
-  has_params = other.has_params;
-  if (has_params) {
-    params = other.params;
-  }
-  return *this;
+    has_retval = false;
+    retval.Clear();
 }
 
 bool ApiSigFunc::Validate() const {
@@ -139,21 +108,6 @@ bool ApiSigFunc::operator==(const ApiSigFunc& other) {
   return (name == other.name);
 }
 
-ApiSigFunc::ApiSigFunc(const ApiSigFunc &copy) {
-
-  name.assign(copy.name);
-
-  has_retval = copy.has_retval;
-  if (has_retval) {
-    retval = copy.retval;
-  }
-
-  has_params = copy.has_params;
-  if (has_params) {
-    params = copy.params;
-  }
-}
-
 std::string ApiSigFunc::ToString() const {
 
   std::ostringstream out_stream;
@@ -166,7 +120,7 @@ std::string ApiSigFunc::ToString() const {
   if (has_params) {
     out_stream << "Params: " << std::endl;
 
-    for (const ApiSigFuncParam & p : params)  {
+    for (ApiSigFuncParam p : params)  {
       out_stream << "   " << p.ToString() << std::endl;
     }
   }
@@ -177,15 +131,8 @@ std::string ApiSigFunc::ToString() const {
 // * Start of ApiSig methods
 // ********************************************************************************************
 
-ApiSig & ApiSig::operator=(const ApiSig & other) {
-
-  api_calls = other.api_calls;
-  api_count = other.api_count;
-  name.assign(other.name);
-  description.assign(other.description);
-  category.assign(other.category);
-
-  return *this;
+bool ApiSig::IsValid() {
+  return (name != "" && api_count>0);
 }
 
 std::string ApiSig::ToString() const {
@@ -197,62 +144,51 @@ std::string ApiSig::ToString() const {
       << "Category: " << category << "\n"
       << "APIS:\n";
 
-  for (const ApiSigFunc & f : api_calls)  {
+  for (const ApiSigFunc& f : api_calls) {
     out_stream << f.ToString() << "\n";
   }
 
   return out_stream.str();
 }
 
-ApiSig::ApiSig(const ApiSig &copy) {
-
-  api_calls = copy.api_calls;
-  api_count = copy.api_count;
-  name.assign(copy.name);
-  description.assign(copy.description);
-  category.assign(copy.category);
-}
-
 // ********************************************************************************************
 // * Start of ApiTextSigParser methods
 // ********************************************************************************************
 
-bool ApiTextSigParser::ParseSigLine(const std::string sig_str, SigPtrVector *sigs) {
+bool ApiTextSigParser::ParseSigLine(const std::string sig_str, ApiSigVector& sigs) {
 
   std::vector<std::string> sig_entry;
 
-  boost::split(sig_entry,sig_str,boost::is_any_of(":"));
+  boost::split(sig_entry, sig_str,boost::is_any_of(":"));
 
   if (sig_entry.size() == 2) {
 
-    ApiSig *sig = new ApiSig();
+    ApiSig sig;
+    sig.name = sig_entry[0];
 
-    if (sig != NULL) {
+    std::string pattern = sig_entry[1];
+    boost::to_upper(pattern);
 
-      sig->name.assign(sig_entry[0]);
+    std::vector<std::string>sig_body;
+    boost::split(sig_body, pattern, boost::is_any_of(","));
 
-      std::string pattern = sig_entry[1];
-      boost::to_upper(pattern);
+    sig.api_count = sig_body.size();
 
-      std::vector<std::string>sig_body;
-      boost::split(sig_body, pattern, boost::is_any_of(","));
 
-      sig->api_count = sig_body.size();
-
-      for (const std::string & s : sig_body) {
-        sig->api_calls.push_back(new ApiSigFunc(s));
-      }
-
-      sig->api_calls.resize(sig->api_count);
-
-      sigs->push_back(sig);
-      return true;
+    for (std::string s : sig_body) {
+      sig.api_calls.push_back(s);
     }
+
+    sig.api_calls.resize(sig.api_count);
+
+    sigs.push_back(sig);
+    return true;
   }
   return false;
 }
 
-bool ApiTextSigParser::Parse(const std::string &sig_file,SigPtrVector *sigs, size_t *valid_sigs, size_t *error_sigs) {
+bool ApiTextSigParser::Parse(const std::string &sig_file, ApiSigVector& sigs,
+                             size_t *valid_sigs, size_t *error_sigs) {
 
   std::ifstream in(sig_file.c_str());
 
@@ -299,36 +235,36 @@ bool ApiTextSigParser::Parse(const std::string &sig_file,SigPtrVector *sigs, siz
 // * Start of ApiJsonSigParser methods
 // ********************************************************************************************
 
-void ApiJsonSigParser::ParseSigRetn(boost::property_tree::ptree ret_tree, ApiSigFunc *api) {
+void ApiJsonSigParser::ParseSigRetn(boost::property_tree::ptree ret_tree, ApiSigFunc& api) {
 
-  api->retval.name = ret_tree.get<std::string>("Name","");
-  api->retval.type = ApiParamType::RET;
+  api.retval.name = ret_tree.get<std::string>("Name","");
+  api.retval.type = ApiParamType::RET;
 
 }
 
-void ApiJsonSigParser::ParseSigParams(boost::property_tree::ptree arg_tree, ApiSigFunc *api) {
+void ApiJsonSigParser::ParseSigParams(boost::property_tree::ptree arg_tree, ApiSigFunc& api) {
 
   for (boost::property_tree::ptree::value_type const& args : arg_tree) {
 
-    ApiSigFuncParam *param = new ApiSigFuncParam();
+    ApiSigFuncParam param;
 
     boost::property_tree::ptree arg_list = args.second;
 
-    param->name = arg_list.get<std::string>("Name","");
-    param->index = boost::lexical_cast<size_t>(arg_list.get<std::string>("Index",""));
+    param.name = arg_list.get<std::string>("Name","");
+    param.index = boost::lexical_cast<size_t>(arg_list.get<std::string>("Index",""));
 
     std::string t = arg_list.get<std::string>("Type","");
     if (boost::iequals(t,"In") == true) {
-      param->type = ApiParamType::IN;
+      param.type = ApiParamType::IN;
     }
     else if (boost::iequals(t,"OUT") == true) {
-      param->type = ApiParamType::OUT;
+      param.type = ApiParamType::OUT;
     }
-    api->params.push_back(param);
+    api.params.push_back(param);
   }
 }
 
-void ApiJsonSigParser::ParseApiPattern(boost::property_tree::ptree pattern, ApiSig *sig) {
+void ApiJsonSigParser::ParseApiPattern(boost::property_tree::ptree pattern, ApiSig& sig) {
 
   for (boost::property_tree::ptree::value_type const& seq : pattern) {
 
@@ -337,38 +273,33 @@ void ApiJsonSigParser::ParseApiPattern(boost::property_tree::ptree pattern, ApiS
     std::string a = api_tree.get<std::string>("API","");
     if (a != "") {
 
-      ApiSigFunc *api_entry = new ApiSigFunc(a);
+      ApiSigFunc api_entry(a);
 
       for (boost::property_tree::ptree::value_type const& entry : api_tree) {
 
         if (entry.first == "Args") {
           ParseSigParams(entry.second, api_entry);
-          if (!api_entry->has_params) api_entry->has_params = true;
+          if (!api_entry.has_params) api_entry.has_params = true;
         }
         else if (entry.first == "Retn") {
           ParseSigRetn(entry.second, api_entry);
-          if (!api_entry->has_retval) api_entry->has_retval = true;
+          if (!api_entry.has_retval) api_entry.has_retval = true;
         }
       }
-      sig->api_calls.push_back(api_entry);
-      sig->api_count++;
+      sig.api_calls.push_back(api_entry);
+      sig.api_count++;
     }
   }
 }
 
-bool ApiJsonSigParser::Validate(ApiSig *sig) const {
-  bool result = true;
-
-  if (sig->api_count == 0) {
-    result = false;
-  }
-  if (sig->name == "") {
-    result = false;
-  }
-  return result;
+bool ApiJsonSigParser::Validate(ApiSig& sig) const {
+  return (sig.api_count != 0 && sig.name != "");
 }
 
-bool ApiJsonSigParser::Parse(const std::string &sig_file, SigPtrVector *sigs, size_t *valid_sigs, size_t *error_sigs) {
+bool ApiJsonSigParser::Parse(const std::string &sig_file,
+                             ApiSigVector& sigs,
+                             size_t *valid_sigs,
+                             size_t *error_sigs) {
 
   boost::property_tree::ptree sigs_tree;
   boost::property_tree::read_json(sig_file, sigs_tree);
@@ -377,17 +308,17 @@ bool ApiJsonSigParser::Parse(const std::string &sig_file, SigPtrVector *sigs, si
 
     if (boost::iequals(sig_entry.first,"Sig")) {
 
-      ApiSig *sig = new ApiSig();
+      ApiSig sig;
       for (boost::property_tree::ptree::value_type &entry : sig_entry.second) {
 
-        if (true == boost::iequals(entry.first,"Name") && sig->name.empty()) {
-          sig->name.assign(entry.second.get_value<std::string>());
+        if (true == boost::iequals(entry.first,"Name") && sig.name.empty()) {
+          sig.name.assign(entry.second.get_value<std::string>());
         }
-        else if (true == boost::iequals(entry.first,"Description") && sig->description.empty()) {
-          sig->description = entry.second.get_value<std::string>();
+        else if (true == boost::iequals(entry.first,"Description") && sig.description.empty()) {
+          sig.description = entry.second.get_value<std::string>();
         }
-        else if (true == boost::iequals(entry.first,"Category") && sig->category.empty()) {
-          sig->category = entry.second.get_value<std::string>();
+        else if (true == boost::iequals(entry.first,"Category") && sig.category.empty()) {
+          sig.category = entry.second.get_value<std::string>();
         }
         else if (boost::iequals(entry.first,"Pattern")) {
           // parse the pattern if it exists
@@ -396,7 +327,7 @@ bool ApiJsonSigParser::Parse(const std::string &sig_file, SigPtrVector *sigs, si
       }
 
       if (Validate(sig) == true) {
-        sigs->push_back(sig);
+        sigs.push_back(sig);
         (*valid_sigs)++;
       }
       else {
@@ -412,10 +343,7 @@ bool ApiJsonSigParser::Parse(const std::string &sig_file, SigPtrVector *sigs, si
 // ********************************************************************************************
 
 ApiSigManager::~ApiSigManager() {
-  if (parser_) delete parser_;
-  parser_ = NULL;
-
-  sigs_.release();
+  sigs_.clear();
 }
 
 void ApiSigManager::SetCategoryFilter(std::vector<std::string> f) {
@@ -424,20 +352,14 @@ void ApiSigManager::SetCategoryFilter(std::vector<std::string> f) {
 
 bool ApiSigManager::LoadSigFile(const std::string &sig_file) {
 
-  if (parser_ != NULL) {
-
-    parser_->Parse(sig_file, &sigs_, &valid_sigs_, &error_sigs_);
-
-    // was anything valid
-    if (valid_sigs_ > 0) {
-      return true;
-    }
-    return false;
+  if (parser_ != nullptr) {
+    parser_->Parse(sig_file, sigs_, &valid_sigs_, &error_sigs_);
+    return (valid_sigs_ > 0);
   }
   return false;
 }
 
-void ApiSigManager::SetParser(ApiSigParser *p) {
+void ApiSigManager::SetParser(ApiSigParserPtr p) {
   parser_ = p;
 }
 
@@ -449,18 +371,18 @@ size_t ApiSigManager::NumErrorSigs() {
   return error_sigs_;
 }
 
-void ApiSigManager::GetSigs(SigPtrVector *sig_list) {
+void ApiSigManager::GetSigs(ApiSigVector& sig_list) {
 
   if (filters_.empty()) {
-    *sig_list = sigs_;
+    sig_list = sigs_;
     return;
   }
 
   for (sig_iterator si=sigs_.begin(), end=sigs_.end(); si!=end; si++) {
-    for (const std::string & s : filters_) {
-      if (boost::iequals(si->category, s) == true) {
-        ApiSig sig = *si;
-        sig_list->push_back(new ApiSig(sig));
+    ApiSig sig = *si;
+    for (const std::string& s : filters_) {
+      if (boost::iequals(sig.category, s) == true) {
+        sig_list.push_back(sig);
       }
     }
   }

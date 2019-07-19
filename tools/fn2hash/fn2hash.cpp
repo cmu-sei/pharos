@@ -11,6 +11,8 @@
 #include <libpharos/riscops.hpp>
 #include <libpharos/options.hpp>
 #include <libpharos/pdg.hpp>
+#include <libpharos/json.hpp>
+#include <libpharos/bua.hpp>
 
 using namespace pharos;
 
@@ -29,6 +31,10 @@ ProgOptDesc hash_options() {
      ("Minimum number of instructions needed to output data for a function"))
     ("basic-blocks,B", po::bool_switch(),
      "Output optional basic block level data")
+    ("json,j", po::value<std::string>(),
+     "Output as JSON to the given file.  ('-' means stdout)")
+    ("pretty-json,p", po::value<unsigned>()->implicit_value(4),
+     "Pretty-print json.  Argument is the indent width")
      ;
   return hashopt;
 }
@@ -37,13 +43,41 @@ class HashAnalyzer : public BottomUpAnalyzer {
   CallingConventionMatcher matcher;
   size_t min_instructions;
   bool basic_blocks;
+  json::BuilderRef builder;
+  json::ObjectRef main;
+  json::ArrayRef analysis;
+  std::unique_ptr<std::ofstream> fout;
+  std::ostream *out = nullptr;
+
 public:
-  HashAnalyzer(DescriptorSet* ds_, ProgOptVarMap& vm_) : BottomUpAnalyzer(ds_, vm_) {
+  HashAnalyzer(DescriptorSet& ds_, ProgOptVarMap& vm_) : BottomUpAnalyzer(ds_, vm_) {
     matcher.report();
     min_instructions = vm_["min-instructions"].as<size_t>();
     basic_blocks = vm_["basic-blocks"].as<bool>();
+    if (vm_.count("json")) {
+      auto & fname = vm_["json"].as<std::string>();
+      if (fname == "-") {
+        out = &std::cout;
+      } else {
+        fout = make_unique<std::ofstream>(fname);
+        out = fout.get();
+      }
+      builder = json::simple_builder();
+      main = builder->object();
+      main->add("tool", "fn2hash");
+      auto args = builder->array();
+      for (auto arg : vm_.args()) {
+        args->add(arg);
+      }
+      main->add("invocation", std::move(args));
+      main->add("analyzed_file", vm["file"].as<std::string>());
+      analysis = builder->array();
+      if (vm.count("pretty-json")) {
+        *out << json::pretty(vm["pretty-json"].as<unsigned>());
+      }
+    }
   }
-  void visit(FunctionDescriptor* fd) {
+  void visit(FunctionDescriptor* fd) override {
     FunctionDescriptor::ExtraFunctionHashData extra; // mnemonic related & basic block level hash data...
     fd->compute_function_hashes(&extra);
 
@@ -84,13 +118,15 @@ public:
     GDEBUG << "Mnemonic count hash for function " << fd->address_string() << " is " << mnemonic_count_hash << LEND;
     GDEBUG << "  Counts:";
     std::string mnemcntstr;
-    for (auto const& mc: extra.mnemonic_counts)
-    {
-      GDEBUG << " " << mc.first << ":" << mc.second;
-      mnemcntstr += mc.first + ":" + std::to_string(mc.second) + ";";
+    if (!builder) {
+      for (auto const& mc: extra.mnemonic_counts)
+      {
+        GDEBUG << " " << mc.first << ":" << mc.second;
+        mnemcntstr += mc.first + ":" + std::to_string(mc.second) + ";";
+      }
+      GDEBUG << LEND;
+      mnemcntstr.pop_back(); // c++11 way to remove that last extra ';' char we added
     }
-    GDEBUG << LEND;
-    mnemcntstr.pop_back(); // c++11 way to remove that last extra ';' char we added
 
     std::string mnemonic_category_hash = extra.mnemonic_category_hash;
 
@@ -103,14 +139,16 @@ public:
     // let's spit out the full "feature vector" for mnemcats:
     std::string mnemcatcntstr;
     std::map< std::string, uint32_t > mnemcatcounts = extra.mnemonic_category_counts;
-    // auto and refs were working against me here const wise:
-    for (std::string mc: get_all_insn_generic_categories())
-    {
-      GDEBUG << " " << mc << ":" << mnemcatcounts[mc];
-      mnemcatcntstr += mc + ":" + std::to_string(mnemcatcounts[mc]) + ";";
+    if (!builder) {
+      // auto and refs were working against me here const wise:
+      for (std::string mc: get_all_insn_generic_categories())
+      {
+        GDEBUG << " " << mc << ":" << mnemcatcounts[mc];
+        mnemcatcntstr += mc + ":" + std::to_string(mnemcatcounts[mc]) + ";";
+      }
+      GDEBUG << LEND;
+      mnemcatcntstr.pop_back(); // c++11 way to remove that last extra ';' char we added
     }
-    GDEBUG << LEND;
-    mnemcatcntstr.pop_back(); // c++11 way to remove that last extra ';' char we added
 
 #if 0 // leaving this out for now, need to revisit pdg hashing at some point...
     std::string pdg_hash = fd->get_pdg_hash();
@@ -118,51 +156,121 @@ public:
 #endif // 0
 
     // dump the output string:
-    std::cout << filemd5 << ","
-              << fd->address_string() << ","
-              << fd->get_num_blocks() << ","
-              << fd->get_num_blocks_in_cfg() << ","
-              << fd->get_num_instructions() << ","
-              << fd->get_num_bytes() << ","
-              << exact_hash << ","
-              << pic_hash << ","
-              << composite_pic_hash << ","
-              << mnemonic_hash << ","
-              << mnemonic_count_hash << ","
-              << mnemonic_category_hash << ","
-              << mnemonic_category_counts_hash << ","
-              << mnemcntstr << ","
-              << mnemcatcntstr;
-    if (basic_blocks) {
-      std::string bbdata;
-      for (rose_addr_t addr: extra.basic_block_addrs) {
-        FunctionDescriptor::ExtraFunctionHashData::BasicBlockHashData &bbhd = extra.basic_block_hash_data[addr];
-        uint32_t num_insn = bbhd.mnemonics.size();
-        bbdata += addr_str(addr) + ":" + std::to_string(num_insn) + ":" + bbhd.pic + ":" + bbhd.cpic + ":";
-        for (uint32_t i=0 ; i < num_insn ; ++i) {
-          bbdata += bbhd.mnemonics[i] + "^" + bbhd.mnemonic_categories[i] + ";";
+    if (!builder) {
+      std::cout << filemd5 << ","
+                << fd->address_string() << ","
+                << fd->get_num_blocks() << ","
+                << fd->get_num_blocks_in_cfg() << ","
+                << fd->get_num_instructions() << ","
+                << fd->get_num_bytes() << ","
+                << exact_hash << ","
+                << pic_hash << ","
+                << composite_pic_hash << ","
+                << mnemonic_hash << ","
+                << mnemonic_count_hash << ","
+                << mnemonic_category_hash << ","
+                << mnemonic_category_counts_hash << ","
+                << mnemcntstr << ","
+                << mnemcatcntstr;
+      if (basic_blocks) {
+        std::string bbdata;
+        for (rose_addr_t addr: extra.basic_block_addrs) {
+          FunctionDescriptor::ExtraFunctionHashData::BasicBlockHashData &bbhd = extra.basic_block_hash_data[addr];
+          uint32_t num_insn = bbhd.mnemonics.size();
+          bbdata += addr_str(addr) + ":" + std::to_string(num_insn) + ":" + bbhd.pic + ":" + bbhd.cpic + ":";
+          for (uint32_t i=0 ; i < num_insn ; ++i) {
+            bbdata += bbhd.mnemonics[i] + "^" + bbhd.mnemonic_categories[i] + ";";
+          }
+          // do I need to ensure that the num insn in the block was at least 1 before popping?  I
+          // don't *think* so, *pretty sure* prior stuff wouldn't have added the basic block if
+          // it didn't have any insns...
+          bbdata.pop_back(); // c++11 way to remove the last ; we added
+          bbdata += "|";
         }
-        // do I need to ensure that the num insn in the block was at least 1 before popping?  I
-        // don't *think* so, *pretty sure* prior stuff wouldn't have added the basic block if
-        // it didn't have any insns...
-        bbdata.pop_back(); // c++11 way to remove the last ; we added
-        bbdata += "|";
-      }
-      // same *pretty sure* comment about the fn always having at least 1 bb...
-      bbdata.pop_back(); // c++11 way to remove the last | we added
+        // same *pretty sure* comment about the fn always having at least 1 bb...
+        bbdata.pop_back(); // c++11 way to remove the last | we added
 
-      std::string bbcfg;
-      bool ntnl = false;
-      for (std::pair< rose_addr_t, rose_addr_t > edge :  extra.cfg_edges)
-      {
-        ntnl = true;
-        bbcfg += addr_str(edge.first) + ";" + addr_str(edge.second) + ":";
+        std::string bbcfg;
+        bool ntnl = false;
+        for (std::pair< rose_addr_t, rose_addr_t > edge :  extra.cfg_edges)
+        {
+          ntnl = true;
+          bbcfg += addr_str(edge.first) + ";" + addr_str(edge.second) + ":";
+        }
+        if (ntnl)
+          bbcfg.pop_back();
+        std::cout << "," << bbdata << "," << bbcfg;
       }
-      if (ntnl)
-        bbcfg.pop_back();
-      std::cout << "," << bbdata << "," << bbcfg;
+      std::cout << std::endl;
+
+    } else {
+      // json output
+      auto hashes = builder->object();
+      hashes->add("filemd5", filemd5);
+      hashes->add("fn_addr", fd->address_string());
+      hashes->add("num_basic_blocks", fd->get_num_blocks());
+      hashes->add("num_basic_blocks_in_cfg", fd->get_num_blocks_in_cfg());
+      hashes->add("num_instructions", fd->get_num_instructions());
+      hashes->add("num_bytes", fd->get_num_bytes());
+      hashes->add("exact_hash", exact_hash);
+      hashes->add("pic_hash", pic_hash);
+      hashes->add("composite_pic_hash", composite_pic_hash);
+      hashes->add("mnemonic_hash", mnemonic_hash);
+      hashes->add("mnemonic_count_hash", mnemonic_count_hash);
+      hashes->add("mnemonic_category_hash", mnemonic_category_hash);
+      hashes->add("mnemonic_category_counts_hash", mnemonic_category_counts_hash);
+      auto mcslist = builder->object();
+      for (auto const & mc : extra.mnemonic_counts) {
+        mcslist->add(mc.first, mc.second);
+      }
+      hashes->add("mnemonic_counts", std::move(mcslist));
+      auto mccslist = builder->object();
+      for (std::string mc: get_all_insn_generic_categories()) {
+        auto count = mnemcatcounts[mc];
+        mccslist->add(std::move(mc), count);
+      }
+      hashes->add("mnemonic_category_counts", std::move(mccslist));
+      if (basic_blocks) {
+        auto blocks = builder->array();
+        for (rose_addr_t addr: extra.basic_block_addrs) {
+          FunctionDescriptor::ExtraFunctionHashData::BasicBlockHashData &bbhd =
+            extra.basic_block_hash_data[addr];
+          auto num_insn = bbhd.mnemonics.size();
+          auto bb = builder->object();
+          bb->add("address", addr_str(addr));
+          bb->add("num_instructions", num_insn);
+          bb->add("pic_hash", bbhd.pic);
+          bb->add("composite_pic_hash", bbhd.cpic);
+          auto mnemonics = builder->array();
+          for (decltype(num_insn) i = 0; i < num_insn; ++i) {
+            auto mob = builder->object();
+            mob->add("mnemonic", bbhd.mnemonics[i]);
+            mob->add("category", bbhd.mnemonic_categories[i]);
+            mnemonics->add(std::move(mob));
+          }
+          bb->add("mnemonics", std::move(mnemonics));
+          blocks->add(std::move(bb));
+        }
+        hashes->add("opt_basic_block_data", std::move(blocks));
+
+        auto edges = builder->array();
+        for (std::pair< rose_addr_t, rose_addr_t > edge :  extra.cfg_edges) {
+          auto edgeob = builder->object();
+          edgeob->add("from", addr_str(edge.first));
+          edgeob->add("to", addr_str(edge.second));
+          edges->add(std::move(edgeob));
+        }
+        hashes->add("opt_bb_cfg", std::move(edges));
+      }
+      analysis->add(std::move(hashes));
     }
-    std::cout << std::endl;
+  }
+
+  void finish() override {
+    if (builder) {
+      main->add("analysis", std::move(analysis));
+      (*out) << *main;
+    }
   }
 };
 
@@ -182,10 +290,6 @@ static int fn2hash_main(int argc, char **argv) {
 
   // Find calls, functions, and imports.
   DescriptorSet ds(vm);
-  if (ds.get_interp() == NULL) {
-    GFATAL << "Unable to analyze file (no executable content found)." << LEND;
-    return EXIT_FAILURE;
-  }
   // Resolve imports, load API data, etc.
   // ds.resolve_imports();
 
@@ -193,7 +297,7 @@ static int fn2hash_main(int argc, char **argv) {
   Sawyer::ProgressBarSettings::initialDelay(0.0);
   Sawyer::ProgressBarSettings::minimumUpdateInterval(0.0);
 
-  HashAnalyzer ha(&ds, vm);
+  HashAnalyzer ha(ds, vm);
   ha.analyze();
 
   OINFO << "fn2hash complete" << LEND;

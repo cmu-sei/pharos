@@ -51,15 +51,17 @@ def run_test(args):
     cmd = [tool_path]
     cmd.extend(options)
     cmd.append(test_input_path(args) + ".exe")
-    output_path = test_output_path(args) + "part2"
-    cmd.extend(["|", "grep", "^0x", ">", output_path])
+    output_path = test_output_path(args) + ".part2"
+    cmd.extend(["|", "grep", '-e', 'PART', '-e', 'FLOW', "|", "sort -k2 -t,", ">", output_path])
 
     cmd = ' '.join(cmd)
     if args.commands:
         print cmd
 
     if not args.review:
-        rc = subprocess.call(cmd, shell=True)
+        env = os.environ.copy()
+        env["LC_ALL"] = "C"
+        rc = subprocess.Popen(cmd, shell=True, env=env).wait()
         if rc != 0:
             if not args.quiet:
                 report_error(args, "", "dumpmasm execution rc=%d" % rc)

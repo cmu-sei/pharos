@@ -1,16 +1,19 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Virtual_Function_Call_H
 #define Pharos_Virtual_Function_Call_H
 
-#include "util.hpp"
-#include "defuse.hpp"
-#include "calls.hpp"
+#include <rose.h>
+
+#include "misc.hpp" // For TreeNodePtr & LeafNodePtr
+#include "semantics.hpp" // SymbolicValuePtr
 
 namespace pharos {
 
+class PDG; // Forward declaration to avoid include pdg.hpp
+
 // this is the call-specific information for virutal function calls.
-class VirtualFunctionCallInformation : public CallInformation {
+class VirtualFunctionCallInformation {
 public:
   // the offset in the object of the virtual function table
   unsigned int vtable_offset;
@@ -26,40 +29,38 @@ public:
 
   // The leaf node of the this-pointer to which the virtual function belongs
   LeafNodePtr lobj_ptr;
-
-  ~VirtualFunctionCallInformation() { /* Nothing to do here */ }
 };
 
-// This is a shared pointer for virtual function call information. It must be shared to avoid
-// weird memory issues when it is stored in the CallDescriptorMap
-typedef boost::shared_ptr<VirtualFunctionCallInformation> VirtualFunctionCallInformationPtr;
+// A vector of VirtualCallInformation objects.
+using VirtualFunctionCallVector = std::vector<VirtualFunctionCallInformation>;
 
-
-// This class analyzes a virtual function call. To be a virtual function call
-// a Call must be register-based and have two code dereferences. Dereference #1
-// fetches the virtual function from the virtual function table. Dereference #2
-// fetches the virtual function table from the object
+// This class analyzes a virtual function call.  The algorithm is rather complex, and is
+// documented in the analyze method.
 class VirtualFunctionCallAnalyzer {
 private:
 
   // the instruction for the call invocation
-  SgAsmx86Instruction *call_insn;
+  SgAsmX86Instruction *call_insn;
 
-  PDG* pdg;
+  const PDG* pdg;
+
+  // Resolves one of several object pointers to a virtual call.
+  bool resolve_object(const TreeNodePtr& object_expr,
+                      const TreeNodePtr& vtable_ptr,
+                      int64_t vtable_offset);
 
 public:
 
-  VirtualFunctionCallAnalyzer(SgAsmX86Instruction *i, PDG *p);
+  // The results of the analysis.
+  VirtualFunctionCallVector vcall_infos;
+
+  VirtualFunctionCallAnalyzer(SgAsmX86Instruction *i, const PDG *p);
 
   ~VirtualFunctionCallAnalyzer();
 
   // Analyze the call to determine if it is a virtual function call
   // the call_info parameter is an output parameter or null;
-  bool analyze(CallInformationPtr &call_info);
-
-  // Resolves one of several object pointers to a virtual call.
-  bool resolve_object(const TreeNodePtr& object_expr, const TreeNodePtr& vtable_ptr,
-                      int64_t vtable_offset, CallInformationPtr &call_info);
+  bool analyze();
 
 };
 

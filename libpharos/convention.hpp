@@ -1,4 +1,4 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Convention_H
 #define Pharos_Convention_H
@@ -6,6 +6,8 @@
 #include "semantics.hpp"
 // For RegisterSet..
 #include "state.hpp"
+#include "threads.hpp"
+#include "apidb.hpp"
 
 namespace pharos {
 
@@ -244,85 +246,95 @@ public:
 // abotu the right thing to do. :-(
 
 class ParameterDefinition {
-
-public:
-
-  // Cory has no problem with making these all public right now, because access is pretty much
-  // going to be entirely through const objects anyway (hopefully/maybe?).  This is still being
-  // figured out...
-
-  // This parameter's number is source code order.  This should match the order in the vector,
-  // and is enforced by making users call add_parameter() to get the parameter into the list?
-  size_t num;
-
-  // The name of the field if known (presumably assigned from imports or the user's config).
-  // Probably just copied from the function descriptor when associated with a call, although
-  // there are some interesting questions about how to handle calls to multiple functions with
-  // identical types and different names.
-  std::string name;
-
-  // This will eventually be populated with type information for the parameter (first from
-  // imports, and later from the type recovery system).  Chuck suggested that we would key the
-  // types by a string representation of the type and Cory agreeed, so this field is
-  // simultaneously the human readable type and a key into the real type map or whatever.  It
-  // would appear that in C++ at least, this is just a copy of the type from the matching
-  // function parameter definition.
-  std::string type;
-
-  // The symbolic value that represents this parameter in the current function.  When
-  // associated with a function descriptor, this is the value of the parameter in the called
-  // function, and is usually just a single symbolic variable (although there currently appears
-  // to be some bug in memory read/write infrastructure that occasionally yields a
-  // concat/extract expression).  When attached to a call descriptor this is the value in the
-  // calling function, where it may have a wide variety of values including complex
-  // expressions, and references to memory that were in fact parameters to function containing
-  // the call being analyzed.
-  SymbolicValuePtr value;
-
-  // If the value of the parameter refers to an address with a defined value, this field
-  // contains the value pointed to.  It does not mean that the parameter is actually a pointer,
-  // which will require additional type discovery effort.  At the current time, this field is
-  // available for systems that have better human provided type information (e.g. ApiAnalyzer)
-  // so that they can better know what the machine state was at the time of the call.  This
-  // value will be NULL if there was nothing at the parameter's memory address at the time of
-  // the call.
-  SymbolicValuePtr value_pointed_to;
-
-  // If this parameter was passed in a register, this value will be the appropriate register
-  // descriptor, otherwise it will be the default-constructed descriptor.  This should always
-  // match between the caller and the called function.
-  RegisterDescriptor reg;
-
-  // If this parameter was passed on the stack, the delta to where the parameter is stored
-  // relative to the return address of the call.  In practice this means that these values
-  // begin at zero, and grow in increments of four for each stack parameter.  Given this
-  // choice, the stack deltas should match between the caller and the called function.
-
-  // It might be cleaner to use the deltas from the current context (calling function or called
-  // function) to be consistent with the rest of these fields.  In the called function, they
-  // would all be shifted by the size of a return address, and in the caller by the stacl delta
-  // at the time of the call.  I think the merits of this choice is at least partially
-  // dependent on how well we're doing at calculating stack deltas, and the address field ends
-  // up being used.
-  size_t stack_delta;
-
-  // If the parameter is a stack paramater, this is the memory address of the parameter in the
-  // form of a symbolic value.  It is by necessity specific to the context (caller or called
-  // function), and includes both the initial vaue of ESP in each context as well as any
-  // adjustments required for the size of the return address in the called context.
-  SymbolicValuePtr address;
-
+ public:
   // Determines whether this parameter is a a read-only, read-write, or write-only parameter.
   // This member was added as part of the API database code, and is not currently computed
   // based on access patterns for functions linked into the excutable.  It should be.
-  typedef enum inout_en { DIRECTION_NONE, DIRECTION_IN, DIRECTION_OUT, DIRECTION_INOUT } DirectionEnum;
-  DirectionEnum direction = DIRECTION_NONE;
+  enum DirectionEnum { DIRECTION_NONE, DIRECTION_IN, DIRECTION_OUT, DIRECTION_INOUT };
 
-  // In the called context, this is the instruction that provides evidence that the parameter
-  // was read while uninitilized.  Mostly useful for determining how we decided that there was
-  // a parameter at all.  In the caller context, this is the instruction that passed the
-  // parameter (push it onto the stack or loaded it into a register).
-  const SgAsmInstruction* insn;
+ private:
+
+  struct data {
+    // Cory has no problem with making these all public right now, because access is pretty much
+    // going to be entirely through const objects anyway (hopefully/maybe?).  This is still being
+    // figured out...
+
+    // This parameter's number is source code order.  This should match the order in the vector,
+    // and is enforced by making users call add_parameter() to get the parameter into the list?
+    size_t num;
+
+    // The name of the field if known (presumably assigned from imports or the user's config).
+    // Probably just copied from the function descriptor when associated with a call, although
+    // there are some interesting questions about how to handle calls to multiple functions with
+    // identical types and different names.
+    std::string name;
+
+    // This will eventually be populated with type information for the parameter (first from
+    // imports, and later from the type recovery system).  Chuck suggested that we would key the
+    // types by a string representation of the type and Cory agreeed, so this field is
+    // simultaneously the human readable type and a key into the real type map or whatever.  It
+    // would appear that in C++ at least, this is just a copy of the type from the matching
+    // function parameter definition.
+    std::string type;
+
+    // The symbolic value that represents this parameter in the current function.  When
+    // associated with a function descriptor, this is the value of the parameter in the called
+    // function, and is usually just a single symbolic variable (although there currently appears
+    // to be some bug in memory read/write infrastructure that occasionally yields a
+    // concat/extract expression).  When attached to a call descriptor this is the value in the
+    // calling function, where it may have a wide variety of values including complex
+    // expressions, and references to memory that were in fact parameters to function containing
+    // the call being analyzed.
+    SymbolicValuePtr value;
+
+    // If the value of the parameter refers to an address with a defined value, this field
+    // contains the value pointed to.  It does not mean that the parameter is actually a pointer,
+    // which will require additional type discovery effort.  At the current time, this field is
+    // available for systems that have better human provided type information (e.g. ApiAnalyzer)
+    // so that they can better know what the machine state was at the time of the call.  This
+    // value will be NULL if there was nothing at the parameter's memory address at the time of
+    // the call.
+    SymbolicValuePtr value_pointed_to;
+
+    // If this parameter was passed in a register, this value will be the appropriate register
+    // descriptor, otherwise it will be the default-constructed descriptor.  This should always
+    // match between the caller and the called function.
+    RegisterDescriptor reg;
+
+    // If this parameter was passed on the stack, the delta to where the parameter is stored
+    // relative to the return address of the call.  In practice this means that these values
+    // begin at zero, and grow in increments of four for each stack parameter.  Given this
+    // choice, the stack deltas should match between the caller and the called function.
+
+    // It might be cleaner to use the deltas from the current context (calling function or called
+    // function) to be consistent with the rest of these fields.  In the called function, they
+    // would all be shifted by the size of a return address, and in the caller by the stacl delta
+    // at the time of the call.  I think the merits of this choice is at least partially
+    // dependent on how well we're doing at calculating stack deltas, and the address field ends
+    // up being used.
+    size_t stack_delta;
+
+    // If the parameter is a stack paramater, this is the memory address of the parameter in the
+    // form of a symbolic value.  It is by necessity specific to the context (caller or called
+    // function), and includes both the initial vaue of ESP in each context as well as any
+    // adjustments required for the size of the return address in the called context.
+    SymbolicValuePtr address;
+
+    // In the called context, this is the instruction that provides evidence that the parameter
+    // was read while uninitilized.  Mostly useful for determining how we decided that there was
+    // a parameter at all.  In the caller context, this is the instruction that passed the
+    // parameter (push it onto the stack or loaded it into a register).
+    const SgAsmInstruction* insn;
+
+    DirectionEnum direction = DIRECTION_NONE;
+  };
+
+  data d;
+  mutable shared_mutex mutex;
+
+  ParameterDefinition() = default;
+
+ public:
 
   // Chuck has remarked that this class should perhaps contain an abstract access instead of
   // the value, address, and register descriptor.  This would also add a bit size and
@@ -336,24 +348,78 @@ public:
   // added in the future, but isn't currently supported.
 
   // A constructor convenient for adding stack parameters.
-  ParameterDefinition(size_t c, const SymbolicValuePtr& v, std::string n, std::string t,
-                      const SgAsmInstruction* i, const SymbolicValuePtr& a, size_t d);
+  ParameterDefinition(
+    size_t c, const SymbolicValuePtr& v, std::string n, std::string t,
+    const SgAsmInstruction* i, const SymbolicValuePtr& a, size_t d);
 
   // A form convenient for adding register parameters.
-  ParameterDefinition(size_t c, const SymbolicValuePtr& v, std::string n, std::string t,
-                      const SgAsmInstruction* i, RegisterDescriptor r);
+  ParameterDefinition(
+    size_t c, const SymbolicValuePtr& v, std::string n, std::string t,
+    const SgAsmInstruction* i, RegisterDescriptor r);
 
-  bool is_reg() const { return reg.is_valid(); }
-  bool is_stack() const { return reg.is_valid(); }
+  ParameterDefinition(ParameterDefinition const & other) {
+    *this = other;
+  }
+  ParameterDefinition &operator=(ParameterDefinition const & other) {
+    auto && guard = read_guard(other.mutex);
+    d = other.d;
+    return *this;
+  }
 
-  size_t get_num() const { return num; }
-  const std::string& get_name() const { return name; }
-  const std::string & get_type() const { return type; }
-  SymbolicValuePtr get_value() const { return value; }
-  void set_stack_attributes(const SymbolicValuePtr& v, const SymbolicValuePtr& a, SgAsmInstruction* i, const SymbolicValuePtr& p);
-  void set_reg_attributes(const SymbolicValuePtr& v, const SgAsmInstruction* i, const SymbolicValuePtr& p);
-  RegisterDescriptor get_register() const { return reg; }
-  size_t get_stack_delta() const { return stack_delta; }
+  ParameterDefinition(ParameterDefinition &&) = delete;
+  ParameterDefinition &operator=(ParameterDefinition &&) = delete;
+
+  bool is_reg() const { return d.reg.is_valid(); }
+  bool is_stack() const { return !d.reg.is_valid(); }
+
+  size_t get_num() const { return d.num; }
+  const std::string& get_name() const {
+    auto && guard = read_guard(mutex);
+    return d.name;
+  }
+  void set_name(std::string n) {
+    auto && guard = write_guard(mutex);
+    d.name = std::move(n);
+  }
+  const std::string & get_type() const {
+    auto && guard = read_guard(mutex);
+    return d.type;
+  }
+  void set_type(std::string t) {
+    auto && guard = write_guard(mutex);
+    d.type = std::move(t);
+  }
+  DirectionEnum get_direction() const {
+    auto && guard = read_guard(mutex);
+    return d.direction;
+  }
+  SymbolicValuePtr get_value() const {
+    auto && guard = read_guard(mutex);
+    return d.value;
+  }
+  void set_value(SymbolicValuePtr p) {
+    auto && guard = write_guard(mutex);
+    d.value = p;
+  }
+  SymbolicValuePtr get_value_pointed_to() const { return d.value_pointed_to; }
+  SymbolicValuePtr get_address() const { return d.address; }
+  TreeNodePtr get_expression() const {
+    auto && guard = read_guard(mutex);
+    return d.value->get_expression();
+  }
+  void set_stack_attributes(const SymbolicValuePtr& v, const SymbolicValuePtr& a,
+                            SgAsmInstruction* i, const SymbolicValuePtr& p);
+  void set_reg_attributes(const SymbolicValuePtr& v, const SgAsmInstruction* i,
+                          const SymbolicValuePtr& p);
+
+  void copy_parameter_description(ParameterDefinition const & other);
+  void copy_parameter_description(APIParam const & other);
+  void set_parameter_description(std::string n, std::string t, DirectionEnum d);
+
+  RegisterDescriptor get_register() const { return d.reg; }
+  size_t get_stack_delta() const { return d.stack_delta; }
+  SgAsmInstruction const * get_insn() const { return d.insn; }
+
   // Spew a description of the parameter to the log.
   void debug() const;
   std::string to_string() const;
@@ -381,55 +447,66 @@ public:
 // parameter or return value (although there may be more of these than expected when the
 // calling convention was not recognized).
 
-typedef std::vector<ParameterDefinition> ParamVector;
+using ParamVector = std::vector<ParameterDefinition>;
 
 class ParameterList {
 
-  // The calling convention that explains this interpretation of the parameters.
-  const CallingConvention* convention;
+  struct data {
+    // The calling convention that explains this interpretation of the parameters.
+    const CallingConvention* convention = nullptr;
 
-  // The ordered list of the parameters.
-  ParamVector params;
+    // The ordered list of the parameters.
+    ParamVector params;
 
-  // The return values.  There's a lot of poorly understood stuff surrounding multiple return
-  // values right now.  Cory feels like this issue is parallel to the parameter definitions,
-  // which is to say that meaning, ordering, etc. begins to emerge only when you assign a
-  // particular calling convention to the factual set of changed registers recorded in the
-  // RegisterUsage object.  So that object would report all changed registers, and here we
-  // would restrict ourselves to the ones that were intended to be used as a return value.
-  // That will pretty much always be EAX on x86 and RAX on x64, but technically it could
-  // include EDX and ST0 was well, which are currently completely unsupported in our code.  I
-  // wouldn't be surprised to find other architectures that return values on the stack, and
-  // return mutiple values.  Thus the conclusion to declare returns as a ParamVector.
-  ParamVector returns;
+    // The return values.  There's a lot of poorly understood stuff surrounding multiple return
+    // values right now.  Cory feels like this issue is parallel to the parameter definitions,
+    // which is to say that meaning, ordering, etc. begins to emerge only when you assign a
+    // particular calling convention to the factual set of changed registers recorded in the
+    // RegisterUsage object.  So that object would report all changed registers, and here we
+    // would restrict ourselves to the ones that were intended to be used as a return value.
+    // That will pretty much always be EAX on x86 and RAX on x64, but technically it could
+    // include EDX and ST0 was well, which are currently completely unsupported in our code.  I
+    // wouldn't be surprised to find other architectures that return values on the stack, and
+    // return mutiple values.  Thus the conclusion to declare returns as a ParamVector.
+    ParamVector returns;
+  };
 
-  // These should pre private to enforce the internal consistency of the object.
+  // These should be private to enforce the internal consistency of the object.
   ParameterDefinition* get_rw_stack_parameter(size_t delta);
   ParameterDefinition* get_rw_reg_parameter(RegisterDescriptor rd);
   ParameterDefinition* get_rw_return_reg(RegisterDescriptor rd);
 
+  data d;
+
+  mutable shared_mutex mutex;
+
 public:
-  ParameterList() {
-    convention = NULL;
+  ParameterList() = default;
+  ParameterList(ParameterList const & other) {
+    *this = other;
+  }
+  ParameterList & operator=(ParameterList const & other) {
+    auto && guard = read_guard(other.mutex);
+    d = other.d;
+    return *this;
   }
 
-  void read_config(const boost::property_tree::ptree& tree, int64_t delta, const CallingConvention* conv);
+  ParameterList(ParameterList &&) = delete;
+  ParameterList & operator=(ParameterList &&) = delete;
 
   // Find a stack parameter at a specific stack delta.
   const ParameterDefinition* get_stack_parameter(size_t delta) const;
   const ParameterDefinition* get_reg_parameter(RegisterDescriptor rd) const;
   const ParameterDefinition* get_return_reg(RegisterDescriptor rd) const;
 
-  const ParamVector& get_params() const { return params; }
-
-  const ParamVector& get_returns() const { return returns; }
-
+  auto get_params() const { return make_read_locked_range(d.params, mutex); }
+  auto get_returns() const { return make_read_locked_range(d.returns, mutex); }
 
   // Get and set the calling convention.  Cory would like to isolate this better.  The
   // convention should only ever be set once by the function descriptor shortly after
   // determining wich convention is the best match.  Perhaps use friend?
-  void set_calling_convention(const CallingConvention* c) { convention = c; }
-  const CallingConvention* get_calling_convention() const { return convention; }
+  void set_calling_convention(const CallingConvention* c) { d.convention = c; }
+  const CallingConvention* get_calling_convention() const { return d.convention; }
 
   // Some discussion with Duggan convinced Cory that the API cor creating new parameters really
   // ought to involve a builder class where the restrictions have been temporarily relaxed.
@@ -442,12 +519,12 @@ public:
   // Find and create if needed the parameter at a specific stack delta.
   ParameterDefinition* create_stack_parameter(size_t delta);
   // Find and create if needed the parameter for a given register descriptor.
-  ParameterDefinition* create_reg_parameter(RegisterDescriptor r,
+  ParameterDefinition & create_reg_parameter(RegisterDescriptor r,
                                             const SymbolicValuePtr v,
                                             const SgAsmInstruction* i,
                                             const SymbolicValuePtr p);
-  ParameterDefinition* create_return_reg(RegisterDescriptor r,
-                                         const SymbolicValuePtr v);
+  ParameterDefinition & create_return_reg(RegisterDescriptor r,
+                                          const SymbolicValuePtr v);
 
 
   // Spew a description of the parameters to the log.
@@ -478,9 +555,9 @@ class SavedRegisterCompare {
 public:
   bool operator()(const SavedRegister& x, const SavedRegister& y) const;
 };
-typedef std::set<SavedRegister, SavedRegisterCompare> SavedRegisterSet;
+using SavedRegisterSet = std::set<SavedRegister, SavedRegisterCompare>;
 
-typedef std::map<RegisterDescriptor, const SgAsmInstruction*> RegisterEvidenceMap;
+using RegisterEvidenceMap = std::map<RegisterDescriptor, const SgAsmInstruction*>;
 
 //===========================================================================================
 // Register usage
@@ -496,7 +573,7 @@ class RegisterUsage {
   void analyze_changed();
 
 public:
-  FunctionDescriptor* fd;
+  FunctionDescriptor const * fd = NULL;
 
   // Registers that were changed between the input state and the output state.
   RegisterSet changed_registers;
@@ -515,25 +592,21 @@ public:
   // Registers that were written at anytime in the execution of the function.
   RegisterSet written_registers;
 
-  RegisterUsage() {
-    fd = NULL;
-  }
-
   // Analyze the function...
-  void analyze(FunctionDescriptor* f);
+  void analyze(FunctionDescriptor const * f);
 
   // Check whether a given instruction saves a register.  If so, add an entry to
   // saved_registers.
-  bool check_saved_register(SgAsmx86Instruction* insn, RegisterDescriptor reg);
+  bool check_saved_register(SgAsmX86Instruction* insn, RegisterDescriptor reg);
 
   // Return a parameter list object describing the parameters.
   ParameterList* make_parameter_list();
 };
 
 // For use inside the matcher, where the calling conventions are allocated.
-typedef std::vector<CallingConvention> CallingConventionVector;
+using CallingConventionVector = std::vector<CallingConvention>;
 // For use inside FunctionDescriptors where we simply want to reference a calling convention.
-typedef std::vector<const CallingConvention*> CallingConventionPtrVector;
+using CallingConventionPtrVector = std::vector<const CallingConvention*>;
 
 // This class enumerates clearly defined standardized calling conventions.  It's job is to
 // match arbitrary patterns of register and stack parameter accesses agaist these known
@@ -552,7 +625,7 @@ public:
   void report() const;
 
   const RegisterDictionary & get_regdict() { return regdict; }
-  CallingConventionPtrVector match(FunctionDescriptor* fd,
+  CallingConventionPtrVector match(const FunctionDescriptor* fd,
                                    bool allow_unused_parameters = true) const;
 
   // Finds a calling convention.  The vector is scanned to find a calling convention having the

@@ -1,20 +1,24 @@
 pharos:
   verbosity:                    # an integer value 1-14, higher number chattier
+  partitioner: "pharos"
   partitioner_semantics: true   # affects partioner version 2
-  json_config:
   library:
-  prolog_dir: 
+  prolog_dir: @XSB_INSTALL_DIR@
   prolog_rules_dir:
   apidb: [ apidb/pharos-api-additions.json, apidb/pharos-apidb.sqlite ]
   timeout: 900.0
-  relative_timeout: 20.0
+  per_function_timeout: 20.0
   partitioner_timeout: 300.0
-  relative_partitioner_timeout: 300.0
-  maxmem: 40000.0
-  relative_maxmem: 1000.0
-  block_counter_limit: 3000
-  func_counter_limit: 3000
+  maximum_memory: 8000.0
+  per_function_maximum_memory: 100.0
+  maximum_instructions_per_block: 3000
+  maximum_iterations_per_function: 3000
+  # The maximum number of nodes allowed in ITE conditions before
+  # substituting with a new dummy value
+  maximum_nodes_per_condition: 500
+  propagate_conditions: false
   typedb: [ typedb/types.json ]
+  concurrency_level: 1
 
 # application specific overrides, based on the executable name
 application:

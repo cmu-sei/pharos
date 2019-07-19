@@ -5,13 +5,13 @@ Software Engineering Institute at Carnegie Mellon University.  The
 framework is designed to facilitate the automated analysis of binary
 programs.  It uses the ROSE compiler infrastructure developed by
 Lawrence Livermore National Laboratory for disassembly, control flow
-analysis, instruction semantics, and more.
+analysis, instruction semantics, and more. This software is released
+under a BSD [license](LICENSE.md).
 
 The current distribution is a substantial update to the previous
-version, and is part of an ongoing process to release more of the
-framework and tools publicly.  This software is released under a BSD
-[license](LICENSE.md).  Carnegie Mellon University retains the
-[copyright](COPYRIGHT.md).
+version, and adds a variety of features including improvements to the
+OOAnalyzer tool, experimental path analysis code, partitioner
+improvements, multi-threading, and many other smaller features.
 
 The Pharos framework is a research project, and the code is undergoing
 active development.  No warranties of fitness for any purpose are
@@ -39,31 +39,14 @@ like opening a file, writing to it, and the closing it.
 ## OOAnalyzer
 
 OOAnalyzer is a tool for the analysis and recovery of object oriented
-constructs.  This tool was the subject of a paper titled "Recovering
-C++ Objects From Binaries Using Inter-Procedural Data-Flow Analysis"
-which was published at the ACM SIGPLAN on Program Protection and
-Reverse Engineering Workshop in 2014.  The tool identifies object
-members and methods by tracking object pointers between functions in
-the program.  This tool was previously named "Objdigger" and is in the
-process of being renamed OOAnalyzer as part of a substantial redesign
+constructs. This tool was the subject of a paper titled "Using Logic
+Programming to Recover C++ Classes and Methods from Compiled
+Executables" which was published at the ACM Conference on Computer and
+Communications Security in 2018. The tool identifies object members
+and methods by tracking object pointers between functions in the
+program.  A previous implementation of this tool was named
+"Objdigger", but it was renamed to reflect a substantial redesign
 using Prolog rules to recover the object attributes.
-
-### OOAnalyzer Results Plugins
-
-The Pharos framework includes tools import OOAnalyzer JSON results into
-common reverse engineering tools. Currently there are two results
-importers included with OOAnalyzer: an importer for [IDA
-Pro](https://www.hex-rays.com/products/ida) and
-[Ghidra](https://ghidra-sre.org). The IDA Pro plugin to import
-OOAnalyzer results can be found in the following directory:
-
-```
- pharos/tools/ooanalyzer/ida
- ```
- Similarly, the Ghidra plugin to import OOAnalyzer results can be found in the following directory:
- ```
- pharos/tools/ooanalyzer/ghidra/OOAnalyzerPlugin
-```
 
 ## CallAnalyzer
 

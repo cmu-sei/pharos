@@ -1,4 +1,4 @@
-// Copyright 2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2017-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "json.hpp"
 
@@ -8,7 +8,10 @@
 #include <cctype>               // std::iscntrl
 #include <ios>                  // std::hex
 #include <iomanip>              // std::setw
+#include <iterator>             // std::ostreambuf_iterator
+#include <algorithm>            // std::fill_n
 
+namespace pharos {
 namespace json {
 
 #if __cplusplus < 201402L
@@ -21,12 +24,13 @@ std::unique_ptr<T> make_unique(Args&&... args)
 using std::make_unique;
 #endif
 
-namespace wrapper {
 NodeRef Simple::apply(Builder const & builder)
 {
   switch(type) {
    case INT:
     return builder.simple(i);
+   case UINT:
+    return builder.simple(u);
    case DOUBLE:
     return builder.simple(d);
    case BOOL:
@@ -42,32 +46,6 @@ NodeRef Simple::apply(Builder const & builder)
   }
   return builder.null();
 }
-} // namespace wrapper
-
-namespace simple {
-
-namespace w = json::wrapper;
-
-template <typename T>
-class Simple : public w::Node
-{
- protected:
-  T val;
- public:
-  Simple(T const & v) : val(v) {}
-  Simple(T && v) : val(std::move(v)) {}
-  std::ostream & write(std::ostream & stream) const override {
-    return stream << val;
-  }
-};
-
-class Bool : public Simple<bool> {
- public:
-  using Simple<bool>::Simple;
-  std::ostream & write(std::ostream & stream) const override {
-    return stream << (val ? "true" : "false");
-  }
-};
 
 namespace {
 // Return whether this is a valid utf-8 string.  If it is is, return 0.  If not, return -1.  If
@@ -144,8 +122,6 @@ std::ostream & output_string(std::ostream & stream, std::string const & s)
       v = "\\\""; break;
      case '\\':
       v = "\\\\"; break;
-     case '/':
-      v = "\\/";  break;
      case '\b':
       v = "\\b";  break;
      case '\f':
@@ -172,137 +148,322 @@ std::ostream & output_string(std::ostream & stream, std::string const & s)
   }
   return stream << '"';
 }
+
+class Writer : public Visitor {
+ private:
+  std::ostream & stream;
+  unsigned indent;
+  unsigned current_indent;
+  bool empty;
+  bool kv = false;
+
+  void simple_indent() {
+    if (!kv) {
+      do_indent();
+    }
+  }
+
+  template <typename T>
+  bool simple_write(T v) {
+    simple_indent();
+    stream << v;
+    return true;
+  }
+  void inc_indent() {
+    current_indent += indent;
+  }
+  void dec_indent() {
+    current_indent -= indent;
+  }
+  void do_indent() {
+    std::fill_n(
+      std::ostreambuf_iterator<std::ostream::char_type, std::ostream::traits_type>(stream),
+      current_indent, ' ');
+  }
+  void newline() {
+    if (indent) {
+      stream << '\n';
+    }
+  }
+  void do_comma() {
+    if (empty) {
+      empty = false;
+    } else {
+      stream << ',';
+    }
+    newline();
+  }
+
+ public:
+  Writer(std::ostream & _stream, unsigned _indent = 0, unsigned _initial_indent = 0) :
+    stream(_stream), indent(_indent), current_indent(_initial_indent) {}
+
+  bool data_number(double n) override {
+    return simple_write(n);
+  }
+  bool data_number(json::Simple::integer n) override {
+    return simple_write(n);
+  }
+  bool data_number(json::Simple::uinteger n) override {
+    return simple_write(n);
+  }
+  bool data_bool(bool b) override {
+    return simple_write(b ? "true" : "false");
+  }
+  bool data_null() override {
+    return simple_write("null");
+  }
+  bool data_string(std::string const & s) override {
+    simple_indent();
+    output_string(stream, s);
+    return true;
+  }
+  bool begin_array() override {
+    simple_indent();
+    stream << '[';
+    empty = true;
+    kv = false;
+    inc_indent();
+    return true;
+  }
+  bool end_array() override {
+    dec_indent();
+    if (!empty) {
+      newline();
+      do_indent();
+    }
+    stream << ']';
+    return true;
+  }
+  bool data_value(Node const & n) override {
+    if (!kv) {
+      do_comma();
+    }
+    auto rval = n.visit(*this);
+    kv = false;
+    empty = false;
+    return rval;
+  }
+  bool begin_object() override {
+    simple_indent();
+    stream << '{';
+    empty = true;
+    inc_indent();
+    return true;
+  }
+  bool end_object() override {
+    dec_indent();
+    if (!empty) {
+      newline();
+      do_indent();
+    }
+    stream << '}';
+    return true;
+  }
+  bool data_key(std::string const & k) override {
+    do_comma();
+    do_indent();
+    kv = true;
+    output_string(stream, k) << ": ";
+    return true;
+  }
+};
+
 } // unnamed namespace
+
+namespace simple {
+
+class Node : public virtual json::Node
+{
+  static BuilderRef builder_;
+
+ public:
+  json::Builder & builder() const override {
+    return *builder_;
+  }
+};
+
+template <typename T>
+class Simple : public Node
+{
+ protected:
+  T val;
+ public:
+  Simple(T const & v) : val(v) {}
+  Simple(T && v) : val(std::move(v)) {}
+};
+
+template <typename T>
+class Number : public Simple<T>
+{
+ public:
+  using Simple<T>::Simple;
+  bool visit(Visitor & v) const override {
+    return v.data_number(this->val);
+  }
+};
+
+class Bool : public Simple<bool> {
+ public:
+  using Simple<bool>::Simple;
+  bool visit(Visitor & v) const override {
+    return v.data_bool(val);
+  }
+};
 
 class String : public Simple<std::string> {
  public:
   using Simple<std::string>::Simple;
-  std::ostream & write(std::ostream & stream) const override {
-    return output_string(stream, val);
+  bool visit(Visitor & v) const override {
+    return v.data_string(val);
   }
 };
 
-class Null : public w::Node
+class Null : public Node
 {
  public:
-  std::ostream & write(std::ostream & stream) const override {
-    return stream << "null";
+  bool visit(Visitor & v) const override {
+    return v.data_null();
   }
 };
 
-class Array : public w::Array
+class Array : public Node, public json::Array
 {
-  std::vector<w::NodeRef> vec;
+  std::vector<NodeRef> vec;
  public:
-  void add(w::NodeRef o) override {
+  using Node::builder;
+
+  void add(NodeRef o) override {
     vec.push_back(std::move(o));
   }
 
-  void add(w::Simple && o) override;
+  void add(json::Simple && o) override;
 
-  std::ostream & write(std::ostream & stream) const override {
-    stream << '[';
-    auto n = begin(vec), last = end(vec);
-    if (n != last) {
-      while (true) {
-        (*n++)->write(stream);
-        if (n == last) break;
-        stream << ',';
+  bool visit(Visitor & v) const override {
+    if (!v.begin_array()) {
+      return false;
+    }
+    for (auto & node : vec) {
+      if (!v.data_value(*node)) {
+        return false;
       }
     }
-    return stream << ']';
+    return v.end_array();
   }
 };
 
-class Object : public w::Object {
-  std::map<std::string, w::NodeRef> map;
+class Object : public Node, public json::Object {
+  std::map<std::string, NodeRef> map;
  public:
-  void add(std::string const & str, w::NodeRef o) override {
+  using Node::builder;
+
+  void add(std::string const & str, NodeRef o) override {
     map.emplace(str, std::move(o));
   }
-  void add(std::string && str, w::NodeRef o) override {
+  void add(std::string && str, NodeRef o) override {
     map.emplace(std::move(str), std::move(o));
   }
 
-  void add(std::string const & str, w::Simple && v) override;
-  void add(std::string && str, w::Simple && v) override;
+  void add(std::string const & str, json::Simple && v) override;
+  void add(std::string && str, json::Simple && v) override;
 
-  std::ostream & write(std::ostream & stream) const override {
-    stream << '{';
-    auto n = begin(map), last = end(map);
-    if (n != last) {
-      while (true) {
-        output_string(stream, n->first) << ':';
-        n++->second->write(stream);
-        if (n == last) break;
-        stream << ',';
+  bool visit(Visitor & v) const override {
+    if (!v.begin_object()) {
+      return false;
+    }
+    for (auto & pair : map) {
+      if (!v.data_key(pair.first)) {
+        return false;
+      }
+      if (!v.data_value(*pair.second)) {
+        return false;
       }
     }
-    return stream << '}';
+    return v.end_object();
   }
 };
 
-class Builder : public w::Builder
+class Builder : public json::Builder
 {
  public:
-  using w::Builder::simple;
+  using json::Builder::simple;
 
-  w::NodeRef simple(std::intmax_t i) const override {
-    return make_unique<Simple<std::intmax_t>>(i);
+  NodeRef simple(json::Simple::integer i) const override {
+    return make_unique<Number<json::Simple::integer>>(i);
   }
-  w::NodeRef simple(double d) const override {
-    return make_unique<Simple<double>>(d);
+  NodeRef simple(json::Simple::uinteger i) const override {
+    return make_unique<Number<json::Simple::uinteger>>(i);
   }
-  w::NodeRef simple(bool b) const override {
+  NodeRef simple(double d) const override {
+    return make_unique<Number<double>>(d);
+  }
+  NodeRef simple(bool b) const override {
     return make_unique<Bool>(b);
   }
-  w::NodeRef null() const override {
+  NodeRef null() const override {
     return make_unique<Null>();
   }
-  w::NodeRef simple(std::string && s) const override {
+  NodeRef simple(std::string && s) const override {
     return make_unique<String>(std::move(s));
   }
-  w::NodeRef simple(std::string const & s) const override {
+  NodeRef simple(std::string const & s) const override {
     return make_unique<String>(s);
   }
-  w::ArrayRef array() const override {
+  ArrayRef array() const override {
     return make_unique<Array>();
   }
-  w::ObjectRef object() const override {
+  ObjectRef object() const override {
     return make_unique<Object>();
   }
 };
 
-void Array::add(w::Simple && v) {
-  add(Builder{}.simple(std::move(v)));
+BuilderRef Node::builder_ = json::simple_builder();
+
+void Array::add(json::Simple && v) {
+  add(builder().simple(std::move(v)));
 }
 
-void Object::add(std::string const & str, w::Simple && v) {
-  add(str, Builder{}.simple(std::move(v)));
+void Object::add(std::string const & str, json::Simple && v) {
+  add(str, builder().simple(std::move(v)));
 }
 
-void Object::add(std::string && str, w::Simple && v) {
-  add(std::move(str), Builder{}.simple(std::move(v)));
+void Object::add(std::string && str, json::Simple && v) {
+  add(std::move(str), builder().simple(std::move(v)));
 }
 
 } // namespace simple
 
-namespace wrapper {
+namespace {
+const int indent_idx = std::ios_base::xalloc();
+const int initial_indent_idx = std::ios_base::xalloc();
+}
 
 std::ostream & operator<<(std::ostream & stream, Node const & n)
 {
-  n.write(stream);
+  Writer w(stream, stream.iword(indent_idx), stream.iword(initial_indent_idx));
+  n.visit(w);
   return stream;
 }
 
-} // namespace wrapper
+std::ostream & operator<<(std::ostream & stream, NodeRef const & n)
+{
+  return stream << *n;
+}
 
-std::unique_ptr<wrapper::Builder> simple_builder()
+std::ostream & operator<<(std::ostream & stream, pretty const & p)
+{
+  stream.iword(indent_idx) = p.indent;
+  stream.iword(initial_indent_idx) = p.initial_indent;
+  return stream;
+}
+
+BuilderRef simple_builder()
 {
   return make_unique<simple::Builder>();
 }
 
 } // namespace json
+} // namespace pharos
 
 /* Local Variables:   */
 /* mode: c++          */

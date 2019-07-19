@@ -72,6 +72,29 @@ insanityClassSizeInvalid :-
     debug(' GTESize='), debug(GTESize),
     debugln('').
 
+% Roughly speaking, inheritance can only occur in an object when it is at offset zero, or there
+% are inhertance objects that preceed it in the object layout.  It turns out that this rule was
+% not true in cases of virtual inheritance, which can place ordinary members between the
+% immediate base classes and the virtual base class, so this sanity check needed to be disabled
+% again.  I've left the check in this file because the idea is still a good one, and the check
+% probably just needs more refinement for the virtual inheritance case to be correct.
+:- table insanityInheritanceAfterNonInheritance/0 as incremental.
+insanityInheritanceAfterNonInheritance :-
+    factDerivedClass(DerivedClass, BaseClass, Offset),
+    not(
+        (
+            Offset = 0;
+            factDerivedClass(DerivedClass, _LowerBaseClass, LowerOffset),
+            LowerOffset < Offset
+        )
+    ),
+    debugln('failed.'),
+    debug('insanityInheritanceAfterInheritance failed:'),
+    debug(' DerivedClass='), debug(DerivedClass),
+    debug(' BaseClass='), debug(BaseClass),
+    debug(' Offset='), debug(Offset),
+    debugln('').
+
 % VFTables may not have an invalid size.
 % Perhaps this rule replaces all other size rules?
 % PAPER: NA.  Handled by constraint system.
@@ -231,6 +254,7 @@ sanityChecks :-
     not(insanityBaseVFTableLarger),
     not(insanityConstructorAndDeletingDestructor),
     not(insanityInheritanceLoop),
+    %not(insanityInheritanceAfterNonInheritance),
     not(insanityContradictoryMerges),
     not(insanityTwoRealDestructorsOnClass).
 

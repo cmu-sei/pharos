@@ -1,3 +1,5 @@
+// Copyright 2017-2019 Carnegie Mellon University.  See LICENSE file for terms.
+
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -1924,7 +1926,7 @@ DemangledTypePtr VisualStudioDemangler::get_anonymous_namespace() {
 
   auto ans = std::make_shared<Namespace>(literal);
   ans->is_anonymous = true;
-  return std::move(ans);
+  return ans;
 }
 
 std::string VisualStudioDemangler::get_literal() {

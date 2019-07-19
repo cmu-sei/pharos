@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_DefUse_H
 #define Pharos_DefUse_H
@@ -15,7 +15,6 @@
 
 #include "misc.hpp"
 #include "cdg.hpp"
-#include "masm.hpp"
 #include "sptrack.hpp"
 #include "riscops.hpp"
 #include "limit.hpp"
@@ -23,22 +22,21 @@
 
 namespace pharos {
 
-typedef std::set<std::string> StringSet;
-typedef std::map<rose_addr_t, SgAsmFunction*> Addr2FuncMap;
-typedef std::map<rose_addr_t, SgAsmx86Instruction*> Addr2InsnMap;
+using Addr2FuncMap = std::map<rose_addr_t, SgAsmFunction*>;
+using Addr2InsnMap = std::map<rose_addr_t, SgAsmX86Instruction*>;
 
 // A definition in definition and use analysis.
 class Definition {
 
 public:
   // This is the instruction that did the defining.
-  SgAsmx86Instruction* definer;
+  SgAsmX86Instruction* definer;
 
   // This is the abstract location that was defined.
   AbstractAccess access;
 
   Definition() { definer = NULL; }
-  Definition(SgAsmx86Instruction* d, AbstractAccess a) { definer = d; access = a; }
+  Definition(SgAsmX86Instruction* d, AbstractAccess a) : definer(d), access(std::move(a)) {}
 
   // Replace the comparator defined below?
   bool operator<(const Definition& other) const {
@@ -108,6 +106,12 @@ public:
   // The condition variables representing the conditions under which we enter this block.
   std::vector<SymbolicValuePtr> conditions;
 
+
+  SymbolicValuePtr entry_condition;
+
+  // The condition
+  SymbolicValuePtr exit_condition;
+
   // A resource limit for this block that can be reused.  Not required here?
   ResourceLimit limit;
 
@@ -116,21 +120,20 @@ public:
   rose_addr_t get_address() const { return address; }
   std::string address_string() const { return boost::str(boost::format("0x%08X") % address); }
 
-  void check_for_bad_code();
   LimitCode analyze(bool with_context = true);
 
   LimitCode evaluate();
 
-  void handle_stack_delta(SgAsmBlock* bb, SgAsmx86Instruction* insn,
+  void handle_stack_delta(SgAsmBlock* bb, SgAsmX86Instruction* insn,
                           SymbolicStatePtr& before_state, bool downgrade = false);
 
 };
 
-typedef std::set<Definition> DUChain;
-typedef std::map<SgAsmx86Instruction *, DUChain> Insn2DUChainMap;
+using DUChain = std::set<Definition>;
+using Insn2DUChainMap = std::map<SgAsmX86Instruction *, DUChain>;
 
-typedef std::map<rose_addr_t, BlockAnalysis> BlockAnalysisMap;
-typedef std::map<rose_addr_t, unsigned int> IterationCounterMap;
+using BlockAnalysisMap = std::map<rose_addr_t, BlockAnalysis>;
+using IterationCounterMap = std::map<rose_addr_t, unsigned int>;
 
 
 void print_definitions(DUChain duc);
@@ -150,13 +153,17 @@ protected:
 
   // A stack delta tracker object to determine appropriate stack deltas for calls during
   // analysis.
-  spTracker *sp_tracker;
+  spTracker sp_tracker;
+  size_t sd_failures = 0;
 
   // A resource limit status code to let us know how soving the flow equation went.
   LimitCode status;
 
   // Are we doing the new list-based memory thing that's more rigorous?
   bool rigor;
+
+  // Are we propagating basic block conditions or discarding them?
+  bool propagate_conditions;
 
   // ==================================================================================
   // Data produced during analysis
@@ -228,9 +235,16 @@ protected:
 
   std::map<TreeNode*, TreeNodePtr> unique_treenodes_;
 
+  // SymbolicRiscOperators callback
+  SingleThreadedAnalysisCallbacks rops_callbacks;
+
   // ==================================================================================
   // Private methods.
   // ==================================================================================
+
+  SymbolicValuePtr
+  get_eip_condition(const BlockAnalysis& pred_analysis,
+                    SgAsmBlock* pblock, const rose_addr_t bb_addr);
 
   // Create BlockAnalysis objects for each basic block in the function.
   void create_blocks();
@@ -240,12 +254,13 @@ protected:
   LimitCode loop_over_cfg();
   bool process_block_with_limit(CFGVertex vertex);
   SymbolicStatePtr merge_predecessors(CFGVertex vertex);
-  bool check_for_eax_read(SgAsmx86Instruction* call_insn);
+    SymbolicStatePtr merge_predecessors_with_conditions(CFGVertex vertex);
+  bool check_for_eax_read(SgAsmX86Instruction* call_insn);
   LimitCode evaluate_bblock(SgAsmBlock* bblock);
-  void update_call_targets(SgAsmx86Instruction* insn, SymbolicRiscOperatorsPtr& ops);
+  void update_call_targets(SgAsmX86Instruction* insn, SymbolicRiscOperatorsPtr& ops);
   void update_function_delta();
-  bool saved_register(SgAsmx86Instruction* insn, const Definition& def);
-  void make_call_dependencies(SgAsmx86Instruction* insn, SymbolicStatePtr& cstate);
+  bool saved_register(SgAsmX86Instruction* insn, const Definition& def);
+  void make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& cstate);
 
   // Report debugging messages.  No analysis.
   void debug_state_merge(const SymbolicStatePtr& cstate, const std::string label) const;
@@ -256,7 +271,7 @@ protected:
 
   // Makes a matching pair of dependencies.  e.g. update both dependents and dependencies.
   // i1 reads the aloc defined by i2.  i2 defines the aloc read by i1.
-  void add_dependency_pair(SgAsmx86Instruction* i1, SgAsmx86Instruction* i2, AbstractAccess access);
+  void add_dependency_pair(SgAsmX86Instruction* i1, SgAsmX86Instruction* i2, AbstractAccess access);
 
   // This is the main function that drives most of the work...
   LimitCode analyze_basic_blocks_independently();
@@ -269,19 +284,11 @@ protected:
 
   void save_treenodes();
 
-  void add_access(SgAsmx86Instruction *insn, const AbstractAccess & aa) {
-    accesses[insn].push_back(aa);
-  }
-  void add_access(SgAsmx86Instruction *insn, AbstractAccess && aa) {
-    accesses[insn].push_back(std::move(aa));
-  }
+  void update_accesses(SgAsmX86Instruction *insn, SymbolicRiscOperatorsPtr& rops);
 
 public:
 
-  // Remove bad blocks, and those with no predecessors from the CFG.
-  //
-  // JSG parameterized this so we can call it independently of setting the primary CFG.
-  void cleanup_cfg(ControlFlowGraph &cfg) const;
+  DescriptorSet& ds;
 
   const BlockAnalysisMap& get_block_analysis() const;
 
@@ -291,7 +298,7 @@ public:
 
   // Perhaps the input and output states shouldn't be public.  But they used to be in
   // function_summary where they were public, and so it's a change to make them private.
-  DUAnalysis(FunctionDescriptor* f, spTracker* s = NULL);
+  DUAnalysis(DescriptorSet& ds, FunctionDescriptor& f);
 
   const SymbolicStatePtr get_input_state() const { return input_state; }
   const SymbolicStatePtr get_output_state() const { return output_state; }
@@ -306,55 +313,77 @@ public:
     return accesses;
   }
 
+  const StackDelta get_call_delta(rose_addr_t addr) {
+    return sp_tracker.get_call_delta(addr, sd_failures);
+  }
+
+  void update_delta(rose_addr_t addr, StackDelta const & sd) {
+    return sp_tracker.update_delta(addr, sd, sd_failures);
+  }
+
+  size_t get_delta_failures() const {
+    return sd_failures;
+  }
+
   // Was the read a fake read?  (A read that wasn't really used)?
   bool fake_read(SgAsmX86Instruction* insn, const AbstractAccess& aa) const;
 
-  access_filters::aa_range get_reads(SgAsmx86Instruction* insn) const {
+  access_filters::aa_range get_reads(SgAsmX86Instruction* insn) const {
     return access_filters::read(accesses, insn);
   }
-  access_filters::aa_range get_writes(SgAsmx86Instruction* insn) const {
+  access_filters::aa_range get_writes(SgAsmX86Instruction* insn) const {
     return access_filters::write(accesses, insn);
   }
-  access_filters::aa_range get_mems(SgAsmx86Instruction* insn) const {
+  access_filters::aa_range get_mems(SgAsmX86Instruction* insn) const {
     return access_filters::mem(accesses, insn);
   }
-  access_filters::aa_range get_regs(SgAsmx86Instruction* insn) const {
+  access_filters::aa_range get_regs(SgAsmX86Instruction* insn) const {
     return access_filters::reg(accesses, insn);
   }
-  access_filters::aa_range get_mem_reads(SgAsmx86Instruction* insn) const {
+  access_filters::aa_range get_mem_reads(SgAsmX86Instruction* insn) const {
     return access_filters::read_mem(accesses, insn);
   }
-  access_filters::aa_range get_mem_writes(SgAsmx86Instruction* insn) const {
+  access_filters::aa_range get_mem_writes(SgAsmX86Instruction* insn) const {
     return access_filters::write_mem(accesses, insn);
   }
-  access_filters::aa_range get_reg_reads(SgAsmx86Instruction* insn) const {
+  access_filters::aa_range get_reg_reads(SgAsmX86Instruction* insn) const {
     return access_filters::read_reg(accesses, insn);
   }
-  access_filters::aa_range get_reg_writes(SgAsmx86Instruction* insn) const {
+  access_filters::aa_range get_reg_writes(SgAsmX86Instruction* insn) const {
     return access_filters::write_reg(accesses, insn);
   }
 
   // Return the single (expected) write for a given instruction.  If there's more than one,
   // return the first write.
-  const AbstractAccess* get_the_write(SgAsmx86Instruction* insn) const;
+  const AbstractAccess* get_the_write(SgAsmX86Instruction* insn) const;
   // Return the first memory write for a given instruction.
-  const AbstractAccess* get_first_mem_write(SgAsmx86Instruction* insn) const;
+  const AbstractAccess* get_first_mem_write(SgAsmX86Instruction* insn) const;
 
   const Insn2DUChainMap& get_dependencies() const { return depends_on; }
   const Insn2DUChainMap& get_dependents() const { return dependents_of; }
-  const DUChain* get_dependencies(SgAsmx86Instruction* insn) const {
+  const DUChain* get_dependencies(SgAsmX86Instruction* insn) const {
     Insn2DUChainMap::const_iterator finder = depends_on.find(insn);
     if (finder == depends_on.end()) return NULL; else return &(depends_on.at(insn));
   }
-  const DUChain* get_dependents(SgAsmx86Instruction* insn) const {
+  const DUChain* get_dependents(SgAsmX86Instruction* insn) const {
     Insn2DUChainMap::const_iterator finder = dependents_of.find(insn);
     if (finder == dependents_of.end()) return NULL; else return &(dependents_of.at(insn));
   }
 
+  // For debugging
+  void print_accesses(SgAsmX86Instruction* insn) const;
   void print_dependencies() const;
   void print_dependents() const;
-
 };
+
+// Fetch the condition for symbolic value. This method is fairly narrow and meant to extract
+// the condtion in a symbolic value that will reach an address (next_addr). This condition may
+// be nested or otherwise complex.
+bool
+ get_expression_condition(SymbolicValuePtr sv, rose_addr_t next_addr,
+                          std::vector<TreeNodePtr>& condition_list,
+                          SymbolicValuePtr& final_condition, bool direction=true);
+
 
 } // namespace pharos
 

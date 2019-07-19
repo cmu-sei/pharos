@@ -1,3 +1,5 @@
+// Copyright 2017-2018 Carnegie Mellon University.  See LICENSE file for terms.
+
 #ifndef Pharos_OOMethod_H
 #define Pharos_OOMethod_H
 
@@ -60,7 +62,7 @@ class OOMethod {
 
   OOMethodType type_;
 
-  void set_descriptors();
+  //void set_descriptors();
 
   void generate_name();
 
@@ -74,11 +76,8 @@ class OOMethod {
       is_virtual_(false),
       type_(OOMethodType::UNKN) { }
 
-  OOMethod(rose_addr_t a, OOMethodType t, bool v);
-
-  OOMethod(rose_addr_t a);
-
   OOMethod(const FunctionDescriptor* fd);
+  OOMethod(const ImportDescriptor* id);
 
   ~OOMethod() = default;
 

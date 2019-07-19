@@ -1,3 +1,5 @@
+// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
+
 #include <rose.h>
 
 #include "stkvar.hpp"
@@ -36,7 +38,7 @@ SymbolicValuePtr
 StackVariable::get_memory_address() const
 { return memory_address_; }
 
-const InsnSet&
+const X86InsnSet&
 StackVariable::get_usages() const
 { return usages_; }
 
@@ -63,7 +65,7 @@ StackVariable::get_evidence() const {
 }
 
 void
-StackVariable::add_usage(SgAsmx86Instruction *i) {
+StackVariable::add_usage(SgAsmX86Instruction *i) {
   if (i) {
     usages_.insert(i);
   }
@@ -143,7 +145,7 @@ StackVariable::to_string() const {
   }
 
   istr << " uses={";
-  for (InsnSet::iterator i = usages_.begin(); i != usages_.end(); i++) {
+  for (X86InsnSet::iterator i = usages_.begin(); i != usages_.end(); i++) {
     SgAsmInstruction *insn = *i;
     istr << addr_str(insn->get_address());
     i++;
@@ -161,7 +163,7 @@ StackVariable::to_string() const {
 // without a corresponding pop to make room on the stack for
 // DWORD-sized local variables.
 bool
-StackVariableAnalyzer::uses_allocation_instruction(const SgAsmx86Instruction *insn) {
+StackVariableAnalyzer::uses_allocation_instruction(const SgAsmX86Instruction *insn) {
 
   const InsnSet & alloc_insns = fd_->get_register_usage().stack_allocation_insns;
 
@@ -188,7 +190,7 @@ StackVariableAnalyzer::uses_allocation_instruction(const SgAsmx86Instruction *in
 // Return true if the instruction supplied is associated with a saved
 // register. Return false otherwise.
 bool
-StackVariableAnalyzer::uses_saved_register(const SgAsmx86Instruction *insn) {
+StackVariableAnalyzer::uses_saved_register(const SgAsmX86Instruction *insn) {
 
   GDEBUG << "Checking instruction '" << debug_instruction(insn)
          << "' for saved register use" << LEND;
@@ -217,7 +219,7 @@ StackVariableAnalyzer::uses_saved_register(const SgAsmx86Instruction *insn) {
 // parameter (push it onto the stack or loaded it into a register). Returns false
 // otherwise
 bool
-StackVariableAnalyzer::uses_parameter(const SgAsmx86Instruction *insn) {
+StackVariableAnalyzer::uses_parameter(const SgAsmX86Instruction *insn) {
 
   if (insn == NULL) {
     return false;
@@ -226,13 +228,13 @@ StackVariableAnalyzer::uses_parameter(const SgAsmx86Instruction *insn) {
   GDEBUG << "Checking instruction '" << debug_instruction(insn)
          << "' for parameter use in function " << addr_str(fd_->get_address()) << LEND;
 
-  const ParamVector& fd_params = fd_->get_parameters().get_params();
+  auto fd_params = fd_->get_parameters().get_params();
 
   if (fd_params.size() > 0) {
     // check the parameters associated with this function
     for (const ParameterDefinition &func_pd : fd_params) {
-      if (func_pd.insn == NULL) continue;
-      if (insn->get_address() == func_pd.insn->get_address()) {
+      if (func_pd.get_insn() == NULL) continue;
+      if (insn->get_address() == func_pd.get_insn()->get_address()) {
         GDEBUG << "Uses FD parameter" << LEND;
         return true;
       }
@@ -241,7 +243,7 @@ StackVariableAnalyzer::uses_parameter(const SgAsmx86Instruction *insn) {
 
   //  Now check outgoing calls
 
-  CallDescriptorSet outgoing_calls = fd_->get_outgoing_calls();
+  auto outgoing_calls = fd_->get_outgoing_calls();
   // Determine if this instruction is a parameter for an outgoing call
 
   if (outgoing_calls.size() > 0) {
@@ -251,7 +253,7 @@ StackVariableAnalyzer::uses_parameter(const SgAsmx86Instruction *insn) {
 
     for (CallDescriptor *cd : outgoing_calls) {
 
-      const ParamVector& cd_params = cd->get_parameters().get_params();
+      auto cd_params = cd->get_parameters().get_params();
 
       if (cd_params.empty()) {
         // this call has no parameters
@@ -262,8 +264,8 @@ StackVariableAnalyzer::uses_parameter(const SgAsmx86Instruction *insn) {
       GDEBUG << "Evaluating out going call " << addr_str(cd->get_address()) << LEND;
 
       for (const ParameterDefinition &call_pd : cd_params) {
-        if (call_pd.insn == NULL) continue;
-        if (insn->get_address() == call_pd.insn->get_address()) {
+        if (call_pd.get_insn() == NULL) continue;
+        if (insn->get_address() == call_pd.get_insn()->get_address()) {
           GDEBUG << "Uses CD parameter" << LEND;
           return true;
         }
@@ -292,7 +294,7 @@ StackVariableAnalyzer::StackVariableAnalyzer(FunctionDescriptor* fd) {
   if (!input_state) // to prevent a coredump
     return;
 
-  RegisterDescriptor esp_rd = global_descriptor_set->get_stack_reg();
+  RegisterDescriptor esp_rd = fd_->ds.get_stack_reg();
 
   // At this point we have the initial ESP value. This will be the base for
   // stack-based local variables
@@ -347,7 +349,7 @@ void StackVariableAnalyzer::accumulate_stkvar_evidence(
   }
 }
 
-StackVariablePtrList
+StackVariablePtrList &
 StackVariableAnalyzer::analyze() {
 
   GDEBUG << "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-" << LEND;
@@ -457,7 +459,7 @@ StackVariableAnalyzer::analyze_stkvar_evidence() {
               return a->offset > b->offset;
             });
 
-  StackVariablePtrList candidate_vars;
+  std::vector<StackVariable *> candidate_vars;
 
   // first we accumulate evidence into a set of candidate stack
   // variables
@@ -623,11 +625,11 @@ StackVariableAnalyzer::analyze_stkvar_evidence() {
       // Add the stack variable in offset order
       StackVariablePtrList::iterator pos =
         std::lower_bound(stkvars_.begin(), stkvars_.end(), candidate,
-                         [](StackVariable* s1, StackVariable* s2) {
+                         [](StackVariablePtr & s1, StackVariable *s2) {
                            return s1->get_offset() > s2->get_offset();
                          });
 
-      stkvars_.insert(pos, candidate);
+      stkvars_.emplace(pos, candidate);
     }
     GDEBUG << "---"  << LEND;
   }

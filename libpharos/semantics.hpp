@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Semantics_H
 #define Pharos_Semantics_H
@@ -23,16 +23,18 @@
 
 namespace pharos {
 
-typedef Rose::BinaryAnalysis::SmtSolverPtr SmtSolverPtr;
+class DescriptorSet;
+
+using SmtSolverPtr = Rose::BinaryAnalysis::SmtSolverPtr;
 // Import specific names from the external ROSE namepaces
-typedef Semantics2::BaseSemantics::Formatter RoseFormatter;
-typedef Semantics2::DispatcherX86 RoseDispatcherX86;
-typedef Semantics2::DispatcherX86Ptr DispatcherPtr;
-typedef Semantics2::BaseSemantics::SValuePtr BaseSValuePtr;
-typedef Semantics2::SymbolicSemantics::SValue ParentSValue;
-typedef Semantics2::SymbolicSemantics::SValuePtr ParentSValuePtr;
+using RoseFormatter = Semantics2::BaseSemantics::Formatter;
+using RoseDispatcherX86 = Semantics2::DispatcherX86;
+using DispatcherPtr = Semantics2::DispatcherX86Ptr;
+using BaseSValuePtr = Semantics2::BaseSemantics::SValuePtr;
+using ParentSValue = Semantics2::SymbolicSemantics::SValue;
+using ParentSValuePtr = Semantics2::SymbolicSemantics::SValuePtr;
 // A class for providing context while merging.
-typedef Semantics2::BaseSemantics::MergerPtr BaseMergerPtr;
+using BaseMergerPtr = Semantics2::BaseSemantics::MergerPtr;
 
 // A naughty global variables for controlling spew.  Used in SymbolicValue::scopy().
 extern unsigned int discarded_expressions;
@@ -56,11 +58,11 @@ enum MemoryType {
 constexpr uint32_t CONFUSED = UINT32_C(0x7FFFFFE);
 
 // Our hash is now the 64-bit integer provided by ROSE on the TreeNode.
-typedef uint64_t SVHash;
+using SVHash = uint64_t;
 
-typedef Sawyer::SharedPointer<class SymbolicValue> SymbolicValuePtr;
+using SymbolicValuePtr = Sawyer::SharedPointer<class SymbolicValue>;
 
-typedef std::set<SymbolicValuePtr> ValueSet;
+using ValueSet = std::set<SymbolicValuePtr>;
 
 // The incomplete bit is a TreeNode flags bit that means that the expression has not been
 // reasoned about in a completely rigorous manner.  For example, the values of expressions
@@ -127,35 +129,35 @@ public:
 
   // This portion of the interface must be implemented, or we'll end up returning the
   // the wrong types when the machinery calls protoval->number_()
-  virtual BaseSValuePtr bottom_(size_t nbits) const ROSE_OVERRIDE;
+  virtual BaseSValuePtr bottom_(size_t nbits) const override;
   // virtual method isBottom() does not need to be overridden.
-  virtual BaseSValuePtr undefined_(size_t nbits) const ROSE_OVERRIDE;
-  virtual BaseSValuePtr unspecified_(size_t nbits) const ROSE_OVERRIDE;
+  virtual BaseSValuePtr undefined_(size_t nbits) const override;
+  virtual BaseSValuePtr unspecified_(size_t nbits) const override;
 
   // A new constructor added by the SEI for creating incomplete values.
   static SymbolicValuePtr incomplete(size_t nbits);
   // Another SEI defined constructor for creating variables defined by the loader.
   static SymbolicValuePtr loader_defined();
 
-  virtual BaseSValuePtr number_(size_t nbits, uint64_t value) const ROSE_OVERRIDE {
+  virtual BaseSValuePtr number_(size_t nbits, uint64_t value) const override {
     //STRACE << "SymbolicValue::number_() nbits="
     // << nbits << " value=" << value << LEND;
     return SymbolicValuePtr(new SymbolicValue(nbits, value));
   }
-  virtual BaseSValuePtr boolean_(bool value) const ROSE_OVERRIDE {
+  virtual BaseSValuePtr boolean_(bool value) const override {
     return SymbolicValuePtr(new SymbolicValue(1, value?1:0));
     // Cory says: we should probably be using instance_xxx to match ROSE, which did it this way:
     //return instance_integer(1, value?1:0);
   }
 
-  virtual BaseSValuePtr copy(size_t new_width = 0) const ROSE_OVERRIDE {
+  virtual BaseSValuePtr copy(size_t new_width = 0) const override {
     return scopy(new_width);
   }
 
   virtual Sawyer::Optional<BaseSValuePtr>
   createOptionalMerge(const BaseSValuePtr &other,
                       const BaseMergerPtr& merger,
-                      const SmtSolverPtr &solver) const ROSE_OVERRIDE;
+                      const SmtSolverPtr &solver) const override;
 
 
   // Non virtualized version returns a SymbolicValuePtr
@@ -245,7 +247,7 @@ public:
 
   // This is our custom extension, and the old way to handling merges.  We should be moving
   // away from this approach, but it's called in multiple places, including memory cell merges.
-  void merge(const SymbolicValuePtr& elt, const SymbolicValuePtr& condition);
+  void merge(const SymbolicValuePtr& elt, const SymbolicValuePtr& condition, bool inverted);
 };
 
 inline SymbolicValuePtr & operator+=(SymbolicValuePtr & a, int64_t i) {
@@ -263,7 +265,7 @@ inline SymbolicValuePtr operator+(int64_t i, const SymbolicValuePtr & a) {
 
 // Forward declaration for AbstractAccess constructor.
 class SymbolicState;
-typedef boost::shared_ptr<class SymbolicState> SymbolicStatePtr;
+using SymbolicStatePtr = boost::shared_ptr<class SymbolicState>;
 
 // Class representing either a register location or a memory location This is currently a
 // horrible bastardization of an abstract location and a couple of Wes' [Mem|Reg]Access pairs.
@@ -276,7 +278,7 @@ class AbstractAccess {
 
   // Computing the list of modifying instructions is kind of complicated.  Delegate
   // responsibility in the constructor to this private method.
-  void set_latest_writers(SymbolicStatePtr& state);
+  void set_latest_writers(DescriptorSet const & ds, SymbolicStatePtr& state);
 
 public:
 
@@ -287,7 +289,7 @@ public:
   RegisterDescriptor register_descriptor;
 
   // The size of the access (in bits)
-  size_t size;
+  size_t size = 0;
 
   // The values that was accessed.
   SymbolicValuePtr value;
@@ -299,12 +301,14 @@ public:
   // Was this access a read or a write?
   bool isRead;
 
-  AbstractAccess() { size = 0; }
+  AbstractAccess() = default;
 
   // Construct a memory abstract access.
-  AbstractAccess(bool b, SymbolicValuePtr ma, size_t s, SymbolicValuePtr v, SymbolicStatePtr state);
+  AbstractAccess(DescriptorSet const & ds, bool b, SymbolicValuePtr ma,
+                 size_t s, SymbolicValuePtr v, SymbolicStatePtr state);
   // Construct a register abstract access.
-  AbstractAccess(bool b, RegisterDescriptor r, SymbolicValuePtr v, SymbolicStatePtr state);
+  AbstractAccess(DescriptorSet const & ds, bool b, RegisterDescriptor r,
+                 SymbolicValuePtr v, SymbolicStatePtr state);
 
   // Some of these are unsafe now that there are three states. :-(
   // Add another boolean or something to really fix it.
@@ -331,28 +335,10 @@ public:
     else return false;
   }
 
-  // This is not a true less than operator, but rather just an arbitrary ordering.  It would be
-  // better if we renamed this method, and made an explict map comparison class to invoke it.
-  bool operator<(const AbstractAccess& other) const {
-    // Invalid < Register < Memory
-    if (is_invalid() && !other.is_invalid()) return true;
-    if (is_reg() && !other.is_reg()) return true;
-    if (is_mem() && !other.is_mem()) return true;
-
-    // Order memory accesses by the hashes of their addresses.
-    if (is_mem() && other.is_mem()) {
-      //return (*memory_address < *(other.memory_address));
-      return memory_address->get_hash() < other.memory_address->get_hash();
-    }
-    // Order registers by their register descriptors.
-    else if (is_reg() && other.is_reg()) {
-      return register_descriptor < other.register_descriptor;
-    }
-    else {
-      // Arbitrary and icky, but it also shouldn't happen.
-      return (this < &other);
-    }
-  }
+  // Comparsion and equality operators for orderings permitting sets of AbstractAccesses.
+  bool operator<(const AbstractAccess& other) const;
+  bool operator==(const AbstractAccess& other) const;
+  bool exact_match(const AbstractAccess& other) const;
 
   void debug(std::ostream &o) const;
   void print(std::ostream &o) const;
@@ -363,8 +349,8 @@ public:
   }
 };
 
-typedef std::vector<AbstractAccess> AbstractAccessVector;
-typedef std::map<SgAsmx86Instruction *, AbstractAccessVector> AccessMap;
+using AbstractAccessVector = std::vector<AbstractAccess>;
+using AccessMap = std::map<SgAsmX86Instruction *, AbstractAccessVector>;
 
 namespace access_filters {
 
@@ -393,47 +379,35 @@ struct reg_pred_match {
   bool operator()(const AbstractAccess &aa) const { return aa.is_reg(match); }
 };
 
-inline auto read(const AbstractAccessVector & c) -> decltype(c | filtered(read_pred))
-{
+inline auto read(const AbstractAccessVector & c) {
   return c | filtered(read_pred);
 }
 
-inline auto write(const AbstractAccessVector & c) -> decltype(c | filtered(write_pred))
-{
+inline auto write(const AbstractAccessVector & c) {
   return c | filtered(write_pred);
 }
 
-inline auto reg(const AbstractAccessVector & c) -> decltype(c | filtered(reg_pred))
-{
+inline auto reg(const AbstractAccessVector & c) {
   return c | filtered(reg_pred);
 }
 
-inline auto mem(const AbstractAccessVector & c) -> decltype(c | filtered(mem_pred))
-{
+inline auto mem(const AbstractAccessVector & c) {
   return c | filtered(mem_pred);
 }
 
-inline auto read_reg(const AbstractAccessVector & c)
-  -> decltype(c | filtered(read_pred) | filtered(reg_pred))
-{
+inline auto read_reg(const AbstractAccessVector & c) {
   return c | filtered(read_pred) | filtered(reg_pred);
 }
 
-inline auto write_reg(const AbstractAccessVector & c)
-  -> decltype(c | filtered(write_pred) | filtered(reg_pred))
-{
+inline auto write_reg(const AbstractAccessVector & c) {
   return c | filtered(write_pred) | filtered(reg_pred);
 }
 
-inline auto read_mem(const AbstractAccessVector & c)
-  -> decltype(c | filtered(read_pred) | filtered(mem_pred))
-{
+inline auto read_mem(const AbstractAccessVector & c) {
   return c | filtered(read_pred) | filtered(mem_pred);
 }
 
-inline auto write_mem(const AbstractAccessVector & c)
-  -> decltype(c | filtered(write_pred) | filtered(mem_pred))
-{
+inline auto write_mem(const AbstractAccessVector & c) {
   return c | filtered(write_pred) | filtered(mem_pred);
 }
 
@@ -442,7 +416,7 @@ using aa_range = boost::any_range<const AbstractAccess, boost::forward_traversal
 
 namespace {
 template <typename F>
-aa_range mapped(const F & filt, const AccessMap & map, SgAsmx86Instruction *insn) {
+aa_range mapped(const F & filt, const AccessMap & map, SgAsmX86Instruction *insn) {
   using erased = boost::adaptors::type_erased<
     const AbstractAccess, boost::forward_traversal_tag,
     const AbstractAccess &, std::ptrdiff_t>;
@@ -454,35 +428,35 @@ aa_range mapped(const F & filt, const AccessMap & map, SgAsmx86Instruction *insn
 }
 } // unnamed namespace
 
-inline aa_range read(const AccessMap & map, SgAsmx86Instruction *insn) {
+inline aa_range read(const AccessMap & map, SgAsmX86Instruction *insn) {
   return mapped([](const AbstractAccessVector &a) {return read(a);}, map, insn);
 }
 
-inline aa_range write(const AccessMap & map, SgAsmx86Instruction *insn) {
+inline aa_range write(const AccessMap & map, SgAsmX86Instruction *insn) {
   return mapped([](const AbstractAccessVector &a) {return write(a);}, map, insn);
 }
 
-inline aa_range reg(const AccessMap & map, SgAsmx86Instruction *insn) {
+inline aa_range reg(const AccessMap & map, SgAsmX86Instruction *insn) {
   return mapped([](const AbstractAccessVector &a) {return reg(a);}, map, insn);
 }
 
-inline aa_range mem(const AccessMap & map, SgAsmx86Instruction *insn) {
+inline aa_range mem(const AccessMap & map, SgAsmX86Instruction *insn) {
   return mapped([](const AbstractAccessVector &a) {return mem(a);}, map, insn);
 }
 
-inline aa_range read_reg(const AccessMap & map, SgAsmx86Instruction *insn) {
+inline aa_range read_reg(const AccessMap & map, SgAsmX86Instruction *insn) {
   return mapped([](const AbstractAccessVector &a) {return read_reg(a);}, map, insn);
 }
 
-inline aa_range read_mem(const AccessMap & map, SgAsmx86Instruction *insn) {
+inline aa_range read_mem(const AccessMap & map, SgAsmX86Instruction *insn) {
   return mapped([](const AbstractAccessVector &a) {return read_mem(a);}, map, insn);
 }
 
-inline aa_range write_reg(const AccessMap & map, SgAsmx86Instruction *insn) {
+inline aa_range write_reg(const AccessMap & map, SgAsmX86Instruction *insn) {
   return mapped([](const AbstractAccessVector &a) {return write_reg(a);}, map, insn);
 }
 
-inline aa_range write_mem(const AccessMap & map, SgAsmx86Instruction *insn) {
+inline aa_range write_mem(const AccessMap & map, SgAsmX86Instruction *insn) {
   return mapped([](const AbstractAccessVector &a) {return write_mem(a);}, map, insn);
 }
 
@@ -490,6 +464,8 @@ inline aa_range write_mem(const AccessMap & map, SgAsmx86Instruction *insn) {
 } // namespace access_filters
 
 void extract_possible_values(const TreeNodePtr& tn, TreeNodePtrSet& s);
+
+void set_may_equal_callback();
 
 } // namespace pharos
 

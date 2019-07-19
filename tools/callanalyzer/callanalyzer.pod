@@ -6,7 +6,8 @@ B<callanalyzer> - Extract call sites and arguments from a binary
 
 =head1 SYNOPSIS
 
-callanalyzer [--allow-unknown] [--show-symbolic]
+callanalyzer [--allow-unknown] [--show-symbolic] 
+  [--json=JSON_FILENAME] [--pretty-json[=INDENT]]
   [--calls=CALLSET_FILENAME] [--typedb=TYPEDB_FILENAME]
   [...Pharos options...] EXECUTABLE_FILE
 
@@ -48,6 +49,18 @@ If a parameter value can not be determined to be a concrete value
 (such as a exact integer or string), by default the value will be
 listed as C<< <abstr> >> (for abstract value).  If this switch is
 used, the underlying symbolic expression will be printed instead.
+
+==item B<--json>=I<JSON_FILENAME>, B<-j>=I<JSON_FILENAME>
+
+Output callanalyzer data in JSON format to the given
+I<JSON_FILENAME>.  If I<JSON_FILENAME> is C<->, JSON will output to
+stdout.
+
+=item B<--pretty-json>[=I<INDENT>], B<-p>[=I<INDENT>]
+
+When outputting JSON, use newlines and indentation, making the output
+human-readable.  I<INDENT> is the indentation level, and defaults to
+C<4>.
 
 =item B<--calls>=I<CALLSET_FILENAME>
 

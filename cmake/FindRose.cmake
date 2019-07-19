@@ -1,14 +1,9 @@
 set(_ROSE_SEARCHES)
 
-find_package(Z3)
-if (NOT Z3_FOUND)
-  include(BuildZ3)
-  message(FATAL_ERROR "Should not get here")
-endif()
-if (Z3_VERSION AND (Z3_VERSION VERSION_LESS 4.6))
-  message(WARNING "Foud Z3 version ${Z3_VERSION}, needed 4.6")
-  include(BuildZ3)
-endif()
+message(STATUS "Looking for Rose version ${ROSE_FIND_VERSION}")
+message(STATUS "Looking for Rose version ${PACKAGE_FIND_VERSION}")
+
+find_package(Z3 REQUIRED)
 
 set(Boost_USE_MULTITHREADED on)
 find_package(Boost 1.60.0 REQUIRED
@@ -27,7 +22,7 @@ if(ROSE_ROOT)
   list(APPEND _ROSE_SEARCHES _ROSE_SEARCH_ROOT)
 endif()
 
-set(ROSE_NAMES librose.so)
+set(ROSE_NAMES ${CMAKE_SHARED_LIBRARY_PREFIX}rose${CMAKE_SHARED_LIBRARY_SUFFIX})
 
 # Normal search.
 set(_ROSE_SEARCH_NORMAL)
@@ -56,7 +51,7 @@ endif()
 mark_as_advanced(ROSE_LIBRARY ROSE_INCLUDE_DIR ROSE_CONFIG)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(ROSE
+find_package_handle_standard_args(Rose
   VERSION_VAR ROSE_VERSION
   REQUIRED_VARS ROSE_INCLUDE_DIR ROSE_LIBRARY)
 

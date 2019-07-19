@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_VFTable_H
 #define Pharos_VFTable_H
@@ -11,13 +11,20 @@
 
 namespace pharos {
 
+// Forward declarations of the virtual table classes for the maps.
+class VirtualFunctionTable;
+class VirtualBaseTable;
+// Maps of addresses to the virtual function tables and virtual base tables.
+using VFTableAddrMap = std::map<rose_addr_t, std::unique_ptr<VirtualFunctionTable>>;
+using VBTableAddrMap = std::map<rose_addr_t, std::unique_ptr<VirtualBaseTable>>;
+
 // An instruction that possibly installs a virtual table.
 class VirtualTableInstallation {
  public:
   // The instruction that installed the table somewhere.
   SgAsmInstruction* insn;
   // The function that the instruction is in.
-  FunctionDescriptor* fd;
+  FunctionDescriptor const * fd;
   // The constant address of the table.
   rose_addr_t table_address;
   // The variable portion of the symbolic value that the table was written into.
@@ -27,13 +34,16 @@ class VirtualTableInstallation {
   // True if the table is virtual base table, and false it is a virtual function table.
   bool base_table;
 
-  VirtualTableInstallation(SgAsmInstruction* i, FunctionDescriptor *f,
+  VirtualTableInstallation(SgAsmInstruction* i, FunctionDescriptor const *f,
                            rose_addr_t a, TreeNodePtr w, int64_t o, bool b);
 };
 
-typedef std::shared_ptr<VirtualTableInstallation> VirtualTableInstallationPtr;
+using VirtualTableInstallationPtr = std::shared_ptr<VirtualTableInstallation>;
+using ConstVirtualTableInstallationPtr = std::shared_ptr<const VirtualTableInstallation>;
 
 class VirtualBaseTable {
+
+  const DescriptorSet& ds;
 
   bool valid() const;
 
@@ -45,7 +55,7 @@ class VirtualBaseTable {
   // A best guess size for the table.
   size_t size;
 
-  VirtualBaseTable(rose_addr_t a) {
+  VirtualBaseTable(const DescriptorSet& ds_, rose_addr_t a) : ds(ds_) {
     addr = a;
     size = 0;
   }
@@ -55,14 +65,17 @@ class VirtualBaseTable {
   bool analyze();
 
   // Limit sizes based on overlaps with other tables and data structures.
-  void analyze_overlaps();
+  void analyze_overlaps(const VFTableAddrMap& vftables, const VBTableAddrMap& vbtables);
 
   // Read an entry from the table.
   signed int read_entry(unsigned int entry) const;
 };
 
+using TypeRTTICompleteObjectLocatorPtr = std::shared_ptr<TypeRTTICompleteObjectLocator>;
 
 class VirtualFunctionTable {
+
+  const DescriptorSet& ds;
 
   bool valid() const;
 
@@ -85,7 +98,7 @@ class VirtualFunctionTable {
 
   // RTTI information is stored directly above the virtual function table. It can be saved here
   // for later usage (if it is present).
-  TypeRTTICompleteObjectLocator *rtti;
+  TypeRTTICompleteObjectLocatorPtr rtti;
 
   // the address of the rtti structures
   rose_addr_t rtti_addr;
@@ -95,9 +108,8 @@ class VirtualFunctionTable {
 
   // This constructor should be deprecated in favor of the one that requires an address if
   // that's not a problem.
-  VirtualFunctionTable() {
+  VirtualFunctionTable(const DescriptorSet& ds_) : ds(ds_) {
     addr = 0;
-    rtti = NULL;
     min_size = 0;
     max_size = 0;
     non_function = 0;
@@ -106,20 +118,14 @@ class VirtualFunctionTable {
     rtti_confidence = ConfidenceNone;
   }
 
-  VirtualFunctionTable(rose_addr_t a) {
+  VirtualFunctionTable(const DescriptorSet& ds_, rose_addr_t a) : ds(ds_) {
     addr = a;
-    rtti = NULL;
     min_size = 0;
     max_size = 0;
     non_function = 0;
     best_size = 0;
     size_confidence = ConfidenceNone;
     rtti_confidence = ConfidenceNone;
-  }
-
-  ~VirtualFunctionTable() {
-    if (rtti!=NULL) delete rtti;
-    rtti = NULL;
   }
 
   // Determine if RTTI is present with this virtual function table
@@ -145,12 +151,14 @@ class VirtualFunctionTable {
 
   // A convenience version of the above interface when you expect a fully valid function
   // descriptor object pointer.
-  FunctionDescriptor * read_entry_fd(unsigned int entry);
+  const FunctionDescriptor * read_entry_fd(unsigned int entry) const;
 
   // This method updates the fields describing the virtual function table based on analyzing
   // the contents of the memory at the address of the table.  Returns true if the table is
-  // valid, and false if it is not.
-  bool analyze();
+  // valid, and false if it is not.  Requires a list of existing tables to check for overlaps,
+  // and becuse of some complexity with finding the next vftable unsolicited, it also needs
+  // update access.  More cleanup is required.
+  bool analyze(VFTableAddrMap& vftables);
 };
 
 } // namespace pharos

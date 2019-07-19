@@ -1,60 +1,29 @@
+// Copyright 2017-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "oomethod.hpp"
 #include "descriptors.hpp"
 
 namespace pharos {
 
-OOMethod::OOMethod(rose_addr_t a, OOMethodType t, bool v) {
-
-  address_ = a;
-  name_ = "";
-  type_ = t;
-  is_virtual_ = v;
-  set_descriptors();
-
-}
-
-OOMethod::OOMethod(rose_addr_t a) {
-
-  address_ = a;
-  name_ = "";
-  type_ = OOMethodType::UNKN;
-  is_virtual_ = false;
-  set_descriptors();
-}
-
 OOMethod::OOMethod(const FunctionDescriptor* fd) {
 
   function_ = fd;
-  name_ = "";
-  address_ = fd->get_address();
   import_ = nullptr;
+  address_ = fd->get_address();
+  name_ = "";
   type_ = OOMethodType::UNKN;
   is_virtual_ = false;
 }
 
-void
-OOMethod::set_descriptors() {
+OOMethod::OOMethod(const ImportDescriptor* id) {
 
   function_ = nullptr;
-  import_ = nullptr;
-
-  const FunctionDescriptor* fd = global_descriptor_set->get_func(address_);
-  if (!fd) {
-    GDEBUG << "Detected imported method " << addr_str(address_) << LEND;
-    const ImportDescriptor* id = global_descriptor_set->get_import(address_);
-    if (id) {
-      import_ = id;
-      function_ = id->get_function_descriptor();
-      set_name(id->get_name());
-    }
-  }
-  else {
-    function_ = fd;
-  }
-   if (!function_) {
-    OWARN << "There is no function descriptor for " << addr_str(address_) << LEND;
-  }
+  import_ = id;
+  address_ = id->get_address();
+  type_ = OOMethodType::UNKN;
+  is_virtual_ = false;
+  function_ = id->get_function_descriptor();
+  set_name(id->get_name());
 }
 
 void

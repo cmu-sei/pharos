@@ -1,4 +1,4 @@
-// Copyright 2016-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
 // Author: Cory Cohen
 
 #include <boost/range/adaptor/map.hpp>
@@ -13,6 +13,7 @@
 #include "pdg.hpp"
 #include "vftable.hpp"
 #include "demangle.hpp"
+#include "bua.hpp"
 
 // C++ data structures
 #include "ooelement.hpp"
@@ -56,7 +57,7 @@ const char *pharos::EnumStrings<prolog_method_property_enum>::data[] = {
 std::unique_ptr<OOSolver::ProgressBar> OOSolver::progress_bar;
 
 // Construct a new Object Oriented Prolog solver.
-OOSolver::OOSolver(ProgOptVarMap& vm)
+OOSolver::OOSolver(DescriptorSet & ds_, const ProgOptVarMap& vm) : ds(ds_)
 {
   // We're nt actually going to perform analysis unless requested.
   perform_analysis = false;
@@ -148,7 +149,7 @@ int OOSolver::progress()
 // The public interface to adding facts.  It's wrapped in a try/catch for more graceful
 // handling of unexpected conditions.
 bool
-OOSolver::add_facts(OOAnalyzer& ooa) {
+OOSolver::add_facts(const OOAnalyzer& ooa) {
   if (!session) return false;
   try {
     if (debugging_enabled) {
@@ -160,13 +161,13 @@ OOSolver::add_facts(OOAnalyzer& ooa) {
     if (no_guessing) {
       session->add_fact("guessingDisabled");
     }
-    add_method_facts();
+    add_method_facts(ooa);
     add_vftable_facts(ooa);
     add_usage_facts(ooa);
-    add_call_facts();
+    add_call_facts(ooa);
     add_thisptr_facts();
-    add_function_facts();
-    add_import_facts();
+    add_function_facts(ooa);
+    add_import_facts(ooa);
   }
   catch (const Error& error) {
     GFATAL << error.what() << LEND;
@@ -177,7 +178,7 @@ OOSolver::add_facts(OOAnalyzer& ooa) {
 
 // The main analysis call.  It adds facts, invokes the anlaysis, and reports the results.
 bool
-OOSolver::analyze(OOAnalyzer& ooa) {
+OOSolver::analyze(const OOAnalyzer& ooa) {
   if (!session) return false;
   if (!add_facts(ooa)) return false;
   if (facts_filename.size() != 0) {
@@ -202,13 +203,9 @@ OOSolver::analyze(OOAnalyzer& ooa) {
 // Dump facts primarily associated with a this call method.  This currently includes object
 // offsets passed to otehr methods, member accesses, and possible vftable writes.
 void
-OOSolver::add_method_facts()
+OOSolver::add_method_facts(const OOAnalyzer& ooa)
 {
-  FunctionDescriptorMap& fdmap = global_descriptor_set->get_func_map();
-  for (FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
-    ThisCallMethod* tcm = fd.get_oo_properties();
-    if (tcm == NULL) continue;
-
+  for (auto const & tcm : boost::adaptors::values(ooa.get_methods())) {
     std::string thisptr_term = "invalid";
     const SymbolicValuePtr& this_ptr = tcm->get_this_ptr();
     if (this_ptr) {
@@ -216,9 +213,11 @@ OOSolver::add_method_facts()
     }
 
     std::string status = "certain";
-    const CallingConventionPtrVector& conventions = tcm->fd->get_calling_conventions();
-    if (conventions.size() > 1) status = "uncertain";
-    if (conventions.size() == 0) status = "notthiscall";
+    {
+      auto conventions = tcm->fd->get_calling_conventions();
+      if (conventions.size() > 1) status = "uncertain";
+      if (conventions.size() == 0) status = "notthiscall";
+    }
 
     session->add_fact("thisCallMethod", tcm->get_address(), thisptr_term, status);
 
@@ -242,11 +241,11 @@ OOSolver::add_method_facts()
 
     for (const FuncOffset& fo : boost::adaptors::values(tcm->passed_func_offsets)) {
       session->add_fact("funcOffset", fo.insn->get_address(),
-                        tcm->get_address(), fo.tcm->get_address(), fo.offset);
+                        tcm->get_address(), fo.address, fo.offset);
     }
 
     for (const Member& member : boost::adaptors::values(tcm->data_members)) {
-      for (const SgAsmx86Instruction* insn : member.using_instructions) {
+      for (const SgAsmX86Instruction* insn : member.using_instructions) {
         session->add_fact("methodMemberAccess", insn->get_address(),
                           tcm->get_address(), member.offset, member.size);
       }
@@ -257,14 +256,15 @@ OOSolver::add_method_facts()
 // Dump facts primarily associated with virtual function tables (the entries and the RTTI
 // information).
 void
-OOSolver::add_vftable_facts(OOAnalyzer& ooa)
+OOSolver::add_vftable_facts(const OOAnalyzer& ooa)
 {
-  VirtualTableInstallationMap& installs = ooa.virtual_table_installations;
+  const VirtualTableInstallationMap& installs = ooa.virtual_table_installations;
   for (const VirtualTableInstallationPtr vti : boost::adaptors::values(installs)) {
     GDEBUG << "Considering VFTable Install " << addr_str(vti->insn->get_address()) << LEND;
+    const ThisCallMethod* tcm = ooa.get_method(vti->fd->get_address());
     // Historically, we've only exported VTable facts for this call methods, but hopefully
     // that's going to change soon.
-    if (vti->fd->get_oo_properties() == NULL) continue;
+    if (tcm == nullptr) continue;
 
     std::string fact_name = "possibleVFTableWrite";
     if (vti->base_table) fact_name = "possibleVBTableWrite";
@@ -276,13 +276,13 @@ OOSolver::add_vftable_facts(OOAnalyzer& ooa)
 
   std::set<rose_addr_t> exported;
 
-  size_t arch_bytes = global_descriptor_set->get_arch_bytes();
-  VFTableAddrMap& vftables = global_descriptor_set->get_vftables();
-  for (const VirtualFunctionTable* vft : boost::adaptors::values(vftables)) {
+  size_t arch_bytes = ooa.ds.get_arch_bytes();
+  const VFTableAddrMap& vftables = ooa.get_vftables();
+  for (auto const & vft : boost::adaptors::values(vftables)) {
     size_t e = 0;
     while (true) {
       rose_addr_t value = vft->read_entry(e);
-      if (!(global_descriptor_set->memory_in_image(value))) {
+      if (!(ooa.ds.memory.is_mapped(value))) {
         break;
       }
       rose_addr_t eaddr = vft->addr + (e * arch_bytes);
@@ -303,13 +303,13 @@ OOSolver::add_vftable_facts(OOAnalyzer& ooa)
       e++;
     }
 
-    if (vft->rtti != NULL) {
-      add_rtti_facts(vft);
+    if (vft->rtti) {
+      add_rtti_facts(vft.get());
     }
   }
 
-  VBTableAddrMap& vbtables = global_descriptor_set->get_vbtables();
-  for (const VirtualBaseTable* vbt : boost::adaptors::values(vbtables)) {
+  const VBTableAddrMap& vbtables = ooa.get_vbtables();
+  for (auto const & vbt : boost::adaptors::values(vbtables)) {
     for (size_t e = 0; e < vbt->size; e++) {
       signed int value = vbt->read_entry(e);
       rose_addr_t eaddr = vbt->addr + (e * arch_bytes);
@@ -329,7 +329,7 @@ OOSolver::add_rtti_facts(const VirtualFunctionTable* vft)
 {
   if (vft->rtti_confidence == ConfidenceNone) return;
 
-  const TypeRTTICompleteObjectLocator *rtti = vft->rtti;
+  const TypeRTTICompleteObjectLocatorPtr rtti = vft->rtti;
 
   // Check for --ignore-rtti option?
   if (rtti->signature.value != 0) return;
@@ -358,7 +358,7 @@ OOSolver::add_rtti_chd_facts(const rose_addr_t addr)
 {
   visited.insert(addr);
   try {
-    TypeRTTIClassHierarchyDescriptor chd;
+    TypeRTTIClassHierarchyDescriptor chd{ds.memory};
     chd.read(addr);
 
     std::vector<uint32_t> base_addresses;
@@ -400,7 +400,7 @@ OOSolver::add_rtti_chd_facts(const rose_addr_t addr)
 // result in duplicate assertions and further it might be insufficient for some advanced
 // reasoning about vtable reads and writes.   Changes may be required in the future.
 void
-OOSolver::add_usage_facts(OOAnalyzer& ooa)
+OOSolver::add_usage_facts(const OOAnalyzer& ooa)
 {
   for (const ObjectUse& obj_use : boost::adaptors::values(ooa.object_uses)) {
     rose_addr_t func_addr = obj_use.fd->get_address();
@@ -435,9 +435,9 @@ OOSolver::add_usage_facts(OOAnalyzer& ooa)
 
 // Dump facts primarily associated with each call instruction in the program.
 void
-OOSolver::add_call_facts()
+OOSolver::add_call_facts(const OOAnalyzer& ooa)
 {
-  CallDescriptorMap& call_map = global_descriptor_set->get_call_map();
+  const CallDescriptorMap& call_map = ooa.ds.get_call_map();
   for (const CallDescriptor& cd : boost::adaptors::values(call_map)) {
 
     FunctionDescriptor* callfunc = cd.get_containing_function();
@@ -450,21 +450,17 @@ OOSolver::add_call_facts()
       // how to do it here.
       // bool endless;
       // rose_addr_t real_target = target;
-      // FunctionDescriptor* tfd = global_descriptor_set->get_func(target);
+      // FunctionDescriptor* tfd = ooa.ds.get_func(target);
       // if (tfd) real_target = tfd->follow_thunks(&endless);
 
       session->add_fact("callTarget", cd.get_address(), callfunc->get_address(), target);
 
-      bool isdelete = false;
-      FunctionDescriptor* tfd = global_descriptor_set->get_func(target);
-      if (tfd && tfd->is_delete_method()) isdelete = true;
-      ImportDescriptor* id = global_descriptor_set->get_import(target);
-      if (id && id->is_delete_method()) isdelete = true;
+      bool isdelete = ooa.is_delete_method(target);
       std::string thisptr_term = "invalid";
       if (isdelete) {
-        const ParamVector& params = cd.get_parameters().get_params();
+        auto params = cd.get_parameters().get_params();
         if (params.size() > 0) {
-          const ParameterDefinition& param = params.at(0);
+          const ParameterDefinition& param = *params.begin();
           const SymbolicValuePtr& value = param.get_value();
           if (value) thisptr_term = "sv_" + std::to_string(value->get_hash());
           GDEBUG << "Parameter to delete at " << cd.address_string() << " was: "
@@ -477,15 +473,15 @@ OOSolver::add_call_facts()
 
     // Report all parameters for every call (in the future we'll try using an OO subset)
     const ParameterList& call_params = cd.get_parameters();
-    const ParamVector& cparams = call_params.get_params();
+    auto cparams = call_params.get_params();
     for (const ParameterDefinition& cpd : cparams) {
-      if (!cpd.value) continue;
-      TreeNodePtr expr = cpd.value->get_expression();
+      if (!cpd.get_value()) continue;
+      TreeNodePtr expr = cpd.get_expression();
       if (!expr) continue;
       // If the expression is a constant and not a global variable we do not want to export it.
       if (expr->isNumber()) {
         if (expr->nBits() > 64) continue;
-        if (global_descriptor_set->get_global(expr->toInt()) == NULL) continue;
+        if (ooa.ds.get_global(expr->toInt()) == NULL) continue;
       }
       std::string term = "sv_" + std::to_string(expr->hash());
       if (debug_sv_facts) {
@@ -503,15 +499,15 @@ OOSolver::add_call_facts()
     }
 
     // Report all parameters for every function (in the future we'll try using an OO subset)
-    const ParamVector& creturns = call_params.get_returns();
+    auto creturns = call_params.get_returns();
     for (const ParameterDefinition& cpd : creturns) {
-      if (!cpd.value) continue;
-      TreeNodePtr expr = cpd.value->get_expression();
+      if (!cpd.get_value()) continue;
+      TreeNodePtr expr = cpd.get_value()->get_expression();
       if (!expr) continue;
       // If the expression is a constant and not a global variable we do not want to export it.
       if (expr->isNumber()) {
         if (expr->nBits() > 64) continue;
-        if (global_descriptor_set->get_global(expr->toInt()) == NULL) continue;
+        if (ooa.ds.get_global(expr->toInt()) == NULL) continue;
       }
       std::string term = "sv_" + std::to_string(expr->hash());
       if (debug_sv_facts) {
@@ -524,20 +520,19 @@ OOSolver::add_call_facts()
     }
 
     // From here on, we're only interested in virtual calls.
-    if (cd.get_call_type() != CallVirtualFunction) continue;
+    const VirtualFunctionCallMap& vcalls = ooa.get_vcalls();
+    if (vcalls.find(cd.get_address()) == vcalls.end()) continue;
 
-    CallInformationPtr ci = cd.get_call_info();
-    VirtualFunctionCallInformationPtr vci =
-      boost::dynamic_pointer_cast<VirtualFunctionCallInformation>(ci);
-    // If there's no virtual funtion call information, don't dereference NULL.
-    if (!vci || !(vci->obj_ptr)) continue;
-
-    thisptrs.insert(vci->obj_ptr->get_expression());
-    // Report the virtual call fact now.
-    std::string thisptr_term = "sv_" + std::to_string(vci->obj_ptr->get_hash());
-    session->add_fact("possibleVirtualFunctionCall", cd.get_address(),
-                      callfunc->get_address(), thisptr_term,
-                      vci->vtable_offset, vci->vfunc_offset);
+    for (const VirtualFunctionCallInformation& vci : vcalls.at(cd.get_address())) {
+      // If there's no object pointer, we can't export?
+      if (!(vci.obj_ptr)) continue;
+      thisptrs.insert(vci.obj_ptr->get_expression());
+      // Report the virtual call fact now.
+      std::string thisptr_term = "sv_" + std::to_string(vci.obj_ptr->get_hash());
+      session->add_fact("possibleVirtualFunctionCall", cd.get_address(),
+                        callfunc->get_address(), thisptr_term,
+                        vci.vtable_offset, vci.vfunc_offset);
+    }
   }
 }
 
@@ -560,66 +555,67 @@ OOSolver::add_thisptr_facts()
 
 // Report facts about functions (like purecall).
 void
-OOSolver::add_function_facts()
+OOSolver::add_function_facts(const OOAnalyzer& ooa)
 {
-  FunctionDescriptorMap& fdmap = global_descriptor_set->get_func_map();
-  for (FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
-    if (fd.is_purecall_method()) {
-      session->add_fact("purecall", fd.get_address());
+  const FunctionDescriptorMap& fdmap = ooa.ds.get_func_map();
+  for (const FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
+    rose_addr_t fdaddr = fd.get_address();
+    if (ooa.is_purecall_method(fdaddr)) {
+      session->add_fact("purecall", fdaddr);
     }
 
     // Turns out that we need to export thunk data to Prolog, because the presence or absence
     // of thunks can affect our logic.  For example, thunk1 and thunk2 can be assigned to
     // different classes, even if they jump to the same function.
     if (fd.is_thunk()) {
-      session->add_fact("thunk", fd.get_address(), fd.get_jmp_addr());
+      session->add_fact("thunk", fdaddr, fd.get_jmp_addr());
     }
     else {
       // Report all calling conventions for all functions (except thunks).
-      const CallingConventionPtrVector& conventions = fd.get_calling_conventions();
+      auto conventions = fd.get_calling_conventions();
       for (const CallingConvention* cc: conventions) {
-        session->add_fact("callingConvention", fd.get_address(), cc->get_name());
+        session->add_fact("callingConvention", fdaddr, cc->get_name());
       }
     }
 
     // Report all parameters for every function (in the future we'll try using an OO subset)
     const ParameterList& func_params = fd.get_parameters();
-    const ParamVector& fparams = func_params.get_params();
+    auto fparams = func_params.get_params();
     for (const ParameterDefinition& fpd : fparams) {
-      if (!fpd.value) continue;
-      TreeNodePtr expr = fpd.value->get_expression();
+      if (!fpd.get_value()) continue;
+      TreeNodePtr expr = fpd.get_expression();
       if (!expr) continue;
       // If the expression is a constant and not a global variable we do not want to export it.
       // Is it possible to have _function_ parameters that are constants, or only on calls?
       if (expr->isNumber()) {
         if (expr->nBits() > 64) continue;
-        if (global_descriptor_set->get_global(expr->toInt()) == NULL) continue;
+        if (ooa.ds.get_global(expr->toInt()) == NULL) continue;
       }
       std::string term = "sv_" + std::to_string(expr->hash());
       if (fpd.is_reg()) {
         std::string regname = unparseX86Register(fpd.get_register(), NULL);
-        session->add_fact("funcParameter", fd.get_address(), regname, term);
+        session->add_fact("funcParameter", fdaddr, regname, term);
       }
       else {
-        session->add_fact("funcParameter", fd.get_address(), fpd.get_num(), term);
+        session->add_fact("funcParameter", fdaddr, fpd.get_num(), term);
       }
     }
 
     // Report all parameters for every function (in the future we'll try using an OO subset)
-    const ParamVector& freturns = func_params.get_returns();
+    auto freturns = func_params.get_returns();
     for (const ParameterDefinition& fpd : freturns) {
-      if (!fpd.value) continue;
-      TreeNodePtr expr = fpd.value->get_expression();
+      if (!fpd.get_value()) continue;
+      TreeNodePtr expr = fpd.get_value()->get_expression();
       if (!expr) continue;
       // If the expression is a constant and not a global variable we do not want to export it.
       if (expr->isNumber()) {
         if (expr->nBits() > 64) continue;
-        if (global_descriptor_set->get_global(expr->toInt()) == NULL) continue;
+        if (ooa.ds.get_global(expr->toInt()) == NULL) continue;
       }
       std::string term = "sv_" + std::to_string(expr->hash());
       if (fpd.is_reg()) {
         std::string regname = unparseX86Register(fpd.get_register(), NULL);
-        session->add_fact("funcReturn", fd.get_address(), regname, term);
+        session->add_fact("funcReturn", fdaddr, regname, term);
       }
     }
   }
@@ -627,10 +623,10 @@ OOSolver::add_function_facts()
 
 // Report facts about functions (like purecall).
 void
-OOSolver::add_import_facts()
+OOSolver::add_import_facts(const OOAnalyzer& ooa)
 {
-  ImportDescriptorMap& idmap = global_descriptor_set->get_import_map();
-  for (ImportDescriptor& id : boost::adaptors::values(idmap)) {
+  const ImportDescriptorMap& idmap = ooa.ds.get_import_map();
+  for (const ImportDescriptor& id : boost::adaptors::values(idmap)) {
     try {
       auto dtype = demangle::visual_studio_demangle(id.get_name());
       if (!dtype) continue;
@@ -794,7 +790,9 @@ OOSolver::dump_results_private()
 
   //  session->command("break");
   exported += session->print_predicate(results_file, "finalVFTable", 5);
+  exported += session->print_predicate(results_file, "finalVFTableEntry", 3);
   exported += session->print_predicate(results_file, "finalVBTable", 4);
+  exported += session->print_predicate(results_file, "finalVBTableEntry", 3);
   exported += session->print_predicate(results_file, "finalClass", 6);
   exported += session->print_predicate(results_file, "finalResolvedVirtualCall", 3);
   exported += session->print_predicate(results_file, "finalInheritance", 5);
@@ -862,7 +860,8 @@ SolveClassesFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
                                     var(method_list));
   // populate the master class list
   while (!class_query->done()) {
-    OOClassDescriptorPtr new_cls = std::make_shared<OOClassDescriptor>(cid, vft, csize, dtor, method_list);
+    OOClassDescriptorPtr new_cls = std::make_shared<OOClassDescriptor>(
+      cid, vft, csize, dtor, method_list, ds);
     classes.push_back(new_cls);
     GDEBUG << "Adding class: " << new_cls->get_name() << LEND;
     class_query->next();
@@ -960,7 +959,8 @@ SolveVFTableFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
         if (v->get_address() == vft_addr) {
 
           v->set_size(vft_size);
-          v->set_rtti_address(rtti_addr);
+
+          v->set_rtti(rtti_addr, read_RTTI(ds, rtti_addr));
 
           // set the class name based on RTTI
           if (rtti_name.size() > 0) {
@@ -1014,7 +1014,7 @@ SolveMemberAccessFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
 
         // convert evidence from instructions to addresses
         for (rose_addr_t a : mbr_evidence) {
-          SgAsmInstruction* i = global_descriptor_set->get_insn(a);
+          SgAsmInstruction* i = ds.get_insn(a);
           if (i) {
             insn_evidence.insert(i);
             ss << addr_str(i->get_address()) << " ";
@@ -1026,8 +1026,11 @@ SolveMemberAccessFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
 
         existing_elm->add_evidence(insn_evidence);
 
-        if (existing_elm->get_size() != mbr_size) {
-          GDEBUG << "Class member: "<< cls->get_name() << " @ " << addr_str(mbr_off)
+        // Only override the size if it is less than what is previously reported. In other
+        // words, the biggest size wins
+        if (existing_elm->get_size() < mbr_size) {
+
+          OINFO << "Class member: "<< cls->get_name() << " @ " << addr_str(mbr_off)
                  << " has a conflicting size with access, previous size=" << existing_elm->get_size()
                  << " access size=" << mbr_size;
 
@@ -1073,7 +1076,7 @@ SolveMemberFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
 
       // Embedded object and inherited bases are not listed again as finalMembers.  Instead
       // they are list in the finalEmbeddedObject and finalInheritance results.
-      OOElementPtr elm = std::make_shared<OOMember>(selected_size, mbr_off);
+      OOElementPtr elm = std::make_shared<OOMember>(selected_size);
 
       cls->add_member(mbr_off, elm);
 
@@ -1165,13 +1168,14 @@ SolveMethodPropertyFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes)
 
             GDEBUG << "Processing vftable " << addr_str(vftbl->get_address()) << LEND;
 
-            size_t arch_bytes = global_descriptor_set->get_arch_bytes();
+            size_t arch_bytes = ds.get_arch_bytes();
             for (size_t offset=0; offset<vftbl->get_size(); offset++) {
 
-              rose_addr_t faddr = global_descriptor_set->read_addr(vftbl->get_address()+(offset*arch_bytes));
+              rose_addr_t faddr = ds.memory.read_address(
+                vftbl->get_address()+(offset*arch_bytes));
 
               // Handle thunks ... sigh
-              const FunctionDescriptor *f = global_descriptor_set->get_func(faddr);
+              const FunctionDescriptor *f = ds.get_func(faddr);
               if (f) {
                 if (f->is_thunk()) faddr = f->get_jmp_addr();
 
@@ -1233,12 +1237,10 @@ SolveResolvedVirtualCallFromProlog::solve(std::vector<OOClassDescriptorPtr>& cla
         for (OOMethodPtr mtd : cls->get_methods()) {
           if (mtd->get_address() == to_addr) {
 
-            CallDescriptor *vcall_cd = global_descriptor_set->get_call(from_addr);
+            const CallDescriptor *vcall_cd = ds.get_call(from_addr);
 
             if (vcall_cd) {
-              // As part of the analysis, update the call descriptor
-              vcall_cd->add_target(to_addr);
-              vftcall->add_virtual_call(vcall_cd);
+              vftcall->add_virtual_call(vcall_cd, to_addr);
 
               GDEBUG << "Added virtual function call for "<< cls->get_name()
                      << " in vftable " << addr_str(vftcall->get_address())
@@ -1258,6 +1260,23 @@ SolveResolvedVirtualCallFromProlog::solve(std::vector<OOClassDescriptorPtr>& cla
   return true;
 }
 
+// Because the entire OO analysis is read-only with respect to the descriptor set until we
+// discover some new targets for some virtual function calls, we need a separate method (this
+// one) to _update_ a descriptor set with the the new call targets.
+void OOSolver::update_virtual_call_targets() {
+  for (OOClassDescriptorPtr cls : classes) {
+    for (OOVirtualFunctionTablePtr vftcall : cls->get_vftables()) {
+      for (auto& pair : vftcall->get_virtual_call_targets()) {
+        const CallDescriptor* vcall_cd = pair.first;
+        CallDescriptor* vcall_rw_cd = ds.get_rw_call(vcall_cd->get_address());
+        for (rose_addr_t target : pair.second) {
+          vcall_rw_cd->add_target(target);
+        }
+      }
+    }
+  }
+}
+
 // The public interface to importing results back into C++ classes.  It's wrapped in a
 // try/catch for more graceful handling of unexpected conditions.
 bool
@@ -1274,39 +1293,39 @@ OOSolver::import_results() {
     OOSolverAnalysisPassRunner runner(this);
 
     std::shared_ptr<OOSolverAnalysisPass> final_class
-      = std::make_shared<SolveClassesFromProlog>(session);
+      = std::make_shared<SolveClassesFromProlog>(session, ds);
     runner.add_pass(final_class);
 
     // Placing the vftable query before the inheritance query ensures that the proper class name
     // is used in the presence of RTTI information
     std::shared_ptr<OOSolverAnalysisPass> final_vftable
-      = std::make_shared<SolveVFTableFromProlog>(session);
+      = std::make_shared<SolveVFTableFromProlog>(session, ds);
     runner.add_pass(final_vftable);
 
     // Not importing virtual base tables (yet)...
 
     std::shared_ptr<OOSolverAnalysisPass> final_inheritance
-      = std::make_shared<SolveInheritanceFromProlog>(session);
+      = std::make_shared<SolveInheritanceFromProlog>(session, ds);
     runner.add_pass(final_inheritance);
 
     std::shared_ptr<OOSolverAnalysisPass> final_mem
-      = std::make_shared<SolveMemberFromProlog>(session);
+      = std::make_shared<SolveMemberFromProlog>(session, ds);
     runner.add_pass(final_mem);
 
     std::shared_ptr<OOSolverAnalysisPass> final_emb_obj
-      = std::make_shared<SolveEmbeddedObjFromProlog>(session);
+      = std::make_shared<SolveEmbeddedObjFromProlog>(session, ds);
     runner.add_pass(final_emb_obj);
 
     std::shared_ptr<OOSolverAnalysisPass> final_mem_access
-      = std::make_shared<SolveMemberAccessFromProlog>(session);
+      = std::make_shared<SolveMemberAccessFromProlog>(session, ds);
     runner.add_pass(final_mem_access);
 
     std::shared_ptr<OOSolverAnalysisPass> final_method
-      = std::make_shared<SolveMethodPropertyFromProlog>(session);
+      = std::make_shared<SolveMethodPropertyFromProlog>(session, ds);
     runner.add_pass(final_method);
 
     std::shared_ptr<OOSolverAnalysisPass> final_vcall
-      = std::make_shared<SolveResolvedVirtualCallFromProlog>(session);
+      = std::make_shared<SolveResolvedVirtualCallFromProlog>(session, ds);
     runner.add_pass(final_vcall);
 
     GINFO << "Ingesting prolog results ... " << LEND;

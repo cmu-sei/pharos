@@ -1,4 +1,4 @@
-// Copyright 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
 // Author: Jeff Gennari
 
 #ifndef Pharos_Type_Descriptor_H
@@ -14,6 +14,12 @@
 #include "typedb.hpp"
 
 namespace pharos {
+
+// Forward declaration in lieu of including the full OOAnalyzer header.
+// This should really be a function finder, and not an OOAnalyzer anyway.
+class OOAnalyzer;
+
+void init_type_logging();
 
 namespace types {
 
@@ -126,7 +132,7 @@ class TypeDescriptor {
 }; // TypeDescriptor
 
 // shared pointer to a TypeDescriptor
-typedef boost::shared_ptr< TypeDescriptor > TypeDescriptorPtr;
+using TypeDescriptorPtr = boost::shared_ptr< TypeDescriptor >;
 
 // Utility functions to fetch type descriptors from tree nodes. Note
 // that this method will create a default type descriptor if one isn't
@@ -558,6 +564,9 @@ class TypeSolver {
   std::shared_ptr<prolog::Session> session_;
 
   const DUAnalysis& du_analysis_;
+
+  // This should really be a function finder.
+  OOAnalyzer* ooa;
 
   // The current function being analyzed
   const FunctionDescriptor *current_function_;

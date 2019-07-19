@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Stkvar_H
 #define Stkvar_H
@@ -12,7 +12,7 @@ namespace pharos {
 class TypeDescriptor;
 class ParameterDefinition;
 
-typedef boost::shared_ptr< TypeDescriptor > TypeDescriptorPtr;
+using TypeDescriptorPtr = boost::shared_ptr< TypeDescriptor >;
 
 class FunctionDescriptor;
 class DUAnalysis;
@@ -29,7 +29,7 @@ struct StackVariableEvidence {
   bool in_value;
 };
 
-typedef std::vector<StackVariableEvidence*> StackVariableEvidencePtrList;
+using StackVariableEvidencePtrList = std::vector<StackVariableEvidence*>;
 
 // Data structure for a stack variable. A stack variable is a memory location on
 // the stack that is accessed via one of the stack registers (frame or stack
@@ -42,7 +42,7 @@ class StackVariable {
 
   int64_t get_offset() const;
 
-  const InsnSet& get_usages() const;
+  const X86InsnSet& get_usages() const;
 
   std::vector<SymbolicValuePtr> get_values() const;
 
@@ -56,7 +56,7 @@ class StackVariable {
 
   void add_evidence(StackVariableEvidence* e);
 
-  void add_usage(SgAsmx86Instruction *i);
+  void add_usage(SgAsmX86Instruction *i);
 
   // prints the major parts of a stack variable (offset, value, usage
   // instructions and size)
@@ -79,14 +79,14 @@ class StackVariable {
   SymbolicValuePtr memory_address_;
 
   // The set of instructions that use the stack variable
-  InsnSet usages_;
+  X86InsnSet usages_;
 
 }; // end StackVariable
 
-typedef StackVariable* StackVariablePtr;
+using StackVariablePtr = std::unique_ptr<StackVariable>;
 
 // a list of stack variable pointers
-typedef std::vector<StackVariablePtr> StackVariablePtrList;
+using StackVariablePtrList = std::vector<StackVariablePtr>;
 
 // The StackVariableAnalyzer collects and processes evidence of stack variables
 class StackVariableAnalyzer {
@@ -105,12 +105,12 @@ class StackVariableAnalyzer {
 
   // return true if the instruction supplied is associated with a saved
   // register. Return false otherwise.
-  bool uses_saved_register(const SgAsmx86Instruction *insn);
+  bool uses_saved_register(const SgAsmX86Instruction *insn);
 
   // Return true if the instruction uses a parameter; false otherwise
-  bool uses_parameter(const SgAsmx86Instruction *insn);
+  bool uses_parameter(const SgAsmX86Instruction *insn);
 
-  bool uses_allocation_instruction(const SgAsmx86Instruction *insn);
+  bool uses_allocation_instruction(const SgAsmX86Instruction *insn);
 
   void accumulate_stkvar_evidence(SgAsmX86Instruction* insn, const AbstractAccess& aa);
 
@@ -122,7 +122,7 @@ class StackVariableAnalyzer {
   StackVariableAnalyzer(FunctionDescriptor* fd);
 
   // Detect stack variables for a given function
-  StackVariablePtrList analyze();
+  StackVariablePtrList & analyze();
 };
 
 

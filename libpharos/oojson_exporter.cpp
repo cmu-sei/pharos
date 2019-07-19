@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 // boost/property_tree/json_parser includes sys/stat.h which rose doesn't like. :-(
 #include <rose.h>
@@ -21,6 +21,8 @@
 
 
 namespace pharos {
+
+using VirtualFunctionCallInformationPtr = boost::shared_ptr<VirtualFunctionCallInformation>;
 
 // this is a simple utility function to convert a rose address to a hex string
 std::string addr2str(rose_addr_t addr) {
@@ -204,6 +206,7 @@ void OOJsonExporter::generate_json(const std::vector<OOClassDescriptorPtr> &clas
 
         boost::property_tree::ptree json_mbr;
         OOElementPtr elm_member = mpair.second;
+        auto mbr_offset = mpair.first;
 
         // start with virtual tables/pointers
         if (elm_member->get_type() == OOElementType::VFPTR) {
@@ -217,13 +220,17 @@ void OOJsonExporter::generate_json(const std::vector<OOClassDescriptorPtr> &clas
             boost::property_tree::ptree json_vft, json_vft_entries;
 
             // add the vfptr member
-            json_mbr.push_back(make_ptree("name", vfptr->get_name()));
+            std::stringstream vfptr_ss;
+            vfptr_ss << "vfptr_" << std::hex << std::noshowbase
+                     << mbr_offset << std::showbase << std::dec;
+
+            json_mbr.push_back(make_ptree("name", vfptr_ss.str()));
             json_mbr.push_back(make_ptree("type", "vfptr"));
 
             GDEBUG << "Adding Vftable ... "<< LEND;
 
             json_vft.put("ea", addr2str(vtab->get_address()));
-            json_vft.put("vfptr", intcat("", vfptr->get_offset(), 10));
+            json_vft.put("vfptr", intcat("", mbr_offset, 10));
 
             GDEBUG << "Vftable size: " << vtab->get_size() << LEND;
 
@@ -260,8 +267,11 @@ void OOJsonExporter::generate_json(const std::vector<OOClassDescriptorPtr> &clas
               json_vft_entries.push_back(std::make_pair("",json_vf)); // add the new vf
               voff++;
             }
+            // Only add entries if they are there
+            if (false == json_vft_entries.empty()) {
+              json_vft.put_child("entries", json_vft_entries);
+            }
 
-            json_vft.put_child("entries",json_vft_entries);
             json_vftables.push_back(std::make_pair("", json_vft));
 
             GDEBUG << "Vftable added" << LEND;
@@ -269,11 +279,12 @@ void OOJsonExporter::generate_json(const std::vector<OOClassDescriptorPtr> &clas
         }
         // add embedded objects
         else if (elm_member->get_type() == OOElementType::STRUC) {
+
           OOClassDescriptorPtr mbr_cls = std::dynamic_pointer_cast<OOClassDescriptor>(elm_member);
 
-           std::stringstream ss;
-           ss << mbr_cls->get_name() << "_" << std::hex << mbr_cls->get_offset();
-           json_mbr.push_back(make_ptree("name", ss.str()));
+           std::stringstream struc_ss;
+           struc_ss << mbr_cls->get_name() << "_" << std::hex << mbr_offset; //mbr_cls->get_offset();
+           json_mbr.push_back(make_ptree("name", struc_ss.str()));
            json_mbr.push_back(make_ptree("type", "struc"));
            json_mbr.push_back(make_ptree("struc", mbr_cls->get_name()));
            json_mbr.push_back(make_ptree("parent", "no"));
@@ -281,7 +292,10 @@ void OOJsonExporter::generate_json(const std::vector<OOClassDescriptorPtr> &clas
 
         // otherwise this is a standard class member
         else {
-          json_mbr.push_back(make_ptree("name", elm_member->get_name())); //intcat("Mem_", elm_member->get_offset(), 16)));
+
+          std::stringstream mbr_ss;
+          mbr_ss <<  elm_member->get_name() << "_" << std::hex << mbr_offset;
+          json_mbr.push_back(make_ptree("name", mbr_ss.str()));
 
           if (elm_member->get_type() == OOElementType::BYTE) {
             json_mbr.push_back(make_ptree("type", "byte"));
@@ -295,13 +309,14 @@ void OOJsonExporter::generate_json(const std::vector<OOClassDescriptorPtr> &clas
           else {
             // this is the default for now
             GDEBUG << "Cannot determine size of member " << cls->get_name() << "::"
-                  << "Mem_" << elm_member->get_offset() << LEND;
+                   << "Mem_" << mbr_offset << LEND; // elm_member->get_offset() << LEND;
 
             json_mbr.push_back(make_ptree("type", "byte"));
           }
         }
+
         // All members have an offset and a count of 1 (not array support)
-        json_mbr.push_back(make_ptree("offset", intcat("", elm_member->get_offset(),16)));
+        json_mbr.push_back(make_ptree("offset", intcat("", mbr_offset, 16))); // intcat("", elm_member->get_offset(),16)));
         json_mbr.push_back(make_ptree("count", "1"));
 
         json_members.push_back(std::make_pair("", json_mbr));
@@ -400,34 +415,37 @@ void OOJsonExporter::generate_json(const std::vector<OOClassDescriptorPtr> &clas
 
       // get the virtual function calls for this class
       for (auto vftable : cls->get_vftables()) {
-        for (CallDescriptor* vcall : vftable->get_virtual_calls()) {
 
-          boost::property_tree::ptree vc_tree;
+        boost::property_tree::ptree vc_tree;
+        for (auto& pair : vftable->get_virtual_call_targets()) {
+          // The object and vftable offsets were stored in VirtualFunctionCallInformation
+          // structure in the OOAnalyzer.  We could change the Prolog output interface to
+          // include these properties in the finalResolvedVirtualCall result, or we could merge
+          // with the structure in OOAnalyzer, but we can't get it off the call descriptor
+          // anymore because we're not storing "possible" virtual calls there any more.
 
-          CallInformationPtr ci = vcall->get_call_info();
-          if (ci) {
-            VirtualFunctionCallInformationPtr vc_info = boost::dynamic_pointer_cast<VirtualFunctionCallInformation>(ci);
+          // GDEBUG << "Virtual function call " << addr_str(vcall->get_address())
+          //        << " has object offset: " << vc_info->vtable_offset
+          //        << " and virtual function table offset: " << vc_info->vfunc_offset
+          //        << LEND;
 
-            GDEBUG << "Virtual function call " << addr_str(vcall->get_address())
-                  << " has object offset: " << vc_info->vtable_offset
-                  << " and virtual function table offset: " << vc_info->vfunc_offset
-                  << LEND;
+          // We can however report the call target as we did previously.
+          const CallDescriptor* vcall = pair.first;
+          const AddrSet& targets = pair.second;
 
-            CallTargetSet targets = vcall->get_targets();
-            if (targets.size() > 0) {
-              vc_tree.put("call", addr2str(vcall->get_address()));
+          if (targets.size() > 0) {
+            vc_tree.put("call", addr2str(vcall->get_address()));
 
-              boost::property_tree::ptree call_targets, tgt;
-              for (rose_addr_t t : targets) {
-                tgt.put("ea",addr2str(t));
-                vcalls_resolved++;
-                call_targets.push_back(std::make_pair("",tgt));
+            boost::property_tree::ptree call_targets, tgt;
+            for (rose_addr_t t : targets) {
+              tgt.put("ea",addr2str(t));
+              vcalls_resolved++;
+              call_targets.push_back(std::make_pair("",tgt));
 
-                GTRACE << "Virtual function target " << addr_str(t) << LEND;
-              }
-              vc_tree.put_child("targets",call_targets);
-              json_vcalls.push_back(std::make_pair("",vc_tree));
+              GTRACE << "Virtual function target " << addr_str(t) << LEND;
             }
+            vc_tree.put_child("targets",call_targets);
+            json_vcalls.push_back(std::make_pair("",vc_tree));
           }
         }
       }

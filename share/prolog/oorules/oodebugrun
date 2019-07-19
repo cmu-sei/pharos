@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# We have to preserve the correct path to the argument first.
+FIRST=${1:0:1}
+if [ $FIRST == '/' ]
+then
+  F1=$1
+else
+  F1="$(pwd)/${1}"
+fi
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "$DIR/../helper.bash" "$DIR"
+
+$XSB --noprompt -e "catch(([rulerun],assert(debuggingEnabled),assert(rTTIEnabled),(run('${F1}');true)), E, true),halt."

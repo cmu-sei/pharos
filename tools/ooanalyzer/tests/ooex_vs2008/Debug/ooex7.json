@@ -1,0 +1,139 @@
+{
+    "Structures": [
+        {
+            "Name": "??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@P6AAAV01@AAV01@@Z@Z",
+            "DemangledName": "std::basic_ostream<char, struct std::char_traits<char> >",
+            "Size": "0",
+            "Methods": [
+                {
+                    "ea": "4192a8",
+                    "name": "??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@H@Z",
+                    "demangled_name": "operator<<",
+                    "import": "yes",
+                    "type": "meth"
+                },
+                {
+                    "ea": "4192bc",
+                    "name": "??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@P6AAAV01@AAV01@@Z@Z",
+                    "demangled_name": "operator<<",
+                    "import": "yes",
+                    "type": "meth"
+                }
+            ]
+        },
+        {
+            "Name": "??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ",
+            "DemangledName": "std::basic_string<char, struct std::char_traits<char>, class std::allocator<char> >",
+            "Size": "0",
+            "Methods": [
+                {
+                    "ea": "4192b4",
+                    "name": "??0?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@PBD@Z",
+                    "demangled_name": "basic_string",
+                    "import": "yes",
+                    "type": "ctor"
+                },
+                {
+                    "ea": "4192b8",
+                    "name": "??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ",
+                    "demangled_name": "~basic_string",
+                    "import": "yes",
+                    "type": "dtor"
+                }
+            ]
+        },
+        {
+            "Name": "cls_4114a0",
+            "DemangledName": "",
+            "Size": "8",
+            "Members": [
+                {
+                    "name": "mbr_0",
+                    "type": "dword",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_4",
+                    "type": "dword",
+                    "offset": "4",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "4114a0",
+                    "name": "meth_4114a0",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                }
+            ]
+        },
+        {
+            "Name": "cls_4116f0",
+            "DemangledName": "",
+            "Size": "8",
+            "Members": [
+                {
+                    "name": "mbr_0",
+                    "type": "dword",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_4",
+                    "type": "dword",
+                    "offset": "4",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "4116f0",
+                    "name": "ctor_4116f0",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                },
+                {
+                    "ea": "411740",
+                    "name": "meth_411740",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                }
+            ]
+        }
+    ],
+    "Usages": [
+        {
+            "Members": [
+                {
+                    "class": "cls_4114a0",
+                    "ea": "411501"
+                },
+                {
+                    "class": "cls_4114a0",
+                    "ea": "411503"
+                },
+                {
+                    "class": "cls_4116f0",
+                    "ea": "411719"
+                },
+                {
+                    "class": "cls_4116f0",
+                    "ea": "411766"
+                },
+                {
+                    "class": "cls_4116f0",
+                    "ea": "411721"
+                },
+                {
+                    "class": "cls_4116f0",
+                    "ea": "41176b"
+                }
+            ]
+        }
+    ]
+}

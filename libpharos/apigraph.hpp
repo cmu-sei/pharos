@@ -1,4 +1,4 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Jeff Gennari
 // Date: 2015-06-22
@@ -54,10 +54,6 @@ struct ApiVertexInfo {
 
   ApiVertexInfo();
 
-  ApiVertexInfo & operator=(const ApiVertexInfo &rhs);
-
-  ApiVertexInfo(const ApiVertexInfo& other);
-
   // returns true if this vertex calls an API function
   VertexType GetType() const;
 
@@ -73,28 +69,28 @@ struct ApiVertexInfo {
 // This definition of a graph mirrors the one provided by ROSE, except that it
 // contains a ApiVertexInfo structure property instead of an SgAsmBlock *
 
-typedef boost::adjacency_list< boost::setS, // edges of each vertex in std::set
-                               boost::vecS,                            // vertices stored in std::vector
-                               boost::bidirectionalS,
-                               ApiVertexInfo > ApiCfg;
+using ApiCfg = boost::adjacency_list< boost::setS, // edges of each vertex in std::set
+                                      boost::vecS, // vertices stored in std::vector
+                                      boost::bidirectionalS,
+                                      ApiVertexInfo>;
 
 // typedefs for ApiCfG graph elements
 
-typedef boost::graph_traits<ApiCfg>::vertex_descriptor ApiCfgVertex;
-typedef boost::graph_traits<ApiCfg>::vertex_iterator ApiCfgVertexIter;
-typedef boost::graph_traits<ApiCfg>::out_edge_iterator ApiCfgOutEdgeIter;
-typedef boost::graph_traits<ApiCfg>::in_edge_iterator ApiCfgInEdgeIter;
-typedef boost::graph_traits<ApiCfg>::edge_descriptor ApiCfgEdge;
-typedef boost::graph_traits<ApiCfg>::edge_iterator ApiCfgEdgeIter;
-typedef std::vector<ApiCfgVertex> ApiCfgVertexVector;
+using ApiCfgVertex = boost::graph_traits<ApiCfg>::vertex_descriptor;
+using ApiCfgVertexIter = boost::graph_traits<ApiCfg>::vertex_iterator;
+using ApiCfgOutEdgeIter = boost::graph_traits<ApiCfg>::out_edge_iterator;
+using ApiCfgInEdgeIter = boost::graph_traits<ApiCfg>::in_edge_iterator;
+using ApiCfgEdge = boost::graph_traits<ApiCfg>::edge_descriptor;
+using ApiCfgEdgeIter = boost::graph_traits<ApiCfg>::edge_iterator;
+using ApiCfgVertexVector = std::vector<ApiCfgVertex>;
 
 
 // XREF typedefs
 // call site (from) -> call target (to)
 
-typedef std::map< rose_addr_t, rose_addr_t > XrefMap;
-typedef std::pair<rose_addr_t, rose_addr_t> XrefMapEntry;
-typedef std::map< rose_addr_t, rose_addr_t >::iterator XrefMapIter;
+using XrefMap = std::map< rose_addr_t, rose_addr_t >;
+using XrefMapEntry = XrefMap::value_type;
+using XrefMapIter = XrefMap::iterator;
 
 // forward declarations of types needed for typedefs
 
@@ -102,20 +98,19 @@ class  ApiCfgComponent;
 struct ApiSearchResult;
 struct ApiWaypointDescriptor;
 
-typedef boost::shared_ptr<ApiCfgComponent> ApiCfgComponentPtr;
+using ApiCfgComponentPtr = std::shared_ptr<ApiCfgComponent>;
 
 // the FuncPtrToApiMaps
 
-typedef std::map<rose_addr_t,  ApiCfgComponentPtr> ApiCfgComponentMap;
-typedef std::pair<rose_addr_t, ApiCfgComponentPtr> ApiCfgComponentMapEntry;
-typedef std::map<rose_addr_t,  ApiCfgComponentPtr>::iterator ApiCfgComponentMapIter;
+using ApiCfgComponentMap = std::map<rose_addr_t,  ApiCfgComponentPtr>;
+using ApiCfgComponentMapIter = ApiCfgComponentMap::iterator;
 
 // search types
 
-typedef boost::property_map < ApiCfg, boost::vertex_index_t >::type IndexMap;
-typedef boost::iterator_property_map <ApiCfgVertex*,IndexMap,ApiCfgVertex,ApiCfgVertex&> PredecessorMap;
-typedef boost::ptr_vector<ApiSearchResult> ApiSearchResultVector;
-typedef std::vector<ApiWaypointDescriptor> ApiWaypointVector;
+using IndexMap = boost::property_map < ApiCfg, boost::vertex_index_t >::type;
+using PredecessorMap = boost::iterator_property_map <ApiCfgVertex*,IndexMap,ApiCfgVertex,ApiCfgVertex&>;
+using ApiSearchResultVector = boost::ptr_vector<ApiSearchResult>;
+using ApiWaypointVector = std::vector<ApiWaypointDescriptor>;
 
 // Forward reference for parameter matching structures
 struct ApiParamMatchTableCompare;
@@ -135,9 +130,9 @@ struct ApiParameter {
     : num(i), value(s), name(n) { }
 
   void MakeParam(const ParameterDefinition &pd) {
-    num = pd.num;
-    value = pd.value;
-    name = pd.name;
+    num = pd.get_num();
+    value = pd.get_value();
+    name = pd.get_name();
   }
 
   void MakeParam(size_t i, SymbolicValuePtr sv, std::string n) {
@@ -157,16 +152,18 @@ struct ApiParameter {
 };
 
 // Types for management of parameter information
-typedef std::vector<ApiParameter*> ApiParamPtrList;
+using ApiParameterPtr = std::shared_ptr<ApiParameter>;
+using ApiParamPtrList = std::vector<ApiParameterPtr>;
 
-typedef std::map<std::string, ApiParamPtrList*> ApiParamMatchTable;
-typedef std::pair<const std::string, ApiParamPtrList*> ApiParamMatchPair;
-typedef std::map<std::string, ApiParamPtrList*>::iterator ApiParamMatchTableIter;
+using ApiParamPtrListPtr = std::shared_ptr<ApiParamPtrList>;
+using ApiParamMatchTable = std::map< std::string, ApiParamPtrListPtr >;
+using ApiParamMatchPair = ApiParamMatchTable::value_type;
+using ApiParamMatchTableIter = ApiParamMatchTable::iterator;
 
 // Comparison functor to identifying  is needed to search the parameter map for a given key
 struct ApiParamMatchTableCompare {
 
-  bool operator() (const std::string &s1, const std::string &s2) {
+  bool operator() (const std::string &s1, const std::string &s2) const {
     return (s1.compare(s2) < 0);
   }
 };
@@ -225,13 +222,13 @@ struct ApiWaypointDescriptor {
     return *this;
   }
 
-  bool operator==(const ApiWaypointDescriptor& other) {
+  bool operator==(const ApiWaypointDescriptor& other) const {
 
     return (block == other.block // checking the pointer should be fine
             && component==other.component && vertex==other.vertex);
   }
 
-  bool operator!=(const ApiWaypointDescriptor& other) {
+  bool operator!=(const ApiWaypointDescriptor& other) const {
     return !(*this == other);
   }
 
@@ -254,7 +251,7 @@ struct ApiWaypointDescriptor {
 const ApiWaypointDescriptor NULL_WAYPOINT = ApiWaypointDescriptor();
 
 // Deadend is a pair of path entries where first is the source and second is the destination
-typedef std::pair<ApiWaypointDescriptor, ApiWaypointDescriptor> Deadend;
+using Deadend = std::pair<ApiWaypointDescriptor, ApiWaypointDescriptor>;
 
 // Predicate to find a path. This search is based on address. Should component also be
 // considered?
@@ -273,13 +270,13 @@ struct PathFindPredicate {
 // vertex address.
 struct PathComparePredicate {
 
-  bool operator() (Deadend de1, Deadend de2) {
+  bool operator() (Deadend de1, Deadend de2) const {
     return (de1.first.block->get_address() < de2.first.block->get_address())
       ||(de1.second.block->get_address() < de2.second.block->get_address());
   }
 };
 
-typedef std::set<Deadend, PathComparePredicate> DeadendList;
+using DeadendList = std::set<Deadend, PathComparePredicate>;
 
 // This structure contains information needed to merge two components.
 struct ApiMergeInfo {
@@ -538,7 +535,7 @@ struct ApiSearchState {
   ApiSearchResultVector results;
 
   // Initialize the search state signature information (start, goal, etc)
-  void InitializeSearchState(ApiSig &s);
+  //void InitializeSearchState(ApiSigPtr s);
 
   // Update the state of the search when a segment goal is found
   void UpdateState();
@@ -572,6 +569,7 @@ struct ReachedGoalException { };
 
 struct SearchCompleteException { };
 
+struct AbortSearchException { };
 
 // Executes a search over an ApiGraph. It uses boost DFS
 // visitors traverse API graphs
@@ -579,21 +577,26 @@ class ApiSearchExecutor {
 
  private:
 
+  const DescriptorSet& ds;
+
   bool IsNewResult(const ApiVertexInfo &vi);
 
   bool IsNewResult(rose_addr_t addr);
 
-  void DereferenceParameter(ApiParameter *&apip, const ParameterDefinition &pd);
+  ApiParameterPtr DereferenceParameter(const ParameterDefinition &pd);
 
   void UpdateApiMatchTable(rose_addr_t caller, rose_addr_t callee);
 
-  bool EvaluateApiMatchTable(const ApiSigFunc &sig_func, const ApiVertexInfo &vertex_info);
+  bool EvaluateApiMatchTable(const ApiSigFunc& sig_func, const ApiVertexInfo &vertex_info);
 
   void UpdateSearchTree(PredecessorMap predecessorMap);
 
-  void FindSearchStart(ApiSigFunc &start_api, ApiCfgComponentPtr comp, ApiCfgVertexVector &starts);
+  void FindSearchStart(ApiSigFunc &start_api,
+                       ApiCfgComponentPtr comp,
+                       ApiCfgVertexVector &starts);
 
-  void InitializeSearch(ApiCfgComponentPtr comp, ApiCfgVertex startv, ApiSig &sig);
+  void InitializeSearch(ApiCfgComponentPtr comp,
+                        ApiCfgVertex startv, const ApiSig& sig);
 
   void GetXrefsTo(ApiCfgComponentPtr comp, XrefMap &candidates);
 
@@ -621,17 +624,17 @@ class ApiSearchExecutor {
 
  public:
 
-  ApiSearchExecutor():graph_(NULL) { }
+  ApiSearchExecutor(const DescriptorSet& ds_) : ds(ds_), graph_(NULL) { }
 
   void Initialize(ApiGraph *g);
 
-  bool Search(ApiSig &sig, ApiSearchResultVector *result_list);
+  bool Search(ApiSig sig, ApiSearchResultVector *result_list);
 
   bool CheckConnected (const ApiWaypointDescriptor &src, const ApiWaypointDescriptor &dst);
 
   ApiSearchState * GetState() { return &state_; }
 
-  ApiGraph * GetGraph() { return graph_; }
+  ApiGraph * GetGraph() { assert(graph_); return graph_; }
 
   bool CheckMatch(const ApiVertexInfo &match_vertex);
 
@@ -642,7 +645,7 @@ struct ApiTreeEdgeVisitor : public boost::base_visitor<ApiTreeEdgeVisitor> {
 
   ApiTreeEdgeVisitor(ApiSearchExecutor *m) : search_executor_(m) { }
 
-  typedef boost::on_tree_edge event_filter;
+  using event_filter = boost::on_tree_edge;
 
   template <class Edge, class Graph>
   inline void operator()( Edge e, const Graph &g );
@@ -655,7 +658,7 @@ struct ApiBackEdgeVisitor : public boost::base_visitor<ApiBackEdgeVisitor> {
 
   ApiBackEdgeVisitor(ApiSearchExecutor *m) : search_executor_(m) { }
 
-  typedef boost::on_back_edge event_filter;
+  using event_filter = boost::on_back_edge;
 
   template <class Edge, class Graph>
   inline void operator()( Edge e, const Graph &g );
@@ -663,30 +666,35 @@ struct ApiBackEdgeVisitor : public boost::base_visitor<ApiBackEdgeVisitor> {
   ApiSearchExecutor *search_executor_;
 };
 
+
+using ApiCfgPtr = std::shared_ptr<ApiCfg>;
+
 // Represents information about each CFG, notably the CFG itself and entry/exit blocks
 class ApiCfgComponent {
  private:
 
+  const DescriptorSet& ds;
   rose_addr_t entry_, exit_;
 
-  ApiCfg *cfg_;
+  ApiCfgPtr cfg_;
 
   // the set of API calls in this component
   std::set<std::string> apis_;
 
  public:
 
-  ApiCfgComponent() : entry_(INVALID_ADDRESS), exit_(INVALID_ADDRESS), cfg_(NULL) { }
+  ApiCfgComponent(const DescriptorSet& ds_) :
+    ds(ds_), entry_(INVALID_ADDRESS), exit_(INVALID_ADDRESS), cfg_(nullptr) { }
 
   ApiCfgComponent(const ApiCfgComponent &src);
 
   ApiCfgComponent & operator=(const ApiCfgComponent & other);
 
-  ApiCfg * CloneApiCfg(ApiCfg *src_cfg);
+  ApiCfgPtr CloneApiCfg(ApiCfgPtr src_cfg);
 
   ~ApiCfgComponent();
 
-  void Initialize(FunctionDescriptor &fd, AddrSet &api_calls, XrefMap &xrefs);
+  void Initialize(const FunctionDescriptor &fd, AddrSet &api_calls, XrefMap &xrefs);
 
   bool ContainsApiCalls() const;
 
@@ -719,11 +727,11 @@ class ApiCfgComponent {
 
   ApiCfgVertex GetExitVertex() const;
 
-  ApiCfg* GetCfg() const;
+  ApiCfgPtr GetCfg() const;
 
   size_t GetSize() const;
 
-  void SetCfg(ApiCfg* cfg);
+  void SetCfg(ApiCfgPtr cfg);
 
   rose_addr_t GetEntryAddr() const;
 
@@ -753,23 +761,14 @@ class ApiCfgComponent {
 
 // this class is used to display a progress bar if the signature search takes too long.
 struct ApiSearchProgressSuffix {
-
  private:
-
-  const ApiSig* sig_;
-
+  ApiSig sig_;
   size_t sig_count_;
-
  public:
-
-  ApiSearchProgressSuffix(): sig_(NULL) { sig_count_=0; }
-
-  ApiSearchProgressSuffix(const ApiSig *s, const size_t c): sig_(s),sig_count_(c) { }
-
+  ApiSearchProgressSuffix() { sig_count_=0; }
+  ApiSearchProgressSuffix(ApiSig s, const size_t c) : sig_(s), sig_count_(c) { }
   void print(std::ostream &o) const {
-    if (sig_ != NULL) {
-      o << "/" << sig_count_<< " signatures, searching for: " << sig_->name;
-    }
+    o << "/" << sig_count_<< " signatures, searching for: " << sig_.name;
   }
 };
 
@@ -778,6 +777,8 @@ struct ApiSearchProgressSuffix {
 class ApiGraph {
 
  private:
+
+  const DescriptorSet& ds;
 
   // A cross reference map for calls from address -> to address
   XrefMap xrefs_;
@@ -805,7 +806,7 @@ class ApiGraph {
   // This is the public interface for the ApiGraph. The graph is self-searching meaning that
   // given a signature, the graph knows how to conduct a search
 
-  ApiGraph() : graph_constructed_(false) { }
+  ApiGraph(const DescriptorSet& _ds) : ds(_ds), search_executor_(_ds), graph_constructed_(false) { }
 
   ~ApiGraph();
 
@@ -832,12 +833,11 @@ class ApiGraph {
   // Generate a graphviz file (.dot) for a constructed graph
   void GenerateGraphViz(std::ostream &o);
 
-  bool Search(ApiSig & sig, ApiSearchResultVector *results);
+  bool Search(ApiSig sig, ApiSearchResultVector *results);
 
-  // Print the APIGraph to the console
   void Print();
 
-  void UpdateProgress(ApiSig &sig);
+  void UpdateProgress(const ApiSig& sig);
 };
 
 class ApiSearchManager {
@@ -848,16 +848,20 @@ class ApiSearchManager {
 
   size_t sig_count_, sig_progress_;
 
-  void UpdateProgress(ApiSig &sig);
+  void UpdateProgress(const ApiSig& sig);
 
  public:
 
   ApiSearchManager(ApiGraph &g) : graph_(g), sig_count_(0), sig_progress_(0) { }
 
-  bool Search(SigPtrVector &sigs, ApiSearchResultVector &results);
+  bool Search(const ApiSigVector &sigs, ApiSearchResultVector &results);
 
 };
 
+// Free functions for debugging
+void debug_print_xrefs(const XrefMap& xrefs, const AddrSet& api_calls);
+void debug_print_match_table(const ApiParamMatchTable& match_table);
+void debug_cfg(ApiCfg cfg);
 } // namespace pharos
 
 #endif  // Pharos_APIGRAPH_H_

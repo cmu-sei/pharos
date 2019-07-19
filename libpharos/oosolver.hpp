@@ -1,4 +1,4 @@
-// Copyright 2016-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
 // Author: Cory Cohen
 
 #ifndef Pharos_OOSolver_H
@@ -16,7 +16,7 @@ class VirtualFunctionTable;
 class OOClassDescriptor;
 class OOSolver;
 
-typedef std::shared_ptr<OOClassDescriptor> OOClassDescriptorPtr;
+using OOClassDescriptorPtr = std::shared_ptr<OOClassDescriptor>;
 
 class OOSolverAnalysisPass {
  protected:
@@ -25,6 +25,7 @@ class OOSolverAnalysisPass {
   virtual bool solve(std::vector<OOClassDescriptorPtr>& classes)=0;
   virtual void set_name(std::string n);
   virtual std::string get_name();
+  virtual ~OOSolverAnalysisPass() = default;
 };
 
 // run a sequence of analysis passes
@@ -42,8 +43,10 @@ class OOSolverAnalysisPassRunner {
 class SolveClassesFromProlog : public OOSolverAnalysisPass {
  private:
   std::shared_ptr<prolog::Session> session_;
+  const DescriptorSet& ds;
  public:
-  SolveClassesFromProlog(std::shared_ptr<prolog::Session> s) : session_(s) {
+  SolveClassesFromProlog(std::shared_ptr<prolog::Session> s, const DescriptorSet& ds_)
+    : session_(s), ds(ds_) {
     set_name("SolveClassesFromProlog");
   }
   virtual bool solve(std::vector<OOClassDescriptorPtr>& classes);
@@ -52,8 +55,10 @@ class SolveClassesFromProlog : public OOSolverAnalysisPass {
 class SolveInheritanceFromProlog : public OOSolverAnalysisPass {
  protected:
   std::shared_ptr<prolog::Session> session_;
+  const DescriptorSet& ds;
  public:
-  SolveInheritanceFromProlog(std::shared_ptr<prolog::Session> s) : session_(s) {
+  SolveInheritanceFromProlog(std::shared_ptr<prolog::Session> s, const DescriptorSet& ds_)
+    : session_(s), ds(ds_) {
     set_name("SolveInheritanceFromProlog");
   }
   virtual bool solve(std::vector<OOClassDescriptorPtr>& classes);
@@ -62,8 +67,10 @@ class SolveInheritanceFromProlog : public OOSolverAnalysisPass {
 class SolveVFTableFromProlog : public OOSolverAnalysisPass {
  protected:
   std::shared_ptr<prolog::Session> session_;
+  const DescriptorSet& ds;
  public:
-  SolveVFTableFromProlog(std::shared_ptr<prolog::Session> s) : session_(s) {
+  SolveVFTableFromProlog(std::shared_ptr<prolog::Session> s, const DescriptorSet& ds_)
+    : session_(s), ds(ds_) {
     set_name("SolveVFTableFromProlog");
   }
   virtual bool solve(std::vector<OOClassDescriptorPtr>& classes);
@@ -72,8 +79,10 @@ class SolveVFTableFromProlog : public OOSolverAnalysisPass {
 class SolveMemberAccessFromProlog : public OOSolverAnalysisPass {
  protected:
   std::shared_ptr<prolog::Session> session_;
+  const DescriptorSet& ds;
  public:
-  SolveMemberAccessFromProlog(std::shared_ptr<prolog::Session> s) : session_(s) {
+  SolveMemberAccessFromProlog(std::shared_ptr<prolog::Session> s, const DescriptorSet& ds_)
+    : session_(s), ds(ds_) {
     set_name("SolveMemberAccessFromProlog");
   }
   virtual bool solve(std::vector<OOClassDescriptorPtr>& classes);
@@ -82,8 +91,10 @@ class SolveMemberAccessFromProlog : public OOSolverAnalysisPass {
 class SolveEmbeddedObjFromProlog : public OOSolverAnalysisPass {
  protected:
   std::shared_ptr<prolog::Session> session_;
+  const DescriptorSet& ds;
  public:
-  SolveEmbeddedObjFromProlog(std::shared_ptr<prolog::Session> s) : session_(s) {
+  SolveEmbeddedObjFromProlog(std::shared_ptr<prolog::Session> s, const DescriptorSet& ds_)
+    : session_(s), ds(ds_) {
     set_name("SolveEmbeddedObjFromProlog");
   }
   virtual bool solve(std::vector<OOClassDescriptorPtr>& classes);
@@ -92,8 +103,10 @@ class SolveEmbeddedObjFromProlog : public OOSolverAnalysisPass {
 class SolveMemberFromProlog : public OOSolverAnalysisPass {
  protected:
   std::shared_ptr<prolog::Session> session_;
+  const DescriptorSet& ds;
  public:
-  SolveMemberFromProlog(std::shared_ptr<prolog::Session> s) : session_(s) {
+  SolveMemberFromProlog(std::shared_ptr<prolog::Session> s, const DescriptorSet& ds_)
+    : session_(s), ds(ds_) {
     set_name("SolveMemberFromProlog");
   }
   virtual bool solve(std::vector<OOClassDescriptorPtr>& classes);
@@ -102,8 +115,10 @@ class SolveMemberFromProlog : public OOSolverAnalysisPass {
 class SolveMethodPropertyFromProlog : public OOSolverAnalysisPass {
  protected:
   std::shared_ptr<prolog::Session> session_;
+  const DescriptorSet& ds;
  public:
-  SolveMethodPropertyFromProlog(std::shared_ptr<prolog::Session> s) : session_(s) {
+  SolveMethodPropertyFromProlog(std::shared_ptr<prolog::Session> s, const DescriptorSet& ds_)
+    : session_(s), ds(ds_) {
     set_name("SolveMethodPropertyFromProlog");
   }
   virtual bool solve(std::vector<OOClassDescriptorPtr>& clgasses);
@@ -112,8 +127,10 @@ class SolveMethodPropertyFromProlog : public OOSolverAnalysisPass {
 class SolveResolvedVirtualCallFromProlog : public OOSolverAnalysisPass {
  protected:
   std::shared_ptr<prolog::Session> session_;
+  const DescriptorSet& ds;
  public:
-  SolveResolvedVirtualCallFromProlog(std::shared_ptr<prolog::Session> s) : session_(s) {
+  SolveResolvedVirtualCallFromProlog(std::shared_ptr<prolog::Session> s, const DescriptorSet& ds_)
+    : session_(s), ds(ds_) {
     set_name("SolveResolvedVirtualCallFromProlog");
   }
   virtual bool solve(std::vector<OOClassDescriptorPtr>& classes);
@@ -173,34 +190,37 @@ private:
   bool perform_analysis;
 
   // Private implementation of add_facts() broken into several parts.
-  void add_method_facts();
-  void add_vftable_facts(OOAnalyzer& ooa);
+  void add_method_facts(const OOAnalyzer& ooa);
+  void add_vftable_facts(const OOAnalyzer& ooa);
   void add_rtti_facts(const VirtualFunctionTable* vft);
   void add_rtti_chd_facts(const rose_addr_t addr);
-  void add_usage_facts(OOAnalyzer& ooa);
-  void add_call_facts();
+  void add_usage_facts(const OOAnalyzer& ooa);
+  void add_call_facts(const OOAnalyzer& ooa);
   void add_thisptr_facts();
-  void add_function_facts();
-  void add_import_facts();
+  void add_function_facts(const OOAnalyzer& ooa);
+  void add_import_facts(const OOAnalyzer& ooa);
 
   // Private implementation of dump_facts() and dump_results().
   void dump_facts_private();
 
   void dump_results_private();
 
+  DescriptorSet & ds;
+
 public:
 
   // Construction based on a user-supplied option.
-  OOSolver(ProgOptVarMap& vm);
+  OOSolver(DescriptorSet & ds, const ProgOptVarMap& vm);
   ~OOSolver();
 
-  bool analyze(OOAnalyzer& ooa);
+  bool analyze(const OOAnalyzer& ooa);
 
-  bool add_facts(OOAnalyzer& ooa);
+  bool add_facts(const OOAnalyzer& ooa);
   bool import_results();
   bool dump_facts();
   bool dump_results();
   std::vector<OOClassDescriptorPtr>& get_classes();
+  void update_virtual_call_targets();
 };
 
 } // namespace pharos

@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Dllapi_H
 #define Pharos_Dllapi_H
@@ -10,33 +10,39 @@
 #include <memory>
 #include <yaml-cpp/yaml.h>
 #include "misc.hpp"
+#include "util.hpp"
 
 namespace pharos {
 
-typedef std::string type_t;
-typedef std::string calling_convention_t;
-
+namespace apidb {
+using type_t = std::string;
+using calling_convention_t = std::string;
+}
 
 struct APIParam {
-  typedef enum inout_en { NONE, IN, OUT, INOUT } inout_t;
-  std::string name;
-  type_t      type;
-  inout_t     direction;
+  enum inout_t { NONE, IN, OUT, INOUT };
+  std::string   name;
+  apidb::type_t type;
+  inout_t       direction;
 };
 
-struct APIDefinition {
-  APIDefinition();
+class APIDictionary;
 
-  std::string           export_name;  // empty if unknown
-  std::string           display_name; // Should never be empty
-  std::string           dll_name;     // empty if unknown
-  std::string           md5;          // dll md5 (empty if unknown)
-  rose_addr_t           relative_address; // -1 if unknown
-  calling_convention_t  calling_convention;
-  type_t                return_type;
-  std::vector<APIParam> parameters;
-  size_t                stackdelta;   // SIZE_MAX if unknown
-  size_t                ordinal;      // 0 if unknown
+struct APIDefinition {
+  APIDefinition(APIDictionary const & source);
+
+  APIDictionary const &       source;
+  std::string                 export_name;      // empty if unknown
+  std::string                 display_name;     // Should never be empty
+  std::string                 dll_name;         // empty if unknown
+  std::string                 dll_version;      // dll version (empty if unknown)
+  std::string                 dll_stamp;        // dll timestamp/checsum (empty if unknown)
+  rose_addr_t                 relative_address; // -1 if unknown
+  apidb::calling_convention_t calling_convention;
+  apidb::type_t               return_type;
+  std::vector<APIParam>       parameters;
+  size_t                      stackdelta;       // SIZE_MAX if unknown
+  size_t                      ordinal;          // 0 if unknown
 
   const std::string & get_name() const {
     return export_name.empty() ? display_name : export_name;
@@ -71,6 +77,14 @@ class APIDictionary {
   get_api_definition(
     const std::string & dll_name, size_t ordinal) const = 0;
 
+  // Return all functions that match the function name, regardless of dll
+  virtual APIDefinitionList
+  get_api_definition(const regex & func_name) const = 0;
+
+  // Return all functions that match the function name, regardless of dll
+  virtual APIDefinitionList
+  get_api_definition(const std::string & func_name) const;
+
   // Return the function information for the given address.  Return nullptr if the function
   // cannot be found.
   virtual APIDefinitionList
@@ -98,26 +112,39 @@ class PassThroughDictionary : public APIDictionary {
   }
 
  public:
+
   APIDefinitionList
-  get_api_definition(const std::string & dll_name, const std::string & func_name) const {
+  get_api_definition(const std::string & dll_name, const std::string & func_name)
+    const override
+  {
     return subdict().get_api_definition(dll_name, func_name);
   }
 
   APIDefinitionList
-  get_api_definition(const std::string & dll_name, size_t ordinal) const {
+  get_api_definition(const regex & func_name) const override {
+    return subdict().get_api_definition(func_name);
+  }
+
+  APIDefinitionList
+  get_api_definition(const std::string & func_name) const override {
+    return subdict().get_api_definition(func_name);
+  }
+
+  APIDefinitionList
+  get_api_definition(const std::string & dll_name, size_t ordinal) const override {
     return subdict().get_api_definition(dll_name, ordinal);
   }
 
   APIDefinitionList
-  get_api_definition(rose_addr_t addr) const {
+  get_api_definition(rose_addr_t addr) const override {
     return subdict().get_api_definition(addr);
   }
 
-  bool handles_dll(std::string const & dll_name) const {
+  bool handles_dll(std::string const & dll_name) const override {
     return subdict().handles_dll(dll_name);
   }
 
-  std::string describe() const {
+  std::string describe() const override {
     return subdict().describe();
   }
 
@@ -127,9 +154,19 @@ class PassThroughDictionary : public APIDictionary {
 
 class MultiApiDictionary : public APIDictionary {
  public:
-  virtual APIDefinitionList
+  APIDefinitionList
   get_api_definition(
     const std::string & dll_name, const std::string & func_name)
+    const override;
+
+  APIDefinitionList
+  get_api_definition(
+    const regex & func_name)
+    const override;
+
+  APIDefinitionList
+  get_api_definition(
+    const std::string & func_name)
     const override;
 
   APIDefinitionList
@@ -166,6 +203,11 @@ class JSONApiDictionary : public APIDictionary {
   APIDefinitionList
   get_api_definition(
     const std::string & dll_name, const std::string & func_name)
+    const override;
+
+  APIDefinitionList
+  get_api_definition(
+    const regex & func_name)
     const override;
 
   APIDefinitionList
@@ -209,6 +251,16 @@ class SQLLiteApiDictionary : public APIDictionary {
 
   APIDefinitionList
   get_api_definition(
+    const regex & func_name)
+    const override;
+
+  APIDefinitionList
+  get_api_definition(
+    const std::string & func_name)
+    const override;
+
+  APIDefinitionList
+  get_api_definition(
     const std::string & dll_name, size_t ordinal)
     const override;
 
@@ -248,6 +300,9 @@ class DLLStateCacheDict : public PassThroughDictionary {
 };
 
 class ReportDictionary : public PassThroughDictionary {
+  template <typename T>
+  APIDefinitionList get_api_definition(T const &) const;
+
  public:
   ReportDictionary(
     std::unique_ptr<APIDictionary> subdict_,
@@ -264,6 +319,14 @@ class ReportDictionary : public PassThroughDictionary {
   APIDefinitionList
   get_api_definition(
     const std::string & dll_name, const std::string & func_name) const override;
+
+  APIDefinitionList
+  get_api_definition(
+    const regex & func_name) const override;
+
+  APIDefinitionList
+  get_api_definition(
+    const std::string & func_name) const override;
 
   APIDefinitionList
   get_api_definition(
@@ -343,6 +406,18 @@ class DecoratedDictionary : public APIDictionary {
   APIDefinitionList
   get_api_definition(
     const std::string & dll_name, const std::string & func_name) const override;
+
+  APIDefinitionList
+  get_api_definition(
+    const regex &) const override {
+    return APIDefinitionList();
+  }
+
+  APIDefinitionList
+  get_api_definition(
+    const std::string &) const override {
+    return APIDefinitionList();
+  }
 
   APIDefinitionList
   get_api_definition(const std::string &, size_t) const override {

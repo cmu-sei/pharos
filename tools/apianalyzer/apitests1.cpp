@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <stdio.h>
 #include <iostream>
@@ -23,13 +23,14 @@
 #include <libpharos/defuse.hpp>
 #include <libpharos/sptrack.hpp>
 #include <libpharos/options.hpp>
+#include <libpharos/bua.hpp>
 
 #include <libpharos/apigraph.hpp>
 #include <libpharos/apisig.hpp>
 
 using namespace pharos;
 
-Sawyer::Message::Facility glog("APIT");
+const DescriptorSet* global_ds = nullptr;
 
 // Thisis the main test fixture
 class ApiAnalyzerTest : public testing::Test {
@@ -39,7 +40,7 @@ protected:
   ApiGraph api_graph_;
   std::vector<rose_addr_t> component_list_;
 
-  ApiAnalyzerTest() {
+  ApiAnalyzerTest() : api_graph_(*global_ds) {
 
     component_list_.push_back(0x00401000);
     component_list_.push_back(0x00401250);
@@ -157,7 +158,7 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_API_CALLS_CORRECTLY_IDENTIFIED) {
     return;
   }
 
-  ApiCfg *cfg = ci->GetCfg();
+  ApiCfgPtr cfg = ci->GetCfg();
   ApiCfgVertex callv = ci->GetVertexByAddr(callea);
 
   ApiVertexInfo &vertex_info = (*cfg)[callv];
@@ -182,7 +183,7 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_API_CALL_CORRECTLY_IDENTIFIED_AT_ENT
   EXPECT_EQ(entry_ea, ci->GetEntryAddr());
 
   ApiCfgVertex entry_vtx = ci->GetEntryVertex();
-  ApiCfg *cfg = ci->GetCfg();
+  ApiCfgPtr cfg = ci->GetCfg();
   const ApiVertexInfo& vi = (*cfg)[entry_vtx];
 
   EXPECT_EQ(vi.GetType(),ApiVertexInfo::API);
@@ -203,7 +204,7 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_CALL_CORRECTLY_IDENTIFIED_AT_ENTRY) 
   EXPECT_EQ(entry_ea, ci->GetEntryAddr());
 
   ApiCfgVertex entry_vtx = ci->GetEntryVertex();
-  ApiCfg *cfg = ci->GetCfg();
+  ApiCfgPtr cfg = ci->GetCfg();
   const ApiVertexInfo& vi = (*cfg)[entry_vtx];
 
   EXPECT_EQ(vi.GetType(),ApiVertexInfo::CALL);
@@ -222,7 +223,7 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_HANDLE_THUNK_IN_MIDDLE) {
     return;
   }
 
-  ApiCfg *cfg = ci->GetCfg();
+  ApiCfgPtr cfg = ci->GetCfg();
   rose_addr_t memset_ea = 0x0040115F;// 0x00401818; // import address for memset
   ApiCfgVertex memset_vtx = ci->GetVertexByAddr(memset_ea);
 
@@ -259,7 +260,7 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_HANDLE_THUNK_AT_ENTRY) {
     FAIL() << "Function 0x00401F5E not found!";
     return;
   }
-  ApiCfg *cfg = ci->GetCfg();
+  ApiCfgPtr cfg = ci->GetCfg();
 
   ApiCfgVertex ev = ci->GetEntryVertex();
   const ApiVertexInfo& evi = (*cfg)[ev];
@@ -281,7 +282,7 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_DISCONNECT_ENTRY) {
     return;
   }
 
-  ApiCfg *cfg = ci->GetCfg();
+  ApiCfgPtr cfg = ci->GetCfg();
 
   ApiCfgVertex target =  ci->GetVertexByAddr(entry_ea);
 
@@ -310,7 +311,7 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_DISCONNECT_EXIT) {
     return;
   }
 
-  ApiCfg *cfg = ci->GetCfg();
+  ApiCfgPtr cfg = ci->GetCfg();
 
   ApiCfgVertex target = ci->GetVertexByAddr(exit_ea);
 
@@ -341,7 +342,7 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_DISCONNECT_MIDDLE) {
     return;
   }
 
-  ApiCfg *cfg = ci->GetCfg();
+  ApiCfgPtr cfg = ci->GetCfg();
 
   ApiCfgVertex target = ci->GetVertexByAddr(blockea);
 
@@ -428,7 +429,7 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_MERGE_MIDDLE) {
     return;
   }
 
-  ApiCfg* cfg = in->GetCfg();
+  ApiCfgPtr cfg = in->GetCfg();
 
   EXPECT_TRUE(in != NULL);
   EXPECT_TRUE(to != NULL);
@@ -478,7 +479,7 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_MERGE_AT_ENTRY_WITH_CALL) {
 
   EXPECT_TRUE(result);
 
-  ApiCfg* cfg = in->GetCfg();
+  ApiCfgPtr cfg = in->GetCfg();
   size_t merged_size = boost::num_vertices(*cfg);
   EXPECT_EQ(expected_size_after_merge, merged_size);
 
@@ -511,7 +512,7 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_MERGE_AT_ENTRY_WITHOUT_CALL) {
 
   EXPECT_TRUE(result);
 
-  ApiCfg* cfg = in->GetCfg();
+  ApiCfgPtr cfg = in->GetCfg();
   size_t merged_size = boost::num_vertices(*cfg);
   EXPECT_EQ(expected_size_after_merge, merged_size);
 
@@ -537,7 +538,7 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_MERGE_AT_EXIT) {
 
   EXPECT_TRUE(result);
 
-  ApiCfg* cfg = in->GetCfg();
+  ApiCfgPtr cfg = in->GetCfg();
   size_t merged_size = boost::num_vertices(*cfg);
   EXPECT_EQ(expected_size_after_merge,merged_size);
   EXPECT_EQ(in->GetExitAddr(),(rose_addr_t)0x0040123D);
@@ -557,7 +558,7 @@ TEST_F(ApiAnalyzerApiVertexInfoTest, TEST_VERTEX_INFO_CALL_TYPE) {
     return;
   }
 
-  ApiCfg *cfg = c->GetCfg();
+  ApiCfgPtr cfg = c->GetCfg();
 
   ApiCfgVertex v = c->GetVertexByAddr(0x004016F2);
   const ApiVertexInfo &vi = (*cfg)[v];
@@ -575,7 +576,7 @@ TEST_F(ApiAnalyzerApiVertexInfoTest, TEST_VERTEX_RETN_TYPE) {
   }
 
 
-  ApiCfg *cfg = c->GetCfg();
+  ApiCfgPtr cfg = c->GetCfg();
 
   ApiCfgVertex v = c->GetVertexByAddr(0x0040123D);
   const ApiVertexInfo &vi = (*cfg)[v];
@@ -596,7 +597,7 @@ TEST_F(ApiAnalyzerApiVertexInfoTest, TEST_VERTEX_API_TYPE) {
     return;
   }
 
-  ApiCfg *cfg = c->GetCfg();
+  ApiCfgPtr cfg = c->GetCfg();
 
   ApiCfgVertex v = c->GetVertexByAddr(0x00401000);
   const ApiVertexInfo &vi = (*cfg)[v];
@@ -615,7 +616,7 @@ TEST_F(ApiAnalyzerApiVertexInfoTest, TEST_VERTEX_UNKN_TYPE) {
     return;
   }
 
-  ApiCfg *cfg = ci->GetCfg();
+  ApiCfgPtr cfg = ci->GetCfg();
 
   ApiCfgVertex v = ci->GetVertexByAddr(0x00401550);
   const ApiVertexInfo &vi = (*cfg)[v];
@@ -635,7 +636,7 @@ TEST_F(ApiAnalyzerApiVertexInfoTest, TEST_VALID_CALL_TARGET) {
   }
 
 
-  ApiCfg *cfg = c->GetCfg();
+  ApiCfgPtr cfg = c->GetCfg();
 
   ApiCfgVertex call_vtx = c->GetVertexByAddr(callv_ea);
   const ApiVertexInfo &vi = (*cfg)[call_vtx];
@@ -649,7 +650,7 @@ TEST_F(ApiAnalyzerApiVertexInfoTest, TEST_VERTEX_ENDS_IN_CALL) {
   rose_addr_t callv_ea=0x004016F2, apiv_ea=0x00401580;
   ApiCfgComponentPtr c = api_graph_.GetComponent(0x00401580);
 
-  ApiCfg *cfg = c->GetCfg();
+  ApiCfgPtr cfg = c->GetCfg();
 
   ApiCfgVertex api_vtx = c->GetVertexByAddr(apiv_ea);
   ApiCfgVertex call_vtx = c->GetVertexByAddr(callv_ea);
@@ -673,7 +674,7 @@ TEST_F(ApiAnalyzerApiVertexInfoTest, TestApiVertexInfoContainsAddress) {
     return;
   }
 
-  ApiCfg *cfg = c->GetCfg();
+  ApiCfgPtr cfg = c->GetCfg();
 
   ApiCfgVertex v = c->GetVertexByAddr(0x00401000);
   const ApiVertexInfo &vi = (*cfg)[v];
@@ -692,9 +693,9 @@ TEST_F(ApiAnalyzertSearchManagerTest, TEST_SHOULD_FIND_VALID_MULTIELEMENT_SIG) {
 
   ApiSig sig;
   sig.name = "TEST_SHOULD_FIND_VALID_MULTIELEMENT_SIG";
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!CREATEPIPE"));
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!CREATEPIPE"));
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!CREATEPROCESSA"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!CREATEPIPE"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!CREATEPIPE"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!CREATEPROCESSA"));
   sig.api_count = sig.api_calls.size();
 
   ApiSearchResultVector search_result;
@@ -709,9 +710,9 @@ TEST_F(ApiAnalyzertSearchManagerTest, TEST_SHOULD_NOT_FIND_INVALID_API_SIG) {
 
   ApiSig sig;
   sig.name = "TEST_SHOULD_NOT_FIND_INVALID_API_SIG";
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!CREATEPIPE"));
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!CREATEPIPE"));
-  sig.api_calls.push_back(new ApiSigFunc("Kernel32.dll!GarbageApi"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!CREATEPIPE"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!CREATEPIPE"));
+  sig.api_calls.push_back(ApiSigFunc("Kernel32.dll!GarbageApi"));
   sig.api_count = 3;
 
   ApiSearchResultVector search_result;
@@ -726,8 +727,8 @@ TEST_F(ApiAnalyzertSearchManagerTest, TEST_SHOULD_NOT_FIND_WITH_VALID_UNCONNECTE
 
   ApiSig sig;
   sig.name = "TEST_SHOULD_NOT_FIND_WITH_VALID_UNCONNECTED_APIS";
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!GETPROCESSID"));
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!GETSYSTEMTIMEASFILETIME"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!GETPROCESSID"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!GETSYSTEMTIMEASFILETIME"));
   sig.api_count = 2;
 
   ApiSearchResultVector search_result;
@@ -741,9 +742,9 @@ TEST_F(ApiAnalyzertSearchManagerTest, TEST_SHOULD_NOT_FIND_WITH_VALID_UNCONNECTE
 TEST_F(ApiAnalyzertSearchManagerTest, TEST_SHOULD_HANDLE_MULTIPLE_SAME_SIG_MATCHES) {
   ApiSig sig;
   sig.name = "TEST_SHOULD_HANDLE_MULTIPLE_SAME_SIG_MATCHES";
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!CREATEPIPE"));
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!CREATEPIPE"));
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!CREATEPROCESSA"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!CREATEPIPE"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!CREATEPIPE"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!CREATEPROCESSA"));
   sig.api_count = sig.api_calls.size();
 
   ApiSearchResultVector results;
@@ -786,7 +787,7 @@ TEST_F(ApiAnalyzertSearchManagerTest, TEST_SHOULD_FIND_ONE_API_SIG) {
 
   ApiSig sig;
   sig.name = "TEST_SHOULD_FIND_ONE_API_SIG";
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!ISDEBUGGERPRESENT"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!ISDEBUGGERPRESENT"));
   sig.api_count = sig.api_calls.size();
 
   ApiSearchResultVector results;
@@ -810,9 +811,9 @@ TEST_F(ApiAnalyzertSearchManagerTest, TEST_SHOULD_HANDLE_BACKTRACKING_INTRAPROCE
 
   ApiSig sig;
   sig.name = "TEST_SHOULD_HANDLE_BACKTRACKING_INTRAPROCEDURAL";
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!GETTICKCOUNT"));
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!GETCURRENTPROCESSID"));
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!EXITPROCESS"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!GETTICKCOUNT"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!GETCURRENTPROCESSID"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!EXITPROCESS"));
   sig.api_count = sig.api_calls.size();
 
   ApiSearchResultVector results;
@@ -821,7 +822,7 @@ TEST_F(ApiAnalyzertSearchManagerTest, TEST_SHOULD_HANDLE_BACKTRACKING_INTRAPROCE
 
   std::string st = "";
   for (ApiSearchResultVector::iterator ri=results.begin(), end=results.end(); ri!=end; ri++) {
-    if (boost::iequals(ri->match_name,sig.name)) {
+    if (boost::iequals(ri->match_name, sig.name)) {
       for (std::vector<ApiWaypointDescriptor>::iterator pi=ri->search_tree.begin(); pi!=ri->search_tree.end(); pi++) {
         st += addr_str(pi->block->get_address());
       }
@@ -840,12 +841,12 @@ TEST_F(ApiAnalyzertSearchManagerTest, TEST_SHOULD_CORRECTLY_HANDLE_SELF_LOOPS_ST
   // self-loop + additional APIs
   ApiSig sig;
   sig.name = "SELF_LOOPS_START_OUTSIDE_OF_LOOP";
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!PEEKNAMEDPIPE")); // Forces ReadFile selfloop
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!READFILE"));
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!READFILE"));
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!READFILE"));
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!READFILE"));
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!READFILE"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!PEEKNAMEDPIPE")); // Forces ReadFile selfloop
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!READFILE"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!READFILE"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!READFILE"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!READFILE"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!READFILE"));
   sig.api_count = sig.api_calls.size();
 
   ApiSearchResultVector results;
@@ -873,12 +874,12 @@ TEST_F(ApiAnalyzertSearchManagerTest, TEST_SHOULD_CORRECTLY_HANDLE_SELF_LOOPS_ST
 TEST_F(ApiAnalyzertSearchManagerTest, TEST_SHOULD_CORRECTLY_HANDLE_START_END_IN_SELF_LOOPS) {
 
   // start/terminate in self-loop
-  ApiSig sig2;
+  ApiSig sig2;;
   sig2.name = "TEST_SHOULD_CORRECTLY_HANDLE_START_END_IN_SELF_LOOPS";
-  sig2.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!READFILE"));
-  sig2.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!READFILE"));
-  sig2.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!READFILE"));
-  sig2.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!READFILE"));
+  sig2.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!READFILE"));
+  sig2.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!READFILE"));
+  sig2.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!READFILE"));
+  sig2.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!READFILE"));
   sig2.api_count = sig2.api_calls.size();
 
   ApiSearchResultVector results2;
@@ -905,8 +906,8 @@ TEST_F(ApiAnalyzertSearchManagerTest, TEST_SHOULD_PRODUCE_CORRECT_SEARCHTREE_FOR
 
   ApiSig sig;
   sig.name = "TEST_SHOULD_PRODUCE_CORRECT_SEARCHTREE_FOR_INTRA_FUNCTION_SEARCH";
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!CREATEPIPE"));
-  sig.api_calls.push_back(new ApiSigFunc("KERNEL32.DLL!WRITEFILE"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!CREATEPIPE"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!WRITEFILE"));
   sig.api_count = sig.api_calls.size();
 
   ApiSearchResultVector results;
@@ -930,18 +931,17 @@ int main(int argc, char **argv) {
 
   ::testing::InitGoogleTest(&argc, argv);
 
+  set_glog_name("API1");
   ProgOptVarMap vm = parse_cert_options(argc, argv, cert_standard_options());
 
   // Find calls, functions, and imports.
   DescriptorSet ds(vm);
-  if (ds.get_interp() == NULL) {
-    GFATAL << "Unable to analyze file (no executable content found)." << LEND;
-    return EXIT_FAILURE;
-  }
   // Resolve imports, load API data, etc.
   ds.resolve_imports();
+  // Global for just this test program to make gtest happy.
+  global_ds = &ds;
 
-  BottomUpAnalyzer bua(&ds, vm);
+  BottomUpAnalyzer bua(ds, vm);
   bua.analyze();
 
   int rc = RUN_ALL_TESTS();

@@ -110,6 +110,11 @@ validVBTableEntry(VBTable, Entry, Offset) :-
     ObjectOffset is BaseOffset + Offset,
     %debug('Object Offset for '), debug(VBTable), debug(' entry '),
     %debug(Entry), debug(' is '), debugln(ObjectOffset),
+
+    % Intentionally NOT a validFuncOffset because we're speculating fairly widely here.  A
+    % validFuncOffset might be more correct, but that would require that we already know that
+    % BaseConstructor is a validMethod, and we'd like to conclude that from guessing about the
+    % VBTable that is in turn dependent on this fact.  Some more though is needed here...
     funcOffset(_Insn2, DerivedConstructor, BaseConstructor, ObjectOffset),
     possibleConstructor(BaseConstructor).
 
@@ -143,16 +148,23 @@ validVBTableWrite(Insn, Method, Offset, VBTable) :-
     possibleVBTableWrite(Insn, Method, Offset, VBTable),
     validVBTableEntry(VBTable, Entry1, _Value1),
     validVBTableEntry(VBTable, Entry2, _Value2),
-    iso_dif(Entry1, Entry2).
+    iso_dif(Entry1, Entry2),
+    %debug('validVBTableWrite('),
+    %debug(Insn), debug(', '),
+    %debug(Method), debug(', '),
+    %debug(Offset), debug(', '),
+    %debug(VBTable), debugln(').'),
+    true.
 
 % --------------------------------------------------------------------------------------------
 % Perhaps these should be filtered before exporting to Prolog...  Or maybe it's better to leave
 % the filtering in Prolog because we could propogate "non-objectness" more effectively.  For
 % right now the primary goal is to prevent the bad records from being used in reasoning.
-:- table validFuncOffset/4 as opaque.
+:- table validFuncOffset/4 as incremental.
 
 validFuncOffset(Insn, Function, Method, Offset) :-
     funcOffset(Insn, Function, Method, Offset),
+    factMethod(Method),
     Offset < 0x100000.
 
 % Here's an example of how we can use the "invalid" offsets to our advantage.  Defining an
@@ -166,10 +178,11 @@ invalidMethodMemberAccess(Method) :-
     methodMemberAccess(_Insn, Method, Offset, _Size),
     Offset >= 0x100000.
 
-:- table validMethodMemberAccess/4 as opaque.
+:- table validMethodMemberAccess/4 as incremental.
 
 validMethodMemberAccess(Insn, Method, Offset, Size) :-
     methodMemberAccess(Insn, Method, Offset, Size),
+    factMethod(Method),
     not(invalidMethodMemberAccess(Method)).
 
 % ============================================================================================

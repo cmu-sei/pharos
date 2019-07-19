@@ -73,13 +73,13 @@ iso_dif(X, Y) :-
 
 % list_min([5,2,8,1,4], Min). unifies Min with 1.
 list_min([], X, X). % Termination rule.
-list_min([H|T], M, X) :- H =< M, list_min(T, H, X).
+list_min([H|T], M, X) :- H =< M, !, list_min(T, H, X).
 list_min([H|T], M, X) :- M < H, list_min(T, M, X).
 list_min([H|T], X) :- list_min(T, H, X). % Starting rule.
 
 % list_max([5,2,8,1,4], Max). unifies Max with 8.
 list_max([], R, R). % Termination rule.
-list_max([H|T], M, R):- H > M, list_max(T, H, R).
+list_max([H|T], M, R):- H > M, !, list_max(T, H, R).
 list_max([H|T], M, R):- H =< M, list_max(T, M, R).
 list_max([H|T], R):- list_max(T, H, R). % Starting rule.
 
@@ -182,6 +182,10 @@ writeHex(T) :-
     write(')').
 
 writeHex(X) :-
+    (integer(X), X < 0, iso_dif(X, 0)) ->
+        (Y is X * -1,
+         fmt_write('-0x%x', Y))
+    ;
     (integer(X), iso_dif(X, 0)) ->
         fmt_write('0x%x', X)
     ;

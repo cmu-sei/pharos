@@ -1,4 +1,4 @@
-// Copyright 2015, 2016, 2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Calls_H
 #define Pharos_Calls_H
@@ -8,12 +8,13 @@
 #include <boost/iterator/filter_iterator.hpp> // for filter_iterator
 #include <rose.h>
 
-#include "masm.hpp"
 #include "funcs.hpp"
 #include "imports.hpp"
 #include "state.hpp"
 #include "convention.hpp"
 #include "typedb.hpp"
+#include "vcall.hpp"
+#include "threads.hpp"
 
 namespace pharos {
 
@@ -47,31 +48,21 @@ enum TargetSetCardinality {
 class CallDescMapPredicate;
 class VirtualFunctionCallAnalyzer;
 
-// CallInformation is the abstract base class for all call types. Each specific call type should
-// extend and define specific call information. There cannot be any generic call information
-// hence the pure virtual destructor.
-class CallInformation {
-public:
-  virtual ~CallInformation()=0;
-};
-// despite being a pure virtual destructor, an implementation is needed.
-inline CallInformation::~CallInformation() { }
-
-typedef boost::shared_ptr<CallInformation> CallInformationPtr;
-
-class CallDescriptor {
+class CallDescriptor : private Immobile {
 
   // The predicate class must be a friend to access class members. Alternatively, we could
   // define additional get/set methods.
   friend class CallDescMapPredicate;
 
+  mutable shared_mutex mutex;
+
   // The address of the call instruction.  This can refer to address that does not yet have a
   // call instruction, or it can be an invalid address (typically zero).
-  rose_addr_t address;
+  rose_addr_t address = 0;
 
-  // The SgAsmx86Instruction object for the call instruction.  This can be NULL if the
+  // The SgAsmX86Instruction object for the call instruction.  This can be NULL if the
   // instruction has not been found yet.
-  SgAsmx86Instruction* insn;
+  SgAsmX86Instruction* insn = nullptr;
 
   // The function descriptor that describes the aspects of this call that are specific to the
   // call target.  In many calls, this will point directly to the descriptor for the actual
@@ -81,8 +72,9 @@ class CallDescriptor {
   // import.
   FunctionDescriptor* function_descriptor;
 
-  // Did we dynamically allocate the function descriptor?
-  bool function_allocated;
+  // If the FunctionDescriptor pointed to by function_descriptor is owned (allocated) by this
+  // object, it is managed here.
+  std::unique_ptr<FunctionDescriptor> owned_function_descriptor;
 
   // The addresses that the call can transfer control to.  This list could be empty if we don't
   // know the answers.  If could have multiple answers if the call is to a register which could
@@ -95,34 +87,31 @@ class CallDescriptor {
   // inconsistent design choice.
   CallTargetSet targets;
 
-  // The thing Jeff Gennari created for tracking virtual function pointers.
-  CallInformationPtr call_info;
-
   // The symbolic state at the time of the call (useful for getting the values of parameters).
   SymbolicStatePtr state;
 
   // How confident are we in the target list being complete and correct?  One one extreme we
   // know conclusively that the list is correct.  At the other, we know that it's actively
   // wrong (e.g. empty).  In between, we may be confident or just guessing.
-  GenericConfidence confidence;
+  GenericConfidence confidence = ConfidenceNone;
 
   // A variable to represent the stack delta when then delta is unknown (missing)
   mutable LeafNodePtr stack_delta_variable;
 
   // Is the call internal, external, or unknown?
-  CallTargetLocation call_location;
+  CallTargetLocation call_location = CallLocationUnknown;
 
   // What type is this call?  e.g. Is it a call to an immediate value, a register?
-  CallType call_type;
+  CallType call_type = CallUnknown;
 
   // What is the import descriptor for this call, if it is external?
-  ImportDescriptor* import_descriptor;
+  ImportDescriptor* import_descriptor = nullptr;
 
   // The overridden function from the user config file.
-  FunctionDescriptor* function_override;
+  std::unique_ptr<FunctionDescriptor> function_override;
 
   // The function that contains this call descriptor.
-  FunctionDescriptor* containing_function;
+  FunctionDescriptor* containing_function = nullptr;
 
   // The parameters for this call.
   ParameterList parameters;
@@ -135,51 +124,30 @@ class CallDescriptor {
   // that information.
   StackDelta stack_delta;
 
-public:
-
-  CallDescriptor() {
-    address = 0;
-    insn = NULL;
-    function_descriptor = NULL;
-    function_allocated = false;
-    import_descriptor = NULL;
-    confidence = ConfidenceNone;
-    call_type = CallUnknown;
-    call_location = CallLocationUnknown;
-    function_override = NULL;
-    containing_function = NULL;
-    // return_value is NULL by default
-  }
-
-  CallDescriptor(SgAsmx86Instruction* i) {
-    address = 0;
-    insn = i;
-    function_descriptor = NULL;
-    function_allocated = false;
-    import_descriptor = NULL;
-    confidence = ConfidenceNone;
-    call_type = CallUnknown;
-    call_location = CallLocationUnknown;
-    function_override = NULL;
-    containing_function = NULL;
-    analyze();
-    // return_value is NULL by default
-  }
-
-  ~CallDescriptor() {
-
-    // destroy the call information associated with this call if it is not referenced
-    call_info.reset();
-
-    if (function_allocated)
-      delete function_descriptor;
-
-    if (function_override != NULL)
-      delete function_override;
-
-  }
+  // The resolution details for virtual function calls.
+  VirtualFunctionCallVector virtual_calls;
 
   void analyze();
+
+  void _update_connections();
+
+public:
+
+  DescriptorSet& ds;
+
+  CallDescriptor(DescriptorSet& d) : ds(d) {}
+
+  CallDescriptor(DescriptorSet& d, SgAsmX86Instruction* i)
+    : insn(i), ds(d)
+  {
+    analyze();
+  }
+
+  void update_connections() {
+    auto && guard = write_guard(mutex);
+    _update_connections();
+  }
+
   SgAsmInstruction* get_insn() const {
     return insn;
   }
@@ -194,34 +162,49 @@ public:
   // connections with the affected function descriptor.
   void add_target(rose_addr_t taddr);
   // Return the set of target addresses.
-  const CallTargetSet& get_targets() const { return targets; }
+  auto get_targets() const {
+    return make_read_locked_range<const CallTargetSet>(targets, mutex);
+  }
 
   std::string address_string() const {
     return str(boost::format("0x%08X") % address);
   }
 
+  // One spot needs read/write access to update the callers.
+  FunctionDescriptor* get_rw_function_descriptor() { return function_descriptor; }
+
   // Provide read-only access to the function descriptor and import descriptor.
-  FunctionDescriptor* get_function_descriptor() const { return function_descriptor; }
-  ImportDescriptor* get_import_descriptor() const { return import_descriptor; }
+  const FunctionDescriptor* get_function_descriptor() const { return function_descriptor; }
+  const ImportDescriptor* get_import_descriptor() const { return import_descriptor; }
 
   // Get and set the return value.
-  const SymbolicValuePtr & get_return_value() const { return return_value; }
-  void set_return_value(SymbolicValuePtr r) { return_value = r; }
+  const SymbolicValuePtr & get_return_value() const {
+    auto && guard = read_guard(mutex);
+    return return_value;
+  }
+  void set_return_value(SymbolicValuePtr r) {
+    auto && guard = write_guard(mutex);
+    return_value = r;
+  }
 
-  void update_connections();
   void add_import_target(ImportDescriptor* id);
 
-  bool check_virtual(PDG *pdg);
-
   void update_call_type(CallType ct, GenericConfidence conf);
-  void update_virtual_call(PDG *pdg);
+
+  // Add virtual call resolutions
+  void add_virtual_resolution(VirtualFunctionCallInformation& vci, GenericConfidence conf);
+  // Available only if object oriented analysis has been performed, empty otherwise.
+  auto get_virtual_calls() const {
+    return make_read_locked_range<const VirtualFunctionCallVector>(virtual_calls, mutex);
+  }
 
   CallType get_call_type() const  {
+    auto && guard = read_guard(mutex);
     return call_type;
   }
 
   StackDelta get_stack_delta() const;
-  const LeafNodePtr & get_stack_delta_variable() const;
+  LeafNodePtr get_stack_delta_variable() const;
   StackDelta get_stack_parameters() const;
 
   // Cory wants to isolate this better.  Maybe with friend, or by moving defuse code into funcs?
@@ -231,17 +214,9 @@ public:
   // Return the function that contains this call.
   FunctionDescriptor* get_containing_function() const { return containing_function; }
 
-  // Read and write from property tree config files.
-  void read_config(const boost::property_tree::ptree& tree, ImportNameMap* import_names);
-  void write_config(boost::property_tree::ptree* tree);
-
   void print(std::ostream &o) const;
   // Return the "real" call targets, e.g. with thunks removed.
   // CallTargetSet get_real_targets();
-
-  CallInformationPtr get_call_info() const {
-    return call_info;
-  }
 
   // Does the call never return (because all of the targets never return, e.g. exits).
   bool get_never_returns() const;
@@ -257,7 +232,7 @@ public:
   }
 
   // Validate the call description, complaining about any unusual.
-  void validate(std::ostream &o, FunctionDescriptorMap& fdmap);
+  void validate(std::ostream &o, const FunctionDescriptorMap& fdmap) const;
 
   // Unused?
   bool operator<(const CallDescriptor& other) {
@@ -270,9 +245,31 @@ public:
   }
 };
 
-class CallDescriptorMap: public std::map<rose_addr_t, CallDescriptor> {
+class CallDescriptorMap: public std::map<rose_addr_t, CallDescriptor>, private Immobile {
 
 public:
+
+  CallDescriptorMap() = default;
+
+  template<typename... T>
+  CallDescriptor * add(rose_addr_t addr, T &&... cd_args) {
+    auto it = find(addr);
+    if (it != end()) {
+      erase(it);
+    }
+    auto result = emplace(std::piecewise_construct, std::forward_as_tuple(addr),
+                          std::forward_as_tuple(std::forward<T>(cd_args)...));
+    assert(result.second);
+    return &result.first->second;
+  }
+
+  const CallDescriptor* get_call(rose_addr_t addr) const {
+    CallDescriptorMap::const_iterator it = this->find(addr);
+    if (it != this->end())
+      return &(it->second);
+    else
+      return NULL;
+  }
 
   CallDescriptor* get_call(rose_addr_t addr) {
     CallDescriptorMap::iterator it = this->find(addr);
@@ -281,9 +278,6 @@ public:
     else
       return NULL;
   }
-
-  // definition of a filter descriptor
-  typedef boost::filter_iterator<CallDescMapPredicate, CallDescriptorMap::iterator> filtered_iterator;
 };
 
 //
@@ -303,7 +297,7 @@ public:
 
   // evaluate whether CallDescriptorMap value should be included in the iterator
   // unspecified values are ignored
-  bool operator()(std::pair<rose_addr_t, CallDescriptor> c) const {
+  bool operator()(CallDescriptorMap::value_type & c) const {
 
     bool ct_match = true, gc_match = true, tc_match = true;
 
@@ -367,26 +361,19 @@ class CallParamInfo {
   ValueList const & values() const {
     return val;
   }
-  ParamVector const & params() const {
+  auto params() const {
     return cd.get_parameters().get_params();
   }
 
-  using type_range = decltype(std::declval<ValueList>()
-                              | boost::adaptors::transformed(type_from_value));
-  using name_range = decltype(std::declval<ParamVector>()
-                              | boost::adaptors::transformed(name_from_param));
-  using type_name_range = decltype(std::declval<ParamVector>()
-                                   | boost::adaptors::transformed(type_name_from_param));
-
-  type_range types() const {
+  auto types() const {
     return values() | boost::adaptors::transformed(type_from_value);
   }
 
-  name_range names() const {
+  auto names() const {
     return params() | boost::adaptors::transformed(name_from_param);
   }
 
-  type_name_range type_names() const {
+  auto type_names() const {
     return params() | boost::adaptors::transformed(type_name_from_param);
   }
 };
@@ -394,9 +381,11 @@ class CallParamInfo {
 class CallParamInfoBuilder {
  private:
   typedb::DB db;
+  Memory const & memory;
  public:
-  CallParamInfoBuilder(typedb::DB && db_) : db(db_) {}
-  CallParamInfoBuilder(ProgOptVarMap const & vm) : db(typedb::DB::create_standard(vm)) {}
+  CallParamInfoBuilder(typedb::DB && db_, Memory const & mem) : db(db_), memory(mem) {}
+  CallParamInfoBuilder(ProgOptVarMap const & vm, Memory const & mem) :
+    db(typedb::DB::create_standard(vm)), memory(mem) {}
 
   CallParamInfo create(CallDescriptor const & cd) const;
   CallParamInfo operator()(CallDescriptor const & cd) const {

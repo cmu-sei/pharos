@@ -1,4 +1,4 @@
-// Copyright 2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2017-2018 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "demangle_json.hpp"
 #include <utility>              // std::move
@@ -144,7 +144,7 @@ JsonOutput::ObjectRef JsonOutput::convert(DemangledType const & sym) const
   }
   handle_namespace(obj, sym);
 
-  return std::move(node);
+  return node;
 }
 
 JsonOutput::ObjectRef JsonOutput::raw(DemangledType const & sym) const
@@ -152,7 +152,7 @@ JsonOutput::ObjectRef JsonOutput::raw(DemangledType const & sym) const
   auto node = builder.object();
   auto & obj = *node;
 
-  auto add_bool = [&obj, this](char const * name, bool val) {
+  auto add_bool = [&obj](char const * name, bool val) {
                     if (val) {
                       obj.add(name, val);
                     }
@@ -267,7 +267,7 @@ JsonOutput::ObjectRef JsonOutput::raw(DemangledType const & sym) const
     obj.add("method_name", std::move(method_name));
   }
 
-  return std::move(node);
+  return node;
 }
 
 } // namespace demangle

@@ -1,0 +1,83 @@
+=pod
+
+=head1 NAME
+
+B<pathanalyzer> - Determines whether a path exists in an executable.
+
+=head1 SYNOPSIS
+
+pathanalyzer [--dot=DIRECTORY] [--z3=Z3_OUTPUT_FILE] [--start=START_ADDERSS ] [--goal=GOAL_ADDRESS] [...Pharos options...] EXECUTABLE_FILE
+
+pathanalyzer --help
+
+pathanalyzer --rose-version
+
+@PHAROS_OPTS_POD@
+
+=head1 DESCRIPTION
+
+B<pathanalyzer> will identify the conditions necessary to traverse a
+path between a start address and end address. The discovered path can
+be written to a series of Graphviz files for further analysis.
+
+=head1 OPTIONS
+
+=head2 B<pathanalyzer> OPTIONS
+
+The following options are specific to the B<pathanalyzer> program.
+
+=over 4
+
+=item B<--dot>=I<DOT_DIRECTORY>, B<-d>=I<DOT_DIRECTORY>
+
+Specify the directory to write Graphviz output file(s). There will be
+one Graphviz file per traversed function.
+
+=item B<--z3>=I<Z3_OUTPUT_FILE>, B<-z>=I<Z3_OUTPUT_FILE>
+
+Specify the z3 output file (for troubleshooting).
+
+=item B<--start>=I<ADDRESS>, B<-s>=I<ADDRESS>
+
+The start addres for the path.
+
+=item B<--goal>=I<ADDRESS>, B<-g>=I<ADDRESS>
+
+The goal addres for the path.
+
+=back
+
+@PHAROS_OPTIONS_POD@
+
+=head1 FILES
+
+=over 4
+
+@PHAROS_FILES_POD@
+
+=back
+
+
+=for compiled
+head1 NOTES
+
+=head1 AUTHOR
+
+Written by the Software Engineering Institute at Carnegie Mellon
+University.  The primary author was Jeffrey Gennari.
+
+=head1 COPYRIGHT
+
+Copyright 2018 Carnegie Mellon University.  All rights reserved.  This
+software is licensed under a "BSD" license.  Please see I<LICENSE.txt>
+for details.
+
+=for comment
+head1 SEE ALSO
+
+=cut
+
+Local Variables:
+mode:text
+indent-tabs-mode:nil
+End:

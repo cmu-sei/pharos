@@ -1,3 +1,5 @@
+// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
+
 #include "xsb.hpp"
 #include <cinterf.h>
 #include <type_traits>
@@ -6,6 +8,7 @@
 namespace pharos {
 namespace prolog {
 namespace impl {
+inline
 namespace xsb {
 
 namespace {
@@ -67,7 +70,7 @@ const char *xsb_get_init_error_message() noexcept {
 status xsb_init(int argc, const char **argv) noexcept {
   auto rv = to_status(::xsb_init(argc, const_cast<char **>(argv)));
 #ifdef MULTI_THREAD
-  if (rv == status::SUCCESS) noexcept {
+  if (rv == status::SUCCESS) {
     CTXT = xsb_get_main_thread();
   }
 #endif

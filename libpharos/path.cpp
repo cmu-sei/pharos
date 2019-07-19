@@ -1,6 +1,9 @@
+// Copyright 2018-2019 Carnegie Mellon University.  See LICENSE file for terms.
+
 #include "path.hpp"
 #include "misc.hpp"
 #include "stkvar.hpp"
+
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graph_utility.hpp>
 #include <boost/graph/graphviz.hpp>
@@ -8,326 +11,270 @@
 #include <boost/graph/iteration_macros.hpp>
 #include <boost/graph/topological_sort.hpp>
 #include <boost/graph/breadth_first_search.hpp>
+#include <boost/graph/depth_first_search.hpp>
 
 namespace pharos {
 
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-// Beginning of PharosZ3Solver methods
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-// Method to fetch a z3 representation of a given treenode.
-z3::expr
-PharosZ3Solver::treenode_to_z3(const TreeNodePtr tnp) {
-  Rose::BinaryAnalysis::SmtlibSolver::insert(tnp);
-  ctxVariableDeclarations(findVariables(tnp));
-  ctxCommonSubexpressions(tnp);
-
-  GDEBUG << "Translating treenode " << *tnp << " to z3" << LEND;
-
-  Z3ExprTypePair z3pair = ctxExpression(tnp);
-  return z3pair.first;
+void debug_print_tn(TreeNodePtr tn) UNUSED;
+void
+debug_print_tn(TreeNodePtr tn) {
+  std::cout << *tn << std::endl;
 }
-
-// Convert a z3 expression vector into one large AND'd expression
-z3::expr
-PharosZ3Solver::mk_and(z3::expr_vector& args) {
-  std::vector<Z3_ast> array;
-  for (unsigned i = 0; i < args.size(); i++) {
-    array.push_back(args[i]);
-  }
-  return z3::to_expr(args.ctx(), Z3_mk_and(args.ctx(), array.size(), &(array[0])));
-}
-
-// Convert a z3 expression vector into one large OR'd expression
-z3::expr
-PharosZ3Solver::mk_or(z3::expr_vector& args) {
-  std::vector<Z3_ast> array;
-  for (unsigned i = 0; i < args.size(); i++) {
-    array.push_back(args[i]);
-  }
-  return z3::to_expr(args.ctx(), Z3_mk_or(args.ctx(), array.size(), &(array[0])));
-}
-
-// Convenience function to cast an expression to a bool type
-z3::expr
-PharosZ3Solver::to_bool(z3::expr z3expr) {
-
-  using namespace Rose::BinaryAnalysis;
-
-  if (z3expr.is_bool()) return z3expr;
-  return z3type_cast(z3expr, SmtSolver::Type::BIT_VECTOR, SmtSolver::Type::BOOLEAN);
-}
-
-// Convenience function to cast an expression to a bitvector type
-z3::expr
-PharosZ3Solver::to_bv(z3::expr z3expr) {
-
-  using namespace Rose::BinaryAnalysis;
-
-  if (z3expr.is_bv()) return z3expr;
-  return z3type_cast(z3expr, SmtSolver::Type::BOOLEAN, SmtSolver::Type::BIT_VECTOR);
-}
-
-// Rose's Z3 typing system now carries the type with the expression
-z3::expr
-PharosZ3Solver::z3type_cast(z3::expr z3expr,
-                            Rose::BinaryAnalysis::SmtSolver::Type from_type,
-                            Rose::BinaryAnalysis::SmtSolver::Type to_type) {
-
-  using namespace Rose::BinaryAnalysis;
-
-  Z3ExprTypePair et = Z3ExprTypePair(z3expr, from_type);
-  Z3ExprTypePair tt = ctxCast(et, to_type);
-  return tt.first;
+void debug_print_sv(SymbolicValuePtr sv) UNUSED;
+void
+debug_print_sv(SymbolicValuePtr sv) {
+  std::cout << *sv->get_expression() << std::endl;
 }
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-// Beginning of SegmentFinder methods
+// Beginning of PathFinder methods
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-SegmentFinder::SegmentFinder(PharosZ3Solver* z3) : z3_(z3)
-{
-  segment_info_ = std::make_shared<PathSegmentInfo>();
-}
-
-SegmentFinder::~SegmentFinder() { }
-
-struct fcg_bfs_visitor : public boost::default_bfs_visitor {
-
-  // records the functions as they are discovered
-  std::vector<rose_addr_t> discovered_funcs;
-
-  void discover_vertex(FCGVertex v, const FCG & g) {
-    SgAsmFunction *f = get(boost::vertex_name, g, v);
-    discovered_funcs.push_back(f->get_entry_va());
-    OINFO << "Discovered " << addr_str(f->get_entry_va()) << LEND;
-  }
-};
 
 bool
-SegmentFinder::generate_cfg_constraints() {
+PathFinder::generate_cfg_constraints(CallTraceDescriptorPtr call_trace_desc,
+                                     CallTraceDescriptorPtr prev_call_trace_desc) {
 
-  if (!segment_info_->function) {
-    OERROR << "Invalid function descriptor" << LEND;
+  if (!call_trace_desc) {
+    OERROR << "Invalid call trace information" << LEND;
     return false;
   }
 
-  const CFG &cfg = segment_info_->function->get_pharos_cfg();
+  const FunctionDescriptor& fd = call_trace_desc->get_function();
+  const CFG &cfg = fd.get_pharos_cfg();
 
-  z3::context* ctx = z3_->z3Context();
+  z3::context* ctx = z3_.z3Context();
 
-  // process edges and save edge information
+  // process edges and save edge information for this call trace
+  // element, which is an entire function
+
   BGL_FORALL_EDGES(edge, cfg, CFG) {
 
-    EdgeInfo ei(ctx);
+    CfgEdgeInfo ei(ctx);
 
     ei.edge = edge;
+
     SgAsmBlock *sb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, boost::source(edge, cfg)));
     ei.edge_src_addr = sb->get_address();
 
     SgAsmBlock *tb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, boost::target(edge, cfg)));
     ei.edge_tgt_addr = tb->get_address();
 
-    ei.edge_str =  edge_name(edge, cfg);
-    ei.cond_str =  edge_cond(edge, cfg);
+    std::stringstream e_name, c_name;
+    e_name << edge_name(edge, cfg) << ":" << call_trace_desc->get_index();
+    ei.edge_str = e_name.str();
+
+    c_name << edge_cond(edge, cfg) << ":" << call_trace_desc->get_index();
+    ei.cond_str = c_name.str();
 
     ei.edge_expr = ctx->bool_const(ei.edge_str.c_str());
     ei.cond_expr = ctx->bool_const(ei.cond_str.c_str());
 
-    ei.fd = segment_info_->function;
+    // brittle, but effective
+    ei.call_trace_desc = call_trace_desc;
 
-    segment_info_->edge_info.push_back(ei);
+    call_trace_desc->add_edge_info(ei);
   }
 
   // fill in predecessors
-  for (auto& ei : segment_info_->edge_info) {
+  CfgEdgeInfoVector edge_info = call_trace_desc->get_edge_info_list();
+
+  for (auto& ei : edge_info) {
 
     CfgVertex src_vtx = boost::source(ei.edge, cfg);
 
-    std::vector<EdgeInfo> predecessors;
+    CfgEdgeInfoVector predecessors;
     BGL_FORALL_INEDGES(src_vtx, in_edge, cfg, CFG) {
 
-      std::vector<EdgeInfo>::iterator eni =
-        std::find_if(segment_info_->edge_info.begin(), segment_info_->edge_info.end(),
-                     [&in_edge](const EdgeInfo &arg) {
-                       return arg.edge == in_edge;
-                     });
+      auto in_iter = std::find_if(edge_info.begin(), edge_info.end(),
+                                  [&in_edge](const CfgEdgeInfo &arg)
+                                  { return arg.edge == in_edge; });
 
-      if (eni != segment_info_->edge_info.end()) {
-        EdgeInfo in_ei = *eni;
-        predecessors.push_back(in_ei);
+      if (in_iter != edge_info.end()) {
+        CfgEdgeInfo in_info = *in_iter;
+        predecessors.push_back(in_info);
+      }
+    }
+
+    // In edges are not enough, we also need to count callers among
+    // the predecessors for the function entry point (which may be called)
+    if (prev_call_trace_desc && ei.edge_src_addr == fd.get_address()) {
+      rose_addr_t call_addr = call_trace_desc->get_call()->get_address();
+      SgAsmBlock* caller_bb = ds_.get_block_containing_address(call_addr);
+      rose_addr_t caller_bb_addr = caller_bb->get_address();
+
+      const CfgEdgeInfo* prev_ei = prev_call_trace_desc->get_edge_info(caller_bb_addr);
+      if (prev_ei) {
+        predecessors.push_back(*prev_ei);
       }
     }
 
     z3::expr cfg_cond(*ctx);
     if (predecessors.size() > 1) {
       z3::expr_vector pred_exprs(*ctx);
-      for (auto prev : predecessors) pred_exprs.push_back(prev.edge_expr);
-
-      cfg_cond = z3::expr(ei.edge_expr == (ei.cond_expr && z3_->mk_or(pred_exprs)));
+      for (auto prev : predecessors) {
+        pred_exprs.push_back(prev.edge_expr);
+      }
+      cfg_cond = z3::expr(ei.edge_expr == (ei.cond_expr && z3_.mk_or(pred_exprs)));
     }
-
     // single incoming edge
     else if (predecessors.size() == 1) {
       z3::expr in_expr = z3::expr(predecessors.at(0).edge_expr);
 
       cfg_cond = z3::expr(ei.edge_expr == (ei.cond_expr && in_expr));
+
     }
-    else { // no incoming edge, this must be an entry point (making
-           // many assumptions here)
+    else {
+      // no incoming edge, this must be an entry point. There must be
+      // a check to determine if this is the genuine entry point or
+      // the entry of a called function
+
+      // This should really only be true in the case of the genuine
+      // entry point or something not in the control flow
+
       cfg_cond = z3::expr(ei.edge_expr == ei.cond_expr);
     }
 
-    segment_info_->cfg_conditions.push_back(cfg_cond);
+    call_trace_desc->add_cfg_condition(cfg_cond);
   }
 
-  return (segment_info_->cfg_conditions.size() > 0);
-} // end generate_cfg_constraints
+  // Special case where the entire function is a single basic
+  // block. This will always be executed (obviously)
+  if ((boost::num_vertices(cfg) == 1) && (edge_info.size() == 0)) {
+    return true;
+  }
+
+  return (call_trace_desc->get_cfg_conditions().size() > 0);
+}
 
 // Edge conditions are the conditions that impact decisions in the
 // code. In this version the conditions are based on the state of
-// decisions nodes (ITEs), but this can change ...
+// decisions nodes (ITEs).
 bool
-SegmentFinder::generate_edge_conditions(std::map<CfgEdge, z3::expr>& edge_conditions) {
+PathFinder::generate_edge_conditions(CallTraceDescriptorPtr call_trace_desc,
+                                     CfgEdgeExprMap& edge_conditions) {
 
-  if (!segment_info_->function) {
-    OERROR << "Invalid function descriptor" << LEND;
+  if (!call_trace_desc) {
+    OERROR << "Invalid call trace information" << LEND;
     return false;
   }
 
-  const CFG &cfg = segment_info_->function->get_pharos_cfg();
-  const PDG* pdg = segment_info_->function->get_pdg();
+  const FunctionDescriptor& func = call_trace_desc->get_function();
+  const CFG &cfg = func.get_pharos_cfg();
 
-  // Z3 stuff needed for analysis
-  if (pdg == NULL) return false;
+  z3::context* ctx = z3_.z3Context();
 
-  const DUAnalysis& du = pdg->get_usedef();
-  const BlockAnalysisMap& blocks = du.get_block_analysis();
+  BGL_FORALL_EDGES(edge, cfg, CFG)  {
 
-  z3::context* ctx = z3_->z3Context();
-
-  BGL_FORALL_EDGES(edge, cfg, CFG) {
-
-    // the condition_tnp is on the EIP of the source
     CfgVertex src_vtx = boost::source(edge, cfg);
     SgAsmBlock *src_bb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, src_vtx));
 
     CfgVertex tgt_vtx = boost::target(edge, cfg);
     SgAsmBlock *tgt_bb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, tgt_vtx));
 
-    BlockAnalysis src_analysis = blocks.at(src_bb->get_address());
-    if (!src_analysis.output_state) {
-      OERROR << "Cannot fetch output state for " << addr_str(src_bb->get_address()) << LEND;
+    // We need to use the EIP conditons for *this* call frame,
+    // not the values in Pharos, which are not indexed
+    CfgEdgeValueMap eip_val_map = call_trace_desc->get_edge_values();
+    auto edge_cond_iter = std::find_if(eip_val_map.begin(), eip_val_map.end(),
+                                       [&edge](const std::pair<CfgEdge,SymbolicValuePtr>& vpair) {
+                                         return edge == vpair.first;
+                                       });
+
+    if (edge_cond_iter == eip_val_map.end()) {
+      OWARN << "Could not find symbolic condition for edge: " << edge_str(edge, cfg) << LEND;
       continue;
     }
-    SymbolicRegisterStatePtr src_reg_state = src_analysis.output_state->get_register_state();
 
-    if (!src_reg_state) {
-      OERROR << "Could not get vertex " << addr_str(src_bb->get_address())
-             << " register state" << LEND;
-      continue;
-    }
+    SymbolicValuePtr src_eip_sv = edge_cond_iter->second;
+    TreeNodePtr src_eip_tnp = src_eip_sv->get_expression();
 
-    RegisterDescriptor eiprd = global_descriptor_set->get_arch_reg("eip");
-    SymbolicValuePtr vtx_eip = src_reg_state->read_register(eiprd);
-    TreeNodePtr eip_tnp = vtx_eip->get_expression();
-
-    GDEBUG << "\nThe vertex "
+    GDEBUG << "\nThe Edge "
            << addr_str(src_bb->get_address())
-           << " has an EIP of " << *eip_tnp << LEND;
+           << "-" << addr_str(tgt_bb->get_address()) << LEND;
 
-    // If the vertex has an out degree greater than one then it is a
-    // choice of some type. There are basically two options here:
-    // 1. this is in ITE meaning the choice result cannot be
-    //    determined. In this case the ITE is analyzed.
-    //
-    // 2. this is a number meaning that the target address is always known.
-    //    This enabled identifying paths that are never taken (i.e. infeasible
-    //
-    // 3. this is a variable. I'm not entirely sure what to do in this case.
+    // If the treenode associated with EIP is an ITE, then it is
+    // a decision. The decision part is what we care
+    // about. Specifically, the EIP register will contain the
+    // branch condition. This condition will be exported to Z3
+    // for both the true and false edges
 
-    if (boost::out_degree(src_vtx, cfg) > 1) {
+    const InternalNodePtr in = src_eip_tnp->isInteriorNode();
+    if (in && in->getOperator() == Rose::BinaryAnalysis::SymbolicExpr::OP_ITE) {
 
-      // If the treenode associated with EIP is an ITE, then it is a
-      // decision. The decision part is what we care
-      // about. Specifically, the symbolic EIP register will contain
-      // the branch decision
-      const InternalNodePtr in = eip_tnp->isInteriorNode();
-      if (in && in->getOperator() == Rose::BinaryAnalysis::SymbolicExpr::OP_ITE) {
+      const TreeNodePtrVector& branches = in->children();
+      TreeNodePtr condition_tnp = branches[0];
+      rose_addr_t true_address = address_from_node(branches[1]->isLeafNode());
+      rose_addr_t false_address = address_from_node(branches[2]->isLeafNode());
 
-        const TreeNodePtrVector& branches = in->children();
-        TreeNodePtr condition_tnp = branches[0];
-        rose_addr_t true_address = get_address_from_treenode(branches[1]);
+      try {
 
-        GDEBUG << "EIP ITE Condition: " << *condition_tnp << LEND;
+        z3::expr condition_expr = z3_.treenode_to_z3(condition_tnp).simplify();
 
-        try {
-          z3::expr condition_expr = z3_->treenode_to_z3(condition_tnp);
-          GDEBUG << "Z3 condition is: " <<  condition_expr << LEND;
-
-          if (true_address == tgt_bb->get_address()) {
-            edge_conditions.emplace(std::make_pair(edge, condition_expr));
-          }
-          else {
-
-            // There are two ways to NOT this expression depending on
-            // the context: bool or bv. It must be boolean to assert
-            // it
-            z3::expr not_condition_expr(*ctx);
-            if (condition_expr.is_bool() == false) {
-              condition_expr = z3_->to_bool(condition_expr);
-            }
-            not_condition_expr = !condition_expr;
-            GDEBUG << "The negated z3 condition is " << not_condition_expr << LEND;
-
-            edge_conditions.emplace(std::make_pair(edge, not_condition_expr.simplify()));
-          }
+        if (true_address == tgt_bb->get_address()) {
+          edge_conditions.emplace(std::make_pair(edge, condition_expr));
         }
-        catch(z3::exception z3x) {
-          OERROR << "generate_edge_conditions: Z3 Exception caught: " << z3x << LEND;
-          return false;
+        else if (false_address == tgt_bb->get_address()) {
+          z3::expr not_condition_expr(*ctx);
+          if (condition_expr.is_bool() == false) {
+            condition_expr = z3_.to_bool(condition_expr);
+          }
+          not_condition_expr = (!condition_expr).simplify();
+
+          edge_conditions.emplace(std::make_pair(edge, not_condition_expr));
         }
       }
-      // Not an ITE, so that means it will be an expression. If it is
-      // a constant expression then it is the address of the next
-      // instruction. This hints at infeasible vs. always-taken paths
-      else if (eip_tnp->isNumber()) {
+      catch(z3::exception z3x) {
+        OERROR << "generate_edge_conditions: Z3 Exception caught: " << z3x << LEND;
+        return false;
+      }
+    }
 
-        uint64_t target_addr = eip_tnp->toInt();
-        // This edge is never taken because Pharos tells us so! Mark
-        // it as "false" to indicate that the path is infeasible
+    // Not an ITE, so that means it will be an expression. If it
+    // is a constant expression then it is the address of the
+    // next instruction. If the next instructon from here is not
+    // the target, then this edge is not taken or the block
+    // terminates in a function call. If the block ends in a
+    // call, then we cannot declare the edge dead.
 
-        if (target_addr != tgt_bb->get_address()) {
+    else if (src_eip_tnp->isNumber()) {
+      if (!insn_is_call(last_x86insn_in_block(src_bb))) {
+        rose_addr_t next_addr = static_cast<rose_addr_t>(src_eip_tnp->toInt());
+
+        // If the next address is the entry to a known function,
+        // then it is probably not an taken edge that is never
+        // taken, or at least we cannot tell. Conversely, if it is
+        // not a known function and the next address is not the
+        // target, then Pharos has figured out the edge is not taken.
+
+        if (next_addr != tgt_bb->get_address()) {
           edge_conditions.emplace(std::make_pair(edge, ctx->bool_val(false)));
         }
       }
     }
 
-    // There are no incoming edges to the source. In this case, the
-    // edge should always be taken (given a well-formed CFG with one
-    // entry)
-    //
-    // It turns out this is rarely true in practice let alone malware
-    rose_addr_t entry_va = segment_info_->function->get_func()->get_entry_va();
-    if (entry_va == src_bb->get_address()) {
+    // If this edge is the entry of the function, then it will be true
+    // because it can always be entered.
+    if (func.get_func()->get_entry_va() == src_bb->get_address()) {
       edge_conditions.emplace(std::make_pair(edge, ctx->bool_val(true)));
     }
   }
 
-  // distribute the edge conditions to impacted edges
-  propagate_edge_conditions(edge_conditions);
+  // Distribute the edge conditions throughout the CFG for consistent
+  // reasoning
+  propagate_edge_conditions(call_trace_desc, edge_conditions);
 
   return true;
 }
 
 bool
-SegmentFinder::generate_edge_constraints() {
+PathFinder::generate_edge_constraints(CallTraceDescriptorPtr call_trace_desc) {
 
-  // we need a context to create Z3 types
-  z3::context* ctx = z3_->z3Context();
+  CfgEdgeExprMap edge_conditions;
 
-  std::map<CfgEdge, z3::expr> edge_conditions;
-  if (false == generate_edge_conditions(edge_conditions)) {
+  // Before assembling the proper edge constraint we must examine each
+  // choice to figure out the condtions for the constraint. After this
+  // call, the edge_conditions contain the EIP conditions
+
+  if (false == generate_edge_conditions(call_trace_desc, edge_conditions)) {
     return false;
   }
 
@@ -338,90 +285,147 @@ SegmentFinder::generate_edge_constraints() {
   for (auto& edge_cond : edge_conditions) {
 
     CfgEdge edge = edge_cond.first;
-    std::vector<EdgeInfo>::iterator eni =
-      std::find_if(segment_info_->edge_info.begin(),
-                   segment_info_->edge_info.end(),
-                   [&edge](const EdgeInfo &arg) {
+    CfgEdgeInfoVector edge_info_list = call_trace_desc->get_edge_info_list();
+    auto eni =
+      std::find_if(edge_info_list.begin(),
+                   edge_info_list.end(),
+                   [&edge](const CfgEdgeInfo &arg) {
                      return arg.edge == edge;
                    });
 
-    if (eni == segment_info_->edge_info.end()) continue;
+    if (eni == edge_info_list.end()) continue;
 
-    EdgeInfo edge_info = *eni;
+    CfgEdgeInfo new_edge_info = *eni;
 
     z3::expr tnp_cond_expr = edge_cond.second;
     if (tnp_cond_expr.is_bool() == false) {
-      tnp_cond_expr = z3_->to_bool(tnp_cond_expr);
+      tnp_cond_expr = z3_.to_bool(tnp_cond_expr);
     }
 
-    // assert that the edge condition is equal to the expressions that
-    // control them. It is debatable whether equality is the proper,
-    // or most efficient way to do this. Implication is attractive but
-    // not strong enough because false can imply true ... JSG cannot
-    // see how this will not lead to false expressions implying true
-    // paths?
+    z3::expr edge_constraint_expr = z3::expr(new_edge_info.cond_expr == tnp_cond_expr);
 
-
-    // If this condition is the goal condition, then it must be
-    // true. Save it so callers to this function can access it
-
-    if (edge_info.edge_tgt_addr == segment_info_->goal_addr) {
-      // save this for future calls. Should this be tied to parameters?
-      segment_info_->edge_constraints.push_back(z3::expr(tnp_cond_expr == ctx->bool_val(true)));
+    // Don'path_taken add duplicate constraints
+    z3::expr_vector edge_constraints = call_trace_desc->get_edge_constraints();
+    bool skip_constraint=false;
+    for (unsigned i = 0; i < edge_constraints.size(); i++) {
+      if (z3::eq(edge_constraints[i], edge_constraint_expr)) {
+        skip_constraint=true;
+        break;
+      }
     }
-    segment_info_->edge_constraints.push_back(z3::expr(edge_info.cond_expr == tnp_cond_expr));
-
+    if (!skip_constraint) {
+      call_trace_desc->add_edge_constraint(edge_constraint_expr);
+      GDEBUG << " Added edge constraint: " << edge_constraint_expr << LEND;
+    }
   }
+  return true;
+} // end generate edge constraints
+
+
+// Path constraints are global across all call trace elements; thus
+// they live in the PathFinder. Additionally, there is only one goal
+// and one start. The goal may be disjoined to include multiple
+// edges
+bool
+PathFinder::generate_path_constraints(z3::expr& start_constraint,
+                                      z3::expr& goal_constraint) {
 
   // Now assert the edges that we must reach to achieve a goal. This
-  // is one way to force a particular path
+  // is one way to force a particular path. Notably, the start/goal
+  // addresses need to be lifted to the BB address to conform with the
+  // CFG
 
-  z3::expr_vector goal_constraints_exprs(*ctx);
-  z3::expr_vector start_constraints_exprs(*ctx);
+  bool goal_set=true, start_set = true;
 
-  for (auto ei : segment_info_->edge_info) {
-    if (ei.edge_tgt_addr == segment_info_->goal_addr) {
-      goal_constraints_exprs.push_back(z3::expr(ei.edge_expr == ctx->bool_val(true)));
-    }
-    if (ei.edge_src_addr == segment_info_->start_addr) {
-      start_constraints_exprs.push_back(z3::expr(ei.edge_expr == ctx->bool_val(true)));
+  SgAsmBlock* start_bb = insn_get_block(ds_.get_insn(start_address_));
+  rose_addr_t start_bb_addr = start_bb->get_address();
+
+  SgAsmBlock* goal_bb = insn_get_block(ds_.get_insn(goal_address_));
+  rose_addr_t goal_bb_addr = goal_bb->get_address();
+
+  z3::context* ctx = z3_.z3Context();
+  z3::expr_vector goal_edge_constraints(*ctx);
+  z3::expr_vector start_edge_constraints(*ctx);
+
+  // The goals and starts need to be evaluated over each call
+  // trace. If there are multiple paths to a goal, then the goals will be disjoined
+  BGL_FORALL_VERTICES(vtx, call_trace_, CallTraceGraph) {
+
+    CallTraceDescriptorPtr call_trx = boost::get(boost::vertex_calltrace, call_trace_, vtx);
+
+    for (auto ei : call_trx->get_edge_info_list()) {
+
+      GINFO << "Generating path constraints for edge " << ei.edge_str << LEND;
+
+      z3::expr edgex = z3::expr(ei.edge_expr == ctx->bool_val(true));
+
+      // the start/goal belong to the same edge (source->target)
+      if (ei.edge_tgt_addr == goal_bb_addr && ei.edge_src_addr == start_bb_addr) {
+        goal_edge_constraints.push_back(edgex);
+        start_edge_constraints.push_back(edgex);
+        GINFO << "Possible Goal/Start Edge: " << edgex << LEND;
+        break;
+      }
+      else {
+
+        // The goal can either be the target or source. The target
+        // part is obvious. The goal can be the source if the goal is
+        // the first block in a function
+
+        if ((ei.edge_tgt_addr == goal_bb_addr) || (ei.edge_src_addr == goal_bb_addr)) {
+          GINFO << "Possible Goal Edge: " << edgex << LEND;
+          goal_edge_constraints.push_back(edgex);
+        }
+        // The source cannot be a target
+        if (ei.edge_src_addr == start_bb_addr) {
+          GINFO << "Possible Start Edge: " << edgex << LEND;
+          start_edge_constraints.push_back(edgex);
+        }
+      }
     }
   }
 
   // If there is more than one incoming edge to the target vertex,
   // then there can possibly be more than one viable path. The best
   // thing to do is form a disjunction among the incoming edges so
-  // that any of them can be viable
+  // that any of them can be viable.
 
-  if (goal_constraints_exprs.size() > 1) {
-    segment_info_->edge_constraints.push_back(z3_->mk_or(goal_constraints_exprs));
+  if (goal_edge_constraints.size() > 1) {
+    goal_constraint = z3_.mk_or(goal_edge_constraints);
   }
-  else if (goal_constraints_exprs.size() == 1) {
-    segment_info_->edge_constraints.push_back(goal_constraints_exprs[0]);
+  else if (goal_edge_constraints.size() == 1) {
+    goal_constraint = goal_edge_constraints[0];
   }
   else {
-    OERROR << "No goal constraints to assert!" << LEND;
+    goal_set=false;
+    OWARN << "No goal edge constraints to assert!" << LEND;
   }
 
-  if (start_constraints_exprs.size() > 1) {
-    segment_info_->edge_constraints.push_back(z3_->mk_or(start_constraints_exprs));
+  // because there can be TWO+ paths flowing into a goal, we need to
+  // disjoin the possibilities could start have two incoming edges?
+  // Not entirely sure, but the approach is the same
+
+  if (start_edge_constraints.size() > 1) {
+    start_constraint = z3_.mk_or(start_edge_constraints);
   }
-  else if (start_constraints_exprs.size() == 1) {
-    segment_info_->edge_constraints.push_back(start_constraints_exprs[0]);
+  else if (start_edge_constraints.size() == 1) {
+    start_constraint = start_edge_constraints[0];
   }
   else {
-    OERROR << "No starting constraints to assert!" << LEND;
+    start_set=false;
+    OWARN << "No start edge constraints to assert!" << LEND;
   }
 
-  return true;
-} // end generate_edge_constraints()
+  return start_set && goal_set;
+}
 
 // edge condition propagation means carrying forward the conditions to
 // take a given edge
 void
-SegmentFinder::propagate_edge_conditions(std::map<CfgEdge, z3::expr>& edge_conditions) {
+PathFinder::propagate_edge_conditions(CallTraceDescriptorPtr call_trace_desc, CfgEdgeExprMap& edge_conditions) {
 
-  const CFG& cfg = segment_info_->function->get_pharos_cfg();
+  const FunctionDescriptor& func = call_trace_desc->get_function();
+  const CFG& cfg = func.get_pharos_cfg();
 
   BGL_FORALL_VERTICES(vtx, cfg, CFG) {
 
@@ -466,10 +470,10 @@ SegmentFinder::propagate_edge_conditions(std::map<CfgEdge, z3::expr>& edge_condi
                 z3::expr& x = ec_search->second;
 
                 if (x.is_bool() == false) {
-                  x = z3_->to_bool(x);
+                  x = z3_.to_bool(x);
                 }
                 if (cond_expr.is_bool() == false) {
-                  cond_expr = z3_->to_bool(cond_expr);
+                  cond_expr = z3_.to_bool(cond_expr);
                 }
                 edge_conditions.emplace(std::make_pair(in_edge, z3::expr(cond_expr || x)));
                 ec_search++;
@@ -482,137 +486,42 @@ SegmentFinder::propagate_edge_conditions(std::map<CfgEdge, z3::expr>& edge_condi
   }
 }
 
-static double g_start_time = 0;
-static void display_statistics(const z3::solver* solver) UNUSED;
-static void
-display_statistics(const z3::solver* solver) {
-
-  if (solver) {
-    double end_time = static_cast<double>(clock());
-    z3::stats stats = solver->statistics();
-    OINFO << "+-+-+-+-+-+- Z3 GEEK STATS +-+-+-+-+-+-\n"
-          << stats
-          << "\n time:   " << (end_time - g_start_time)/CLOCKS_PER_SEC << " secs\n"
-          <<    "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+" << LEND;
-  }
-}
-
-// This method is purely for debugging
-static void debug_print_expr(const z3::expr& e) UNUSED;
-static void
-debug_print_expr(const z3::expr& e) {
-  std::cout << e.to_string() << std::endl;
-}
-
-PathSegmentInfo::PathSegmentInfo() :
-  start_addr(INVALID_ADDRESS),
-  goal_addr(INVALID_ADDRESS),
-  function(NULL) { }
-
-// The main analytical routine for function analysis, what JSG refers
-// to as a segment in the context of path finding. This function
-// operates on basic blocks; thus goal and start must be basic block
-// addresses. Note that the previous analysis is made available to
-// this function to support additional constraints on data values Each
-// segment is analyzed from a start to a goal address. The previous
-// analysis is also included to assert constraints on incoming values
-bool
-SegmentFinder::analyze_segment(rose_addr_t start_addr,
-                               rose_addr_t goal_addr,
-                               FunctionDescriptor* fd,
-                               const PathSegmentInfoPtrList* analyzed_segments) {
-
-  OINFO << "----------------------------------------------------------\n"
-        << "Analyzing " << addr_str(fd->get_address())
-        << "\n----------------------------------------------------------" << LEND;
-
-  if (NULL == segment_info_) segment_info_ = std::make_shared<PathSegmentInfo>();
-
-  if (start_addr == INVALID_ADDRESS || goal_addr == INVALID_ADDRESS) {
-    OERROR << "start/goal addresses  not valid!" << LEND;
-  }
-
-  segment_info_->start_addr = start_addr;
-  segment_info_->goal_addr = goal_addr;
-
-  if (!fd) {
-    OERROR << "Function not valid!" << LEND;
-    return false;
-  }
-  segment_info_->function = fd;
-
-  // Check if the goal is "valid" by determining if it is in the
-  // function to analyze
-
-  bool valid_goal = false;
-  bool valid_start = false;
-  const CFG& cfg = segment_info_->function->get_pharos_cfg();
-
-  BGL_FORALL_VERTICES(vtx, cfg, CFG) {
-    rose_addr_t vtx_addr = vertex_addr(vtx, cfg);
-    if (vtx_addr == segment_info_->goal_addr) valid_goal = true;
-    if (vtx_addr == segment_info_->start_addr) valid_start = true;
-    if (valid_start && valid_goal) break;
-  }
-
-  if (false == valid_goal) {
-    GDEBUG << "Cannot find goal vertex in function "
-           << addr_str(segment_info_->function->get_address()) << LEND;
-    return false;
-  }
-  if (false == valid_start) {
-    GDEBUG << "Cannot find start vertex in function "
-           << addr_str(segment_info_->function->get_address()) << LEND;
-    return false;
-  }
-
-  OINFO << "The start is " << addr_str(segment_info_->start_addr)
-        << " goal vertex is: " << addr_str(segment_info_->goal_addr) << LEND;
-
-
-  // Step 1 is to generate the CFG structures
-  if (false == generate_cfg_constraints()) {
-    GDEBUG << "Failed to generate CFG conditions" << LEND;
-    return false;
-  }
-
-  // Step 2 is to generate the conditions necessary to take each edge
-  if (false == generate_edge_constraints()) {
-    GDEBUG << "Failed to generate edge conditions" << LEND;
-    return false;
-  }
-  // debugging
-  // print_edge_conditions(segment_info_->function);
-
-  // Step 3 is to generate the constraints on the path to take
-  if (false == generate_value_constraints(analyzed_segments)) {
-    GDEBUG << "Failed to generate assertions" << LEND;
-    return false;
-  }
-
-  return true;
-
-  // print out some statistics about how many resources the solver
-  // used. This is mostly for informational/debugging purposes
-  //
-  // display_statistics(z3_.z3Solver());
-
-} // end analyze_segment
-
-
 // add all the constraints and solve
 bool
 PathFinder::evaluate_path() {
 
   try {
 
+    z3::context* ctx = z3_.z3Context();
+
+    z3::expr start_constraint(*ctx);
+    z3::expr goal_constraint(*ctx);
+
+    if (!generate_path_constraints(start_constraint, goal_constraint)) {
+      OERROR << "Could not establish start/goal!" << LEND;
+      path_found_ = false;
+      return false;
+    }
+
     // Load all the conditions into
     z3::solver* solver = z3_.z3Solver();
-    for (auto seg : path_segments_) {
-      for (auto cfg_condition : seg->cfg_conditions) solver->add(cfg_condition);
-      for (auto edge_constraint : seg->edge_constraints) solver->add(edge_constraint);
-      for (auto val_constraint : seg->value_constraints) solver->add(val_constraint);
+
+    BGL_FORALL_VERTICES(vtx, call_trace_, CallTraceGraph) {
+
+      calltrace_value_t trc_info = boost::get(boost::vertex_calltrace, call_trace_, vtx);
+
+      z3::expr_vector cfg_conds = trc_info->get_cfg_conditions();
+      for (unsigned c=0; c<cfg_conds.size(); c++) solver->add(cfg_conds[c]);
+
+      z3::expr_vector edge_const = trc_info->get_edge_constraints();
+      for (unsigned e=0; e<edge_const.size(); e++) solver->add(edge_const[e]);
+
+      z3::expr_vector val_const = trc_info->get_value_constraints();
+      for (unsigned v=0; v<val_const.size(); v++)  solver->add(val_const[v]);
     }
+
+    solver->add(start_constraint);
+    solver->add(goal_constraint);
 
     GDEBUG << "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-\n"
            << "Final representation:"
@@ -621,7 +530,7 @@ PathFinder::evaluate_path() {
     switch (solver->check()) {
 
      case z3::unsat:
-      OINFO << "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-\n"
+      GINFO << "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-\n"
             << "Sat check: is NOT valid, there is no path from "
             << addr_str(start_address_) << " to " << addr_str(goal_address_)
             << "\n+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-" << LEND;
@@ -631,9 +540,9 @@ PathFinder::evaluate_path() {
       break;
 
      case z3::sat:
-      OINFO << "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-\n"
+      GINFO << "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-\n"
             << "Sat check: IS valid, there is a path from "
-                        << addr_str(start_address_) << " to " << addr_str(goal_address_)
+            << addr_str(start_address_) << " to " << addr_str(goal_address_)
             << "\n+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-" << LEND;
 
       // A path was found, given the constraints
@@ -641,23 +550,28 @@ PathFinder::evaluate_path() {
       break;
 
      case z3::unknown:
-      OINFO << "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-\n"
+      GINFO << "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-\n"
             << "Sat check: is UNKOWN???\n"
             << "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-" << LEND;
     }
   }
-   catch (z3::exception z3x) {
+  catch (z3::exception z3x) {
     OERROR << "evaluate: Z3 Exception caught: " << z3x << LEND;
     path_found_ = false;
   }
 
+  // print out some statistics about how many resources the solver
+  // used. This is mostly for informational/debugging purposes
+  //
+  // z3_.report_statistics(OINFO);
+
   return path_found_;
 }
 
-// Generate the path for the main segment. Assumes a model exists
+// Generate the path for the main call_trace. Assumes a model exists
 // There is a strange symmetry to this analysis. All the contraints
 // must be loaded into Z3, analyzed as one, and then re-assigned to
-// segments as a traversal
+// call_traces as a traversal
 bool
 PathFinder::analyze_path_solution() {
 
@@ -669,279 +583,461 @@ PathFinder::analyze_path_solution() {
 
     z3::model model = z3_.z3Solver()->get_model();
 
-    std::map<std::string, z3::expr> modelz3vals;
-    OINFO << "Solution:\n" << model << "\n+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-" << LEND;
+    // This map will hold the values that are assigned to the
+    ExprMap modelz3vals;
+
+    GDEBUG << "Solution:\n" << model << "\n+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-" << LEND;
 
     for (unsigned i = 0; i<model.size(); i++) {
       z3::func_decl element = model[i];
       std::string element_name = element.name().str();
+
       if (element.is_const()) {
         z3::expr element_val = model.get_const_interp(element);
         modelz3vals.insert(std::pair<std::string, z3::expr>(element_name, element_val));
+
+        GDEBUG << "Inserting element: " << element_name << " value: " << element_val << LEND;
       }
     }
 
-    // Create an empty traversal
-    for (auto s : path_segments_) {
-      PathTraversalPtr t = std::make_shared<PathTraversal>();
-      t->function = s->function;
-      t->start_addr = s->start_addr;
-      t->goal_addr = s->goal_addr;
-      path_traversal_.push_back(t);
-    }
+    // Create the taken path
+    std::vector<rose_addr_t> called_funcs;
+    BGL_FORALL_VERTICES(vtx, call_trace_, CallTraceGraph) {
+      PathPtr path_taken = std::make_shared<Path>();
+      path_taken->call_trace_desc = boost::get(boost::vertex_calltrace, call_trace_, vtx);
 
-    // The model is now processed, last step is to distribute into
-    // segments/traversals.
+      const FunctionDescriptor& ctd_func = path_taken->call_trace_desc->get_function();
+      const CFG &cfg = ctd_func.get_pharos_cfg();
 
-    PathSegmentInfoPtrList::iterator segi = path_segments_.begin();
-    PathTraversalPtrList::iterator trvi = path_traversal_.begin();
+      // add the edges to the traversal
 
-    while (segi!=path_segments_.end() && trvi!=path_traversal_.end()) {
-
-      // these should be lined up
-      PathSegmentInfoPtr seg = *segi;
-      PathTraversalPtr trv = *trvi;
-      // bool found_edge = false, found_cond = false;
-
-      // add to the traversal
-      for (auto ei : seg->edge_info) {
+      for (auto ei : path_taken->call_trace_desc->get_edge_info_list()) {
         auto evi = modelz3vals.find(ei.edge_str);
         if (evi != modelz3vals.end()) {
           z3::expr val = evi->second;
-          if (val.bool_value() == Z3_L_TRUE) trv->path.push_back(ei);
+          if (val.bool_value() == Z3_L_TRUE) {
+            path_taken->traversal.push_back(ei);
+
+            // This edge is taken, does it end in a call
+            SgAsmBlock *source_bb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, boost::source(ei.edge, cfg)));
+            const SgAsmX86Instruction* last_insn = last_x86insn_in_block(source_bb);
+            if (insn_is_call(last_insn)) {
+              called_funcs.push_back(last_insn->get_address());
+            }
+            SgAsmBlock *target_bb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, boost::target(ei.edge, cfg)));
+            if (target_bb->get_address() == goal_address_) {
+              // Once the target is found there is no need to continue processing a path. Indeed some
+              break;
+            }
+          }
         }
       }
 
-      // Now select actual program values from the traversal
-      assign_traversal_values(trv, modelz3vals);
-
-      segi++;
-      trvi++;
+      // If the taken path is not empty *or* the function is actually
+      // called (some function CFGs are a single BB and have no edges)
+      if (!path_taken->traversal.empty() ||
+          std::find(called_funcs.begin(), called_funcs.end(),
+                    path_taken->call_trace_desc->get_call()->get_address())!=called_funcs.end()) {
+        // Now select actual program values from the traversal
+        assign_traversal_values(path_taken, modelz3vals);
+        path_.push_back(path_taken);
+      }
     }
-    GDEBUG << "\n+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-" << LEND;
   }
   catch (z3::exception z3x) {
     OERROR << "analyze_path_solution: Z3 Exception caught: " << z3x << LEND;
     return false;
   }
-
   return true;
-
 }
 
-// This function add constraints to the possible paths to be taken.
-// This should include values used by the analysis
+// The root of the execution trace will have a null call descriptor
+// because it has no callers.
+CallTraceDescriptorPtr
+PathFinder::create_call_trace_element(CallTraceGraphVertex caller_vtx,
+                                      const FunctionDescriptor *fd,
+                                      const CallDescriptor* cd,
+                                      CallFrameManager& valmgr) {
+  if (!fd) {
+    return nullptr;
+  }
+  GDEBUG << "*** Creating call trace descriptor for "
+         << addr_str(fd->get_address()) << ":" << frame_index_ << LEND;
+
+  z3::context* ctx = z3_.z3Context();
+  CallTraceDescriptorPtr call_trace_desc
+    = std::make_shared<CallTraceDescriptor>(*fd, cd, frame_index_, ctx);
+
+  if (!call_trace_desc) {
+    return nullptr;
+  }
+
+  // According to CFC the algorithm should be to "clone" the function
+  // parameters and then substitute back to the call parameters
+
+  call_trace_desc->create_frame(valmgr);
+
+  frame_index_++;
+
+  CallTraceDescriptorPtr prev_call_trace_desc;
+  if (caller_vtx != NULL_CTG_VERTEX) {
+    prev_call_trace_desc = boost::get(boost::vertex_calltrace, call_trace_, caller_vtx);
+  }
+
+  // Step 1 is to generate the structures that will encode the CFG as
+  // a set of constraints
+  if (false == generate_cfg_constraints(call_trace_desc, prev_call_trace_desc)) {
+    OWARN << "Failed to generate CFG constraints for function: "
+          << addr_str(fd->get_address()) << LEND;
+  }
+
+  // Step 2 is to generate the conditions necessary to take each CFG
+  // edge
+  if (false == generate_edge_constraints(call_trace_desc)) {
+    OWARN << "Failed to generate edge constraints for function: "
+          << addr_str(fd->get_address()) << LEND;
+  }
+  return call_trace_desc;
+}
+
+void
+PathFinder::generate_call_trace(CallTraceGraphVertex src_vtx,
+                                const FunctionDescriptor* start_fd,
+                                const FunctionDescriptor* goal_fd) {
+
+  // declared here to preserve state down the call chain
+  static CallFrameManager valmgr;
+
+  // first vertex in the trace is the root...
+  if (src_vtx == NULL_CTG_VERTEX) {
+
+    CallTraceDescriptorPtr src_trx = create_call_trace_element(NULL_CTG_VERTEX,
+                                                               start_fd,
+                                                               nullptr,
+                                                               valmgr);
+    if (src_trx == nullptr) {
+      OERROR << "Could not create root call trace descriptor!" << LEND;
+      return;
+    }
+
+    src_vtx = boost::add_vertex(call_trace_);
+    boost::put(boost::vertex_calltrace, call_trace_, src_vtx, src_trx);
+  }
+
+  // process each outgoing call, following the call chain to its end
+
+  for (auto cd : start_fd->get_outgoing_calls()) {
+
+    const FunctionDescriptor* called_fd = cd->get_function_descriptor();
+
+    // valid local call, not an import. This may change in the future
+    // because imports can effect paths
+    if (called_fd && !cd->get_import_descriptor()) {
+      CallTraceDescriptorPtr called_trx = create_call_trace_element(src_vtx,
+                                                                    called_fd,
+                                                                    cd,
+                                                                    valmgr);
+      if (called_trx == nullptr) {
+        OERROR << "Could not create called call_trace!" << LEND;
+        return;
+      }
+
+      CallTraceGraphVertex called_vtx = boost::add_vertex(call_trace_);
+      boost::put(boost::vertex_calltrace, call_trace_, called_vtx, called_trx);
+
+      // not the first vertex -> add an edge.
+      boost::add_edge(src_vtx, called_vtx, call_trace_);
+
+      // on to the next leg of the trace...
+      generate_call_trace(called_vtx, called_fd, goal_fd);
+
+      // lateral outgoing calls must have unique values, sometimes
+      valmgr.pop(called_trx->get_index());
+    }
+  }
+}
+
 bool
-SegmentFinder::generate_value_constraints(const PathSegmentInfoPtrList* analyzed_segments) {
+PathFinder::generate_value_constraints() {
 
-  // To further constrain a path value constraints are added based on
-  // previous analysis. This will add additional constraints based on
-  // detected input parameters (and eventually return values).
+  // This doesn'path_taken need to be done in a DFS, but hey, why not
+  struct GenValVis : public boost::default_dfs_visitor {
+    PathFinder* path_finder;
+    GenValVis(PathFinder* pf) : path_finder(pf) { }
+    void tree_edge(CallTraceGraphEdge e, const CallTraceGraph& g) {
 
-  // for each outgoing call, fetch the parameter constraints
-    CallDescriptorSet outgoing_calls = segment_info_->function->get_outgoing_calls();
-    for (auto cd : outgoing_calls) {
+      CallTraceGraphVertex caller_vtx = boost::source(e, g);
+      CallTraceGraphVertex called_vtx = boost::target(e, g);
 
-      FunctionDescriptor* called_fd = cd->get_function_descriptor();
-      if (called_fd == NULL) continue;
+      CallTraceDescriptorPtr called_info = boost::get(boost::vertex_calltrace, g, called_vtx);
+      CallTraceDescriptorPtr caller_info = boost::get(boost::vertex_calltrace, g, caller_vtx);
 
-      // from the perspective of the callee as seen in the called
-      // function descriptor
-      const ParamVector& callee_params = called_fd->get_parameters().get_params();
-      OINFO << "There are " << callee_params.size() << " callee params" << LEND;
+      if (!called_info || !caller_info) {
+        OERROR << "Could not find call trace descriptor for call" << LEND;
+        return;
+      }
 
-      // from the perspective of the caller as seen in the call
-      // descriptor
-      const ParamVector& caller_params = cd->get_parameters().get_params();
-      OINFO << "There are " << caller_params.size() << " caller params" << LEND;
+      const CallDescriptor* called_from = called_info->get_call();
+      SgAsmBlock* caller_bb = insn_get_block(called_from->ds.get_insn(called_from->get_address()));
+
+      GDEBUG << "Looking for edge: " << addr_str(caller_bb->get_address())
+             << " index " <<  caller_info->get_index() << LEND;
+
+      const CfgEdgeInfo* caller_edge_info = caller_info->get_edge_info(caller_bb->get_address());
+
+      if (!caller_edge_info) {
+        OWARN << "Could not find edge information for call at BB: "
+              << addr_str(caller_bb->get_address()) << LEND;
+        return;
+      }
+
+      const ParamVector& callee_params = called_info->get_parameters();
+      const ParamVector& caller_params = called_info->get_called_from_parameters();
 
       ParamVector::const_iterator callee_iter = callee_params.begin();
       ParamVector::const_iterator caller_iter = caller_params.begin();
 
       while (caller_iter!=caller_params.end() && callee_iter!=callee_params.end()) {
+
         const ParameterDefinition &caller_param = *caller_iter;
-        const ParameterDefinition &callee_param = *callee_iter;
+        if (caller_param.get_value()) {
 
-        if (caller_param.num == callee_param.num) {
-          if (caller_param.value!=NULL && callee_param.value!=NULL) {
+          // Now map caller to callee parameters
+          const ParameterDefinition &callee_param = *callee_iter;
+          if (callee_param.get_value()) {
 
-            TreeNodePtr caller_tnp = caller_param.value->get_expression(); // the caller is this functio
-            TreeNodePtr callee_tnp = callee_param.value->get_expression();
+            if (caller_param.get_num() == callee_param.get_num()) {
 
-            OINFO << "Paramater (caller) " << *caller_tnp << LEND;
-            z3::expr caller_expr = z3_->treenode_to_z3(caller_tnp);
+              TreeNodePtr caller_tnp = caller_param.get_value()->get_expression();
+              TreeNodePtr callee_tnp = callee_param.get_value()->get_expression();
 
-            OINFO << "Paramater (callee) " << *callee_tnp << LEND;
-            z3::expr callee_expr = z3_->treenode_to_z3(callee_tnp);
+              if (caller_tnp && callee_tnp) {
 
-            // basically assert that caller/callee params must be equal
-            z3::expr param_expr = z3::expr(caller_expr == callee_expr);
-            segment_info_->value_constraints.push_back(param_expr);
+                z3::expr par_caller_expr = path_finder->z3_.treenode_to_z3(caller_tnp);
+                z3::expr par_callee_expr = path_finder->z3_.treenode_to_z3(callee_tnp);
 
-            OINFO << "Added paramater constraint (caller) for "
-                  << addr_str(segment_info_->function->get_address())
-                  << " call to "
-                  << addr_str(called_fd->get_address())
-                  << " Param treenode: " << *caller_tnp
-                  << " Constraint: " << param_expr << LEND;
+                if (caller_tnp->nBits() != callee_tnp->nBits()) {
+                  OWARN << "Caller/Callee parmater sizes differ - skipping constraint" << LEND;
+                }
+                else {
+                  z3::expr parval_expr = z3::implies(caller_edge_info->edge_expr, par_caller_expr == par_callee_expr);
+                  // don't add duplicate value constraints per call_trace
+
+                  z3::expr_vector called_value_constraints = called_info->get_value_constraints();
+
+                  bool skip_constraint = false;
+                  for (unsigned i=0; i<called_value_constraints.size(); i++) {
+                    if (z3::eq(called_value_constraints[i], parval_expr)) {
+                      skip_constraint=true;
+                      break;
+                    }
+                  }
+                  if (!skip_constraint) {
+                    called_info->add_value_constraint(parval_expr);
+
+                    GDEBUG << "Added paramater constraint for call to "
+                           << addr_str(called_info->get_function().get_address())
+                           << ", Edge: " << caller_edge_info->edge_str
+                           << ", caller param expr: " << par_caller_expr
+                           << ", callee param expr: " << par_callee_expr
+                           << ", Constraint: " << parval_expr
+                           << LEND;
+                  }
+                }
+              }
+            }
           }
         }
         caller_iter++;
         callee_iter++;
       }
 
-      // Now assert the calls
-      if (analyzed_segments != NULL) {
+      // Handle return values
+      RegisterDescriptor eax_reg = called_from->ds.get_arch_reg("eax");
+      const ParamVector& caller_rets = called_info->get_called_from_return_values();
+      const ParamVector& callee_rets = called_info->get_return_values();
 
-      for (auto pi=analyzed_segments->begin(); pi!=analyzed_segments->end(); pi++) {
-        PathSegmentInfoPtr analyzed_seg = *pi;
+      // There is only one "return" value so to speak, whatever is in EAX
 
-        OINFO << "Checking for value constraints from called function "
-              << addr_str(analyzed_seg->function->get_address()) << LEND;
+      auto RvLambda = [eax_reg](ParameterDefinition const & rv) {
+        return rv.get_register() == eax_reg; };
+      auto clr_iter = std::find_if(caller_rets.begin(), caller_rets.end(), RvLambda);
+      auto cle_iter = std::find_if(callee_rets.begin(), callee_rets.end(), RvLambda);
 
-        if (called_fd->get_address() == analyzed_seg->function->get_address()) {
+      if (clr_iter!=caller_rets.end() && cle_iter!=callee_rets.end()) {
 
-          // These are the values for incoming parameters on this call
-          // to reach the goal vertex (perhaps the end). They can
-          // further constrain the path
+        if (clr_iter->get_value() && cle_iter->get_value()) {
 
-          // add the constraints from the previously analyzed
-          // segments called from this function
-          segment_info_->value_constraints.insert(segment_info_->value_constraints.end(),
-                                           analyzed_seg->value_constraints.begin(),
-                                           analyzed_seg->value_constraints.end());
+          TreeNodePtr clr_tnp = clr_iter->get_value()->get_expression();
+          TreeNodePtr cle_tnp = cle_iter->get_value()->get_expression();
+
+          if (clr_tnp && cle_tnp) {
+
+            z3::expr ret_caller_expr = path_finder->z3_.treenode_to_z3(clr_tnp);
+            z3::expr ret_callee_expr = path_finder->z3_.treenode_to_z3(cle_tnp);
+
+            z3::expr retval_expr = z3::implies(caller_edge_info->edge_expr, ret_caller_expr == ret_callee_expr);
+
+            GDEBUG << "Added return value constraint for call to " << addr_str(called_info->get_function().get_address())
+                   << ", Edge: " << caller_edge_info->edge_str
+                   << ", caller return expr: " << ret_caller_expr
+                   << ", callee return expr: " << ret_callee_expr
+                   << ", Constraint expr: " << retval_expr
+                   << LEND;
+
+            called_info->add_value_constraint(retval_expr);
+          }
         }
       }
     }
-  }
+  };
+
+  GenValVis gv_vis(this);
+
+  // Running a DFS ensures everything is linked appropriately
+  std::vector<boost::default_color_type> colors(boost::num_vertices(call_trace_));
+
+  boost::depth_first_search(call_trace_, gv_vis,
+                            boost::make_iterator_property_map(colors.begin(), boost::get(boost::vertex_index, call_trace_)));
 
   return true;
-
-} // end SegmentFinder::assert_constraints
-
-FunctionDescriptor*
-SegmentFinder::get_fd() const {
-  return segment_info_->function;
 }
 
-rose_addr_t
-SegmentFinder::get_segment_start_addr() const {
-  return segment_info_->start_addr;
-}
-
+// Actually map the model values to pharos data structures (parameters
+// and variables)
 void
-SegmentFinder::set_segment_start_addr(rose_addr_t saddr) {
-  segment_info_->start_addr = saddr;
-}
-
-rose_addr_t
-SegmentFinder::get_segment_goal_addr() const {
-  return segment_info_->goal_addr;
-}
-
-void
-SegmentFinder::set_segment_goal_addr(rose_addr_t gaddr) {
-  segment_info_->goal_addr = gaddr;
-}
-
-PathSegmentInfoPtr
-SegmentFinder::get_segment_info() {
-  return segment_info_;
-}
-
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-// Beginning of PathFinder methods
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-void
-PathFinder::assign_traversal_values(PathTraversalPtr trv,
-                                    std::map<std::string, z3::expr> modelz3vals) {
+PathFinder::assign_traversal_values(PathPtr trv, ExprMap& modelz3vals) {
 
   // to avoid huge names for variable sets
   using namespace Rose::BinaryAnalysis;
 
-  if (!trv->function) {
-    OERROR << "Invalid function descriptor" << LEND;
+  if (!trv->call_trace_desc) {
+    OERROR << "Invalid call trace element" << LEND;
     return;
   }
 
-  OINFO << "Analyzing solution ..." << LEND;
+  const FunctionDescriptor& func = trv->call_trace_desc->get_function();
+  GDEBUG << "*** Assigning data values to call trace for " << addr_str(func.get_address()) << LEND;
 
-  // Start with parameters vars ...
-  ParamVector params = trv->function->get_parameters().get_params();
-  for (ParameterDefinition param : params) {
-    TreeNodePtr param_val_tnp = param.value->get_expression();
+  // SymbolicExpr::Formatter fmt;
+  // fmt.show_width = false;
 
-    if (!param_val_tnp) continue;
+  // Start with incoming parameters vars ...  Try to find the concrete
+  // stack variables by first directly querying the model (for
+  // variables) and then by filling in component values from the model
+  const ParamVector& params = trv->call_trace_desc->get_parameters();
 
-    SmtSolver::VariableSet vars = z3_.findVariables(param_val_tnp);
-    GDEBUG << "Evaluating param: " << param.to_string() << LEND;
+  for (ParameterDefinition const & param : params) {
+    TreeNodePtr param_tnp = param.get_value()->get_expression();
 
-      // This is now on a traversal ...
-    for (auto leaf : vars.values()) {
-      auto vi = modelz3vals.find(leaf->toString());
-      if (vi != modelz3vals.end()) {
-        unsigned raw_val = vi->second.get_numeral_uint();
+    if (!param_tnp) continue;
 
-        trv->required_param_values.push_back(ConcreteParameter(param, raw_val));
+    GDEBUG << "Evaluating param: " << *param_tnp <<  LEND;
+    TreeNodePtr pt = evaluate_model_value(param_tnp, modelz3vals);
 
-        OINFO << "Incoming parameter: '" <<  *(param.address->get_expression()) << "'"
-              << " (" << leaf->toString() << ")"
-              << " must be set to '" << raw_val << "'" << LEND;
+    if (pt && pt->isNumber()) {
+      GDEBUG << "Returned parameter treenode : " << *pt << LEND;
+
+      uint64_t raw_val = pt->toInt();
+      trv->required_param_values.emplace_back(param, raw_val);
+    }
+  }
+
+  // The return value is the value of EAX for x86. The caller
+  // perspective is evaluated to get the value actually returned, not
+  // the computation of the input parameter
+  const ParamVector& rets = trv->call_trace_desc->get_called_from_return_values();
+  if (rets.size() > 0) {
+    ParameterDefinition const & ret = rets.at(0);
+    TreeNodePtr ret_tnp = ret.get_value()->get_expression();
+
+    if (ret_tnp) {
+
+      GDEBUG << "Evaluating return value: " << *ret_tnp
+             << ", search term: " << *ret_tnp << LEND;
+
+      TreeNodePtr rt = evaluate_model_value(ret_tnp, modelz3vals);
+      if (rt && rt->isNumber()) {
+        uint64_t raw_val = rt->toInt();
+        trv->required_ret_values.emplace_back(ret, raw_val);
       }
     }
   }
 
-  // Now try to find the concrete values used by local (stack
-  // variables). This is challenging because
-
-  const StackVariablePtrList& stack_vars = trv->function->get_stack_variables();
+  const std::vector<StackVariable>& stack_vars = trv->call_trace_desc->get_stack_variables();
   for (auto stkvar : stack_vars) {
 
-    TreeNodePtr stkvar_memaddr_tnp = stkvar->get_memory_address()->get_expression();
+    TreeNodePtr stkvar_addr_tnp = stkvar.get_memory_address()->get_expression();
 
     // Must look through value(s) to see if it uses the variables of
     // interest.
-    bool found_stkval = false;
-    for (auto stkvar_val_sv : stkvar->get_values()) {
+
+    for (auto stkvar_val_sv : stkvar.get_values()) {
 
       if (!stkvar_val_sv) continue;
 
       TreeNodePtr stkvar_val_tnp = stkvar_val_sv->get_expression();
       if (!stkvar_val_tnp) continue;
 
-      SmtSolver::VariableSet vars = z3_.findVariables(stkvar_val_tnp);
-      GDEBUG << "Evaluating stack variable: " << stkvar->to_string() << LEND;
+      GDEBUG << "Evaluating stack variable: " << *stkvar_val_tnp
+             << ", search term: " << *stkvar_val_tnp << LEND;
 
       // The tricky part is that there can be multiple values per
       // variable depending on how they are set
-
-      for (auto v : vars.values()) {
-
-        auto vi = modelz3vals.find(v->toString());
-        if (vi != modelz3vals.end()) {
-
-          unsigned raw_val = vi->second.get_numeral_uint();
-          trv->required_stkvar_values.push_back(ConcreteStackVariable(*stkvar, raw_val));
-          found_stkval=true;
-
-          OINFO << "Stack variable: '" << *stkvar_memaddr_tnp
-                << "' must be set to '" << raw_val << "'" << LEND;
-          break;
-        }
+      TreeNodePtr st = evaluate_model_value(stkvar_val_tnp, modelz3vals);
+      if (st && st->isNumber()) {
+        uint64_t raw_val = st->toInt();
+        trv->required_stkvar_values.push_back(ConcreteStackVariable(stkvar, raw_val));
       }
-      if (found_stkval) break;
     }
   }
 }
 
-PathFinder::PathFinder()
-  : path_found_(false), save_z3_output_(false),
+TreeNodePtr
+PathFinder::evaluate_model_value(TreeNodePtr tn, const ExprMap& modelz3vals) {
+  using namespace Rose::BinaryAnalysis;
+
+  auto leaves = tn->getVariables();
+  SymbolicExpr::ExprExprHashMap leaf_map;
+
+  for (auto leaf : leaves) {
+
+    GDEBUG << "evaluate_model_value leaf value: " << *leaf << LEND;
+
+    std::stringstream leaf_comment;
+    leaf_comment << *leaf;
+
+    auto leaf_iter = modelz3vals.find(leaf->toString().c_str());
+    if (leaf_iter != modelz3vals.end()) {
+      uint64_t leaf_val = leaf_iter->second.get_numeral_uint64();
+      auto leaf_tnp = LeafNode::createInteger(leaf->nBits(), leaf_val, leaf_comment.str());
+      leaf_map.emplace(leaf, leaf_tnp);
+    }
+  }
+  if (leaf_map.size() > 0) {
+    // simplify values as needed
+    return tn->substituteMultiple(leaf_map);
+  }
+  return TreeNodePtr();
+}
+
+PathFinder::PathFinder(const DescriptorSet& ds)
+  : ds_(ds),
+    path_found_(false),
+    frame_index_(0),
+    save_z3_output_(false),
     goal_address_(INVALID_ADDRESS), start_address_(INVALID_ADDRESS) { }
 
-PathTraversalPtrList
+PathFinder::~PathFinder() {
+  // this is probably overkill
+  z3::solver* solver = z3_.z3Solver();
+  solver->reset();
+}
+
+
+PathPtrList
 PathFinder::get_path() const {
-  return path_traversal_;
+  return path_;
 }
 
 void
@@ -995,193 +1091,104 @@ PathFinder::find_path(rose_addr_t start_addr, rose_addr_t goal_addr) {
   start_address_ = start_addr;
   goal_address_ = goal_addr;
 
-  OINFO << "Start address is: " << addr_str(start_addr)
-        << ", Goal address is: " << addr_str(goal_addr) << LEND;
+  OINFO << "Start address is: " << addr_str(start_address_)
+        << ", Goal address is: " << addr_str(goal_address_) << LEND;
 
-  // Step 2: Determine if the goal is reachable from the start
-  // address. Presumably, the goal is in here somewhere. Computing the
-  // "reachability tree" as a way to down select the set of possible
-  // paths. If there is no topological path from start to goal
-  // (spanning the FCG), then deeper analysis is unwarranted.
+  const FunctionDescriptor* start_fd = ds_.get_func_containing_address(start_address_);
+  const FunctionDescriptor* goal_fd = ds_.get_func_containing_address(goal_address_);
+  if (start_fd && goal_fd) {
+    if (detect_recursion()) {
+      OWARN << "Recursion not yet handled!" << LEND;
+      return false;
+    }
 
-  std::vector<FunctionDescriptor*> reachable_vertices;
-  bool is_feasible = compute_reachability(start_addr, goal_addr, reachable_vertices);
-
-  // Once the reachability tree (from start to goal) is computed, a
-  // few scenarios are possible:
-
-  // Scenario 0: Infeasible path There is no topological path between
-  //
-  // start and goal. Barring an incomplete CFG, there is not much to
-  // do in this case.
-
-  if (!is_feasible || reachable_vertices.size() == 0) {
-    OERROR << "path from "
-           << addr_str(start_addr) << " to "
-           << addr_str(goal_addr) << " topologically infeasible!" << LEND;
+    // JSG is trying to turn this into a graph problem. The first step
+    // is to "unwind" the call relationships in to a trace.
+    generate_call_trace(NULL_CTG_VERTEX, start_fd, goal_fd);
+  }
+  else {
+    OERROR << "Could not find valid functions for start and/or goal" << LEND;
     return false;
   }
 
-  // Scenario 1: intra-procedrual analysis
-  //
-  // If there Start and end in same function, run typical pathfinding
-  else if (reachable_vertices.size() == 1) {
+  generate_value_constraints();
 
-    OINFO << "Start and goal addresses are in the same function." << LEND;
-
-    FunctionDescriptor* start_fd = get_func_containing_address(start_addr);
-
-    // The search occurs on a basic block basis. Arbitrary addresses
-    // must be expressed in terms of their basic block address. This
-    // should be OK because by definition all sequential instuctions
-    SgAsmBlock* goal_bb = insn_get_block(global_descriptor_set->get_insn(goal_addr));
-    SgAsmBlock* start_bb = insn_get_block(global_descriptor_set->get_insn(start_addr));
-
-    std::shared_ptr<SegmentFinder> intra_path_finder = std::make_shared<SegmentFinder>(&z3_);
-    intra_path_finder->analyze_segment(start_bb->get_address(),
-                                       goal_bb->get_address(),
-                                       start_fd,
-                                       NULL);
-  }
-
-  //
-  // Scenario 2. Inter-procedrual searches. This is the hardest of the lot.
-  //
-  // Start and end are in differnt functions because there are more
-  // than one reachable_vertices function
-  else if (reachable_vertices.size() > 0) {
-
-    OINFO << "Start and goal points are in different functions" << LEND;
-
-    std::vector<FunctionSearchParameters> analysis_queue;
-
-    FunctionDescriptor* goal_fd = get_func_containing_address(goal_addr);
-    FunctionDescriptor* start_fd = get_func_containing_address(start_addr);
-
-    // Now we have the start/goal functions. We know that we will need
-    // to search the goal function from its entry point to the goal
-    // (because start is in a different function).
-
-    analysis_queue.push_back(
-      FunctionSearchParameters(
-        goal_fd, goal_fd->get_func()->get_entry_va(), goal_addr));
-
-    // build the queue/chain of functions to search, in a DFS way
-    std::map<rose_addr_t, rose_addr_t> xrefs = build_xrefs();
-
-    // For each XREF to the current goal function. This will work backwards
-    FunctionDescriptor* gfd=goal_fd;
-    FunctionDescriptor* sfd=NULL;
-    for (auto x : xrefs) {
-      rose_addr_t to = x.second;
-      rose_addr_t from = x.first;
-
-      OINFO << "Processing XREF " << addr_str(from) << " -> " << addr_str(to) << LEND;
-
-      if (to == gfd->get_address()) {
-
-        sfd = get_func_containing_address(from);
-
-        if (sfd->get_address() == start_fd->get_address()) {
-
-          // found the function containing the real start! Note that
-          // 'from' is the address of the call
-          analysis_queue.push_back(
-            FunctionSearchParameters(
-              start_fd, start_addr, from));
-
-          break;
-        }
-
-        // This is another link in the chain The goal is now the call
-        // to this sfd the start is a previous caller
-        else {
-
-          OINFO << "Found another segment: start= " << addr_str(sfd->get_func()->get_entry_va())
-                << ", goal= " << addr_str(to) << LEND;
-
-          analysis_queue.push_back(
-            FunctionSearchParameters(
-              sfd, sfd->get_func()->get_entry_va(), from));
-
-          // we must look up the caller to sfd, this is the new goal
-          gfd = sfd;
-          sfd = NULL;
-        }
-      }
-    }
-
-    // Now process the queue, which means analyzing each function
-    // queued for analysis in terms of it's start/goal
-
-    OINFO << "There are " << analysis_queue.size() << " segments to analyze" << LEND;
-
-    for (auto item : analysis_queue) {
-
-      SgAsmBlock* gbb = insn_get_block(global_descriptor_set->get_insn(item.goal_addr));
-      SgAsmBlock* sbb = insn_get_block(global_descriptor_set->get_insn(item.start_addr));
-
-      OINFO << "Analyzing " << addr_str(item.start_addr)
-            << " in basic block " << addr_str(sbb->get_address())
-            << " to " << addr_str(item.goal_addr)
-            << " in basic block " << addr_str(gbb->get_address())
-            << " in function " << addr_str(item.fd->get_address()) << LEND;
-
-      // Create a new segment finder to analyze a function
-      std::shared_ptr<SegmentFinder> segment_finder
-        = std::make_shared<SegmentFinder>(&z3_);
-
-      if (segment_finder->analyze_segment(sbb->get_address(),
-                                          gbb->get_address(),
-                                          item.fd,
-                                          &path_segments_)) {
-
-        path_segments_.push_back(segment_finder->get_segment_info());
-      }
-    }
-  }
-
-  // All the perspective path segments have been analyzed. The
-  // constraints and conditions needed for a path have been
-  // compiled. Now we must solve!
-
-  // Finally, for the CFG and constraints, attempt to select the path
-  // and extract the model.
-
-  // The final path segment entry is contains the starting function
-  // and all downstream analysis to the goal. This is because we
-  // generate the analysis list from goal to start and then
-  // back-propogate dependencies.
-  //
-  // I do this by adding all the constraints to the solver (repeats
-  // not added) and then asking for a solution
-
-  g_start_time = static_cast<double>(clock());
   if (true == evaluate_path()) {
     if (true == analyze_path_solution()) {
-
       GDEBUG << "Path found and analyzed" << LEND;
-
-      if (save_z3_output_) {
-        std::stringstream ss;
-
-        ss << ";; --- Z3 Start\n"
-           << *z3_.z3Solver()
-           << ";; --- End\n"
-          // convenience functions for checking the z3 model in output
-           << ";;(check-sat)\n"
-           << ";;(get-model)";
-
-        z3_output_.push_back(ss.str());
-      }
     }
   }
   else {
-    // save the current representation
     GDEBUG << "Failed to generate solution" << LEND;
+  }
 
+  if (save_z3_output_) {
+    std::stringstream ss;
+
+    ss << ";; --- Z3 Start\n"
+       << *z3_.z3Solver()
+       << ";; --- End\n"
+      // convenience functions for checking the z3 model in output
+       << "(check-sat)\n"
+       << "(get-model)";
+
+    z3_output_.push_back(ss.str());
   }
   return path_found_;
+}
+
+void
+PathFinder::print_call_trace() {
+
+  struct FrameVis : public boost::default_bfs_visitor {
+    CallFrameManager valmgr;
+    unsigned cur_index;
+
+    FrameVis() : cur_index(INVALID_INDEX) { }
+
+    void tree_edge(CallTraceGraphEdge e, const CallTraceGraph& g) {
+
+      CallTraceGraphVertex caller_vtx = boost::source(e, g);
+      CallTraceGraphVertex called_vtx = boost::target(e, g);
+
+      CallTraceDescriptorPtr caller_info = boost::get(boost::vertex_calltrace, g, caller_vtx);
+      CallTraceDescriptorPtr called_info = boost::get(boost::vertex_calltrace, g, called_vtx);
+
+      OINFO << "Call Trace edge: " << addr_str(called_info->get_call()->get_address())
+            << ":" << caller_info->get_index()
+            << " => " << addr_str(called_info->get_function().get_address())
+            << ":" << called_info->get_index() << LEND;
+    }
+  };
+
+  FrameVis cv;
+  CallTraceGraphVertex v = boost::vertex(0, call_trace_);
+  boost::breadth_first_search(call_trace_, v, boost::visitor(cv));
+}
+
+void
+PathFinder::save_call_trace(std::ostream& o) {
+
+  struct CallTraceVertexWriter {
+    CallTraceGraph& ctg;
+    CallTraceVertexWriter(CallTraceGraph& g) : ctg(g) { }
+    void operator()(std::ostream &output, const CallTraceGraphVertex &v) {
+      CallTraceDescriptorPtr call_trx = boost::get(boost::vertex_calltrace, ctg, v);
+      output << "[label=\" " << addr_str(call_trx->get_function().get_address())
+             << ":" << call_trx->get_index() << "\"]";
+    }
+  };
+  struct CallTraceGraphWriter {
+    void operator()(std::ostream &output) {
+      output << "graph [nojustify=true,fontname=courier]\n";
+      output << "node [shape=box, style=\"rounded,filled\",fontname=courier]\n";
+    }
+  };
+
+  boost::write_graphviz(o, call_trace_,
+                        CallTraceVertexWriter(call_trace_),
+                        boost::default_writer(),
+                        CallTraceGraphWriter());
 }
 
 void
@@ -1198,30 +1205,27 @@ PathFinder::get_z3_output() {
             std::ostream_iterator<std::string>(z3ss,"\n"));
 
   return z3ss.str();
-
 }
 
-// This routine builds a list of nodes reachable_vertices from the
+// This routine builds a list of nodes reachable vertices from the
 // start using a topological search (BFS).
 bool
-PathFinder::compute_reachability(rose_addr_t start_addr,
-                                 rose_addr_t goal_addr,
-                                 std::vector<FunctionDescriptor*>& reachable_funcs) {
+PathFinder::detect_recursion() {
 
-  const FCGVertex NULL_FCG_VERTEX = boost::graph_traits <FCG>::null_vertex();
+  const FcgVertex NULL_FCG_VERTEX = boost::graph_traits <FCG>::null_vertex();
 
-  if (goal_addr == INVALID_ADDRESS || start_addr == INVALID_ADDRESS) {
+  if (goal_address_ == INVALID_ADDRESS || start_address_ == INVALID_ADDRESS) {
     OERROR << "Invalid start/goal address!" << LEND;
     return false;
   }
 
-  FunctionDescriptor* start_fd = get_func_containing_address(start_addr);
+  const FunctionDescriptor* start_fd = ds_.get_func_containing_address(start_address_);
   if (start_fd == NULL) {
     OERROR << "Unreachable: Cannot find start function!" << LEND;
     return false;
   }
 
-  FunctionDescriptor* goal_fd = get_func_containing_address(goal_addr);
+  const FunctionDescriptor* goal_fd = ds_.get_func_containing_address(goal_address_);
   if (goal_fd == NULL) {
     OERROR << "Unreachable: Cannot find goal function!" << LEND;
     return false;
@@ -1230,21 +1234,13 @@ PathFinder::compute_reachability(rose_addr_t start_addr,
   // Both start and goal addresses are in functions within this
   // program. Now we need to figure out if there is a path from start
   // to goal functions. If there is then this is feasible.
-  if (start_fd->get_address() == goal_fd->get_address()) {
-    reachable_funcs.push_back(start_fd);
-    return true;
-  }
 
-  GDEBUG << "Start is in function " << addr_str(start_fd->get_address())
-         << "; Goal is in function " << addr_str(goal_fd->get_address())
-         << " - checking for tological path" << LEND;
-
-  FCG& fcg = global_descriptor_set->get_function_call_graph();
+  const FCG& fcg = ds_.get_function_call_graph();
 
   // Find the starting vertex, which is the function containing the start.
   // The FCG does not work on function descriptors :(
 
-  FCGVertex start_vertex = NULL_FCG_VERTEX;
+  FcgVertex start_vertex = NULL_FCG_VERTEX;
   BGL_FORALL_VERTICES(v, fcg, FCG) {
     SgAsmFunction *f = get(boost::vertex_name, fcg, v);
     // entry point enough to match functions?
@@ -1258,51 +1254,389 @@ PathFinder::compute_reachability(rose_addr_t start_addr,
     return false;
   }
 
-  OINFO << "Running BFS for path from "
-        << addr_str(start_fd->get_func()->get_entry_va())
-        << " looking for "
-        << addr_str(goal_fd->get_func()->get_entry_va()) << LEND;
+  GDEBUG << "Running DFS for path from "
+         << addr_str(start_fd->get_func()->get_entry_va())
+         << " looking for "
+         << addr_str(goal_fd->get_func()->get_entry_va()) << LEND;
 
+  std::vector<boost::default_color_type> colors(boost::num_vertices(fcg));
 
-  // Compute the reachability tree saving vertices as they are
-  // discovered
-
-  std::vector<FCGVertex> reachable_vertices;
-  reachable_vertices.reserve(boost::num_vertices(fcg));
-  reachable_funcs.reserve(reachable_vertices.size());
-
-  boost::breadth_first_search(
-    fcg, start_vertex,
-    boost::visitor(
-      boost::make_bfs_visitor(
-        boost::write_property(
-          boost::identity_property_map(),
-          std::back_inserter(reachable_vertices),
-          boost::on_discover_vertex()))));
-
-  OINFO << "Reachable vertices: " << reachable_vertices.size() << LEND;
-
-  // Of course, vertices are basically meaningless. We need the addresses
-  bool reachable_goal=false;
-  for (auto rv : reachable_vertices) {
-    SgAsmFunction *f = get(boost::vertex_name, fcg, rv);
-    FunctionDescriptor* fd = get_func_containing_address(f->get_entry_va());
-    if (fd) {
-      reachable_funcs.push_back(fd);
-
-      // Can we find the goal from the start?
-      if (fd->get_address() == goal_fd->get_address()) {
-        reachable_goal = true;
-      }
+  struct RecursionDetectorVis : public boost::default_dfs_visitor {
+    RecursionDetectorVis() : has_cycle_(false) { }
+    bool has_cycle_;
+    void back_edge(FcgEdge, const FCG&) {
+      has_cycle_ = true;
     }
-    else {
-      OERROR << "Could not find function " << addr_str(f->get_entry_va()) << LEND;
-    }
-  }
-  return reachable_goal;
+  };
+
+  RecursionDetectorVis recursion_detector;
+  boost::depth_first_visit(
+    fcg,
+    start_vertex,
+    recursion_detector,
+    boost::make_iterator_property_map(
+      colors.begin(),
+      boost::get(boost::vertex_index, fcg)));
+
+  return recursion_detector.has_cycle_;
+
 }
 
-// End PathFinder methods
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+// Beginning of CallTraceDescriptor methods
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+void
+CallTraceDescriptor::create_frame(CallFrameManager& valmgr) {
+
+  // Step 1: Clone the called function. This makes the values
+  // connecting functions (parameters, returns, and stack variables unique)
+  const ParameterList& parameters = function_descriptor_.get_parameters();
+  for (auto & par : parameters.get_params()) {
+
+    // By convention parameters need to be a certain size (32b on
+    // x86). There is a quasi-bug where pharos does not follow this
+    TreeNodePtr old_var = par.get_value()->get_expression();
+    if (old_var->nBits() != CONVENTION_PARAMETER_SIZE) {
+      auto conv_var = LeafNode::createVariable(CONVENTION_PARAMETER_SIZE, old_var->comment());
+      SymbolicValuePtr conv_val = SymbolicValue::treenode_instance(conv_var);
+      add_parameter(par, valmgr.create_frame_value(conv_val, index_));
+    }
+    else {
+      add_parameter(par, valmgr.create_frame_value(par.get_value(), index_));
+    }
+  }
+  for (auto & rv : parameters.get_returns()) {
+    add_return_value(rv, valmgr.create_frame_value(rv.get_value(), index_));
+  }
+
+  for (auto& stkvar : function_descriptor_.get_stack_variables()) {
+    StackVariable new_stkvar(stkvar->get_offset());
+    for (auto u : stkvar->get_usages()) new_stkvar.add_usage(u);
+    new_stkvar.set_memory_address(stkvar->get_memory_address());
+
+    // Must look through value(s) to see if it uses the variables of
+    // interest.
+    for (SymbolicValuePtr val : stkvar->get_values()) {
+      SymbolicValuePtr sub_sv = valmgr.create_frame_value(val, index_);
+      if (sub_sv) {
+        new_stkvar.add_value(sub_sv);
+      }
+    }
+    add_stack_variable(new_stkvar);
+  }
+
+  // Step 2: substitute back the cloned parameters to the call
+
+  if (call_descriptor_!=nullptr) {
+
+    const ParameterList& caller_parameters = call_descriptor_->get_parameters();
+
+    for (ParameterDefinition const & par : caller_parameters.get_params()) {
+      SymbolicValuePtr sub_sv = valmgr.create_frame_value(par.get_value(), index_);
+      add_called_from_parameter(par, sub_sv);
+    }
+    for (ParameterDefinition const & ret : caller_parameters.get_returns()) {
+      SymbolicValuePtr sub_sv = valmgr.create_frame_value(ret.get_value(), index_);
+      add_called_from_return_value(ret, sub_sv);
+    }
+  }
+
+  // Step 3: substitute all the path controlling values (i.e. the
+  // instruction pointer).
+
+  const CFG &cfg = function_descriptor_.get_pharos_cfg();
+  const PDG* pdg = function_descriptor_.get_pdg();
+  const DUAnalysis& du = pdg->get_usedef();
+  const BlockAnalysisMap& blocks = du.get_block_analysis();
+
+  BGL_FORALL_EDGES(edge, cfg, CFG) {
+
+    // the condition_tnp is on the EIP of the source
+    CfgVertex src_vtx = boost::source(edge, cfg);
+    SgAsmBlock *src_bb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, src_vtx));
+
+    BlockAnalysis src_analysis = blocks.at(src_bb->get_address());
+    if (!src_analysis.output_state) {
+      OERROR << "Cannot fetch output state for " << addr_str(src_bb->get_address()) << LEND;
+      continue;
+    }
+    SymbolicRegisterStatePtr src_reg_state = src_analysis.output_state->get_register_state();
+
+    if (!src_reg_state) {
+      OERROR << "Could not get vertex " << addr_str(src_bb->get_address())
+             << " register state" << LEND;
+      continue;
+    }
+
+    RegisterDescriptor eiprd = function_descriptor_.ds.get_arch_reg("eip");
+    SymbolicValuePtr vtx_eip_sv = src_reg_state->read_register(eiprd);
+    SymbolicValuePtr sub_eip_sv = valmgr.create_frame_value(vtx_eip_sv, index_);
+
+    if (sub_eip_sv) {
+      edge_values_.emplace(edge, sub_eip_sv);
+    }
+    SymbolicValuePtr entry_sv = src_analysis.entry_condition;
+    SymbolicValuePtr sub_entry_sv = valmgr.create_frame_value(entry_sv, index_);
+    if (sub_entry_sv) {
+      edge_values_.emplace(edge, sub_entry_sv);
+    }
+  }
+}
+
+const CfgEdgeValueMap&
+CallTraceDescriptor::get_edge_values() { return edge_values_; }
+
+const FunctionDescriptor&
+CallTraceDescriptor::get_function() const { return function_descriptor_; }
+
+const CallDescriptor*
+CallTraceDescriptor::get_call() const { return call_descriptor_; }
+
+const ParamVector&
+CallTraceDescriptor::get_parameters() const { return parameters_; }
+
+const std::vector<StackVariable>&
+CallTraceDescriptor::get_stack_variables() const { return stkvars_; }
+
+const ParamVector&
+CallTraceDescriptor::get_return_values() const { return  return_values_; }
+
+const ParamVector&
+CallTraceDescriptor::get_called_from_parameters() const { return called_from_parameters_; }
+
+const ParamVector&
+CallTraceDescriptor::get_called_from_return_values() const { return called_from_return_values_; }
+
+unsigned
+CallTraceDescriptor::get_index() const { return index_; }
+
+void
+CallTraceDescriptor::add_stack_variable(StackVariable new_stkvar) { stkvars_.push_back(new_stkvar); }
+
+void
+CallTraceDescriptor::add_parameter(ParameterDefinition const & old_param,
+                                   SymbolicValuePtr new_value)
+{
+  parameters_.push_back(old_param);
+  parameters_.back().set_value(new_value);
+}
+
+void
+CallTraceDescriptor::add_called_from_parameter(ParameterDefinition const & old_param,
+                                               SymbolicValuePtr new_value)
+{
+  called_from_parameters_.push_back(old_param);
+  called_from_parameters_.back().set_value(new_value);
+}
+
+void
+CallTraceDescriptor::add_return_value(ParameterDefinition const & old_param,
+                                      SymbolicValuePtr new_value)
+{
+  return_values_.push_back(old_param);
+  return_values_.back().set_value(new_value);
+}
+
+void
+CallTraceDescriptor::add_called_from_return_value(ParameterDefinition const & old_param,
+                                                  SymbolicValuePtr new_value)
+{
+  called_from_return_values_.push_back(old_param);
+  called_from_return_values_.back().set_value(new_value);
+}
+
+const CfgEdgeInfo*
+CallTraceDescriptor::get_edge_info(rose_addr_t addr) {
+
+  auto FindEdgeLambda = [addr](const CfgEdgeInfo& edge_info) -> bool {
+                          return ((edge_info.edge_tgt_addr==addr) || (edge_info.edge_src_addr==addr)) ? true : false;
+                        };
+
+  auto edge_it = std::find_if(edge_info_.begin(), edge_info_.end(), FindEdgeLambda);
+
+  if (edge_it != edge_info_.end()) {
+    return &(*edge_it);
+  }
+  return nullptr;
+}
+
+z3::expr_vector
+CallTraceDescriptor::get_cfg_conditions() { return cfg_conditions_; }
+
+void
+CallTraceDescriptor::add_cfg_condition(z3::expr cond) { cfg_conditions_.push_back(cond); }
+
+z3::expr_vector
+CallTraceDescriptor::get_value_constraints() { return value_constraints_; }
+
+void
+CallTraceDescriptor::add_value_constraint(z3::expr vconst) { value_constraints_.push_back(vconst); }
+
+z3::expr_vector
+CallTraceDescriptor::get_edge_constraints() { return edge_constraints_; }
+
+void
+CallTraceDescriptor::add_edge_constraint(z3::expr econst) { edge_constraints_.push_back(econst); }
+
+CfgEdgeInfoVector
+CallTraceDescriptor::get_edge_info_list() { return edge_info_; }
+
+void
+CallTraceDescriptor::add_edge_info(CfgEdgeInfo ei) { edge_info_.push_back(ei); }
+
+// The index uniquely identifies this call trace element
+bool
+CallTraceDescriptor::operator==(const CallTraceDescriptor& other) {
+  return index_ == other.index_;
+}
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+// Beginning of CallFrameManager methods
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+void CallFrameManager::print() {
+
+  for(auto entry : frame_vars_) {
+
+    TreeNodePtr k = entry.old_var;
+    TreeNodePtr v = entry.new_var;
+    unsigned i = entry.index;
+
+    OINFO << "Frame value list [" << i << "]: " << *k << " => " << *v << LEND;
+  }
+}
+
+TreeNodePtr
+CallFrameManager::create_frame_tnp(const TreeNodePtr old_tnp, unsigned id) {
+
+  // to avoid huge names for variable sets
+  using namespace Rose::BinaryAnalysis;
+
+  if (!old_tnp) {
+    OERROR << "invalid treenode" << LEND;
+    return  TreeNodePtr();
+  }
+
+  // must match all the variables, not just the top-level treenodes
+  auto vars = old_tnp->getVariables();
+  if (vars.size()==0) {
+    GDEBUG << "No variables to substitute, preserving value. " << LEND;
+    return old_tnp;
+  }
+
+  // Variables must be cloned everywhere (assuming they are globally
+  // unique). To make this happen a map of old to new vars
+
+  SymbolicExpr::ExprExprHashMap var_map;
+
+  for (auto old_var : vars) {
+
+    auto clone_iter = std::find_if(frame_vars_.begin(),
+                                   frame_vars_.end(),
+                                   [old_var](const CallFrameValue& val)
+                                   { return val.old_var->isEquivalentTo(old_var); });
+
+    if (clone_iter == frame_vars_.end()) {
+
+      // Comments are meaningful labels now.
+      std::string cmt = old_var->comment();
+      if (cmt == "") {
+        cmt = old_var->toString();
+      }
+      std::stringstream cmt_ss;
+      cmt_ss << cmt << ":" << id;
+
+      // this is a new variable, so clone it and save it
+      auto new_var = LeafNode::createVariable(old_var->nBits(), cmt_ss.str());
+
+      GDEBUG << "Replacing old var " << *old_var << " with new var " << *new_var << LEND;
+
+      var_map.emplace(old_var, new_var);
+
+      // Save the new cloned var
+      frame_vars_.push_back(CallFrameValue(id, old_var, new_var));
+    }
+    else {
+      // this is a known treenode var, so use the previously cloned
+      // value
+
+      GDEBUG << "Replacing old var " << *old_var
+             << " with existing " << *clone_iter->new_var << LEND;
+
+      var_map.emplace(old_var, clone_iter->new_var);
+    }
+  }
+
+  // All the variables are cloned, now replace the tree node
+  return old_tnp->substituteMultiple(var_map);
+}
+
+void
+CallFrameManager::resetAll() {
+  frame_vars_.clear();
+}
+
+// remove all values from the frame up to index
+void
+CallFrameManager::pop(unsigned index) {
+
+  frame_vars_.erase(
+    std::remove_if(frame_vars_.begin(), frame_vars_.end(),
+                   [index](const CallFrameValue & val)
+                   { return val.index == index; }),
+    frame_vars_.end());
+}
+
+const CallFrameValueList&
+CallFrameManager::get_clone_list() { return frame_vars_; }
+
+TreeNodePtr
+CallFrameManager::substitute_tnp(TreeNodePtr tnp, unsigned id) {
+
+  using namespace Rose::BinaryAnalysis;
+
+  auto vars = tnp->getVariables();
+
+  SymbolicExpr::ExprExprHashMap var_map;
+  for (auto old_var : vars) {
+    auto sub_iter = std::find_if(frame_vars_.begin(), frame_vars_.end(),
+                                 [old_var](const CallFrameValue& val) {
+                                   return val.old_var->isEquivalentTo(old_var);
+                                 });
+
+    if (sub_iter != frame_vars_.end()) {
+      var_map.emplace(old_var, sub_iter->new_var);
+    }
+    else {
+      // Not found. a new value is needed
+      TreeNodePtr new_var = create_frame_tnp(old_var, id);
+      var_map.emplace(old_var, new_var);
+    }
+  }
+
+  return tnp->substituteMultiple(var_map);
+}
+
+SymbolicValuePtr
+CallFrameManager::create_frame_value(const SymbolicValuePtr value, unsigned id) {
+
+  if (value) {
+
+    TreeNodePtr tnp = value->get_expression();
+
+    if (tnp) {
+
+      TreeNodePtr new_tnp = substitute_tnp(tnp, id);
+
+      GDEBUG << "Replacing old var " << *tnp << " with new var " << *new_tnp << LEND;
+
+      return SymbolicValue::treenode_instance(new_tnp);
+    }
+  }
+  OERROR << "Could not substitute frame symbolic value" << LEND;
+  return SymbolicValuePtr();
+}
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 // Beginning of utility methods
@@ -1348,51 +1682,5 @@ vertex_str(CfgVertex v, const CFG& cfg) {
   return addr_str(vertex_addr(v, cfg));
 }
 
-rose_addr_t
-get_address_from_treenode(TreeNodePtr tnp) {
-
-  LeafNodePtr lp = tnp->isLeafNode();
-  if (lp && lp->isNumber()) {
-    const Sawyer::Container::BitVector& bits = lp->bits();
-    if (bits.size() <= 64) {
-      return (rose_addr_t)bits.toInteger();
-    }
-  }
-  return INVALID_ADDRESS;
-}
-
-std::map<rose_addr_t, rose_addr_t>
-build_xrefs() {
-  std::map<rose_addr_t, rose_addr_t> xrefs;
-  for (auto& pair : global_descriptor_set->get_call_map()) {
-    const CallDescriptor & cd = pair.second;
-    const CallTargetSet &call_targets = cd.get_targets();
-
-    rose_addr_t from = cd.get_address();
-
-    // record this xref
-    if (!call_targets.empty()) {
-      // to address of (first) target   // from address of call
-      rose_addr_t to = *(call_targets.begin());
-      xrefs.emplace(from, to);
-    }
-
-    // check for API call (which will not have a target because the import code is not in the
-    // current image)
-    const ImportDescriptor *imp = cd.get_import_descriptor(); // is this an import?
-    if (imp != NULL) {
-      xrefs.emplace(from, imp->get_address());
-    }
-  }
-  return xrefs;
-}
-
-FunctionDescriptor*
-get_func_containing_address(rose_addr_t addr) {
-  // JSG believes that this must be the entry VA or bad things happen
-  // ... it's a guess at best
-  SgAsmFunction* func = insn_get_func(global_descriptor_set->get_insn(addr));
-  return global_descriptor_set->get_func(func->get_entry_va());
-}
 
 } // end namespace pharos

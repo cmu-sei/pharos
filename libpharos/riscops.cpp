@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "riscops.hpp"
 #include "masm.hpp"
@@ -10,27 +10,45 @@ namespace pharos {
 // SymbolicRiscOperatorsPtr everywhere.  And it doesn't consume dozen of gigabytes of RAM. :-)
 SymbolicRiscOperatorsPtr global_rops;
 
-SymbolicRiscOperators::SymbolicRiscOperators(const SymbolicValuePtr& aprotoval_,
-                                             const SmtSolverPtr & asolver_):
-  SymRiscOperators(aprotoval_, asolver_) {
+SymbolicRiscOperators::SymbolicRiscOperators(
+  DescriptorSet const & ds_,
+  const SymbolicValuePtr& aprotoval_,
+  const SmtSolverPtr & asolver_,
+  Callbacks * callbacks_)
+  : SymRiscOperators(aprotoval_, asolver_), ds(ds_), callbacks(callbacks_)
+{
   name("CERT");
   computingDefiners(TRACK_LATEST_DEFINER);
   computingRegisterWriters(TRACK_LATEST_WRITER);
   computingMemoryWriters(TRACK_LATEST_WRITER);
-  // Must be deferred until the global descriptor set exists...
-  //EIP = global_descriptor_set->get_ip_reg();
+  EIP = ds.get_ip_reg();
 }
 
 // Standard ROSE constructor must take custom types to ensure promotion.
-SymbolicRiscOperators::SymbolicRiscOperators(const SymbolicStatePtr& state_,
-                                             const SmtSolverPtr & asolver_):
-  SymRiscOperators(state_, asolver_) {
+SymbolicRiscOperators::SymbolicRiscOperators(
+  DescriptorSet const & ds_,
+  const SymbolicStatePtr& state_,
+  const SmtSolverPtr & asolver_,
+  Callbacks * callbacks_)
+  : SymRiscOperators(state_, asolver_), ds(ds_), callbacks(callbacks_)
+{
   name("CERT");
   computingDefiners(TRACK_LATEST_DEFINER);
   computingRegisterWriters(TRACK_LATEST_WRITER);
   computingMemoryWriters(TRACK_LATEST_WRITER);
-  // Must be deferred until the global descriptor set exists...
-  //EIP = global_descriptor_set->get_ip_reg();
+  EIP = ds.get_ip_reg();
+}
+
+SymbolicRiscOperatorsPtr SymbolicRiscOperators::instance(
+  DescriptorSet const & ds_,
+  Callbacks * callbacks_,
+  const SmtSolverPtr & solver_) {
+
+  auto ip = ds_.get_partitioner().instructionProvider();
+  SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(ip);
+  SymbolicMemoryMapStatePtr mstate = SymbolicMemoryMapState::instance();
+  SymbolicStatePtr state = SymbolicState::instance(rstate, mstate);
+  return instance(ds_, state, callbacks_, solver_);
 }
 
 //==============================================================================================
@@ -54,18 +72,19 @@ void SymbolicRiscOperators::startInstruction(SgAsmInstruction *insn) {
   STRACE << "============================================================================" << LEND;
 
   // Clear our vectors.
-  reads.clear();
-  writes.clear();
+  insn_accesses.clear();
 
   // Do the standard parent behavior...
   SymRiscOperators::startInstruction(insn);
 }
 
-BaseSValuePtr SymbolicRiscOperators::readRegister(RegisterDescriptor reg) {
+BaseSValuePtr SymbolicRiscOperators::readRegister(
+  RegisterDescriptor reg, const BaseSValuePtr & dflt)
+{
   STRACE << "RiscOps::readRegister() reg=" << unparseX86Register(reg, NULL) << LEND;
 
   // Call the standard ROSE implementation of readRegister().
-  BaseSValuePtr bv = SymRiscOperators::readRegister(reg, undefined_(reg.get_nbits()));
+  BaseSValuePtr bv = SymRiscOperators::readRegister(reg, dflt);
 
   // Create an abstract access recording this register write.  We exclude the EIP register to
   // reduce memory usage, and make it easier to find the significant register reads and writes.
@@ -80,7 +99,7 @@ BaseSValuePtr SymbolicRiscOperators::readRegister(RegisterDescriptor reg) {
     }
     // We make a copy because this value isn't supposed to change ever again?  Really needed?
     SymbolicValuePtr svalue = SymbolicValue::promote(bv)->scopy();
-    reads.push_back(AbstractAccess(true, reg, svalue, get_sstate()));
+    insn_accesses.push_back(AbstractAccess(ds, true, reg, svalue, get_sstate()));
     STRACE << "RiscOps::readRegister() reg=" << unparseX86Register(reg, NULL)
            << " value=" << *svalue << LEND;
   }
@@ -106,7 +125,7 @@ void SymbolicRiscOperators::writeRegister(RegisterDescriptor reg, const BaseSVal
 
     // We make a copy because this value isn't supposed to change ever again? Really needed?
     SymbolicValuePtr svalue = SymbolicValue::promote(v)->scopy();
-    writes.push_back(AbstractAccess(false, reg, svalue, get_sstate()));
+    insn_accesses.push_back(AbstractAccess(ds, false, reg, svalue, get_sstate()));
     STRACE << "RiscOps::writeRegister() reg=" << unparseX86Register(reg, NULL)
            << " value=" << *svalue << LEND;
   }
@@ -115,10 +134,8 @@ void SymbolicRiscOperators::writeRegister(RegisterDescriptor reg, const BaseSVal
 BaseSValuePtr SymbolicRiscOperators::readMemory(RegisterDescriptor segreg,
                                                 const BaseSValuePtr &addr,
                                                 const BaseSValuePtr &dflt,
-                                                const BaseSValuePtr &cond) {
-
-
-
+                                                const BaseSValuePtr &cond)
+{
   SymbolicValuePtr saddr = SymbolicValue::promote(addr)->scopy();
   SymbolicValuePtr retval;
 
@@ -130,7 +147,7 @@ BaseSValuePtr SymbolicRiscOperators::readMemory(RegisterDescriptor segreg,
   }
 
   SymbolicValuePtr sdflt = SymbolicValue::promote(dflt);
-  // If the address is invalid, then the memory at that address is invald.  It's unclear how
+  // If the address is invalid, then the memory at that address is invalid.  It's unclear how
   // naughty we're being here with respect to the immutabiltiy of dflt.  As far as Cory knows,
   // it was always a newly constructed undefined just for this read...
   if (saddr->is_incomplete()) {
@@ -152,54 +169,8 @@ BaseSValuePtr SymbolicRiscOperators::readMemory(RegisterDescriptor segreg,
            << " default value: " << *sdflt << LEND;
   }
 
-  // Check for reads to constant addresses.  We might want to kludge up several things here,
-  // including reads of imports and reads of constant initialized data.  This has to be in
-  // RiscOps and not the MemoryState because we want to handle full size (not byte size) reads.
-  for (const TreeNodePtr& tn : saddr->get_possible_values()) {
-    if (tn->isNumber() && tn->nBits() <= 64) {
-      rose_addr_t known_addr = tn->toInt();
-      ImportDescriptor *id = global_descriptor_set->get_import(known_addr);
-      // Handle the special case of reading an import descriptor!  Let's mock this up so that
-      // we return the value at the address, we return the address itself.  That's the
-      // convention that we use to signal whatever value was filled in by the loader at runtime
-      // for address of the imported function.
-      if (id != NULL) {
-        SDEBUG << "Memory read of " << addr_str(known_addr)
-               << " reads import " << id->get_long_name() << LEND;
-        if (currentInstruction() != NULL) {
-          SDEBUG << "The memory read ocurred in insn: "
-                 << debug_instruction(currentInstruction()) << LEND;
-          CallDescriptor* cd =
-            global_descriptor_set->get_call(currentInstruction()->get_address());
-          if (cd != NULL) {
-            SDEBUG << "Added target " << *id << " to " << *cd << LEND;
-            cd->add_import_target(id);
-          }
-        }
-
-        // Initialize the memory state with the fixed variable associated defined by the loader
-        // and stored in the import descriptor.
-        SDEBUG << "Initialized with " << *(id->get_loader_variable()) << LEND;
-        SymbolicValuePtr sv = SymbolicValue::constant_instance(tn->nBits(), known_addr);
-        initialize_memory(sv, id->get_loader_variable());
-      }
-      GlobalMemoryDescriptor* gmd = global_descriptor_set->get_global(known_addr);
-      // this global address is not code (at least not a function)
-      if (gmd != NULL) {
-        SDEBUG << "Memory read of " << addr_str(known_addr)
-               << " reads global " << gmd->address_string() << LEND;
-
-        // Create a new variable for the global value. A new abstract variable is needed
-        // because the global can change throughout the program
-        SymbolicValuePtr sv = SymbolicValue::constant_instance(tn->nBits(), known_addr);
-
-        // JSG is updating creation of global values to contain a set of values.
-        std::vector<SymbolicValuePtr> global_vals = gmd->get_values();
-        for (auto gv : global_vals) {
-          initialize_memory(sv, gv);
-        }
-      }
-    }
+  if (callbacks) {
+    callbacks->readMemory(*this, saddr);
   }
 
   // Call the standard ROSE implementation of readRegister().
@@ -212,9 +183,63 @@ BaseSValuePtr SymbolicRiscOperators::readMemory(RegisterDescriptor segreg,
   SymbolicValuePtr srv = retval->scopy();
   // Create an abstract access recording this memory read.
   size_t nbits = sdflt->get_width();
-  reads.push_back(AbstractAccess(true, saddr, nbits, srv, get_sstate()));
+  insn_accesses.push_back(AbstractAccess(ds, true, saddr, nbits, srv, get_sstate()));
 
   return retval;
+}
+
+void SingleThreadedAnalysisCallbacks::readMemory(
+  SymbolicRiscOperators & rops, SymbolicValuePtr saddr)
+{
+  // Check for reads to constant addresses.  We might want to kludge up several things here,
+  // including reads of imports and reads of constant initialized data.  This has to be in
+  // RiscOps and not the MemoryState because we want to handle full size (not byte size) reads.
+  for (const TreeNodePtr& tn : saddr->get_possible_values()) {
+    if (tn->isNumber() && tn->nBits() <= 64) {
+      rose_addr_t known_addr = tn->toInt();
+      ImportDescriptor *id = ds.get_rw_import(known_addr); // Added to CD
+      // Handle the special case of reading an import descriptor!  Let's mock this up so that
+      // we return the value at the address, we return the address itself.  That's the
+      // convention that we use to signal whatever value was filled in by the loader at runtime
+      // for address of the imported function.
+      if (id != NULL) {
+        SDEBUG << "Memory read of " << addr_str(known_addr)
+               << " reads import " << id->get_long_name() << LEND;
+        if (rops.currentInstruction() != NULL) {
+          SDEBUG << "The memory read ocurred in insn: "
+                 << debug_instruction(rops.currentInstruction()) << LEND;
+          // add_import_target()
+          CallDescriptor* cd = ds.get_rw_call(rops.currentInstruction()->get_address());
+          if (cd != NULL) {
+            SDEBUG << "Added target " << *id << " to " << *cd << LEND;
+            cd->add_import_target(id);
+          }
+        }
+
+        // Initialize the memory state with the fixed variable associated defined by the loader
+        // and stored in the import descriptor.
+        SDEBUG << "Initialized with " << *(id->get_loader_variable()) << LEND;
+        SymbolicValuePtr sv = SymbolicValue::constant_instance(tn->nBits(), known_addr);
+        rops.initialize_memory(sv, id->get_loader_variable());
+      }
+      const GlobalMemoryDescriptor* gmd = ds.get_global(known_addr);
+      // this global address is not code (at least not a function)
+      if (gmd != NULL) {
+        SDEBUG << "Memory read of " << addr_str(known_addr)
+               << " reads global " << gmd->address_string() << LEND;
+
+        // Create a new variable for the global value. A new abstract variable is needed
+        // because the global can change throughout the program
+        SymbolicValuePtr sv = SymbolicValue::constant_instance(tn->nBits(), known_addr);
+
+        // JSG is updating creation of global values to contain a set of values.
+        auto global_vals = gmd->get_values();
+        for (auto gv : global_vals) {
+          rops.initialize_memory(sv, gv);
+        }
+      }
+    }
+  }
 }
 
 void SymbolicRiscOperators::writeMemory(UNUSED RegisterDescriptor segreg,
@@ -249,7 +274,7 @@ void SymbolicRiscOperators::writeMemory(UNUSED RegisterDescriptor segreg,
   for (const TreeNodePtr& tn : saddr->get_possible_values()) {
     if (tn->isNumber() && tn->nBits() <= 64) {
       rose_addr_t known_addr = tn->toInt();
-      ImportDescriptor *id = global_descriptor_set->get_import(known_addr);
+      const ImportDescriptor *id = ds.get_import(known_addr);
       if (id != NULL) {
         SWARN << "Instruction " << debug_instruction(currentInstruction())
               << " overwrites import " << id->get_long_name() << " at address "
@@ -261,7 +286,7 @@ void SymbolicRiscOperators::writeMemory(UNUSED RegisterDescriptor segreg,
   // This one line is the call to RiscOperators::writeMemory that we ought to be using...
   SymRiscOperators::writeMemory(segreg, addr, data, cond);
 
-  writes.push_back(AbstractAccess(false, saddr, data->get_width(), sdata, get_sstate()));
+  insn_accesses.push_back(AbstractAccess(ds, false, saddr, data->get_width(), sdata, get_sstate()));
 }
 
 // This API invented by Cory to initialize memory with a known symbolic value rather than a new

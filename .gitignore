@@ -28,19 +28,14 @@ TAGS
 
 # test cruft
 /apitests.dot
-/tools/dumpmasm/tests/ApiAnalyzer/*
-/tools/dumpmasm/tests/**/*.part2
-/tools/objdigger/oorules/*.error
-/tools/objdigger/oorules/*.result
-/tools/objdigger/tests/**/*.diff
-/tools/objdigger/tests/**/*.json
-/tools/objdigger/tests/**/*.named
-/tools/objdigger/tests/**/*.output
+/tools/ooanalyzer/tests/**/*.ground.errors
+/tests/**/*.cvdump
+/tests/**/*.symbolspre
+/python/pharos/test/testpath.py
 
 # to support (& ignore) build dirs in the repo dir:
 /build
-/build-release
-/build-debug
+/build-*
 
 # local build overrides:
 local.cmake
@@ -50,3 +45,4 @@ local.cmake
 **/.tramp_history
 **/.tramp_ignore
 **/.gdb_history
+

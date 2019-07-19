@@ -1,4 +1,4 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <rose.h>
 #include <libpharos/misc.hpp>
@@ -9,9 +9,7 @@
 
 using namespace pharos;
 
-// The global CERT message facility.
-Sawyer::Message::Facility glog("MASM");
-
+// These options are all bogus right now.  FIXME!
 ProgOptDesc dumpmasm_options() {
   namespace po = boost::program_options;
 
@@ -31,180 +29,128 @@ ProgOptDesc dumpmasm_options() {
   return masmopt;
 }
 
-using Rose::BinaryAnalysis::AsmUnparser;
-
-class CSVAsmUnparser: public AsmUnparser {
-public:
-  CSVAsmUnparser() : AsmUnparser() {
-    init();
-  }
-
-  class InsnUnparser: public UnparserCallback {
-  public:
-    virtual bool operator()(bool enabled, const InsnArgs &args);
-  } insn_unparser;
-
-  class StaticDataUnparser: public UnparserCallback {
-  public:
-    virtual bool operator()(bool enabled, const StaticDataArgs &args);
-  } data_unparser;
-
-  virtual void init();
-};
-
-void CSVAsmUnparser::init() {
-  // Clear the existing lists.
-  insn_callbacks.clear();
-  basicblock_callbacks.clear();
-  staticdata_callbacks.clear();
-  datablock_callbacks.clear();
-  function_callbacks.clear();
-  interp_callbacks.clear();
-
-  organization = ORGANIZED_BY_ADDRESS;
-
-  // We only need to callbacks for the CSV format (instruction and static data).
-  insn_callbacks.unparse
-    .append(&insn_unparser);
-
-  staticdata_callbacks.unparse
-    .append(&data_unparser);
-}
-
-bool
-CSVAsmUnparser::InsnUnparser::operator()(bool enabled, const InsnArgs &args)
+void
+csv_output_insn(const P2::Partitioner& partitioner, const P2::AddressUser& au)
 {
-  if (enabled) {
-    SgAsmInstruction* insn = args.insn;
-    SgAsmFunction *func = SageInterface::getEnclosingNode<SgAsmFunction>(insn);
-    std::string opbytes = debug_opcode_bytes(insn->get_raw_bytes(), 99999);
+  // If the address user is not a basic block/instruction we're done.
+  if (!au.isBasicBlock()) return;
 
-    SgAsmOperandList *oplist = insn->get_operandList();
+  SgAsmInstruction* insn = au.insn();
+  if (!insn) {
+    GERROR << "Basic block address user had a NULL instruction pointer?" << LEND;
+    return;
+  }
+  std::string opbytes = debug_opcode_bytes(insn->get_raw_bytes(), 99999);
+
+  std::string opstr = "";
+  SgAsmOperandList *oplist = insn->get_operandList();
+  if (!oplist) {
+    GERROR << "NULL oplist pointer?" << LEND;
+    return;
+  }
+  else {
     SgAsmExpressionPtrList& elist = oplist->get_operands();
-    std::string opstr = "";
     for (SgAsmExpressionPtrList::iterator exp = elist.begin(); exp != elist.end(); ++exp) {
       opstr.append(masm_unparseX86Expression(*exp, NULL).c_str());
-      if(exp != elist.end() -1)
+      if(exp != elist.end() - 1)
         opstr.append(", ");
     }
+  }
 
-    args.output << addr_str(insn->get_address()) << ",\"INSN\","
-                << addr_str(func->get_entry_va()) << ",\""
+  for (const P2::BasicBlock::Ptr& bb : au.basicBlocks()) {
+    if (!bb) {
+      GERROR << "NULL basic block pointer at instruction address "
+             << addr_str(insn->get_address()) << LEND;
+      continue;
+    }
+
+    //std::vector<P2::Function::Ptr> funcs = partitioner.functionsOwningBasicBlock(insn->get_address());
+    std::vector<P2::Function::Ptr> funcs = partitioner.functionsOwningBasicBlock(bb->address());
+    for (const P2::Function::Ptr& func : funcs) {
+      if (!func) {
+        GERROR << "NULL function pointer in basic block?" << LEND;
+        continue;
+      }
+      std::cout << "\"PART\"," << addr_str(insn->get_address())
+                << ",\"INSN\"," << addr_str(func->address()) << ",\""
                 << opbytes << "\",\""
                 << insn->get_mnemonic().c_str() << "\",\""
                 << opstr << "\"" << LEND;
+    }
   }
-  return enabled;
 }
 
-bool
-CSVAsmUnparser::StaticDataUnparser::operator()(bool enabled, const StaticDataArgs &args)
+void
+csv_output_data(const P2::Partitioner& partitioner, const P2::AddressUser& au)
 {
-  if (enabled) {
-    SgAsmBlock *block = isSgAsmBlock(args.data->get_parent()); // look only to immediate parent
-    SgAsmFunction *func = SageInterface::getEnclosingNode<SgAsmFunction>(block);
-    std::string str_repr = "---";
-    std::string opbytes = debug_opcode_bytes(args.data->get_raw_bytes(), args.data->get_size());
-    std::string dtype = "DATA";
-    std::string mnemonic = "db";
-    std::string opstr = "???";
-    rose_addr_t entry_va = func->get_entry_va();
+  if (!au.isDataBlock()) return;
 
-    args.output << addr_str(args.data->get_address()) << ",\"" << dtype << "\","
-                << addr_str(entry_va) << ",\""
-                << opbytes << "\",\""
-                << mnemonic << "\",\""
-                << opstr << "\"" << LEND;
+  const P2::DataBlock::Ptr& db = au.dataBlock();
+
+  if (!db) {
+    GERROR << "Owned datablock had a NULL data block pointer?" << LEND;
+    return;
   }
-  return enabled;
+
+  std::ostringstream os;
+  Memory mem(partitioner.memoryMap());
+  std::string bytes = mem.read_hex_string(db->address(), Bytes(db->size()));
+
+  std::vector<P2::Function::Ptr> const & funcs = db->attachedFunctionOwners();
+  if (funcs.size() == 0) {
+    std::cout << "\"PART\"," << addr_str(db->address())
+              << ",\"DATA\"," << addr_str(0) << ",\""
+              << bytes << "\",\"db\",\"???\"" << LEND;
+  }
+  else {
+    for (const P2::Function::Ptr& func : funcs) {
+      if (!func) {
+        GERROR << "NULL function pointer in data block?" << LEND;
+        continue;
+      }
+      std::cout << "\"PART\"," << addr_str(db->address())
+                << ",\"DATA\"," << addr_str(func->address()) << ",\""
+                << bytes << "\",\"db\",\"???\"" << LEND;
+    }
+  }
 }
 
-// This is nothing more than a reminder to create a real IDA format unparser.   Cory
-class IDAAsmUnparser: public AsmUnparser {
-public:
-  size_t op_code_bytes;
-  bool stack_pointer;
-
-  IDAAsmUnparser() : AsmUnparser() {
-    init();
-  }
-  virtual void init();
-};
-
-void IDAAsmUnparser::init() {
-  organization = ORGANIZED_BY_ADDRESS;
-
-  insn_callbacks.pre
-    .append(&insnBlockSeparation)           /* used only for ORGANIZED_BY_ADDRESS */
-    .append(&insnSkipBackBegin)             /* used only for ORGANIZED_BY_ADDRESS */
-    .append(&insnFuncEntry)                 /* used only for ORGANIZED_BY_ADDRESS */
-    .append(&insnRawBytes)
-    .append(&insnBlockEntry)                /* used only for ORGANIZED_BY_ADDRESS */
-    .append(&insnStackDelta);
-  insn_callbacks.unparse
-    .append(&insnBody);
-  insn_callbacks.post
-    .append(&insnNoEffect)
-    .append(&insnComment)
-    .append(&insnLineTermination)
-    .append(&insnSkipBackEnd);              /* used only for ORGANIZED_BY_ADDRESS */
-
-  basicblock_callbacks.pre
-    .append(&basicBlockReasons)
-    .append(&basicBlockPredecessors);
-  basicblock_callbacks.unparse
-    .append(&basicBlockBody);               /* used only for ORGANIZED_BY_AST */
-  basicblock_callbacks.post
-    .append(&basicBlockOutgoingStackDelta)
-    .append(&basicBlockSuccessors)
-    .append(&basicBlockLineTermination)
-    .append(&basicBlockCleanup);
-
-  staticdata_callbacks.pre
-    .append(&staticDataBlockSeparation)     /* used only for ORGANIZED_BY_ADDRESS */
-    .append(&staticDataSkipBackBegin)       /* used only for ORGANIZED_BY_ADDRESS */
-    .append(&staticDataRawBytes)
-    .append(&staticDataBlockEntry);         /* used only for ORGANIZED_BY_ADDRESS */
-  staticdata_callbacks.unparse
-    .append(&staticDataDetails)
-    .append(&staticDataComment);
-  staticdata_callbacks.post
-    .append(&staticDataLineTermination)
-    .append(&staticDataDisassembler)
-    .append(&staticDataSkipBackEnd);        /* used only for ORGANIZED_BY_ADDRESS */
-
-  datablock_callbacks.unparse
-    .append(&dataBlockBody)                 /* used only for ORGANIZED_BY_AST */
-    .append(&dataBlockLineTermination);
-
-  function_callbacks.pre
-    .append(&functionEntryAddress)
-    .append(&functionSeparator)
-    .append(&functionReasons)
-    .append(&functionName)
-    .append(&functionLineTermination)
-    .append(&functionComment)
-    .append(&functionPredecessors)
-    .append(&functionSuccessors)
-    .append(&functionAttributes)
-    .append(&functionLineTermination);
-  function_callbacks.unparse
-    .append(&functionBody);                 /* used only for ORGANIZED_BY_AST */
-
-  interp_callbacks.pre
-    .append(&interpName);
-  interp_callbacks.unparse
-    .append(&interpBody);
-}
-
-int main(int argc, char* argv[])
+void csv_output_flow(const ProgramDependencyGraph& pdg_graph)
 {
-  DebugDisasm debug_disassembly;
-  // We want 8 bytes of hexadecimal op-codes.
-  debug_disassembly.hex_bytes = 8;
-  //debug_disassembly.basic_block_lines = false;
-  //debug_disassembly.show_reasons = false;
+  const ProgramDependencyGraph::Vertex& i = *(pdg_graph.get_indeterminate());
 
+  for (auto edge : pdg_graph.edges()) {
+    const PD::PDGVertex& source = edge.source()->value();
+
+    // Report the indeterminate target vertex a little differently.
+    std::string target_str;
+    if (edge.target()->id() == i.id()) {
+      target_str = "\"UNKNOWN\"";
+    }
+    else {
+      const PD::PDGVertex& target = edge.target()->value();
+      target_str = addr_str(target.get_address());
+    }
+
+    const PD::PDGEdge& pedge = edge.value();
+    PD::PDGEdgeType etype = pedge.get_type();
+    std::string type_str;
+    if (etype == PD::E_CALL)               type_str = "CALL";
+    else if (etype == PD::E_FALLTHRU)      type_str = "FALLTHRU";
+    else if (etype == PD::E_BRANCH)        type_str = "BRANCH";
+    else if (etype == PD::E_REPEAT)        type_str = "REPEAT";
+    else if (etype == PD::E_RETURN)        type_str = "RETURN";
+    else if (etype == PD::E_NOT_TAKEN)     type_str = "NOT_TAKEN";
+    else if (etype == PD::E_CALL_FALLTHRU) type_str = "CALL_FALL";
+    else                                   type_str = "OTHER";
+
+    std::cout << "\"FLOW\"," << addr_str(source.get_address()) << ","
+              << target_str << ",\"" << type_str << "\"" << LEND;
+  }
+}
+
+int dumpmasm_main(int argc, char* argv[])
+{
   ProgOptDesc dmod = dumpmasm_options();
   ProgOptDesc csod = cert_standard_options();
   dmod.add(csod);
@@ -212,60 +158,36 @@ int main(int argc, char* argv[])
 
   // Find calls, functions, and imports.
   DescriptorSet ds(vm);
-  SgAsmInterpretation* interp = ds.get_interp();
-  if (interp == NULL) {
-    GFATAL << "Unable to analyze file (no executable content found)." << LEND;
-    return EXIT_FAILURE;
-  }
 
-  // A lot of things have changed since Cory initially wrote the first dumpmasm implementation.
-  // Now for better compatability with the rest of our infrastructure, I think I'd like to use
-  // the function descriptors in the descriptor set.  This in turn should probably be using the
-  // Partitioner2 infrastructure, which is why I'm writing this code.  We should also override
-  // the unparser to produce a truly MASM compliant unparser.  For my immediate needs, the
-  // default ROSE unparser AST traversal is more complete, and sufficient.
+  std::string format = "csv";
   if (vm.count("format")) {
-    std::string format = vm["format"].as<std::string>();
+    format = vm["format"].as<std::string>();
+  }
 
-    if (format == "csv") {
-      CSVAsmUnparser unparser;
-      unparser.unparse(std::cout, interp);
-    }
-    else if (format == "ida") {
-      IDAAsmUnparser unparser;
-      unparser.unparse(std::cout, interp);
-    }
-    else if (format == "rose") {
-      AsmUnparser unparser;
-      unparser.unparse(std::cout, interp);
+  const P2::Partitioner& partitioner = ds.get_partitioner();
+  const P2::AddressUsageMap& aum = partitioner.aum();
+
+  // The address users
+  auto users = aum.overlapping(aum.hull()).addressUsers();
+  //P2::AddressUsers& users = aum.overlapping(aum.hull()).addressUsers();
+  for (const P2::AddressUser& au : users) {
+    csv_output_insn(partitioner, au);
+    csv_output_data(partitioner, au);
+    if (!au.isBasicBlock() && !au.isDataBlock()) {
+      GERROR << "Address user is neither a basic block nor a data block." << LEND;
     }
   }
-  else {
-    // This is the old way of doing it.  It should be replaced with the various formats
-    // above, and the useful options integrated into all formats.  Eventually, these can
-    // become options on the standard recursiveDisassemble, or we can find a way to
-    // intergrate most of that code into our custom tool as well.
-    if (vm.count("hex-bytes")) {
-      debug_disassembly.hex_bytes = vm["hex-bytes"].as<int>();
-      OINFO << "Showing " << debug_disassembly.hex_bytes << " hex bytes per instruction." << LEND;
-    }
-    if (vm.count("basic-block-lines")) {
-      debug_disassembly.basic_block_lines = true;
-      OINFO << "Displaying basic block lines." << LEND;
-    }
-    if (vm.count("reasons")) {
-      debug_disassembly.show_reasons = true;
-      OINFO << "Displaying basic block reasons."<< LEND;
-    }
+  csv_output_flow(ds.get_new_pdg_graph());
 
-    debug_disassembly.target_addrs = option_addr_list(vm, "include-func");
+  OINFO << "Dumpmasm completed successfully." << LEND;
 
-    // Call the traversal starting at the project node of the AST
-    debug_disassembly.traverse(interp, preorder);
-  }
-  global_rops.reset();
-  exit(0);
+  return 0;
 }
+
+int main(int argc, char* argv[]) {
+  return pharos_main("MASM", dumpmasm_main, argc, argv);
+}
+
 /* Local Variables:   */
 /* mode: c++          */
 /* fill-column:    95 */

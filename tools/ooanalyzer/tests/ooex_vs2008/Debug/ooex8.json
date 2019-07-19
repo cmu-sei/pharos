@@ -1,0 +1,176 @@
+{
+    "Structures": [
+        {
+            "Name": "cls_4115b0",
+            "DemangledName": "",
+            "Size": "28",
+            "Members": [
+                {
+                    "name": "cls_4116c0_0",
+                    "type": "struc",
+                    "struc": "cls_4116c0",
+                    "parent": "yes",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "cls_411740_8",
+                    "type": "struc",
+                    "struc": "cls_411740",
+                    "parent": "yes",
+                    "offset": "8",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "4115b0",
+                    "name": "ctor_4115b0",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                }
+            ]
+        },
+        {
+            "Name": "cls_4116c0",
+            "DemangledName": "",
+            "Size": "15",
+            "Members": [
+                {
+                    "name": "mbr_0",
+                    "type": "dword",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_4",
+                    "type": "dword",
+                    "offset": "4",
+                    "count": "1"
+                },
+                {
+                    "name": "cls_411660_8",
+                    "type": "struc",
+                    "struc": "cls_411660",
+                    "parent": "yes",
+                    "offset": "8",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "4116c0",
+                    "name": "ctor_4116c0",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                }
+            ]
+        },
+        {
+            "Name": "cls_411660",
+            "DemangledName": "",
+            "Size": "7",
+            "Members": [
+                {
+                    "name": "mbr_0",
+                    "type": "dword",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_4",
+                    "type": "word",
+                    "offset": "4",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_6",
+                    "type": "byte",
+                    "offset": "6",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "411660",
+                    "name": "ctor_411660",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                }
+            ]
+        },
+        {
+            "Name": "cls_411740",
+            "DemangledName": "",
+            "Size": "15",
+            "Members": [
+                {
+                    "name": "mbr_0",
+                    "type": "dword",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_4",
+                    "type": "dword",
+                    "offset": "4",
+                    "count": "1"
+                },
+                {
+                    "name": "cls_411660_8",
+                    "type": "struc",
+                    "struc": "cls_411660",
+                    "parent": "yes",
+                    "offset": "8",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "411740",
+                    "name": "ctor_411740",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                }
+            ]
+        }
+    ],
+    "Usages": [
+        {
+            "Members": [
+                {
+                    "class": "cls_4116c0",
+                    "ea": "4116ec"
+                },
+                {
+                    "class": "cls_4116c0",
+                    "ea": "411700"
+                },
+                {
+                    "class": "cls_411660",
+                    "ea": "411686"
+                },
+                {
+                    "class": "cls_411660",
+                    "ea": "411694"
+                },
+                {
+                    "class": "cls_411660",
+                    "ea": "41169b"
+                },
+                {
+                    "class": "cls_411740",
+                    "ea": "41176c"
+                },
+                {
+                    "class": "cls_411740",
+                    "ea": "411780"
+                }
+            ]
+        }
+    ]
+}

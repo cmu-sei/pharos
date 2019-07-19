@@ -1,0 +1,92 @@
+{
+    "Structures": [
+        {
+            "Name": "cls_411650",
+            "DemangledName": "",
+            "Size": "16",
+            "Members": [
+                {
+                    "name": "mbr_0",
+                    "type": "dword",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_4",
+                    "type": "dword",
+                    "offset": "4",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_8",
+                    "type": "word",
+                    "offset": "8",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "4115f0",
+                    "name": "ctor_4115f0",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                },
+                {
+                    "ea": "411650",
+                    "name": "dtor_411650",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "dtor"
+                },
+                {
+                    "ea": "4116c0",
+                    "name": "meth_4116c0",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                },
+                {
+                    "ea": "411720",
+                    "name": "meth_411720",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                },
+                {
+                    "ea": "411770",
+                    "name": "deldtor_411770",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                }
+            ]
+        }
+    ],
+    "Usages": [
+        {
+            "Members": [
+                {
+                    "class": "cls_411650",
+                    "ea": "411620"
+                },
+                {
+                    "class": "cls_411650",
+                    "ea": "411746"
+                },
+                {
+                    "class": "cls_411650",
+                    "ea": "411616"
+                },
+                {
+                    "class": "cls_411650",
+                    "ea": "41174b"
+                },
+                {
+                    "class": "cls_411650",
+                    "ea": "41162e"
+                }
+            ]
+        }
+    ]
+}

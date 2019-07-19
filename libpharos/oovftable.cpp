@@ -1,3 +1,4 @@
+// Copyright 2017-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "oovftable.hpp"
 #include "oomethod.hpp"
@@ -15,31 +16,35 @@ OOVirtualFunctionTable::set_address(rose_addr_t a) {
   address_ = a;
 }
 
-OOVirtualFunctionTable::OOVirtualFunctionTable(rose_addr_t a, size_t s, rose_addr_t ra) {
+OOVirtualFunctionTable::OOVirtualFunctionTable(rose_addr_t a, size_t s, rose_addr_t ra,
+  TypeRTTICompleteObjectLocatorPtr rc) {
   address_ = a;
   size_ = s;
   rtti_address_ = ra;
-
-  load_rtti_col();
+  rtti_col_ = rc;
 }
 
-void
-OOVirtualFunctionTable::load_rtti_col() {
+TypeRTTICompleteObjectLocatorPtr
+read_RTTI(const DescriptorSet& ds, rose_addr_t addr)
+{
   // Try reading an RTTI complete object locatot at the specified address.
   try {
-    rose_addr_t rptr = global_descriptor_set->read_addr(rtti_address_);
-    rtti_col_ = std::make_shared<TypeRTTICompleteObjectLocator>(rptr);
-    if (rtti_col_) {
+    rose_addr_t rptr = ds.memory.read_address(addr);
+    TypeRTTICompleteObjectLocatorPtr rtti =
+      std::make_shared<TypeRTTICompleteObjectLocator>(ds.memory, rptr);
+    if (rtti) {
       // essentially, the memory must look like RTTI structures - are both signatures 0?
-      if (rtti_col_->signature.value == 0 && rtti_col_->class_desc.signature.value == 0) {
-        rtti_col_ = nullptr;
+      if (rtti->signature.value == 0 && rtti->class_desc.signature.value == 0) {
+        return rtti;
       }
     }
   }
   catch (...) {
-    GDEBUG << "RTTI was bad at " << addr_str(rtti_address_) << LEND;
+    GDEBUG << "RTTI was bad at " << addr_str(addr) << LEND;
     // not RTTI
   }
+
+  return nullptr;
 }
 
 OOVirtualFunctionTable::OOVirtualFunctionTable(rose_addr_t a) {
@@ -56,11 +61,9 @@ OOVirtualFunctionTable::get_rtti_address() const {
 }
 
 void
-OOVirtualFunctionTable::set_rtti_address(rose_addr_t rtti) {
-  rtti_address_ = rtti;
-  if (!rtti_col_) {
-    load_rtti_col();
-  }
+OOVirtualFunctionTable::set_rtti(rose_addr_t ra, TypeRTTICompleteObjectLocatorPtr rc) {
+  rtti_address_ = ra;
+  rtti_col_ = rc;
 }
 
 size_t
@@ -73,14 +76,22 @@ OOVirtualFunctionTable::set_size(size_t s) {
   size_ = s;
 }
 
-const std::vector<CallDescriptor*>&
-OOVirtualFunctionTable::get_virtual_calls() {
+const std::vector<const CallDescriptor*>&
+OOVirtualFunctionTable::get_virtual_calls() const {
   return vcalls_;
 }
 
+const std::map<const CallDescriptor*, AddrSet>
+OOVirtualFunctionTable::get_virtual_call_targets() const {
+  return vcall_targets_;
+}
+
 void
-OOVirtualFunctionTable::add_virtual_call(CallDescriptor *vcd) {
+OOVirtualFunctionTable::add_virtual_call(const CallDescriptor *vcd, rose_addr_t target) {
   vcalls_.push_back(vcd);
+  // Since we don't want to write the targets back into the call descriptor, until the caller
+  // asks us to, lets store them in a map from call descriptor to target address.
+  vcall_targets_[vcd].insert(target);
 }
 
 const OOVirtualMethodMap&
@@ -99,11 +110,12 @@ OOVirtualFunctionTable::add_virtual_function(OOVirtualFunctionTableEntry entry) 
 // OOVfptr methods
 
 OOVfptr::OOVfptr() : vftable_(NULL) {
+  set_name("vfptr");
   set_type(OOElementType::VFPTR);
 }
 
-OOVfptr::OOVfptr(size_t s, size_t o, OOVirtualFunctionTablePtr vft) : OOMember(s, o) {
-  set_default_name();
+OOVfptr::OOVfptr(size_t s, OOVirtualFunctionTablePtr vft) : OOMember(s) {
+  set_name("vfptr");
   vftable_ = vft;
   set_type(OOElementType::VFPTR);
 }
@@ -115,14 +127,10 @@ OOVfptr::get_vftable() const {
   return vftable_;
 }
 
-void
-OOVfptr::set_default_name() {
-
-  std::stringstream name_ss;
-  name_ss << "vfptr_" << std::hex << std::noshowbase << offset_ << std::showbase << std::dec;
-  std::string s = name_ss.str();
-  set_name(s);
-}
-
-
 } // end namespace pharos
+
+/* Local Variables:   */
+/* mode: c++          */
+/* fill-column:    95 */
+/* comment-column: 0  */
+/* End:               */

@@ -420,7 +420,6 @@ concludeNOTMergeClasses(Out) :-
     setof((Class1, Class2),
           (reasonNOTMergeClasses(Class1, Class2),
            iso_dif(Class1, Class2),
-           not(factMergeClasses(Class1, Class2)),
            not(factNOTMergeClasses(Class1, Class2)),
            % This is the spot that breaks ooex7.
            not(factNOTMergeClasses(Class2, Class1)),
@@ -432,13 +431,11 @@ concludeNOTMergeClasses(Out) :-
 
 concludeMergeClasses(Out) :-
     reasonMergeClasses(Class1, Class2),
-    not(factMergeClasses(Class1, Class2)),
     not(factNOTMergeClasses(Class1, Class2)),
-    loginfo('Concluding factMergeClasses('),
+    loginfo('Concluding mergeClasses('),
     loginfo(Class1), loginfo(', '),
     loginfo(Class2), loginfoln(') ... '),
-    Out = ((try_assert(factMergeClasses(Class1, Class2)),
-            mergeClasses(Class1, Class2))).
+    Out = mergeClasses(Class1, Class2).
 
 /* Local Variables:   */
 /* mode: prolog       */

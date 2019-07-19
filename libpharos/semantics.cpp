@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/format.hpp>
 
@@ -12,11 +12,14 @@
 #include "util.hpp"
 #include "enums.hpp"
 #include "descriptors.hpp"
+#include "limit.hpp"
+#include "znode.hpp"
+#include "matcher.hpp"
 
 namespace pharos {
 
 // This is where we construct the semantics logging facility.
-Sawyer::Message::Facility slog("FSEM");
+Sawyer::Message::Facility slog;
 
 // Used in a couple of places now that we're putting multiple values in an ITE expression.
 using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
@@ -81,7 +84,7 @@ SymbolicValuePtr SymbolicValue::incomplete(size_t nbits) {
 // (primarily during import resolution).  When this flag is set, it prompts additional analysis
 // to determine if the correct import can be determined.
 SymbolicValuePtr SymbolicValue::loader_defined() {
-  size_t nbits = global_descriptor_set->get_arch_bits();
+  size_t nbits = global_arch_bytes * 8;
   SymbolicValuePtr retval = SymbolicValuePtr(new SymbolicValue(nbits));
   TreeNodePtr tn = LeafNode::createVariable(nbits, "", LOADER_DEFINED);
   retval->set_expression(tn);
@@ -155,15 +158,25 @@ SymbolicValuePtr SymbolicValue::scopy(size_t new_width) const {
 
 void SymbolicValue::discard_oversized_expression() {
   size_t nnodes = get_expression()->nNodes();
-  //if (nnodes > 5000) {
-  //  GTRACE << "Very big expression has " << nnodes << " nodes." << LEND;
-  //}
 
-  // There's almost never expressions with more than 50,000 nodes. But when there are,
-  // performance tanks horribly, taking 2-3 seconds to process a single instruction.  Since
-  // expressions with more than about 500 nodes are of very questionable value anyway, let's
-  // discard any that's larger than that low threshold.
-  if (nnodes > 500) {
+  // With real conditions in ITEs there may very well be >500 nodes. A better approach is to
+  // make this configurable so that the limits reflect the type of analysis being
+  // performed. Some types of analysis just require more conditions (i.e. symbolic path
+  // analysis)
+
+  // This is JSG's logic to attempt to simplify large nodes using Z3. It is currently disabled
+  // because results have not been validated and performance impact needs to be evaluated.
+
+  // if (nnodes > get_global_limits().node_condition_limit) {
+  //   PharosZ3Solver z3;
+  //   TreeNodePtr simple_tn =
+  //     z3.z3_to_treenode(z3.simplify(z3.treenode_to_z3(get_expression())));
+  //   set_expression(simple_tn);
+  //   nnodes = simple_tn->nNodes();
+  // }
+
+
+  if (nnodes > get_global_limits().node_condition_limit) {
     // Almost/all of the discarded expressions are a single bit.  Situtations where the value
     // is larger than one bit might be worth investigating, but don't elevate the error past a
     // warning, because ordinary users don't care about this.
@@ -212,7 +225,7 @@ bool operator<(const SymbolicValue& a, const SymbolicValue& b) {
     TreeNodePtr lt = InternalNode::create(1, ULT_OP, aexpr, bexpr);
     if (lt->isNumber() && lt->nBits() <= 64 && lt->toInt() == 1) return true;
 
-    //typedef Rose::BinaryAnalysis::YicesSolver YicesSolver;
+    //using YicesSolver = Rose::BinaryAnalysis::YicesSolver;
     //YicesSolver solver;
     //solver.set_debug(stderr);
     //solver.set_linkage(YicesSolver::LM_EXECUTABLE);
@@ -457,18 +470,20 @@ SymbolicValue::createOptionalMerge(const BaseSValuePtr& other,
     BaseSValuePtr bretval = *oretval;
     SymbolicValuePtr sretval = SymbolicValue::promote(bretval);
     // Using our old routine...
-    sretval->merge(sother, condition);
+    sretval->merge(sother, condition, cert_merger->inverted);
   }
   return oretval;
 #else
   // Use our old symbolic merge approach.
   SymbolicValuePtr retval = scopy();
-  retval->merge(sother, condition);
+  retval->merge(sother, condition, cert_merger->inverted);
   return Sawyer::Optional<BaseSValuePtr>(retval);
 #endif
 }
 
-void SymbolicValue::merge(const SymbolicValuePtr& other, const SymbolicValuePtr& condition) {
+void SymbolicValue::merge(const SymbolicValuePtr& other,
+                          const SymbolicValuePtr& condition,
+                          bool inverted) {
   STRACE << "SymbolicValue::merge() this=" << *this << LEND;
   STRACE << "SymbolicValue::merge() other=" << *other << LEND;
 
@@ -504,7 +519,13 @@ void SymbolicValue::merge(const SymbolicValuePtr& other, const SymbolicValuePtr&
   // after the call to create.  There's no need to make the ITE expression as incomplete.  It
   // will autmatically be marked as such if the condition is incomplete (which it always is
   // right now).
-  TreeNodePtr ite_expr = InternalNode::create(get_width(), OP_ITE, ctp, my_expr, other_expr);
+  TreeNodePtr ite_expr;
+  if (inverted) {
+    ite_expr = InternalNode::create(get_width(), OP_ITE, ctp, other_expr, my_expr);
+  }
+  else {
+    ite_expr = InternalNode::create(get_width(), OP_ITE, ctp, my_expr, other_expr);
+  }
   // The only(?) place where we want to set the expression to a value not literally in sync
   // with the value set?
   ParentSValue::set_expression(ite_expr);
@@ -519,38 +540,126 @@ void SymbolicValue::print(std::ostream &o, RoseFormatter& fmt) const {
 // Abstract Access
 //==============================================================================================
 
-AbstractAccess::AbstractAccess(bool b, SymbolicValuePtr ma, size_t s,
-                               SymbolicValuePtr v, SymbolicStatePtr state) {
+AbstractAccess::AbstractAccess(
+  DescriptorSet const & ds,
+  bool b, SymbolicValuePtr ma, size_t s,
+  SymbolicValuePtr v, SymbolicStatePtr state)
+{
   isRead = b;
   isMemReference = true;
   memory_address = ma;
   size = s;
   value = v;
-  set_latest_writers(state);
+  set_latest_writers(ds, state);
 }
 
-AbstractAccess::AbstractAccess(bool b, RegisterDescriptor r,
-                               SymbolicValuePtr v, SymbolicStatePtr state) {
+AbstractAccess::AbstractAccess(
+  DescriptorSet const & ds,
+  bool b, RegisterDescriptor r,
+  SymbolicValuePtr v, SymbolicStatePtr state)
+{
   isRead = b;
   isMemReference = false;
   register_descriptor = r;
   size = r.get_nbits();
   value = v;
-  set_latest_writers(state);
+  set_latest_writers(ds, state);
 }
 
 std::string AbstractAccess::str() const {
   if (value) {
+    std::string rw_flag = "W: ";
+    if (isRead) rw_flag = "R: ";
+
     std::string v = value->str();
     if (is_reg()) {
-      return reg_name() + " -> " + v;
+      return rw_flag + reg_name() + " -> " + v;
     }
     else if (is_mem()) {
       std::string a = memory_address->str();
-      return a + " -> " + v;
+      return rw_flag + a + " -> " + v;
     }
   }
   return std::string("INVALID");
+}
+
+// This comparison operator was implemented to provide an ordering so that we could have a
+// std::set of AbstractAccesses.  Abstract accesses aren't really greater or less than other
+// abstract accesses.
+bool AbstractAccess::operator<(const AbstractAccess& other) const {
+  // Invalid before all others.
+  if (is_invalid()) return true;
+  // Other invalid before anything we might be.
+  if (other.is_invalid()) return false;
+
+  // If we're a register, and other is not, we come first (invalid case already handled).
+  if (is_reg() && !other.is_reg()) return true;
+  // If we're not a register and other is, we come last (invalid case already handled).
+  if (!is_reg() && other.is_reg()) return false;
+
+  // Same logic for only this OR other is a memory reference.
+  if (is_mem() && !other.is_mem()) return true;
+  if (!is_mem() && other.is_mem()) return false;
+
+  // Order registers by their register descriptors.
+  if (is_reg() && other.is_reg()) {
+    return register_descriptor < other.register_descriptor;
+  }
+  // Order memory accesses by the hashes of their addresses.
+  else if (is_mem() && other.is_mem()) {
+    return memory_address->get_hash() < other.memory_address->get_hash();
+  }
+  else {
+    OFATAL << "All abstract access cases were supposed to have been handled." << LEND;
+    OFATAL << "AA this=" << *this << LEND;
+    OFATAL << "AA other=" << other << LEND;
+    throw std::logic_error("Internal logic error: unhandled abstract access case!");
+  }
+}
+
+bool AbstractAccess::operator==(const AbstractAccess& other) const {
+  // If both accesses are to the same register, and they both have the same read/write
+  // boolean, then they're equivalent.  That they're the same size is probably implied by
+  // being the same register, but there's little reason not to check that as well.
+  if (is_reg() && other.is_reg() && isRead == other.isRead && size == other.size &&
+      register_descriptor == other.register_descriptor) return true;
+
+  // If both accesses are to the samememory address, they both have the same read/write
+  // boolean, and they're both of the same size (which could differ for the same memory
+  // address), then they're the same abstract access.
+  if (is_mem() && other.is_mem() && isRead == other.isRead && size == other.size &&
+      memory_address->get_hash() == other.memory_address->get_hash()) return true;
+
+  // All invalid accesses are just a marker for being invalid (incompletely constructed or a
+  // failure condition).  Thus one invalid access should be the same as another.
+  if (is_invalid() && other.is_invalid()) return true;
+
+  // All other acessses are different.
+  return false;
+}
+
+bool AbstractAccess::exact_match(const AbstractAccess& other) const {
+  if (*this == other &&
+      value->get_expression()->isEquivalentTo(other.value->get_expression()) &&
+      latest_writers.size() == other.latest_writers.size()) {
+    // Now check whether the instructions in the list are actually the same...
+    auto titer = latest_writers.begin();
+    auto oiter = other.latest_writers.begin();
+    while (titer != latest_writers.end()) {
+      SgAsmInstruction* tinsn = *titer;
+      SgAsmInstruction* oinsn = *oiter;
+      if (tinsn->get_address() != oinsn->get_address()) {
+        OINFO << "Insns addresses differed " << debug_instruction(tinsn)
+              << " vs " << debug_instruction(oinsn) << LEND;
+        return false;
+      }
+      titer++;
+      oiter++;
+    }
+
+    return true;
+  }
+  return false;
 }
 
 void AbstractAccess::print(std::ostream &o) const {
@@ -565,7 +674,7 @@ void AbstractAccess::debug(std::ostream &o) const {
   }
 }
 
-void AbstractAccess::set_latest_writers(SymbolicStatePtr& state) {
+void AbstractAccess::set_latest_writers(DescriptorSet const & ds, SymbolicStatePtr& state) {
   // Set the modifiers based on inspecting the current abstract access and the passed state.
   // We're converting from a Sawyer container of rose_addr_t to an InsnSet as well, because
   // that's more convenient in our code.
@@ -586,7 +695,7 @@ void AbstractAccess::set_latest_writers(SymbolicStatePtr& state) {
     const MemoryCell::AddressSet& writers = cell->getWriters();
     for (rose_addr_t addr : writers.values()) {
       //OINFO << "Latest memory writer for " << str() << " was: " << addr_str(addr) << LEND;
-      SgAsmInstruction* insn = global_descriptor_set->get_insn(addr);
+      SgAsmInstruction* insn = ds.get_insn(addr);
       latest_writers.insert(insn);
     }
   }
@@ -596,358 +705,58 @@ void AbstractAccess::set_latest_writers(SymbolicStatePtr& state) {
     const RegisterStateGeneric::AddressSet& writers = rstate->getWritersUnion(register_descriptor);
     for(rose_addr_t addr : writers.values()) {
       //OINFO << "Latest register writer for " << str() << " was: " << addr_str(addr) << LEND;
-      SgAsmInstruction* insn = global_descriptor_set->get_insn(addr);
+      SgAsmInstruction* insn = ds.get_insn(addr);
       latest_writers.insert(insn);
     }
   }
 }
 
-} // namespace pharos
-
-//==============================================================================================
-//==============================================================================================
-
-// This is a ghetto way to override these simplifiers.  I've talked to Robb about these, and
-// they improved versions should show up in ROSE before too much longer.  Review again in NEWWAY.
-namespace Rose {
-namespace BinaryAnalysis {
-namespace SymbolicExpr {
-
-using namespace pharos;
-
-  TreeNodePtr
-  IteSimplifier::rewrite(InternalNode *inode, const SmtSolverPtr & solver) const
-  {
-    // Is the condition known?
-    LeafNodePtr cond_node = inode->child(0)->isLeafNode();
-    if (cond_node!=NULL && cond_node->isNumber()) {
-      ASSERT_require(1==cond_node->nBits());
-
-      bool condition = ! (cond_node->bits().isAllClear());
-      return condition ? inode->child(1) : inode->child(2);
-    }
-
-    // Are both operands the same? Then the condition doesn't matter
-    if (inode->child(1)->isEquivalentTo(inode->child(2)))
-      return inode->child(1);
-
-    // Are they both extracts of the same offsets?
-    InternalNodePtr in1 = inode->child(1)->isInteriorNode();
-    InternalNodePtr in2 = inode->child(2)->isInteriorNode();
-    if (// Both nodes must be non-NULL (InternalNodes)
-        in1 && in2 &&
-        // Both nodes must be extract operators
-        in1->getOperator() == OP_EXTRACT && in2->getOperator() == OP_EXTRACT &&
-        // Both extract nodes must be of the same size
-        in1->nBits() == in2->nBits() &&
-        // They must have the same "from" bit offset
-        in1->child(0)->mustEqual(in2->child(0), solver) &&
-        // They must have the same "to" bit offset
-        in1->child(1)->mustEqual(in2->child(1), solver) &&
-        // The two values must have the same width.
-        in1->child(2)->nBits() == in2->child(2)->nBits()) {
-      //OINFO << "Rewriting: " << *inode << LEND;
-      TreeNodePtr new_ite_expr = InternalNode::create(in1->child(2)->nBits(), OP_ITE, inode->child(0),
-                                                      in1->child(2), in2->child(2));
-
-      //OINFO << "New ITE is: " << *new_ite_expr << LEND;
-      TreeNodePtr new_extract_expr = InternalNode::create(inode->nBits(), OP_EXTRACT,
-                                                          in1->child(0), in1->child(1), new_ite_expr);
-
-      //OINFO << "Rewritten: " << *new_extract_expr << LEND;
-      return new_extract_expr;
-    }
-    return TreeNodePtr();
-  }
-
-  // This is the problem solved by our additional simplifier:
-  //  expr=(concat[32]
-  //     (ite[8] i133304[1] (extract[8] 0x00000018[32] 0x00000020[32] RC_of_0x41159F[32]) 0x00[8])
-  //     (ite[8] i133304[1] (extract[8] 0x00000010[32] 0x00000018[32] RC_of_0x41159F[32]) 0x00[8])
-  //     (ite[8] i133304[1] (extract[8] 0x00000008[32] 0x00000010[32] RC_of_0x41159F[32]) 0x00[8])
-  //     (ite[8] i133304[1] (extract[8] 0x00000000[32] 0x00000008[32] RC_of_0x41159F[32]) 0x00[8]))}
-
-  TreeNodePtr
-  ConcatSimplifier::rewrite(InternalNode *inode, const SmtSolverPtr & solver) const
-  {
-    Ptr condition;
-    bool matches_ite = true;
-    Nodes value1;
-    Nodes value2;
-    //for (size_t i=inode->nchildren(); i>0; --i) {
-    for (size_t i=0; i != inode->nChildren(); i++) {
-      InternalNodePtr ite = inode->child(i)->isInteriorNode();
-      if (!ite || OP_ITE != ite->getOperator()) {
-        matches_ite = false;
-        break;
-      }
-      if (i == 0) {
-        condition = ite->child(0);
-      } else if (!ite->child(0)->mustEqual(condition, solver)) {
-        matches_ite = false;
-        break;
-      }
-      //OINFO << "Pushing value1: " << *ite->child(1) << LEND;
-      value1.push_back(ite->child(1));
-      //OINFO << "Pushing value2: " << *ite->child(2) << LEND;
-      value2.push_back(ite->child(2));
-    }
-    if (matches_ite) {
-      //OINFO << "Reordering: " << inode->get_nbits() << " inode=" << *inode << LEND;
-      TreeNodePtr concat1 = InternalNode::create(inode->nBits(), OP_CONCAT, value1);
-      //OINFO << "Concat1: " << *concat1 << LEND;
-      TreeNodePtr concat2 = InternalNode::create(inode->nBits(), OP_CONCAT, value2);
-      //OINFO << "Concat2: " << *concat2 << LEND;
-      TreeNodePtr new_ite_expr = InternalNode::create(inode->nBits(),
-                                                      OP_ITE, condition, concat1, concat2);
-
-      //OINFO << "NewValue: " << *new_ite_expr << LEND;
-      return new_ite_expr;
-    }
-
-    // This is the standard ROSE simplifier for concat...
-    TreeNodePtr retval;
-    size_t offset = 0;
-    for (size_t i=inode->nChildren(); i>0; --i) { // process args in little endian order
-      InternalNodePtr extract = inode->child(i-1)->isInteriorNode();
-      if (!extract || OP_EXTRACT!=extract->getOperator())
-        break;
-      LeafNodePtr from_node = extract->child(0)->isLeafNode();
-      ASSERT_require(from_node->nBits() <= 8*sizeof offset);
-      if (!from_node || !from_node->isNumber() || from_node->toInt()!=offset ||
-          extract->child(2)->nBits()!=inode->nBits())
-        break;
-      if (inode->nChildren()==i) {
-        retval = extract->child(2);
-      } else if (!extract->child(2)->mustEqual(retval, solver)) {
-        break;
-      }
-      offset += extract->nBits();
-    }
-    if (offset==inode->nBits())
-      return retval;
-    return TreeNodePtr();
-  }
-
-  TreeNodePtr
-  AddSimplifier::rewrite(InternalNode *inode, const SmtSolverPtr & solver) const
-  {
-    if (inode->nChildren() == 2) {
-      InternalNodePtr ite1 = inode->child(0)->isInteriorNode();
-      bool is_ite1 = (ite1 && OP_ITE == ite1->getOperator());
-      InternalNodePtr ite2 = inode->child(1)->isInteriorNode();
-      bool is_ite2 = (ite2 && OP_ITE == ite2->getOperator());
-
-      InternalNodePtr ite;
-      TreeNodePtr other;
-      if (is_ite1 && !is_ite2) {
-        ite = ite1;
-        other = inode->child(1);
-      }
-      if (!is_ite1 && is_ite2) {
-        ite = ite2;
-        other = inode->child(0);
-      }
-      if (ite) {
-        //OINFO << "Reordering: inode=" << *inode << LEND;
-
-        TreeNodePtr add1 = InternalNode::create(inode->nBits(), OP_ADD, ite->child(1), other);
-        //OINFO << "Add1: " << *add1 << LEND;
-
-        TreeNodePtr add2 = InternalNode::create(inode->nBits(), OP_ADD, ite->child(2), other);
-        //OINFO << "Add2: " << *add2 << LEND;
-
-        TreeNodePtr new_ite_expr = InternalNode::create(inode->nBits(),
-                                                        OP_ITE, ite->child(0), add1, add2);
-
-        //OINFO << "NewValue: " << *new_ite_expr << LEND;
-        return new_ite_expr;
-      }
-    }
-
-    // From here on is the standard ROSE simplifier for the Add operation.
-
-    // A and B are duals if they have one of the following forms:
-    //    (1) A = x           AND  B = (negate x)
-    //    (2) A = x           AND  B = (invert x)   [adjust constant]
-    //    (3) A = (negate x)  AND  B = x
-    //    (4) A = (invert x)  AND  B = x            [adjust constant]
-    //
-    // This makes use of the relationship:
-    //   (add (negate x) -1) == (invert x)
-    // by decrementing adjustment. The adjustment, whose width is the same as A and B, is allowed
-    // to overflow.  For example, consider the expression, where all values are two bits wide:
-    //   (add v1 (invert v1) v2 (invert v2) v3 (invert v3))            by substitution for invert:
-    //   (add v1 (negate v1) -1 v2 (negate v2) -1 v3 (negate v3) -1)   canceling duals gives:
-    //   (add -1 -1 -1)                                rewriting as 2's complement (2 bits wide):
-    //   (add 3 3 3)                                                   constant folding modulo 4:
-    //   1
-    // compare with v1=0, v2=1, v3=2 (i.e., -2 in two's complement):
-    //   (add 0 3 1 2 2 1) == 1 mod 4
-    struct are_duals {
-
-      bool operator()(TreeNodePtr a, TreeNodePtr b,
-                      Sawyer::Container::BitVector &adjustment/*in,out*/) {
-        ASSERT_not_null(a);
-        ASSERT_not_null(b);
-        ASSERT_require(a->nBits()==b->nBits());
-
-        // swap A and B if necessary so we have form (1) or (2).
-        if (b->isInteriorNode()==NULL)
-          std::swap(a, b);
-        if (b->isInteriorNode()==NULL)
-          return false;
-
-        InternalNodePtr bi = b->isInteriorNode();
-        if (bi->getOperator()==OP_NEGATE) {
-          // form (3)
-          ASSERT_require(1==bi->nChildren());
-          return a->isEquivalentTo(bi->child(0));
-        } else if (bi->getOperator()==OP_INVERT) {
-          // form (4) and ninverts is small enough
-          if (a->isEquivalentTo(bi->child(0))) {
-            adjustment.decrement();
-            return true;
-          }
-        }
-        return false;
-      }
-    };
-
-    // Arguments that are negated cancel out similar arguments that are not negated
-    bool had_duals = false;
-    Sawyer::Container::BitVector adjustment(inode->nBits());
-    Nodes children = inode->children();
-    for (size_t i=0; i<children.size(); ++i) {
-      if (children[i]!=NULL) {
-        for (size_t j=i+1; j<children.size() && children[j]!=NULL; ++j) {
-          if (children[j]!=NULL && are_duals()(children[i], children[j], adjustment/*in,out*/)) {
-            children[i] = Sawyer::Nothing();
-            children[j] = Sawyer::Nothing();
-            had_duals = true;
-            break;
-          }
-        }
-      }
-    }
-    if (!had_duals)
-      return TreeNodePtr();
-
-    // Build the new expression
-    children.erase(std::remove(children.begin(), children.end(), TreeNodePtr()), children.end());
-    if (!adjustment.isEqualToZero())
-      children.push_back(LeafNode::createConstant(adjustment));
-    if (children.empty())
-      return LeafNode::createInteger(inode->nBits(), 0, inode->comment());
-    if (children.size()==1)
-      return children[0];
-    return InternalNode::create(inode->nBits(), OP_ADD, children, solver, inode->comment());
-  }
-
-} // namespace SymbolicExpr
-} // namespace BinaryAnalysis
-} // namespace rose
-
-// Hacky patches for mayEqual().  Something very similar should be coming upstream in ROSE
-// before long, since these were changes were provided.  The goal is to get better answers for
-// memory aliasing analysis when a solver is not provided.
-bool Rose::BinaryAnalysis::SymbolicExpr::Interior::mayEqual(
-  const TreeNodePtr &other,
-  const SmtSolverPtr &solver/*NULL*/)
+boost::tribool
+pharos_may_equal(
+  const TreeNodePtr &n1,
+  const TreeNodePtr &n2,
+  UNUSED const SmtSolverPtr &solver)
 {
-  STRACE << "Interior::mayEqual() this=" << *this << LEND;
-  STRACE << "Interior::mayEqual() other=" << *other << LEND;
-  STRACE << "Interior::mayEqual() solver=" << (solver ? "NOT" : "") << "NULL" << LEND;
+  using Rose::BinaryAnalysis::SymbolicExpr::OP_ADD;
 
-  using Sawyer::SharedPointer;
+  boost::tribool result = boost::indeterminate;
 
-  // Fast comparison of literally the same expression pointer.
-  if (this == getRawPointer(other)) return true;
+  InternalNodePtr in1 = n1->isInteriorNode();
 
-  // The first special case involves addition.  Two addition operations can be proven not to
-  // alias if and only if thay are of the form v+x and v+y, where x!=y.
-  if (op_ == OP_ADD) {
-    LeafPtr leafother = other->isLeafNode();
-    InteriorPtr intother = other->isInteriorNode();
+  // The CERT extension is a slightly more complicated version of the standard mayEquals,
+  // except instead of using the ROSE matchAddVariableConstant class, we use our
+  // AddConstantExtractor class with also supports ITEs.
+  if (in1 && in1->getOperator() == OP_ADD) {
+    LeafNodePtr ln2 = n2->isLeafNode();
+    InternalNodePtr in2 = n2->isInteriorNode();
     // If other is a leaf variable or an interior add operation, we may be able to prove that
     // the expressions are NOT equal.
-    if ((leafother && leafother->isVariable()) || (intother && intother->op_ == OP_ADD)) {
+    if ((ln2 && ln2->isVariable()) || (in2 && in2->getOperator() == OP_ADD)) {
       // The constant extractor is smart enough to handle all TreeNode cases.
-      AddConstantExtractor tace = AddConstantExtractor(TreeNodePtr(this));
-      AddConstantExtractor oace = AddConstantExtractor(other);
-      STRACE << "Comparing variables " << *tace.variable_portion()
-             << " to " << *oace.variable_portion() << LEND;
-      STRACE << "Comparing constants " << tace.constant_portion()
-             << " to " << oace.constant_portion() << LEND;
-      if (tace.variable_portion()->isEquivalentTo(oace.variable_portion()) &&
-          tace.constant_portion() != oace.constant_portion()) {
-        STRACE << "Expressions may NOT alias!" << LEND;
-        return false;
+      AddConstantExtractor n1ace = AddConstantExtractor(n1);
+      AddConstantExtractor n2ace = AddConstantExtractor(n2);
+      //STRACE << "Comparing variables " << *n1ace.variable_portion()
+      //       << " to " << *n2ace.variable_portion() << LEND;
+      //STRACE << "Comparing constants " << n1ace.constant_portion()
+      //       << " to " << n2ace.constant_portion() << LEND;
+      if (n1ace.variable_portion() &&
+          n1ace.variable_portion()->isEquivalentTo(n2ace.variable_portion()) &&
+          n1ace.constant_portion() != n2ace.constant_portion()) {
+        //STRACE << "Expressions may NOT alias!" << LEND;
+        result = false;
       }
-      // All other cases are still undecided and should fall through to other logic.
     }
   }
 
-  // Additional tests for inequality can be added here.
-
-  // Equivalent expressions must be equal, and therefore may be equal.  This is probably faster
-  // than using an SMT solver.  It also serves as the naive approach for arbitrary epxressions
-  // when an SMT solver is not available.
-  if (isEquivalentTo(other)) return true;
-
-  // It is difficult to prove that complex expressions are equal or not equal.  Ask the solver
-  // to find a solution where they are equal.  If the solver finds a solution, then obviously
-  // they can be equal.  If the solver can't prove the assertion, we want to assume that they
-  // can be equal.  Thus only if the solver can prove that they can not be equal do we have
-  // really anything to return here.
-  if (solver) {
-    Ptr assertion = makeEq(sharedFromThis(), other, solver);
-    if (SmtSolver::SAT_NO==solver->satisfiable(assertion)) return false;
-
-    // This test is only meaningful if we want to add logic to do something different for
-    // unproven expressions, since we're about to unconditionally return true anyway.
-    // if (SmtSolver::SAT_YES==solver->satisfiable(assertion)) return true;
-  }
-
-  // Complex expressions are assumed to be equal until it proven that they may not be equal.
-  return true;
+  return result;
 }
 
-bool Rose::BinaryAnalysis::SymbolicExpr::Leaf::mayEqual(
-  const TreeNodePtr &other,
-  const SmtSolverPtr &solver/*NULL*/)
-{
-  STRACE << "Leaf::mayEqual() this=" << *this << LEND;
-  STRACE << "Leaf::mayEqual() other=" << *other << LEND;
-  STRACE << "Leaf::mayEqual() solver=" << (solver ? "NOT" : "") << "NULL" << LEND;
-
-  using Sawyer::SharedPointer;
-
-  // Fast comparison of literally the same expression pointer.
-  if (this == getRawPointer(other)) return true;
-
-  // If the other expression is an interior node, use the interior code instead.  It's
-  // important to implement it this way in case the complexity of Interior::mayEqual()
-  // increases, while this routine is essentially correct and complete as implemented.
-  InteriorPtr intother = other->isInteriorNode();
-  if (intother) return intother->mayEqual(TreeNodePtr(this), solver);
-
-  LeafPtr leafother = other->isLeafNode();
-  // If both expressions are constant leaf nodes, we can reach a conclusion without a solver.
-  if (isNumber() && leafother->isNumber()) {
-    // Two constants of different sizes cannot be equal.  Faster than bits.compare().
-    if (nBits_ != leafother->nBits_) return false;
-    // If the bits match, they _are_ equal.
-    if (0 == bits_.compare(leafother->bits_)) return true;
-    // If the bits don't match, they are _not_ equal.
-    return false;
-  }
-
-  // The only remaining case is that one of the leaf nodes is a variable so they may be equal
-  // (or must be equal if the variables happened to match but that shouldn't happen since the
-  // pointers already don't match).
-  return true;
+void set_may_equal_callback() {
+  //OINFO << "Setting may_equal callback!" << LEND;
+  Rose::BinaryAnalysis::SymbolicExpr::Node::mayEqualCallback = pharos_may_equal;
 }
+
+} // namespace pharos
 
 /* Local Variables:   */
 /* mode: c++          */

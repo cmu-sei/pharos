@@ -1,0 +1,351 @@
+{
+    "Structures": [
+        {
+            "Name": ".?AVA@@",
+            "DemangledName": "A",
+            "Size": "8",
+            "Members": [
+                {
+                    "name": "vfptr_0",
+                    "type": "vfptr",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_4",
+                    "type": "dword",
+                    "offset": "4",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "4116d0",
+                    "name": "ctor_4116d0",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                }
+            ],
+            "Vftables": [
+                {
+                    "ea": "416780",
+                    "vfptr": "0",
+                    "entries": [
+                        {
+                            "ea": "411720",
+                            "offset": "0",
+                            "name": "virt_meth_411720",
+                            "demangled_name": "",
+                            "import": "no",
+                            "type": "meth"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "Name": ".?AVD@@",
+            "DemangledName": "D",
+            "Size": "36",
+            "Members": [
+                {
+                    "name": "vfptr_0",
+                    "type": "vfptr",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "vfptr_c",
+                    "type": "vfptr",
+                    "offset": "c",
+                    "count": "1"
+                },
+                {
+                    "name": ".?AVB@@_0",
+                    "type": "struc",
+                    "struc": ".?AVB@@",
+                    "parent": "yes",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": ".?AVC@@_c",
+                    "type": "struc",
+                    "struc": ".?AVC@@",
+                    "parent": "yes",
+                    "offset": "c",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "4115f0",
+                    "name": "ctor_4115f0",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                }
+            ],
+            "Vftables": [
+                {
+                    "ea": "416758",
+                    "vfptr": "0",
+                    "entries": [
+                        {
+                            "ea": "411920",
+                            "offset": "1",
+                            "name": "virt_meth_411920",
+                            "demangled_name": "",
+                            "import": "no",
+                            "type": "meth"
+                        }
+                    ]
+                },
+                {
+                    "ea": "41674c",
+                    "vfptr": "12"
+                }
+            ]
+        },
+        {
+            "Name": ".?AVC@@",
+            "DemangledName": "C",
+            "Size": "20",
+            "Members": [
+                {
+                    "name": "vfptr_0",
+                    "type": "vfptr",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_4",
+                    "type": "dword",
+                    "offset": "4",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_8",
+                    "type": "dword",
+                    "offset": "8",
+                    "count": "1"
+                },
+                {
+                    "name": ".?AVA@@_c",
+                    "type": "struc",
+                    "struc": ".?AVA@@",
+                    "parent": "yes",
+                    "offset": "c",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "411840",
+                    "name": "ctor_411840",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                }
+            ],
+            "Vftables": [
+                {
+                    "ea": "4167bc",
+                    "vfptr": "0",
+                    "entries": [
+                        {
+                            "ea": "4118e0",
+                            "offset": "0",
+                            "name": "virt_meth_4118e0",
+                            "demangled_name": "",
+                            "import": "no",
+                            "type": "meth"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "Name": ".?AVB@@",
+            "DemangledName": "B",
+            "Size": "20",
+            "Members": [
+                {
+                    "name": "vfptr_0",
+                    "type": "vfptr",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_4",
+                    "type": "dword",
+                    "offset": "4",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_8",
+                    "type": "dword",
+                    "offset": "8",
+                    "count": "1"
+                },
+                {
+                    "name": ".?AVA@@_c",
+                    "type": "struc",
+                    "struc": ".?AVA@@",
+                    "parent": "yes",
+                    "offset": "c",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "411760",
+                    "name": "ctor_411760",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                }
+            ],
+            "Vftables": [
+                {
+                    "ea": "416798",
+                    "vfptr": "0",
+                    "entries": [
+                        {
+                            "ea": "411800",
+                            "offset": "0",
+                            "name": "virt_meth_411800",
+                            "demangled_name": "",
+                            "import": "no",
+                            "type": "meth"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "Name": ".?AVtype_info@@",
+            "DemangledName": "type_info",
+            "Size": "4",
+            "Members": [
+                {
+                    "name": "vfptr_0",
+                    "type": "vfptr",
+                    "offset": "0",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "411bf0",
+                    "name": "ctor_411bf0",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                },
+                {
+                    "ea": "41a270",
+                    "name": "?_type_info_dtor_internal_method@type_info@@QAEXXZ",
+                    "demangled_name": "_type_info_dtor_internal_method",
+                    "import": "yes",
+                    "type": "meth"
+                }
+            ],
+            "Vftables": [
+                {
+                    "ea": "4167d4",
+                    "vfptr": "0",
+                    "entries": [
+                        {
+                            "ea": "411c20",
+                            "offset": "0",
+                            "name": "virt_meth_411c20",
+                            "demangled_name": "",
+                            "import": "no",
+                            "type": "meth"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "Usages": [
+        {
+            "Members": [
+                {
+                    "class": ".?AVA@@",
+                    "ea": "4116f6"
+                },
+                {
+                    "class": ".?AVA@@",
+                    "ea": "4116ff"
+                },
+                {
+                    "class": ".?AVA@@",
+                    "ea": "411746"
+                },
+                {
+                    "class": ".?AVD@@",
+                    "ea": "411652"
+                },
+                {
+                    "class": ".?AVD@@",
+                    "ea": "41165b"
+                },
+                {
+                    "class": ".?AVC@@",
+                    "ea": "411881"
+                },
+                {
+                    "class": ".?AVC@@",
+                    "ea": "41186c"
+                },
+                {
+                    "class": ".?AVC@@",
+                    "ea": "41188a"
+                },
+                {
+                    "class": ".?AVC@@",
+                    "ea": "411893"
+                },
+                {
+                    "class": ".?AVC@@",
+                    "ea": "41189e"
+                },
+                {
+                    "class": ".?AVC@@",
+                    "ea": "411906"
+                },
+                {
+                    "class": ".?AVB@@",
+                    "ea": "4117a1"
+                },
+                {
+                    "class": ".?AVB@@",
+                    "ea": "41178c"
+                },
+                {
+                    "class": ".?AVB@@",
+                    "ea": "4117aa"
+                },
+                {
+                    "class": ".?AVB@@",
+                    "ea": "4117b3"
+                },
+                {
+                    "class": ".?AVB@@",
+                    "ea": "4117be"
+                },
+                {
+                    "class": ".?AVB@@",
+                    "ea": "411826"
+                },
+                {
+                    "class": ".?AVtype_info@@",
+                    "ea": "411bfc"
+                }
+            ]
+        }
+    ]
+}

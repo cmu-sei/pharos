@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Method_H
 #define Pharos_Method_H
@@ -23,8 +23,8 @@ class FuncOffset {
 
 public:
 
-  // This is the method being called.
-  ThisCallMethod* tcm;
+  // The address being called.
+  rose_addr_t address;
 
   // This is the offset into the object from the caller that is passed to the target.  Or in
   // other words, the offset of the embedded object the type of which corresponds to the called
@@ -32,11 +32,10 @@ public:
   int64_t offset;
 
   // The call instruction that does the call in question.
-  SgAsmx86Instruction* insn;
+  SgAsmX86Instruction* insn;
 
-  FuncOffset(ThisCallMethod *t, int64_t o, SgAsmx86Instruction* i) {
-    tcm = t;
-    assert(tcm != NULL);
+  FuncOffset(rose_addr_t a, int64_t o, SgAsmX86Instruction* i) {
+    address = a;
     offset = o;
     insn = i;
     assert(insn != NULL);
@@ -66,7 +65,7 @@ public:
   // also provide the evidence for the embedded ctors list below.
   X86InsnSet using_instructions;
 
-  Member(unsigned int o, unsigned int s, SgAsmx86Instruction* i, bool b);
+  Member(unsigned int o, unsigned int s, SgAsmX86Instruction* i, bool b);
 
   // Member (in)equality is determined by comparing size and offset for two different members
   friend bool operator== (Member &m1, Member &m2) {
@@ -82,10 +81,10 @@ public:
   void merge(Member& m);
 };
 
-typedef std::map<unsigned int, Member> MemberMap;
+using MemberMap = std::map<unsigned int, Member>;
 
 // A map of functions to their offsets in something related to passing this-pointers.
-typedef std::map<rose_addr_t, FuncOffset> FuncOffsetMap;
+using FuncOffsetMap = std::map<rose_addr_t, FuncOffset>;
 
 // Provided by method.cpp and used in usage.cpp as well.  Messy design. :-(
 SymbolicValuePtr get_this_ptr_for_call(const CallDescriptor* cd);
@@ -142,7 +141,7 @@ public:
   bool test_for_uninit_reads() const;
 
   // Do late stage validation of virtual table pointers.
-  bool validate_vtable(VirtualTableInstallationPtr install);
+  bool validate_vtable(ConstVirtualTableInstallationPtr install);
 
   // Most analysis methods in ThisCallMethod are private, but this one has to be called after
   // we've updated the oo_properties member on the function descriptors.  It updates the
@@ -188,13 +187,13 @@ struct ThisCallMethodCompare {
 };
 
 // Specifically, the class description needs a set of methods associate with the class.
-typedef std::set<ThisCallMethod*, ThisCallMethodCompare> ThisCallMethodSet;
+using ThisCallMethodSet = std::set<const ThisCallMethod*, ThisCallMethodCompare>;
 
-typedef std::map<rose_addr_t, ThisCallMethod> ThisCallMethodMap;
-typedef std::vector<ThisCallMethod *> ThisCallMethodVector;
+using ThisCallMethodMap = std::map<rose_addr_t, ThisCallMethod>;
+using ThisCallMethodVector = std::vector<ThisCallMethod *>;
 
 // This function seems most related to ThisCallMethods...
-ThisCallMethod* follow_oo_thunks(rose_addr_t addr);
+ThisCallMethod * follow_oo_thunks(const DescriptorSet& ds, rose_addr_t addr);
 
 } // namespace pharos
 

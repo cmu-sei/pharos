@@ -1,3 +1,5 @@
+// Copyright 2017-2019 Carnegie Mellon University.  See LICENSE file for terms.
+
 #ifndef Pharos_Demangle_H
 #define Pharos_Demangle_H
 
@@ -61,9 +63,9 @@ using DemangledTypePtr = std::shared_ptr<DemangledType>;
 // terms in a fully qualified name, and a stack of names or types for numbered references.
 // While the underlying types are identical in practice, I'm going to attempt to keep them
 // separate logically in case they ever need to diverge.
-typedef std::vector<DemangledTypePtr> FunctionArgs;
-typedef std::vector<DemangledTypePtr> FullyQualifiedName;
-typedef std::vector<DemangledTypePtr> ReferenceStack;
+using FunctionArgs = std::vector<DemangledTypePtr>;
+using FullyQualifiedName = std::vector<DemangledTypePtr>;
+using ReferenceStack = std::vector<DemangledTypePtr>;
 
 // The classes describing the demangled results are demangler independent, but strictly
 // speaking the boolean match" flag on the str() methods is specific to the Visual Studio
@@ -88,7 +90,7 @@ class DemangledTemplateParameter {
 
 using DemangledTemplateParameterPtr = std::shared_ptr<DemangledTemplateParameter>;
 
-typedef std::vector<DemangledTemplateParameterPtr> DemangledTemplate;
+using DemangledTemplate = std::vector<DemangledTemplateParameterPtr>;
 
 class DemangledType {
   // The the type a pointer, reference, refref, etc. to a function?

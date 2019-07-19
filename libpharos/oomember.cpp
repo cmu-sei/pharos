@@ -1,30 +1,17 @@
+// Copyright 2017-2019 Carnegie Mellon University.  See LICENSE file for terms.
+
 #include "oomember.hpp"
 
 namespace pharos {
 
-void
-OOMember::generate_name() {
-  std::stringstream name_ss;
-  name_ss << "mbr_" << std::hex << std::noshowbase << offset_ << std::showbase << std::dec;
-  std::string s = name_ss.str();
-  set_name(s);
-}
-
 OOMember::OOMember(size_t s) : OOElement(s) {
-  generate_name();
+  set_name("mbr");
   assess_type_from_size();
 }
 
-OOMember::OOMember(size_t s, size_t o) : OOElement(s) {
-  set_offset(o);
-  generate_name();
-  assess_type_from_size();
-}
-
-OOMember::OOMember(size_t s, size_t o, InsnSet e) : OOElement(s) {
-  set_offset(o);
+OOMember::OOMember(size_t s, InsnSet e) : OOElement(s) {
   add_evidence(e);
-  generate_name();
+  set_name("mbr");
   assess_type_from_size();
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2015, 2016, 2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Config_H
 #define Config_H
@@ -27,11 +27,11 @@ class ConfigNode_iterator :
                                  boost::use_default,
                                  std::pair<Node, Node> >
 {
-  typedef boost::iterator_adaptor<ConfigNode_iterator<Node, Base>,
-                                  Base,
-                                  std::pair<Node, Node>,
-                                  boost::use_default,
-                                  std::pair<Node, Node> > base_t;
+  using base_t = boost::iterator_adaptor<ConfigNode_iterator<Node, Base>,
+                                         Base,
+                                         std::pair<Node, Node>,
+                                         boost::use_default,
+                                         std::pair<Node, Node> >;
  public:
   ConfigNode_iterator(const ConfigNode_iterator<Node, Base> &i) : base_t(i) {}
   ConfigNode_iterator(const Node &parent, const Base &i) :
@@ -113,11 +113,13 @@ class ConfigNode : protected YAML::Node {
 
   /// Define the iterator type, which will iterate over std::pair<ConfigNode,ConfigNode>
   /// elements
-  typedef detail::ConfigNode_iterator<ConfigNode, Node::const_iterator> iterator;
+  using iterator = detail::ConfigNode_iterator<ConfigNode, Node::const_iterator>;
 
   /// Create an empty config
-  ConfigNode() : filemap_(YAML::NodeType::Map)
-  {}
+  ConfigNode() : filemap_(YAML::NodeType::Map) {}
+
+  /// Copy constructor
+  ConfigNode(ConfigNode const &) = default;
 
   /// Look up the value of the current ConfigNode's 'key' attribute.  If there is no attribute
   /// for 'key', a ConfigNode that is undefined (!IsDefined()) will be returned.  If a

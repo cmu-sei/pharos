@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/algorithm/string.hpp>
 
@@ -10,6 +10,8 @@
 #include <libpharos/riscops.hpp>
 #include <libpharos/options.hpp>
 #include <libpharos/pdg.hpp>
+#include <libpharos/masm.hpp>
+#include <libpharos/bua.hpp>
 
 #define DEFAULT_MIN_INSTRUCTIONS 5
 #define DEFAULT_MAX_BYTES 10000
@@ -57,7 +59,7 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
   typedef SgUnsignedCharList::const_iterator iter_t;
 
   // The program being analyzed
-  DescriptorSet *program;
+  const DescriptorSet& program;
 
   // Name of file being analyzed
   std::string basename;
@@ -146,7 +148,7 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
    public:
     Block(bool _bblock_split = false) : bblock_split(_bblock_split) {}
 
-    bool add(const SgAsmx86Instruction *insn) {
+    bool add(const SgAsmX86Instruction *insn) {
       rose_addr_t a = insn->get_address();
       size_t      s = insn->get_size();
       if (addresses.empty()) {
@@ -182,18 +184,16 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
   // Visitor that keeps track of potential address candidates
   struct IntegerSearcher : public AstSimpleProcessing {
     std::vector<uint32_t> candidates;
-    DescriptorSet *program;
+    const DescriptorSet& program;
 
-    IntegerSearcher(DescriptorSet *_program) {
-      program = _program;
-    }
+    IntegerSearcher(const DescriptorSet& _program) : program(_program) { }
 
     void visit(SgNode *node) override {
       const SgAsmIntegerValueExpression *intexp =
         isSgAsmIntegerValueExpression(node);
       if (intexp) {
         uint64_t val = intexp->get_value();
-        if (program->memory_in_image(rose_addr_t(val))) {
+        if (program.memory.is_mapped(rose_addr_t(val))) {
           // TODO: Make the following assert a warning
           assert((val >> 32) == 0); // 32-bit address
           candidates.push_back(val);
@@ -295,8 +295,8 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
   }
 
  public:
-   FnToYaraAnalyzer(DescriptorSet * ds_, ProgOptVarMap & vm_)
-     : BottomUpAnalyzer(ds_, vm_), program(ds), dupe_count(0)
+   FnToYaraAnalyzer(DescriptorSet& ds_, ProgOptVarMap& vm_)
+     : BottomUpAnalyzer(ds_, vm_), program(ds_), dupe_count(0)
    {
      include_thunks = vm_["include-thunks"].as<bool>();
      address_only = vm_["address-only"].as<bool>();
@@ -425,7 +425,7 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
     assert(!insns.empty());
     blocks.push_back(Block(!coalesce_blocks));
     Block *b = &blocks.back();
-    for (const SgAsmx86Instruction *insn : insns) {
+    for (const SgAsmX86Instruction *insn : insns) {
       if (!b->add(insn)) {
         blocks.push_back(Block(!coalesce_blocks));
         b = &blocks.back();
@@ -442,7 +442,7 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
     size_t instr_count = 0;
     size_t byte_count = 0;
     std::vector<Block>::const_iterator cblock = blocks.begin();
-    for (SgAsmx86Instruction *insn : insns) {
+    for (SgAsmX86Instruction *insn : insns) {
       rose_addr_t addr = insn->get_address();
 
       // Iterate to next block, if necessary
@@ -543,12 +543,12 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
         // (for an implicit DS register usage, apparently)
         struct IntegerOffsetSearcher : public AstSimpleProcessing {
           std::vector< std::pair< uint32_t, uint32_t > > candidates;
-          DescriptorSet *program;
+          const DescriptorSet& program;
           FunctionDescriptor *fd;
           SgAsmInstruction *insn;
 
-          IntegerOffsetSearcher(DescriptorSet *_program, FunctionDescriptor *_fd, SgAsmInstruction *_insn) {
-            program = _program;
+          IntegerOffsetSearcher(const DescriptorSet& _program, FunctionDescriptor *_fd,
+                                SgAsmInstruction *_insn) : program(_program) {
             fd = _fd;
             insn = _insn;
           }
@@ -558,7 +558,7 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
               isSgAsmIntegerValueExpression(node);
             if (intexp) {
               uint64_t val = intexp->get_value(); // or get_absoluteValue() ?
-              if (program->memory_in_image(rose_addr_t(val))) {
+              if (program.memory.is_mapped(rose_addr_t(val))) {
                 AddressIntervalSet chunks = fd->get_address_intervals();
                 auto chunk1 = chunks.find(insn->get_address());
                 auto chunk2 = chunks.find(val);
@@ -649,14 +649,10 @@ int fn2yara_main(int argc, char **argv) {
 
   // Find calls, functions, and imports.
   DescriptorSet ds(vm);
-  if (ds.get_interp() == NULL) {
-    GFATAL << "Unable to analyze file (no executable content found)." << LEND;
-    return EXIT_FAILURE;
-  }
   // Resolve imports, load API data, etc.
   // ds.resolve_imports();
 
-  FnToYaraAnalyzer analyzer(&ds, vm);
+  FnToYaraAnalyzer analyzer(ds, vm);
   analyzer.analyze();
 
   OINFO << "Complete." << LEND;
@@ -666,7 +662,7 @@ int fn2yara_main(int argc, char **argv) {
 
 int main(int argc, char **argv)
 {
-  return pharos_main("Fn2YARA", fn2yara_main, argc, argv);
+  return pharos_main("FN2Y", fn2yara_main, argc, argv);
 }
 
 /* Local Variables:   */

@@ -1,0 +1,648 @@
+{
+    "Structures": [
+        {
+            "Name": ".?AVB@@",
+            "DemangledName": "B",
+            "Size": "20",
+            "Members": [
+                {
+                    "name": "vfptr_0",
+                    "type": "vfptr",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_4",
+                    "type": "dword",
+                    "offset": "4",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_8",
+                    "type": "dword",
+                    "offset": "8",
+                    "count": "1"
+                },
+                {
+                    "name": ".?AVA@@_c",
+                    "type": "struc",
+                    "struc": ".?AVA@@",
+                    "parent": "yes",
+                    "offset": "c",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "401020",
+                    "name": "ctor_401020",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                }
+            ],
+            "Vftables": [
+                {
+                    "ea": "406150",
+                    "vfptr": "0"
+                }
+            ]
+        },
+        {
+            "Name": ".?AVA@@",
+            "DemangledName": "A",
+            "Size": "8",
+            "Members": [
+                {
+                    "name": "vfptr_0",
+                    "type": "vfptr",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_4",
+                    "type": "dword",
+                    "offset": "4",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "401000",
+                    "name": "ctor_401000",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                }
+            ],
+            "Vftables": [
+                {
+                    "ea": "406140",
+                    "vfptr": "0",
+                    "entries": [
+                        {
+                            "ea": "401010",
+                            "offset": "0",
+                            "name": "virt_meth_401010",
+                            "demangled_name": "",
+                            "import": "no",
+                            "type": "meth"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "Name": "cls_403ded",
+            "DemangledName": "",
+            "Size": "13",
+            "Members": [
+                {
+                    "name": "mbr_0",
+                    "type": "dword",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_4",
+                    "type": "dword",
+                    "offset": "4",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_8",
+                    "type": "dword",
+                    "offset": "8",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_c",
+                    "type": "byte",
+                    "offset": "c",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "403ded",
+                    "name": "ctor_403ded",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                }
+            ]
+        },
+        {
+            "Name": ".?AVbad_alloc@std@@",
+            "DemangledName": "std::bad_alloc",
+            "Size": "9",
+            "Members": [
+                {
+                    "name": "vfptr_0",
+                    "type": "vfptr",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": ".?AVexception@std@@_0",
+                    "type": "struc",
+                    "struc": ".?AVexception@std@@",
+                    "parent": "yes",
+                    "offset": "0",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "4011bc",
+                    "name": "meth_4011bc",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                },
+                {
+                    "ea": "4011ee",
+                    "name": "ctor_4011ee",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                }
+            ],
+            "Vftables": [
+                {
+                    "ea": "4061a4",
+                    "vfptr": "0",
+                    "entries": [
+                        {
+                            "ea": "4011c7",
+                            "offset": "0",
+                            "name": "virt_deldtor_4011c7",
+                            "demangled_name": "",
+                            "import": "no",
+                            "type": "dtor"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "Name": ".?AVtype_info@@",
+            "DemangledName": "type_info",
+            "Size": "4",
+            "Members": [
+                {
+                    "name": "vfptr_0",
+                    "type": "vfptr",
+                    "offset": "0",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "40118b",
+                    "name": "dtor_40118b",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "dtor"
+                }
+            ],
+            "Vftables": [
+                {
+                    "ea": "40619c",
+                    "vfptr": "0",
+                    "entries": [
+                        {
+                            "ea": "40119b",
+                            "offset": "0",
+                            "name": "virt_deldtor_40119b",
+                            "demangled_name": "",
+                            "import": "no",
+                            "type": "dtor"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "Name": ".?AVD@@",
+            "DemangledName": "D",
+            "Size": "36",
+            "Members": [
+                {
+                    "name": "vfptr_0",
+                    "type": "vfptr",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "vfptr_c",
+                    "type": "vfptr",
+                    "offset": "c",
+                    "count": "1"
+                },
+                {
+                    "name": ".?AVB@@_0",
+                    "type": "struc",
+                    "struc": ".?AVB@@",
+                    "parent": "yes",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": ".?AVC@@_c",
+                    "type": "struc",
+                    "struc": ".?AVC@@",
+                    "parent": "yes",
+                    "offset": "c",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "4010b0",
+                    "name": "ctor_4010b0",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                }
+            ],
+            "Vftables": [
+                {
+                    "ea": "406180",
+                    "vfptr": "0",
+                    "entries": [
+                        {
+                            "ea": "401110",
+                            "offset": "1",
+                            "name": "virt_meth_401110",
+                            "demangled_name": "",
+                            "import": "no",
+                            "type": "meth"
+                        }
+                    ]
+                },
+                {
+                    "ea": "406178",
+                    "vfptr": "12"
+                }
+            ]
+        },
+        {
+            "Name": ".?AVC@@",
+            "DemangledName": "C",
+            "Size": "20",
+            "Members": [
+                {
+                    "name": "vfptr_0",
+                    "type": "vfptr",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_4",
+                    "type": "dword",
+                    "offset": "4",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_8",
+                    "type": "dword",
+                    "offset": "8",
+                    "count": "1"
+                },
+                {
+                    "name": ".?AVA@@_c",
+                    "type": "struc",
+                    "struc": ".?AVA@@",
+                    "parent": "yes",
+                    "offset": "c",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "401060",
+                    "name": "ctor_401060",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                }
+            ],
+            "Vftables": [
+                {
+                    "ea": "406160",
+                    "vfptr": "0",
+                    "entries": [
+                        {
+                            "ea": "4010a0",
+                            "offset": "0",
+                            "name": "virt_meth_4010a0",
+                            "demangled_name": "",
+                            "import": "no",
+                            "type": "meth"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "Name": ".?AVexception@std@@",
+            "DemangledName": "std::exception",
+            "Size": "9",
+            "Members": [
+                {
+                    "name": "vfptr_0",
+                    "type": "vfptr",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_4",
+                    "type": "dword",
+                    "offset": "4",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_8",
+                    "type": "byte",
+                    "offset": "8",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "401528",
+                    "name": "ctor_401528",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                },
+                {
+                    "ea": "401552",
+                    "name": "meth_401552",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                },
+                {
+                    "ea": "401592",
+                    "name": "meth_401592",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                },
+                {
+                    "ea": "4015b0",
+                    "name": "meth_4015b0",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                },
+                {
+                    "ea": "4015e5",
+                    "name": "dtor_4015e5",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "dtor"
+                },
+                {
+                    "ea": "401617",
+                    "name": "ctor_401617",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                }
+            ],
+            "Vftables": [
+                {
+                    "ea": "4061c0",
+                    "vfptr": "0",
+                    "entries": [
+                        {
+                            "ea": "4015f0",
+                            "offset": "0",
+                            "name": "virt_deldtor_4015f0",
+                            "demangled_name": "",
+                            "import": "no",
+                            "type": "dtor"
+                        },
+                        {
+                            "ea": "401545",
+                            "offset": "1",
+                            "name": "virt_meth_401545",
+                            "demangled_name": "",
+                            "import": "no",
+                            "type": "meth"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "Usages": [
+        {
+            "Members": [
+                {
+                    "class": ".?AVB@@",
+                    "ea": "40103e"
+                },
+                {
+                    "class": ".?AVB@@",
+                    "ea": "40102f"
+                },
+                {
+                    "class": ".?AVB@@",
+                    "ea": "40103b"
+                },
+                {
+                    "class": ".?AVB@@",
+                    "ea": "401047"
+                },
+                {
+                    "class": ".?AVB@@",
+                    "ea": "40104f"
+                },
+                {
+                    "class": ".?AVA@@",
+                    "ea": "401002"
+                },
+                {
+                    "class": ".?AVA@@",
+                    "ea": "401008"
+                },
+                {
+                    "class": ".?AVA@@",
+                    "ea": "401010"
+                },
+                {
+                    "class": "cls_403ded",
+                    "ea": "403e0b"
+                },
+                {
+                    "class": "cls_403ded",
+                    "ea": "403e13"
+                },
+                {
+                    "class": "cls_403ded",
+                    "ea": "403e2d"
+                },
+                {
+                    "class": "cls_403ded",
+                    "ea": "403e65"
+                },
+                {
+                    "class": "cls_403ded",
+                    "ea": "403e10"
+                },
+                {
+                    "class": "cls_403ded",
+                    "ea": "403e2f"
+                },
+                {
+                    "class": "cls_403ded",
+                    "ea": "403e4d"
+                },
+                {
+                    "class": "cls_403ded",
+                    "ea": "403e6a"
+                },
+                {
+                    "class": "cls_403ded",
+                    "ea": "403e05"
+                },
+                {
+                    "class": "cls_403ded",
+                    "ea": "403e3a"
+                },
+                {
+                    "class": "cls_403ded",
+                    "ea": "403e50"
+                },
+                {
+                    "class": "cls_403ded",
+                    "ea": "403df8"
+                },
+                {
+                    "class": "cls_403ded",
+                    "ea": "403e5d"
+                },
+                {
+                    "class": ".?AVbad_alloc@std@@",
+                    "ea": "4011bc"
+                },
+                {
+                    "class": ".?AVbad_alloc@std@@",
+                    "ea": "4011cf"
+                },
+                {
+                    "class": ".?AVbad_alloc@std@@",
+                    "ea": "4011fe"
+                },
+                {
+                    "class": ".?AVtype_info@@",
+                    "ea": "40118e"
+                },
+                {
+                    "class": ".?AVD@@",
+                    "ea": "4010e9"
+                },
+                {
+                    "class": ".?AVD@@",
+                    "ea": "4010de"
+                },
+                {
+                    "class": ".?AVD@@",
+                    "ea": "4010ef"
+                },
+                {
+                    "class": ".?AVC@@",
+                    "ea": "40107e"
+                },
+                {
+                    "class": ".?AVC@@",
+                    "ea": "40106f"
+                },
+                {
+                    "class": ".?AVC@@",
+                    "ea": "40107b"
+                },
+                {
+                    "class": ".?AVC@@",
+                    "ea": "401087"
+                },
+                {
+                    "class": ".?AVC@@",
+                    "ea": "40108f"
+                },
+                {
+                    "class": ".?AVC@@",
+                    "ea": "4010a0"
+                },
+                {
+                    "class": ".?AVexception@std@@",
+                    "ea": "401532"
+                },
+                {
+                    "class": ".?AVexception@std@@",
+                    "ea": "4015e5"
+                },
+                {
+                    "class": ".?AVexception@std@@",
+                    "ea": "4015f8"
+                },
+                {
+                    "class": ".?AVexception@std@@",
+                    "ea": "401626"
+                },
+                {
+                    "class": ".?AVexception@std@@",
+                    "ea": "40153a"
+                },
+                {
+                    "class": ".?AVexception@std@@",
+                    "ea": "401545"
+                },
+                {
+                    "class": ".?AVexception@std@@",
+                    "ea": "401574"
+                },
+                {
+                    "class": ".?AVexception@std@@",
+                    "ea": "40159d"
+                },
+                {
+                    "class": ".?AVexception@std@@",
+                    "ea": "4015a6"
+                },
+                {
+                    "class": ".?AVexception@std@@",
+                    "ea": "4015da"
+                },
+                {
+                    "class": ".?AVexception@std@@",
+                    "ea": "401622"
+                },
+                {
+                    "class": ".?AVexception@std@@",
+                    "ea": "40153d"
+                },
+                {
+                    "class": ".?AVexception@std@@",
+                    "ea": "401588"
+                },
+                {
+                    "class": ".?AVexception@std@@",
+                    "ea": "401597"
+                },
+                {
+                    "class": ".?AVexception@std@@",
+                    "ea": "4015aa"
+                },
+                {
+                    "class": ".?AVexception@std@@",
+                    "ea": "40162c"
+                }
+            ]
+        }
+    ]
+}

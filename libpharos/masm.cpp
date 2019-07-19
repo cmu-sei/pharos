@@ -1,15 +1,14 @@
 // Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <rose.h>
-#include <BinaryControlFlow.h>
+
 #include "masm.hpp"
 #include "util.hpp"
 #include "misc.hpp"
+#include "descriptors.hpp"
+#include "cdg.hpp"
 
 namespace pharos {
-
-typedef Rose::BinaryAnalysis::ControlFlow::Graph CFG;
-typedef boost::graph_traits<CFG>::vertex_descriptor CFGVertex;
 
 DebugLabelMap global_label_map;
 
@@ -62,8 +61,15 @@ void DebugDisasm::visit(SgNode* n)
       found_addrs.insert(addr);
       std::cout << "------------------------------------- Func: " << addr_str(func->get_entry_va()) << LEND;
       fcnt++;
-      std::string funcstr = debug_function(func, hex_bytes, basic_block_lines, show_reasons);
-      std::cout << funcstr;
+
+      const FunctionDescriptor* fd = ds.get_func(func->get_address());
+      if (!fd) {
+        GERROR << "Unable to find function " << addr_str(func->get_address()) << LEND;
+      }
+      else {
+        std::string funcstr = debug_function(fd, hex_bytes, basic_block_lines, show_reasons);
+        std::cout << funcstr;
+      }
     }
   }
 }
@@ -298,20 +304,14 @@ std::string debug_opcode_bytes(const SgUnsignedCharList& data, const unsigned in
   return result;
 }
 
-std::string debug_function(SgAsmFunction * func, const unsigned int max_bytes,
+std::string debug_function(const FunctionDescriptor* fd, const unsigned int max_bytes,
                            const bool basic_block_lines, const bool show_reasons,
                            const RoseLabelMap *labels)
 {
   std::string result = "";
+  CFG cfg = fd->get_rose_cfg();
 
-  Rose::BinaryAnalysis::ControlFlow cfg_analyzer;
-  CFG cfg = cfg_analyzer.build_block_cfg_from_ast<CFG>(func);
-
-  CFGVertex entry_vertex = 0;
-  assert(get(boost::vertex_name, cfg, entry_vertex)==func->get_entry_block());
-  std::vector<CFGVertex> flowlist = cfg_analyzer.flow_order(cfg, entry_vertex);
-  for (size_t i=0; i< flowlist.size(); ++i) {
-    CFGVertex vertex = flowlist[i];
+  for (auto vertex : fd->get_vertices_in_flow_order(cfg)) {
     SgNode *n = get(boost::vertex_name, cfg, vertex);
     SgAsmBlock *blk = isSgAsmBlock(n);
     assert(blk != NULL);
@@ -340,6 +340,15 @@ std::string debug_instruction(const SgAsmInstruction *inst, const unsigned int m
   char buffer[512];
 
   if (inst == NULL) return "NULL!";
+  if (!isSgAsmX86Instruction(inst)) {
+    std::string opbytes = "";
+    if (max_bytes > 0) {
+      opbytes = debug_opcode_bytes(inst->get_raw_bytes(), max_bytes);
+    }
+    // The API to unparseInstruction() is broken.
+    SgAsmInstruction *ncinsn = const_cast<SgAsmInstruction *>(inst);
+    return opbytes + " " + addr_str(inst->get_address()) + " " + unparseInstruction(ncinsn);
+  }
 
   SgAsmOperandList *oplist = inst->get_operandList();
   SgAsmExpressionPtrList& elist = oplist->get_operands();

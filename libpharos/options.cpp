@@ -1,10 +1,17 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+
+#include <algorithm>
+#include <iterator>
+#include <cstring>
+#include <sstream>
 
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/range/algorithm.hpp>
+#include <boost/range/algorithm_ext/insert.hpp>
+#include <boost/range/adaptor/map.hpp>
 
 #include <rose.h>
-#include <Sawyer/Message.h>
 #include <Sawyer/ProgressBar.h>
 
 #include "options.hpp"
@@ -14,6 +21,10 @@
 #include "revision.hpp"
 #include "build.hpp"
 #include "apidb.hpp"
+#include "limit.hpp"
+#include "semantics.hpp"
+#include "path.hpp"
+#include "bua.hpp"
 
 // these next ones needed for global obj cleanup...
 #include "riscops.hpp"
@@ -35,22 +46,45 @@ using prolog::plog;
 // This is library path from the command line or the default value.
 namespace {
 bf::path library_path;
+
+int global_logging_fileno = -1;
+LogDestination global_logging_destination;
+bool global_logging_iteractive = false;
 }
 
-int global_logging_fileno = STDOUT_FILENO;
+bool interactive_logging() {
+  return global_logging_iteractive;
+}
+
+LogDestination get_logging_destination()
+{
+  if (global_logging_destination) {
+    return global_logging_destination;
+  }
+  Sawyer::Message::PrefixPtr prefix = Sawyer::Message::Prefix::instance();
+  prefix = prefix->showProgramName(false);
+  // It's sometimes useful to also disable the faciltiy and importance.
+  //prefix = prefix->showFacilityName(Sawyer::Message::NEVER)->showImportance(false);
+
+  if (global_logging_fileno < 0) {
+    global_logging_fileno = STDOUT_FILENO;
+  }
+  global_logging_destination =
+    Sawyer::Message::FdSink::instance(global_logging_fileno, prefix);
+
+  return global_logging_destination;
+}
 
 // For logging options and other critically important "informational" messages.  This facility
 // is meant to always be logged at level "INFO" and above.  The "WHERE" level includes optional
 // messages, including the affirmative reporting of which options were detected.
-Sawyer::Message::Facility olog("OPTI");
+Sawyer::Message::Facility olog;
 
 // Get the message levels from Sawyer::Message::Common.
 using namespace Sawyer::Message::Common;
 
 #define DEFAULT_VERBOSITY 3
 #define MAXIMUM_VERBOSITY 14
-
-ProgOptVarMap global_vm;
 
 ProgOptDesc cert_standard_options() {
   namespace po = boost::program_options;
@@ -67,6 +101,7 @@ ProgOptDesc cert_standard_options() {
      //po::value<int>()->default_value(DEFAULT_VERBOSITY),
      boost::str(boost::format("enable verbose logging (1-%d, default %d)")
                 % MAXIMUM_VERBOSITY % DEFAULT_VERBOSITY).c_str())
+    ("timing", po::bool_switch(), "Include duration field in log messages")
     ("batch,b", "suppress colors, progress bars, etc.")
 
     // Increasingly important?  And possibly going away before too much longer?
@@ -79,6 +114,8 @@ ProgOptDesc cert_standard_options() {
     ("exclude-func,e",
      po::value<StrVector>(),
      "exclude analysis of a specific function")
+    ("propagate-conditions",
+     "Flag to preserve and propagate conditions when analyzing basic blocks")
 
     // These are options controlling the configuration of the Pharos system.
     ("config,C",
@@ -98,26 +135,26 @@ ProgOptDesc cert_standard_options() {
 
     // Timeouts affecting the "core" analysis pass.
     ("timeout", po::value<double>(),
-     "specify the absolute defuse timeout value")
-    ("reltimeout", po::value<double>(),
-     "specify the relative defuse timeout value")
-    ("ptimeout", po::value<double>(),
-     "specify the absolute partitioner timeout value")
-    ("preltimeout", po::value<double>(),
-     "specify the relative partitioner timeout value")
-    ("maxmem", po::value<double>(),
-     "specify the absolute max memory usage value")
-    ("relmaxmem", po::value<double>(),
-     "specify the relative max memory usage value")
-    ("blockcounterlimit", po::value<int>(),
+     "time limit (sec) for the entire analysis")
+    ("per-function-timeout", po::value<double>(),
+     "CPU limit (sec) per function")
+    ("partitioner-timeout", po::value<double>(),
+     "time limit (sec) for the partitioner")
+    ("maximum-memory", po::value<double>(),
+     "maximum memory (Mib) for the entire anlaysis")
+    ("per-function-maximum-memory", po::value<double>(),
+     "maximum memory (Mib) per function")
+    ("maximum-instructions-per-block", po::value<int>(),
      "limit the number of instructions per basic block")
-    ("funccounterlimit", po::value<int>(),
-     "limit the number of blocks (roughly) per function")
+    ("maximum-iterations-per-function", po::value<int>(),
+     "limit the number of CFG iterations per function")
+    ("maximum-nodes-per-condition", po::value<int>(),
+     "limit the number of tree nodes per ITE condition")
 
-    // Crufty old stuff that may not even be real anymore?
-    ("imports,I",
-     po::value<std::string>(),
-     "analysis configuration file (JSON)")
+    ("threads", po::value<int>()->implicit_value(1),
+     ("Number of threads to use, if this program uses threads.  "
+      "A value of zero means to use all available processors.  "
+      "A negative value means to use that many less than the number of available processors."))
 
     // Almost unused option to work around performance issues when enabled by default.
     ("analyze-types",
@@ -133,18 +170,36 @@ ProgOptDesc cert_standard_options() {
     ;
   ;
 
+  // Currently unused (but intended to be available and hidden).
+  ProgOptDesc certhiddenopt("CERT Hidden options");
+
+  // Don't forget to update the documentation if you change this list!
+  certhiddenopt.add_options()
+    ("maxmem", po::value<double>(),
+     "the old maximum-memory")
+    ("relmaxmem", po::value<double>(),
+     "the old per-function-maximum-memory")
+    ("ptimeout", po::value<double>(),
+     "the old partitioner-timeout")
+    ("blockcounterlimit", po::value<int>(),
+     "the old maximum-instructions-per-block")
+    ("funccounterlimit", po::value<int>(),
+     "the old maximum-iterations-per-function")
+    ;
+  ;
+
   // Don't forget to update the documentation if you change this list!
 
   // These are really partitioner options or maybe options that are mostly just passed along to
   // control standard ROSE behavior.
-  ProgOptDesc roseopt("ROSE options");
+  ProgOptDesc roseopt("ROSE/Partitioner options");
   roseopt.add_options()
+    ("partitioner", po::value<std::string>(),
+     "specify the function parititioner")
     ("serialize", po::value<std::string>(),
-     "File which caches function partitioning information")
+     "file which caches function partitioning information")
     ("ignore-serialize-version",
-     "Reject version mismatch errors when reading a serialized file")
-    ("stockpart",
-     "use stock ROSE partitioner without the Pharos changes")
+     "reject version mismatch errors when reading a serialized file")
     ("no-semantics",
      "disable semantic analysis during parititioning")
     ("pdebug",
@@ -161,6 +216,8 @@ ProgOptDesc cert_standard_options() {
      po::value<unsigned int>(),
      "enable threaded processing")
 #endif
+    ("stockpart",
+     "deprecated, use --parititioner=rose")
     ("rose-version",
      "output ROSE version information and exit immediately")
     ;
@@ -171,11 +228,44 @@ ProgOptDesc cert_standard_options() {
   return certopt;
 }
 
-ProgOptVarMap parse_cert_options_generic(
-  int argc, char** argv, ProgOptDesc od, ProgPosOptDesc posopt,
-  const std::string & proghelptext)
+ProgOptVarMap::ProgOptVarMap(int argc, char **argv)
+{
+  std::copy_n(argv, argc, std::back_inserter(_args));
+}
+
+std::string ProgOptVarMap::command_line() const
+{
+  std::ostringstream os;
+  for (auto arg : _args) {
+    if (os.tellp() != 0) {
+      os << ' ';
+    }
+    if (std::strchr(arg, ' ')) {
+      os << '\'' << arg << '\'';
+    }
+  }
+  return os.str();
+}
+
+ProgOptVarMap parse_cert_options(
+  int argc, char** argv,
+  ProgOptDesc od,
+  const std::string & proghelptext,
+  boost::optional<ProgPosOptDesc> posopt,
+  Sawyer::Message::UnformattedSinkPtr destination)
 {
   namespace po = boost::program_options;
+
+  bool fileopt = false;
+  if (!posopt) {
+    fileopt = true;
+    posopt = ProgPosOptDesc().add("file", -1);
+  }
+
+  if (destination) {
+    global_logging_destination = destination;
+    global_logging_fileno = -1;
+  }
 
   // Try to locate the library root
   auto av0path = bf::path(argv[0]);
@@ -222,24 +312,20 @@ ProgOptVarMap parse_cert_options_generic(
     }
   }
 
-  ProgOptVarMap vm;
+  ProgOptVarMap vm(argc, argv);;
 
-  Sawyer::Message::FdSinkPtr mout = Sawyer::Message::FdSink::instance(global_logging_fileno);
-
-  // Create a prefix object so that we can modify prefix properties.
-  Sawyer::Message::PrefixPtr prefix = Sawyer::Message::Prefix::instance();
-  prefix = prefix->showProgramName(false)->showElapsedTime(false);
-  // It's sometimes useful to also disable the faciltiy and importance.
-  //prefix = prefix->showFacilityName(Sawyer::Message::NEVER)->showImportance(false);
+  // Register our custom callback for determining if two expressions may be equal.
+  set_may_equal_callback();
 
   // Get the options logging facility working with the standard options.
-  olog.initStreams(mout->prefix(prefix));
+  olog.initialize("OPTI");
+  olog.initStreams(get_logging_destination());
   // Initialize the global log with the appropriate filters.  Set this up before option
   // processing.
-  glog().initStreams(mout->prefix(prefix));
+  glog.initStreams(get_logging_destination());
 
   po::store(po::command_line_parser(argc, argv).
-            options(od).positional(posopt).run(), vm);
+            options(od).positional(*posopt).run(), vm);
 
   bf::path program = argv[0];
   vm.config(pharos::Config::load_config(
@@ -258,6 +344,16 @@ ProgOptVarMap parse_cert_options_generic(
     exit(3);
   }
 
+  global_logging_iteractive =
+    global_logging_fileno >= 0 && isatty(global_logging_fileno) && !vm.count("batch");
+
+  // Turn off color when color can't or shouldn't be used
+  if (!color_terminal(global_logging_fileno) || vm.count("batch")) {
+    get_logging_destination()->overridePropertiesNS().useColor = false;
+  }
+
+  get_logging_destination()->prefix()->showElapsedTime(vm["timing"].as<bool>());
+
   // Once the command line options have been processed we can determine the library path.
   auto lv = vm.get<std::string>("library", "pharos.library");
   library_path = lv ? *lv : lib_root;
@@ -269,11 +365,6 @@ ProgOptVarMap parse_cert_options_generic(
   Rose::Diagnostics::initialize();
   Sawyer::ProgressBarSettings::initialDelay(3.0);
   Sawyer::ProgressBarSettings::minimumUpdateInterval(1.0);
-
-  // Create a sink associated with standard output.
-  if (!color_terminal() || vm.count("batch")) {
-    mout->overridePropertiesNS().useColor = false;
-  }
 
   // Add the options logging facility to the known facilities.
   Sawyer::Message::mfacilities.insert(olog);
@@ -296,18 +387,27 @@ ProgOptVarMap parse_cert_options_generic(
   // We complain about non-included required options here.
   po::notify(vm);
 
+  // Set global limits
+  set_global_limits(vm);
+
   // Add the global logging facility to the known facilities.
-  Sawyer::Message::mfacilities.insert(glog());
+  Sawyer::Message::mfacilities.insert(glog);
   // Initialize the semantics log with the appropriate filters.
-  slog.initStreams(mout->prefix(prefix));
+  slog.initialize("FSEM");
+  slog.initStreams(get_logging_destination());
   // Add the semantic logging facility to the known facilities.
   Sawyer::Message::mfacilities.insert(slog);
-  // Initialize the prolog
-  plog.initStreams(mout->prefix(prefix));
+  // Initialize the prolog logging facility
+  plog.initialize("PLOG");
+  plog.initStreams(get_logging_destination());
   // Add the prolog logging facility to the known facilities.
   Sawyer::Message::mfacilities.insert(plog);
 
+  // This was cleaner when it was a global initializer in types.cpp...
+  init_type_logging();
+
   auto & apidblog = APIDictionary::initDiagnostics();
+  BottomUpAnalyzer::initDiagnostics();
 
   // Set the default verbosity to only emit errors and and fatal messages.
   Sawyer::Message::mfacilities.control("none, >=error");
@@ -319,7 +419,8 @@ ProgOptVarMap parse_cert_options_generic(
   // The options log is the exception to the rule that only errors and above are reported.
   olog[Sawyer::Message::WARN].enable();
   olog[Sawyer::Message::INFO].enable();
-  if (isatty(global_logging_fileno)) {
+
+  if (interactive_logging()) {
     olog[Sawyer::Message::MARCH].enable();
   }
 
@@ -414,42 +515,31 @@ ProgOptVarMap parse_cert_options_generic(
     GCRAZY << "Main program CRAZY/DEBUG messages are enabled." << LEND;
   }
 
-  if (vm.count("include-func")) {
-    for (const std::string & astr : vm["include-func"].as<StrVector>()) {
-      rose_addr_t addr = parse_number(astr);
-      ODEBUG << "Limiting analysis to function: " << addr_str(addr) << LEND;
+  if (fileopt) {
+    if (vm.count("file")) {
+      OINFO << "Analyzing executable: " << vm["file"].as<std::string>() << LEND;
+    } else {
+      OFATAL << "You must specify at least one executable to analyze." << LEND;
+      exit(3);
+    }
+
+    if (vm.count("include-func")) {
+      for (const std::string & astr : vm["include-func"].as<StrVector>()) {
+        rose_addr_t addr = parse_number(astr);
+        ODEBUG << "Limiting analysis to function: " << addr_str(addr) << LEND;
+      }
+    }
+
+    if (vm.count("exclude-func")) {
+      for (const std::string & astr : vm["exclude-func"].as<StrVector>()) {
+        rose_addr_t addr = parse_number(astr);
+        ODEBUG << "Excluding function: " << addr_str(addr) << LEND;
+      }
     }
   }
-
-  if (vm.count("exclude-func")) {
-    for (const std::string & astr : vm["exclude-func"].as<StrVector>()) {
-      rose_addr_t addr = parse_number(astr);
-      ODEBUG << "Excluding function: " << addr_str(addr) << LEND;
-    }
-  }
-
   // We might want to investigate allowing unknown options for pasthru to ROSE
   // http://www.boost.org/doc/libs/1_53_0/doc/html/program_options/howto.html
 
-  global_vm = vm; // so libpharos can get at this stuff without having to pass options all
-                  // around...
-
-  return vm;
-}
-
-ProgOptVarMap parse_cert_options(int argc, char** argv, ProgOptDesc od,
-                                 const std::string & proghelptext)
-{
-  ProgPosOptDesc posopt;
-  posopt.add("file", -1);
-  auto vm = parse_cert_options_generic(argc, argv, od, posopt, proghelptext);
-  if (vm.count("file")) {
-    OINFO << "Analyzing executable: " << vm["file"].as<std::string>() << LEND;
-  }
-  else {
-    OFATAL << "You must specify at least one executable to analyze." << LEND;
-    exit(3);
-  }
   return vm;
 }
 
@@ -458,13 +548,8 @@ const bf::path& get_library_path()
   return library_path;
 }
 
-ProgOptVarMap& get_global_options_vm()
-{
-  return global_vm;
-}
-
 // Convert a vector of string into a set of rose_addr_t, out of option var map.
-AddrSet option_addr_list(ProgOptVarMap& vm, const char *name) {
+AddrSet option_addr_list(ProgOptVarMap const & vm, const char *name) {
   AddrSet aset;
   if (vm.count(name) > 0) {
     for (const std::string & as : vm[name].as<StrVector>()) {
@@ -474,117 +559,31 @@ AddrSet option_addr_list(ProgOptVarMap& vm, const char *name) {
   return aset;
 }
 
-struct ProgressSuffix {
-  const BottomUpAnalyzer* bua;
-  ProgressSuffix(): bua(NULL) {}
-  ProgressSuffix(const BottomUpAnalyzer *b): bua(b) {}
-  void print(std::ostream &o) const {
-    if (bua != NULL) {
-      o << "/" << bua->total_funcs << " functions, processing: ";
-      o << addr_str(bua->current_func);
+AddrSet get_selected_funcs(const DescriptorSet& ds, ProgOptVarMap const & vm) {
+  AddrSet included_funcs = option_addr_list(vm, "include-func");
+
+  // WTF?
+  if (included_funcs.size () > 0) {
+    for (rose_addr_t a : included_funcs) {
+      ODEBUG << "Limiting analysis to function: " << addr_str(a) << LEND;
     }
+  } else {
+    auto & map = ds.get_func_map();
+    std::transform(map.begin(), map.end(), std::inserter(included_funcs, included_funcs.end()),
+                   [](FunctionDescriptorMap::const_reference x) { return x.first; });
+    // There's a bug in boost::range::insert in boost 1.61 that causes failures in clang.
+    // boost::insert (included_funcs, ds.get_func_map () | boost::adaptors::map_keys);
   }
-};
 
-std::ostream& operator<<(std::ostream &o, const ProgressSuffix &suffix) {
-  suffix.print(o);
-  return o;
-}
-
-BottomUpAnalyzer::BottomUpAnalyzer(DescriptorSet* ds_, ProgOptVarMap& vm_) {
-  ds = ds_;
-  vm = vm_;
-
-  total_funcs = 0;
-  processed_funcs = 0;
-  current_func = 0;
-}
-
-// Update the progress bar to show our progress.
-void BottomUpAnalyzer::update_progress() const {
-  static Sawyer::ProgressBar<size_t, ProgressSuffix> *progressBar = NULL;
-  if (!progressBar)
-    progressBar = new Sawyer::ProgressBar<size_t, ProgressSuffix>(olog[Sawyer::Message::MARCH], "");
-  progressBar->suffix(ProgressSuffix(this));
-  progressBar->value(processed_funcs);
-}
-
-// The default visitor simply computes the PDG and returns.
-void BottomUpAnalyzer::visit(FunctionDescriptor *fd) {
-   // try {
-    fd->get_pdg();
-  // } catch(...) {
-  //   GERROR << "Error building PDG (caught exception)" << LEND;
-  // }
-}
-
-// The default start is a NOP.
-void BottomUpAnalyzer::start() {
-  GDEBUG << "Starting bottom up function analysis." << LEND;
-}
-
-// The default finish is a NOP.
-void BottomUpAnalyzer::finish() {
-  GDEBUG << "Finishing bottom up function analysis." << LEND;
-}
-
-void BottomUpAnalyzer::analyze() {
-  // User overridden start() method.
-  start();
-
-  AddrSet selected_funcs = option_addr_list(vm, "include-func");
-  for (rose_addr_t a : selected_funcs) {
-    ODEBUG << "Limiting analysis to function: " << addr_str(a) << LEND;
-  }
-  size_t selected = selected_funcs.size();
-  bool filtering = false;
-  if (selected > 0) filtering = true;
   AddrSet excluded_funcs = option_addr_list(vm, "exclude-func");
-  GDEBUG << "Filtering is " << filtering << LEND;
   for (const rose_addr_t addr : excluded_funcs) {
     GINFO << "Function " << addr_str(addr) << " excluded" << LEND;
   }
 
-  FuncDescVector ordered_funcs = ds->funcs_in_bottom_up_order();
-  total_funcs = ordered_funcs.size();
-  processed_funcs = 0;
-  for (FunctionDescriptor* fd : ordered_funcs) {
-    // If we're limiting analysis to specific functions, do that now.
-    AddrSet::iterator fit = selected_funcs.find(fd->get_address());
-    if (filtering) {
-      if (fit == selected_funcs.end()) {
-        // If we're only including specific functions, exclude all others. Log this at a much
-        // lower level because there could be lots of filtered functions, and the user might
-        // find listing them all annoying.
-        fd->set_excluded();
-        GTRACE << "Function " << fd->address_string() << " excluded" << LEND;
-        continue;
-      }
-      selected_funcs.erase(fit);
-    }
-    // Now check to see if we're explicitly excluding the function.
-    fit = excluded_funcs.find(fd->get_address());
-    if (fit != excluded_funcs.end()) {
-      fd->set_excluded();
-      GINFO << "Function " << fd->address_string() << " excluded" << LEND;
-      continue;
-    }
+  AddrSet selected_funcs;
 
-    current_func = fd->get_address();
-    update_progress();
-    GDEBUG << "Visiting function " << fd->address_string() << LEND;
-    // Visit the function.
-    visit(fd);
-    processed_funcs++;
-  }
-
-  if (filtering && selected_funcs.size() != 0) {
-    GERROR << "Found only " << processed_funcs << " functions of " << selected
-           << " specifically requested for analysis." << LEND;
-  }
-
-  // User overridden finish() method.
-  finish();
+  boost::set_difference (included_funcs, excluded_funcs, std::inserter (selected_funcs, selected_funcs.end ()));
+  return selected_funcs;
 }
 
 void cleanup_our_globals() {
@@ -611,10 +610,10 @@ static void report_exception(const std::exception & e, int level = 0)
   }
 }
 
-int pharos_main(std::string const & glog_, main_func_ptr fn,
+int pharos_main(std::string const & glog_name, main_func_ptr fn,
                 int argc, char **argv, int logging_fileno)
 {
-  set_glog_name(glog_);
+  glog.initialize(glog_name);
 
   int rc = 0;
   atexit(cleanup_our_globals);

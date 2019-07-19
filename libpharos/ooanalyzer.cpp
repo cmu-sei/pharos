@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 // This code represents the new Prolog based approach!
 
@@ -12,6 +12,7 @@
 #include "ooanalyzer.hpp"
 #include "vcall.hpp"
 #include "oosolver.hpp"
+#include "masm.hpp"
 
 namespace pharos {
 
@@ -21,13 +22,12 @@ namespace pharos {
 // OOSolver
 void analyze_vtable_overlap();
 
-OOAnalyzer::OOAnalyzer(DescriptorSet* ds_, ProgOptVarMap& vm_, AddrSet& new_addrs_) :
+OOAnalyzer::OOAnalyzer(DescriptorSet& ds_, const ProgOptVarMap& vm_, AddrSet& new_addrs_) :
   BottomUpAnalyzer(ds_, vm_) {
   new_methods_found = 0;
   delete_methods_found = 0;
   purecall_methods_found = 0;
   new_addrs = new_addrs_;
-  start_ts = clock::now();
 
   // Initialize the new_hashes string set with the hashes of known methods.
   initialize_known_method_hashes();
@@ -35,33 +35,48 @@ OOAnalyzer::OOAnalyzer(DescriptorSet* ds_, ProgOptVarMap& vm_, AddrSet& new_addr
   find_imported_delete_methods();
   find_imported_purecall_methods();
   //find_imported_nonreturn_methods();
+
+  set_mode(MULTI_THREADED);
 }
 
-bool OOAnalyzer::identify_new_method(FunctionDescriptor* fd) {
-  std::string sig = fd->get_pic_hash();
-  if (new_addrs.find(fd->get_address()) != new_addrs.end()) {
-    fd->set_new_method(true);
-    new_methods_found++;
-    return true;
+bool OOAnalyzer::identify_new_method(FunctionDescriptor const & fd) {
+  std::string sig = fd.get_pic_hash();
+  rose_addr_t fdaddr = fd.get_address();
+  {
+    auto && guard = read_guard(mutex);
+    if (new_addrs.find(fdaddr) != new_addrs.end()) {
+      // This logic is a little strange now.  We used to set the flag on the function
+      // descriptor, and now we're just incrementing the found count since calling
+      // set_new_method() would just attempt to add it to the set (again).  But we still want
+      // to increment the counter rather than just report the length of new_addrs because we
+      // stuck some addresses in there without actually confirming that they exist.  This
+      // should be moot in FunctionFinder.
+      new_methods_found++;
+      return true;
+    }
   }
-  else if (new_hashes.find(sig) != new_hashes.end()) {
-    GINFO << "Function at " << fd->address_string() << " matches hash "
+  if (new_hashes.find(sig) != new_hashes.end()) {
+    GINFO << "Function at " << fd.address_string() << " matches hash "
           << sig << " of known new() method." << LEND;
-    fd->set_new_method(true);
+    set_new_method(fdaddr);
     new_methods_found++;
     return true;
   }
   return false;
 }
 
-bool OOAnalyzer::identify_delete_method(FunctionDescriptor* fd) {
-  std::string sig = fd->get_pic_hash();
-  if (delete_addrs.find(fd->get_address()) != delete_addrs.end()) {
-    fd->set_delete_method(true);
-    delete_methods_found++;
-    return true;
+bool OOAnalyzer::identify_delete_method(FunctionDescriptor const & fd) {
+  std::string sig = fd.get_pic_hash();
+  rose_addr_t fdaddr = fd.get_address();
+  {
+    auto && guard = read_guard(mutex);
+    if (delete_addrs.find(fdaddr) != delete_addrs.end()) {
+      // Same comment as on set_new_method().
+      delete_methods_found++;
+      return true;
+    }
   }
-  else if (delete_hashes.find(sig) != delete_hashes.end()) {
+  if (delete_hashes.find(sig) != delete_hashes.end()) {
     // Because the hash for a delete method is basically just a stub that jumps to _free,
     // we need to do some additional analysis to avoid a bunch of false positives. :-(
     //GINFO << "Function at " << fd->address_string() << " matches hash "
@@ -71,13 +86,12 @@ bool OOAnalyzer::identify_delete_method(FunctionDescriptor* fd) {
     // delete.  An example of this was the statically linked implementation of ??3@YAXPAXI@Z in
     // our prtscrpp example at 0x406F9B.  It appears that we should except hashes that call to
     // known delete methods as well.
-    for (const CallDescriptor* cd : fd->get_outgoing_calls()) {
+    for (const CallDescriptor* cd : fd.get_outgoing_calls()) {
       for (rose_addr_t target : cd->get_targets()) {
-        FunctionDescriptor* call_fd = global_descriptor_set->get_func(target);
-        if (call_fd && call_fd->is_delete_method()) {
-          GINFO << "Function at " << fd->address_string() << " matches hash "
+        if (is_delete_method(target)) {
+          GINFO << "Function at " << addr_str(target) << " matches hash "
                 << sig << " of known delete() method." << LEND;
-          fd->set_delete_method(true);
+          set_delete_method(fdaddr);
           delete_methods_found++;
           return true;
         }
@@ -86,15 +100,17 @@ bool OOAnalyzer::identify_delete_method(FunctionDescriptor* fd) {
 
     // This was the original logic for delete hashes that call other stactically linked
     // implementations of free().
-    for (SgAsmBlock *block : fd->get_return_blocks()) {
+    const CFG& cfg = fd.get_pharos_cfg();
+    for (CFGVertex vertex : fd.get_return_vertices()) {
+      SgAsmBlock *block = convert_vertex_to_bblock(cfg, vertex);
       rose_addr_t target = block_get_jmp_target(block);
-      FunctionDescriptor* free_fd = global_descriptor_set->get_func(target);
+      const FunctionDescriptor* free_fd = ds.get_func(target);
       if (!free_fd) continue;
       std::string free_sig = free_fd->get_pic_hash();
       if (free_hashes.find(free_sig) != free_hashes.end()) {
-        GINFO << "Function at " << fd->address_string() << " matches hash "
+        GINFO << "Function at " << fd.address_string() << " matches hash "
               << sig << " of known delete() method." << LEND;
-        fd->set_delete_method(true);
+        set_delete_method(fd.get_address());
         delete_methods_found++;
         return true;
       }
@@ -103,30 +119,34 @@ bool OOAnalyzer::identify_delete_method(FunctionDescriptor* fd) {
   return false;
 }
 
-bool OOAnalyzer::identify_purecall_method(FunctionDescriptor* fd) {
-  std::string sig = fd->get_pic_hash();
-  if (purecall_addrs.find(fd->get_address()) != purecall_addrs.end()) {
-    fd->set_purecall_method(true);
-    purecall_methods_found++;
-    return true;
+bool OOAnalyzer::identify_purecall_method(FunctionDescriptor const & fd) {
+  std::string sig = fd.get_pic_hash();
+  rose_addr_t faddr = fd.get_address();
+  {
+    auto && guard = read_guard(mutex);
+    if (purecall_addrs.find(fd.get_address()) != purecall_addrs.end()) {
+      // Same comment as on set_new_method().
+      purecall_methods_found++;
+      return true;
+    }
   }
-  else if (purecall_hashes.find(sig) != purecall_hashes.end()) {
-    GINFO << "Function at " << fd->address_string() << " matches hash "
+  if (purecall_hashes.find(sig) != purecall_hashes.end()) {
+    GINFO << "Function at " << fd.address_string() << " matches hash "
           << sig << " of known _purecall() method." << LEND;
-    fd->set_purecall_method(true);
+    set_purecall_method(faddr);
     purecall_methods_found++;
     return true;
   }
   return false;
 }
 
-bool OOAnalyzer::identify_nonreturn_method(FunctionDescriptor* fd) {
-  std::string sig = fd->get_pic_hash();
-  //OINFO << "Function at " << fd->address_string() << " hashes to " << sig << LEND;
+bool OOAnalyzer::identify_nonreturn_method(FunctionDescriptor & fd) {
+  std::string sig = fd.get_pic_hash();
+  //OINFO << "Function at " << fd.address_string() << " hashes to " << sig << LEND;
   if (nonreturn_hashes.find(sig) != nonreturn_hashes.end()) {
-    //OINFO << "Function at " << fd->address_string() << " matches hash "
+    //OINFO << "Function at " << fd.address_string() << " matches hash "
     //      << sig << " of function known not to return." << LEND;
-    fd->set_never_returns(true);
+    fd.set_never_returns(true);
     return true;
   }
   return false;
@@ -142,59 +162,75 @@ bool OOAnalyzer::identify_nonreturn_method(FunctionDescriptor* fd) {
 // lookout for cases where we're inapproriately sensitive to ordering.
 void OOAnalyzer::visit(FunctionDescriptor* fd) {
   GINFO << "Processing function " << fd->address_string() << LEND;
-  identify_new_method(fd);
-  identify_delete_method(fd);
-  identify_purecall_method(fd);
-  identify_nonreturn_method(fd);
+  identify_new_method(*fd);
+  identify_delete_method(*fd);
+  identify_purecall_method(*fd);
+  identify_nonreturn_method(*fd);
 
-  PDG *pdg = fd->get_pdg();
+  const PDG *pdg = fd->get_pdg();
 
   // Decide which calls might be virtual function calls.
-  for (CallDescriptor* cd : fd->get_outgoing_calls()) {
-    cd->update_virtual_call(pdg);
+  for (CallDescriptor const * cd : fd->get_outgoing_calls()) {
+    // Filter to only indeterminate calls (CallRegister and CallUnknown)
+    if (true) {
+      SgAsmX86Instruction* insn = isSgAsmX86Instruction(cd->get_insn());
+      VirtualFunctionCallAnalyzer vcall(insn, pdg);
+      if (vcall.analyze()) {
+        auto && guard = write_guard(mutex);
+        // The creation of entries in the vcalls map is intentional.
+        // Move the vector of possible resolutions (information) into our map.
+        vcalls[insn->get_address()] = std::move(vcall.vcall_infos);
+      }
+    }
   }
 
-  // Find methods that roughly follow the "this-call" calling convention.  Set the
-  // oo_properites member on each function descriptor that meets the criteria.
+  // Find methods that roughly follow the "this-call" calling convention and create an entry in
+  // the "methods" map.
 
   // Speculatively construct a ThisCallMethods from the function.  The ThisCallMethod class
   // will tell us whether the function was really object oriented or not.
-  ThisCallMethod* tcm = new ThisCallMethod(fd);
-  if (tcm->is_this_call()) {
-    GINFO << "Function " << tcm->address_string() << " uses __thiscall convention." << LEND;
-    fd->set_oo_properties(tcm);
+  auto utcm = make_unique<ThisCallMethod>(fd);
+  auto tcm = utcm.get();
+  if (utcm->is_this_call()) {
+    GINFO << "Function " << utcm->address_string() << " uses __thiscall convention." << LEND;
+    // This is the only write to the methods map anywhere.  OOAnalyzer now owns the pointer.
+    auto && guard = write_guard(mutex);
+    methods[fd->get_address()] = std::move(utcm);
   }
   else {
-    // If we're not keeping the this call method, free it now.  If it was added to a function
-    // descriptor, it will get freed when the function descriptor is freed.
-    delete tcm;
-    tcm = NULL;
+    tcm = nullptr;
   }
 
   // Analyze every function in the program looking for object uses, where the definition of an
   // object use is passing the symbolic value to a known OO method.  References to each object
   // are grouped first by the function that they occured in, and then by the symbolic value of
   // the this-pointer.  Analysis in this pass is entirely local to the function, and the only
-  // interprocedural analysis is from knowing which methods are __thiscall.  As a consequence, we
-  // probably will not have the complete lifetime of the object from construction to destruction,
-  // although in some cases we might.  After finding the object uses, we then analyze them to see
-  // if we can determine whether there's an allocation site in this usage.
+  // interprocedural analysis is from knowing which methods are __thiscall.  As a consequence,
+  // we probably will not have the complete lifetime of the object from construction to
+  // destruction, although in some cases we might.  After finding the object uses, we then
+  // analyze them to see if we can determine whether there's an allocation site in this usage.
 
   // Find all uses of objects in the function and record them as a list of this-pointers and
   // the methods that were invoked using those pointers.  Store it in the global map for
   // later reference (while avoiding the use of the default constructor).
-  ObjectUse u = ObjectUse(fd);
-  u.update_ctor_dtor();
-  object_uses.insert(ObjectUseMap::value_type(fd->get_address(), u));
+  ObjectUse u = ObjectUse(*this, fd);
+  u.update_ctor_dtor(*this);
+  {
+    auto && guard = write_guard(mutex);
+    object_uses.insert(ObjectUseMap::value_type(fd->get_address(), u));
+  }
 
-  // Analyze all function descriptors for possible vftable writes.
-  find_vtable_installations(fd);
+  // Analyze all function descriptors for possible vftable writes (not just this call methods).
+  find_vtable_installations(*fd);
   if (tcm) tcm->stage2();
 
   // Experimental new memory reduction undiscussed major design revision. ;-) ;-)
   fd->free_pdg();
 }
 
+void OOAnalyzer::start() {
+  start_ts = clock::now();
+}
 
 void OOAnalyzer::finish() {
   if (new_methods_found == 0) {
@@ -213,34 +249,28 @@ void OOAnalyzer::finish() {
 
   // Analyze virtual function calls.  Dependent on the interprocedual PDGs for instruction
   // reads and writes for each function with a virtual call in it.
-  // global_descriptor_set->update_vf_call_descriptors();
+  // ds.update_vf_call_descriptors();
 
-  // Look for methods that pass their this-pointers to other methods.  This analysis pass must
-  // follow the code above that set oo_properties on each function.
-  FunctionDescriptorMap& fdmap = global_descriptor_set->get_func_map();
-  for (FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
-    ThisCallMethod* tcm = fd.get_oo_properties();
-    if (tcm == NULL) continue;
+  // Look for methods that pass their this-pointers to other methods.
+  for (auto & tcm : boost::adaptors::values(methods)) {
     tcm->find_passed_func_offsets();
   }
 
   // Test virtual base tables and virtual function tables for overlaps.  This is the new Prolog
   // compatible approach, and it may not actually modify function tables yet.
   // For every virtual base table...
-  VBTableAddrMap& vbtables = global_descriptor_set->get_vbtables();
-  for (VirtualBaseTable* vbt : boost::adaptors::values(vbtables)) {
+  for (auto & vbt : boost::adaptors::values(vbtables)) {
     // Ask the virtual base table to compare itself with all other tables, and update its size.
-    vbt->analyze_overlaps();
+    vbt->analyze_overlaps(vftables, vbtables);
   }
   // In the new way of doing things we should probably be doing this too...
-  //VFTableAddrMap& vftables = global_descriptor_set->get_vftables();
   //for (const VirtualFunctionTable* vft : boost::adaptors::values(vftables)) {
-  //  vft->analyze_overlaps();
+  //  vft->analyze_overlaps(vftables, vbtables);
   //}
 
   //analyze_vftables_in_all_fds();
 
-  OOSolver oosolver = OOSolver(vm);
+  OOSolver oosolver = OOSolver(ds, vm);
   oosolver.analyze(*this);
   // The OO Classes are the classes from prolog. Should these be the pure output classes?
   ooclasses = oosolver.get_classes();
@@ -256,6 +286,27 @@ OOAnalyzer::get_result_classes() {
 // set will eventually be, but it'll probably be managable regardless.  We should investigate
 // the variation some more and expand the list for real use.
 void OOAnalyzer::initialize_known_method_hashes() {
+  // According to Udit Agarwal... (Thanks!)
+  // MVSC 15, 17, & 19.
+  new_hashes.insert("BACD68267934497D17B3D6E22A7C8425");
+  // MSVC 15 Lite builds
+  new_hashes.insert("76CECF37598DEFEE4EB5C788775AB032");
+  // MSVC 17 & 19 Lite builds
+  new_hashes.insert("03B27C25F97ACD0EA0EFD996D9EF842C");
+
+  // According to Alina Weber... (Thanks!)
+  // Linux GCC version 7.4.0
+  // _Znwm: operator new(unsigned long)
+  new_hashes.insert("90C074292C033FC0AEA1FE4C0984EFA7");
+  // _ZnwmPv: operator new(unsigned long, void*)
+  new_hashes.insert("A4F4E5D15B7BC69D763DE87D93850EC6");
+  // _Znam : operator new[](unsigned long)
+  //new_hashes.insert("");
+
+  // This appears to be a hash for PLT entry.
+  // plt_hashes.insert("89047698F4380796A13F674942384C0D");
+
+  // new() hashes from OO examples?
   new_hashes.insert("9F377A6D9EDE41E4F1B43C475069EE28");
   new_hashes.insert("443BABE6802D856C2EF32B80CD14B474");
 
@@ -271,9 +322,24 @@ void OOAnalyzer::initialize_known_method_hashes() {
   // This is an implementation of ??3@YAXPAXI@Z from prtscrpp at 406F9B.
   delete_hashes.insert("3D01B1E1279476F6FFA9296C4E387579");
 
+  // More delete hashes from Alina Weber
+  // _ZdlPv : operator delete(void*)
+  //delete_hashes.insert("");
+  // _ZdlPvS_ : operator delete(void*, void*)
+  delete_hashes.insert("6A95CC300B775FFBCBC62FBCC8EF63F9");
+  // _ZdlPvm : operator delete(void*, unsigned long)
+  //delete_hashes.insert("");
+  // _ZdlPvS_t : operator delete(void*, void*, unsigned short)
+  delete_hashes.insert("A78677F36D9F3DC066AE2DE00EA21276");
+  // _ZdaPv : operator delete[](void*)
+  //delete_hashes.insert("");
+
   // PIC hashes for free (the more identifiable method that delete calls)
   // This hash was taken from ooex2 and ooex8 test cases.
   free_hashes.insert("3F4896D9B44BD7A745E0E5A23753934D");
+
+  // __free() in gcc7.4.0 according to Alina Weber.
+  free_hashes.insert("60CC895C94230005132952EDEE6BC14F");
 
   // PIC hashes for _purecall
   // This hash was taken from 2010/Lite/oo test case.
@@ -291,44 +357,51 @@ void OOAnalyzer::find_imported_new_methods() {
   GINFO << "Finding imported new methods..." << LEND;
 
   // Make a list of names that represent new in it's various forms.
-  StringSet new_method_names;
+  std::set<std::string> new_method_names;
   new_method_names.insert("??2@YAPAXI@Z");
   new_method_names.insert("??2@YAPAXIHPBDH@Z");
   // From notepad++5.6.8:
   // void *__cdecl operator new(size_t Size, const struct std::nothrow_t *)
   new_method_names.insert("??2@YAPAXIABUnothrow_t@std@@@Z");
 
+  // Alina Weber reported the following new method names for GCC:
+  // _Znam: operator new[](unsigned long)
+  new_method_names.insert("_Znam");
+  // _Znwm: operator new(unsigned long)
+  new_method_names.insert("_Znwm");
+  // _ZnwmPv: operator new(unsigned long, void*)
+  new_method_names.insert("_ZnwmPv");
+
   // Get the import map out of the provided descriptor set.
-  ImportDescriptorMap& im = global_descriptor_set->get_import_map();
+  const ImportDescriptorMap& imap = ds.get_import_map();
 
   // For each new() name...
   for (const std::string & name : new_method_names) {
     // Find all the import descriptors that match.
 
-    for (ImportDescriptor* id : im.find_name(name)) {
+    for (const ImportDescriptor* id : imap.find_name(name)) {
       GINFO << "Imported new '" << name << "' found at address "
             << id->address_string() << "."<< LEND;
-      id->set_new_method(true);
-      id->get_rw_function_descriptor()->set_new_method(true);
+      set_new_method(id->get_address());
       new_methods_found++;
       // This part is kind-of icky.  Maybe we should make a nice set of backward links to all
       // the imports from all the thunks that jump to them...  For now Cory's going to brute
       // force it and move on.
-      FunctionDescriptorMap& fdmap = global_descriptor_set->get_func_map();
-      for (FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
+      const FunctionDescriptorMap& fdmap = ds.get_func_map();
+      for (const FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
         // If it's not a thunk to the import, move on to the next function.
         if (fd.get_jmp_addr() != id->get_address()) continue;
         // If this function is a thunk to the import, it's a new method.
         GINFO << "Function at " << fd.address_string()
               << " is a thunk to a new() method." << LEND;
-        fd.set_new_method(true);
+        set_new_method(fd.get_address());
         // Also any functions that are thunks to this function are new methods.  This is
         // another example of why thunks are tricky.  In this case we want to access them
         // backwards.  We don't currently have an inverted version of follow_thunks().
         for (FunctionDescriptor* tfd : fd.get_thunks()) {
           GINFO << "Function at " << tfd->address_string()
                 << " is a thunk to a thunk to a new() method." << LEND;
-          tfd->set_new_method(true);
+          set_new_method(tfd->get_address());
         }
       }
     }
@@ -340,39 +413,51 @@ void OOAnalyzer::find_imported_new_methods() {
 void OOAnalyzer::find_imported_delete_methods() {
   GINFO << "Finding imported delete methods..." << LEND;
 
-  StringSet del_method_names;
+  std::set<std::string> del_method_names;
   del_method_names.insert("??3@YAXPAX@Z");
   del_method_names.insert("??3@YAXPAXI@Z");
   // "??_V@YAXPAX@Z" is apparently "operator delete[](void *)
 
-  ImportDescriptorMap& im = global_descriptor_set->get_import_map();
+  // Alina Weber reported the following delete() method names for GCC:
+  // _ZdlPv: operator delete(void*)
+  del_method_names.insert("_ZdlPv");
+  // _ZdlPvm: operator delete(void*, unsigned long)
+  del_method_names.insert("_ZdlPvm");
+  // _ZdlPvS_: operator delete(void*, void*)
+  del_method_names.insert("_ZdlPvS_");
+  // _ZdlPvS_t: operator delete(void*, void*, unsigned short)
+  del_method_names.insert("_ZdlPvS_t");
+  // _ZdaPv: operator delete[](void*)
+  del_method_names.insert("_ZdaPv");
+
+  const ImportDescriptorMap& im = ds.get_import_map();
 
   // For each delete() name...
   for (const std::string & name : del_method_names) {
     // Find all the import descriptors that match.
-    for (ImportDescriptor* id : im.find_name(name)) {
+    for (const ImportDescriptor* id : im.find_name(name)) {
       GINFO << "Imported delete '" << name << "' found at address "
             << id->address_string() << "."<< LEND;
-      id->set_delete_method(true);
+      set_delete_method(id->get_address());
       delete_methods_found++;
       // This part is kind-of icky.  Maybe we should make a nice set of backward links to all
       // the imports from all the thunks that jump to them...  For now Cory's going to brute
       // force it and move on.
-      FunctionDescriptorMap& fdmap = global_descriptor_set->get_func_map();
-      for (FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
+      const FunctionDescriptorMap& fdmap = ds.get_func_map();
+      for (const FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
         // If it's not a thunk to the import, move on to the next function.
         if (fd.get_jmp_addr() != id->get_address()) continue;
         // If this function is a thunk to the import, it's a delete method.
         GINFO << "Function at " << fd.address_string()
               << " is a thunk to a delete() method." << LEND;
-        fd.set_delete_method(true);
+        set_delete_method(fd.get_address());
         // Also any functions that are thunks to this function are new methods.  This is
         // another example of why thunks are tricky.  In this case we want to access them
         // backwards.  We don't currently have an inverted version of follow_thunks().
         for (FunctionDescriptor* tfd : fd.get_thunks()) {
           GINFO << "Function at " << tfd->address_string()
                 << " is a thunk to a thunk to a delete() method." << LEND;
-          tfd->set_delete_method(true);
+          set_delete_method(tfd->get_address());
         }
       }
     }
@@ -383,37 +468,37 @@ void OOAnalyzer::find_imported_delete_methods() {
 void OOAnalyzer::find_imported_purecall_methods() {
   GINFO << "Finding imported purecall methods..." << LEND;
 
-  StringSet purecall_method_names;
+  std::set<std::string> purecall_method_names;
   purecall_method_names.insert("_purecall");
 
-  ImportDescriptorMap& im = global_descriptor_set->get_import_map();
+  const ImportDescriptorMap& im = ds.get_import_map();
 
   // For each purecall() name...
   for (const std::string & name : purecall_method_names) {
     // Find all the import descriptors that match.
-    for (ImportDescriptor* id : im.find_name(name)) {
+    for (const ImportDescriptor* id : im.find_name(name)) {
       GINFO << "Imported purecall '" << name << "' found at address "
             << id->address_string() << "."<< LEND;
-      id->set_purecall_method(true);
+      set_purecall_method(id->get_address());
       purecall_methods_found++;
       // This part is kind-of icky.  Maybe we should make a nice set of backward links to all
       // the imports from all the thunks that jump to them...  For now Cory's going to brute
       // force it and move on.
-      FunctionDescriptorMap& fdmap = global_descriptor_set->get_func_map();
-      for (FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
+      const FunctionDescriptorMap& fdmap = ds.get_func_map();
+      for (const FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
         // If it's not a thunk to the import, move on to the next function.
         if (fd.get_jmp_addr() != id->get_address()) continue;
         // If this function is a thunk to the import, it's a delete method.
         GINFO << "Function at " << fd.address_string()
               << " is a thunk to a purecall() method." << LEND;
-        fd.set_purecall_method(true);
+        set_purecall_method(fd.get_address());
         // Also any functions that are thunks to this function are new methods.  This is
         // another example of why thunks are tricky.  In this case we want to access them
         // backwards.  We don't currently have an inverted version of follow_thunks().
         for (FunctionDescriptor* tfd : fd.get_thunks()) {
           GINFO << "Function at " << tfd->address_string()
                 << " is a thunk to a thunk to a purecall() method." << LEND;
-          tfd->set_purecall_method(true);
+          set_purecall_method(tfd->get_address());
         }
       }
     }
@@ -422,14 +507,14 @@ void OOAnalyzer::find_imported_purecall_methods() {
 
 void OOAnalyzer::handle_heap_allocs(const rose_addr_t saddr) {
   GDEBUG << "handle_heap_allocs inspecting addr " << addr_str(saddr) << LEND;
-  CallDescriptor* cd = global_descriptor_set->get_call(saddr);
+  const CallDescriptor* cd = ds.get_call(saddr);
   if (cd == NULL) {
     GINFO << "No call descriptor for call at " << addr_str(saddr) << LEND;
     return;
   }
 
   SgAsmInstruction* insn = cd->get_insn();
-  FunctionDescriptor* cfd = global_descriptor_set->get_fd_from_insn(insn);
+  const FunctionDescriptor* cfd = ds.get_fd_from_insn(insn);
   if (cfd == NULL) {
     GINFO << "No function for call at " << addr_str(saddr) << LEND;
     return;
@@ -481,8 +566,10 @@ void OOAnalyzer::handle_heap_allocs(const rose_addr_t saddr) {
   const ParameterDefinition* pd = cd->get_parameters().get_stack_parameter(0);
   if (pd != NULL) {
     // And the parameter should usually be a constant value.
-    if (pd->value != NULL && pd->value->is_number() && pd->value->get_width() <= 64) {
-      unsigned int size = pd->value->get_number();
+    if (pd->get_value() != NULL && pd->get_value()->is_number()
+        && pd->get_value()->get_width() <= 64)
+    {
+      unsigned int size = pd->get_value()->get_number();
       if (size > 0 and size < 0xFFFFFFF) {
         tpu.alloc_size = size;
         GDEBUG << "The size parameter to new() at " << cd->address_string()
@@ -503,9 +590,9 @@ void OOAnalyzer::find_heap_allocs() {
   // Second pass - Having completed the object use analysis for all functions, make another
   // pass over the functions looking for the ones we've identified as new() methods.  For each
   // new() method, analyze all of it's callers and record that they are heap allocated objects.
-  FunctionDescriptorMap& fdmap = global_descriptor_set->get_func_map();
-  for (FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
-    if (fd.is_new_method()) {
+  const FunctionDescriptorMap& fdmap = ds.get_func_map();
+  for (const FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
+    if (is_new_method(fd.get_address())) {
       // This is a pretty horrible way to get the callers.  Wes used the function call graph,
       // and that had different problems, including skipping some calls to new, and adding some
       // jumps to new.  At least this way we're using our CallDescriptor infrastructure, and
@@ -517,9 +604,9 @@ void OOAnalyzer::find_heap_allocs() {
   }
   // now have to iterate over import descriptors, because the func desc contained within them
   // are not in the global descriptor set func map...
-  ImportDescriptorMap& idmap = global_descriptor_set->get_import_map();
-  for (ImportDescriptor& id : boost::adaptors::values(idmap)) {
-    if (id.get_function_descriptor()->is_new_method()) {
+  const ImportDescriptorMap& idmap = ds.get_import_map();
+  for (const ImportDescriptor& id : boost::adaptors::values(idmap)) {
+    if (is_new_method(id.get_address())) {
       // This is a pretty horrible way to get the callers.  Wes used the function call graph,
       // and that had different problems, including skipping some calls to new, and adding some
       // jumps to new.  At least this way we're using our CallDescriptor infrastructure, and
@@ -544,60 +631,39 @@ bool OOAnalyzer::analyze_possible_vtable(rose_addr_t address, bool allow_base) {
   // Assume that we're going to fail.  If we actually create a table, we'll set this to true.
   virtual_tables[address] = false;
 
-  // Get the list of existing virtual base tables.  Here at least, this map could be moved into
-  // the OOAnalyzer, which would be an architectural improvement.
-  VBTableAddrMap& vbtables = global_descriptor_set->get_vbtables();
-
-  VirtualBaseTable* vbtable;
   // If the caller allows it, try creating a virtual base table first.
   if (allow_base) {
     // Starting by doing virtual base table analysis.  This analysis should not falsely
     // claim any virtual function tables, and tables that are very invalid will get handled
     // as malformed virtual function tables..
-    vbtable = new VirtualBaseTable(address);
+    auto vbtable = make_unique<VirtualBaseTable>(ds, address);
     // If the vbtable is valid add it to the list.
     if (vbtable->analyze()) {
       GDEBUG << "Found possible virtual base table at: " << addr_str(address) << LEND;
-      vbtables[address] = vbtable;
+      vbtables[address] = std::move(vbtable);
       virtual_tables[address] = true;
       return true;
-    }
-    else {
-      delete vbtable;
-      vbtable = NULL;
     }
   }
 
-  // Get the list of existing virtual function tables.  Here at least, this map could be moved
-  // into the OOAnalyzer, which would be an architectural improvement.
-  VFTableAddrMap& vftables = global_descriptor_set->get_vftables();
-
   // If we did not find a valid vitual base table, try creating a virtual function table.
-  if (vbtable == NULL) {
-    VirtualFunctionTable* vftable = new VirtualFunctionTable(address);
-    // If the vbtable is valid add it to the list.
-    if (vftable->analyze()) {
-      vftables[address] = vftable;
-      virtual_tables[address] = true;
-      return true;
-    }
-    else {
-      delete vftable;
-      vftable = NULL;
-    }
+  auto vftable = make_unique<VirtualFunctionTable>(ds, address);
+  // If the vbtable is valid add it to the list.
+  if (vftable->analyze(vftables)) {
+    vftables[address] = std::move(vftable);
+    virtual_tables[address] = true;
+    return true;
   }
 
   // If we made it to here, the address was not really a virtual table (as far as we know).
   return false;
 }
 
-void OOAnalyzer::find_vtable_installations(FunctionDescriptor *fd) {
-  // Analyze the function if we haven't already.
-  PDG* p = fd->get_pdg();
+void OOAnalyzer::find_vtable_installations(FunctionDescriptor const & fd) {
+  const PDG* p = fd.get_pdg();
   if (p == NULL) return;
 
-  GDEBUG << "Analyzing vtables for " << fd->address_string() << LEND;
-  VBTableAddrMap& vbtables = global_descriptor_set->get_vbtables();
+  GDEBUG << "Analyzing vtables for " << fd.address_string() << LEND;
 
   // For every write in the function...
   for (const AccessMap::value_type& access : p->get_usedef().get_accesses()) {
@@ -619,7 +685,7 @@ void OOAnalyzer::find_vtable_installations(FunctionDescriptor *fd) {
       // We're only interested in constant addresses that are in the memory image.  In some
       // unusual corner cases this might fail, but it should work for compiler generated code.
       rose_addr_t taddr = aa.value->get_number();
-      if (!global_descriptor_set->memory_in_image(taddr)) continue;
+      if (!ds.memory.is_mapped(taddr)) continue;
 
       // We're not interested in writes to fixed memory addresses.  This used to exclude stack
       // addresses, but now it's purpose is a little unclear.  It might prevent vtable updates
@@ -648,11 +714,11 @@ void OOAnalyzer::find_vtable_installations(FunctionDescriptor *fd) {
         continue;
       }
 
+      auto && guard = write_guard(mutex);
       // The criteria for validating virtual tables differs a little bit right now based on
       // whether the method is an OO method.
-      ThisCallMethod* tcm = fd->get_oo_properties();
-      bool allow_base = false;
-      if (tcm) allow_base = true;
+      ThisCallMethod* tcm = get_method_rw(fd.get_address());
+      bool allow_base = tcm;
 
       // Create and attempt to validate the virtual table.
       bool valid = analyze_possible_vtable(taddr, allow_base);
@@ -663,7 +729,7 @@ void OOAnalyzer::find_vtable_installations(FunctionDescriptor *fd) {
 
         // It look like we're going to have a valid virtual table.
         VirtualTableInstallationPtr install = std::make_shared<VirtualTableInstallation>(
-          insn, fd, taddr, vp, offset, base_table);
+          insn, &fd, taddr, vp, offset, base_table);
         //VirtualTableInstallation* install = NULL;
         //install = new VirtualTableInstallation(insn, taddr, vp, offset);
 
@@ -675,7 +741,7 @@ void OOAnalyzer::find_vtable_installations(FunctionDescriptor *fd) {
 
         // If the table installation was also valid, record in the OOAnalyzer.
         if (valid) {
-          virtual_table_installations[insn->get_address()] = install;
+          virtual_table_installations[insn->get_address()] = std::move(install);
         }
       }
 

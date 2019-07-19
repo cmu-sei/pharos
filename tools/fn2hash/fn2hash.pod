@@ -7,6 +7,7 @@ B<fn2hash> - Function hashing and code similarity
 =head1 SYNOPSIS
 
 fn2hash [--min-instructions=NUMBER] [--basic-blocks]
+  [--json=FILENAME] [--pretty-json[=INDENT]]
   [...Pharos options...] EXECUTABLE_FILE
 
 fn2hash --help
@@ -207,6 +208,17 @@ with basic block individual data, the 2nd with the edges of the
 function control flow graph, formatted like so:
 
 B<addr1:numinsn:PIC:CPIC:mnem1^mnemcat1;mnem2^mnemcat2;mnem3^mnemcat3...|addr2...,addr1;addr2:addr3;addr4:...>
+
+=item B<--json>=I<FILENAME>, B<-j>=I<FILENAME>
+
+Output hash information in JSON format to I<FILENAME>. If I<FILENAME>
+is C<->, JSON will output to stdout.
+
+=item B<--pretty-json>[=I<INDENT>], B<-p>[=I<INDENT>]
+
+When outputting JSON, use newlines and indentation, making the output
+human-readable.  I<INDENT> is the indentation level, and defaults to
+C<4>.
 
 =back
 

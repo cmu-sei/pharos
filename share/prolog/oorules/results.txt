@@ -44,11 +44,22 @@ finalVFTable(VFTable, CertainSize, LikelySize, RTTIAddress, RTTIName)
   field extracts the name of the class from the TypeDescriptor implied by the RTTIAddress,
   which simplifies debugging as as duplicative of the RTTIAddress field.
 
+finalVFTableEntry(VFTable, Offset, Method)
+
+  The virtual function table at address VFTable has an entry at Offset that refers to Method.
+  This result predicate was added so that the answer from Prolog was "complete".
+
 finalVBTable(VBTable, Class, Size, Offset)
 
   The virtual base table at address VBTable is associated with class identified in the Class
   field.  The next field specifies the size of of the table.  The Offset field is the offset in
   the clas where the virtual base table pointer is written.
+
+finalVBTableEntry(VBTable, Offset, Value)
+
+  The virtual base table at the address VBTable has an entry at Offset with value Value.  The
+  value is an object offset. This result predicate was added so that the answer from Prolog was
+  "complete".
 
 finalResolvedVirtualCall(Insn, VFTable, Target)
 
