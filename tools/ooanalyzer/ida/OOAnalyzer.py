@@ -424,34 +424,34 @@ class PyOOAnalyzer(object):
          vft.cls = cls
          vft.start_ea = int(v['ea'], 16)
 
-         for entry in v['entries']:
-            meth = PyClassMethod()
+         if 'entries' in v:
+            for entry in v['entries']:
+               meth = PyClassMethod()
 
-            meth.cls = cls
-            meth.start_ea = int(entry['ea'], 16)
-            # meth.method_name = "%s_%x" % (entry['name'], meth.start_ea)
-            meth.method_name = entry['name']
+               meth.cls = cls
+               meth.start_ea = int(entry['ea'], 16)
+               # meth.method_name = "%s_%x" % (entry['name'], meth.start_ea)
+               meth.method_name = entry['name']
 
-            meth.is_virtual = True
+               meth.is_virtual = True
 
-            meth.is_ctor = False
-            meth.is_dtor = False
-            if entry['type'] == "ctor":
-               meth.is_ctor = True
-            elif entry['type'] == "dtor":
-               meth.is_dtor = True
+               meth.is_ctor = False
+               meth.is_dtor = False
+               if entry['type'] == "ctor":
+                  meth.is_ctor = True
+               elif entry['type'] == "dtor":
+                  meth.is_dtor = True
 
-            meth.userdef_name = False
-            has_name = idc.hasUserName(idc.GetFlags(meth.start_ea))
-            ida_method_name = idc.GetFunctionName(meth.start_ea)
-            if has_name:
-               meth.method_name = ida_method_name
-               meth.userdef_name = True
+               meth.userdef_name = False
+               has_name = idc.hasUserName(idc.GetFlags(meth.start_ea))
+               ida_method_name = idc.GetFunctionName(meth.start_ea)
+               if has_name:
+                  meth.method_name = ida_method_name
+                  meth.userdef_name = True
 
-            vft.add_virtual_function(meth, int(entry['offset']))
-            # enqueue the vf for later processing when methods are applied
-            cls.add_method(meth)
-
+               vft.add_virtual_function(meth, int(entry['offset']))
+               # enqueue the vf for later processing when methods are applied
+               cls.add_method(meth)
 
          print "   - Adding vtable %x at offset %d" % (vft.start_ea,vfptr_off)
          print ""
