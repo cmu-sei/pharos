@@ -198,6 +198,7 @@ void OOAnalyzer::visit(FunctionDescriptor* fd) {
     methods[fd->get_address()] = std::move(utcm);
   }
   else {
+    utcm.reset();
     tcm = nullptr;
   }
 
