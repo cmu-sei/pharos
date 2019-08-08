@@ -83,5 +83,5 @@ add_subdirectory(tools)
 add_subdirectory(gtest)
 add_subdirectory(share)
 
-install(FILES README.md CONTRIBUTING.md LICENSE.md DESTINATION share/doc/pharos
+install(FILES README.md CONTRIBUTING.md LICENSE.md INSTALL.md DESTINATION share/doc/pharos
   PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
