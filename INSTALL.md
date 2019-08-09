@@ -26,8 +26,7 @@ You can also build your own Docker image with:
 ```
 $ docker build --build-arg NCPU 4 -t seipharos/pharos .
 ```
-where 4 is the number of cores you wish to use for building.  You
-should probably use 1 unless you have a lot of RAM.
+where 4 is the number of cores you wish to use for building. You should probably use 1 unless you have a lot of RAM. Building with `N` cores, requires roughly `N` GiB of RAM, when `N > 4`.
 
 You can then run the container using the same `docker run` command as above.
 
