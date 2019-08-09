@@ -265,11 +265,13 @@ Assuming that you are installing XSB to $XSB_LOCATION, the build
 sequence follows.  Note: $XSB_LOCATION needs to be writable by the
 user during configuration, compilation, and installation.
 
+```
 $ svn checkout https://svn.code.sf.net/p/xsb/src/trunk/XSB
 $ cd XSB/build
 $ ./configure --prefix=$XSB_LOCATION
 $ ./makexsb
 $ ./makexsb install
+```
 
 ## Building Pharos
 
