@@ -24,7 +24,7 @@ The pharos tools will be installed in `/usr/local/bin`.
 
 You can also build your own Docker image with:
 ```
-$ docker build --build-arg NCPU 4 -t seipharos/pharos .
+$ docker build --build-arg NCPU=4 -t seipharos/pharos .
 ```
 where 4 is the number of cores you wish to use for building.  You
 should probably use 1 unless you have a lot of RAM.
