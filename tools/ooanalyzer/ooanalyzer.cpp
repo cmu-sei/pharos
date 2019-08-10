@@ -26,6 +26,9 @@ ProgOptDesc digger_options() {
     ("new-method,n",
      po::value<StrVector>(),
      "function at address is a new() method")
+    ("delete-method",
+     po::value<StrVector>(),
+     "function at address is a delete() method")
     ("no-guessing",
      "do not perform hypothetical reasoning.  never use except for experiments")
     ("ignore-rtti",
