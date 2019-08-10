@@ -28,6 +28,7 @@ OOAnalyzer::OOAnalyzer(DescriptorSet& ds_, const ProgOptVarMap& vm_, AddrSet& ne
   delete_methods_found = 0;
   purecall_methods_found = 0;
   new_addrs = new_addrs_;
+  delete_addrs = option_addr_list(vm, "delete-method");
 
   // Initialize the new_hashes string set with the hashes of known methods.
   initialize_known_method_hashes();
