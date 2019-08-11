@@ -1,7 +1,7 @@
-FROM ubuntu:latest
+FROM ubuntu:rolling AS buildenv
 
 RUN apt-get -y update \
-&&  apt-get -y install sudo build-essential wget flex ghostscript bzip2 git subversion automake libtool bison python libncurses-dev vim-common sqlite3 libsqlite3-dev zlib1g-dev cmake libyaml-cpp-dev libboost-all-dev libxml2-dev \
+&&  apt-get -y install sudo build-essential wget flex ghostscript bzip2 git subversion automake xutils-dev libtool bison python libncurses-dev vim-common sqlite3 libsqlite3-dev zlib1g-dev cmake ninja-build libyaml-cpp-dev libboost-all-dev libxml2-dev \
 &&  rm -rf /var/lib/apt/lists/*
 
 ARG NCPU=1
