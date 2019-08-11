@@ -63,9 +63,9 @@ sudo ldconfig
 # The CXXFLAGS are to reduce the memory requirements.
 CXXFLAGS='--param ggc-min-expand=5 --param ggc-min-heapsize=32768' \
 cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
-        -Denable-binary-analysis=yes -Denable-c=no -Denable-java=no \
+        -Denable-binary-analysis=yes -Denable-c=no -Denable-opencl=no -Denable-java=no -Denable-php=no \
         -Denable-fortran=no -Ddisable-tutorial-directory=yes \
-        -Ddisable-test-directory=yes ..
+        -Ddisable-tests-directory=yes ..
 
 # Try once in parallel and then if things fail due to memory
 # shortages, try again one thread at a time.  This is a reasonable
