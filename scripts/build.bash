@@ -43,9 +43,9 @@ git clone -b Z3-4.8.5 https://github.com/Z3Prover/z3.git z3
 cd z3
 mkdir build
 cd build
-cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_RULE_MESSAGES=off ..
-make -j $NCPU
-sudo make -j $NCPU install
+cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_RULE_MESSAGES=off ..
+ninja -j $NCPU
+sudo ninja -j $NCPU install
 test "$1" = "-reclaim" && rm -rf $DIR/z3
 
 # ROSE
@@ -84,12 +84,12 @@ sudo ldconfig
 test -d build && rm -rf build
 mkdir build
 cd build
-cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DROSE_ROOT=/usr/local \
+cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DROSE_ROOT=/usr/local \
       -DXSB_ROOT=/usr/local/xsb-3.8.0 \
       -DZ3_ROOT=/usr/local -DYAML_CPP_ROOT=/usr ../..
-make -k -j $NCPU || true
-make
-sudo make install
+ninja -k $NCPU -j $NCPU || true
+ninja -j1
+sudo ninja install
 
 if [ "$1" = "-reclaim" ]
 then
