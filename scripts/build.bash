@@ -40,7 +40,7 @@ test "$1" = "-reclaim" && rm -rf $DIR/XSB
 cd $DIR
 test -d z3 && rm -rf z3
 
-git clone -b Z3-4.8.5 https://github.com/Z3Prover/z3.git z3
+git clone --depth 1 -b Z3-4.8.5 https://github.com/Z3Prover/z3.git z3
 cd z3
 mkdir build
 cd build
@@ -53,9 +53,8 @@ test "$1" = "-reclaim" && rm -rf $DIR/z3
 cd $DIR
 test -d rose && rm -rf rose
 
-git clone https://github.com/rose-compiler/rose rose
+git clone --depth 1 -b v0.9.11.84 https://github.com/rose-compiler/rose rose
 cd rose
-git checkout fc6bb3504961cd8cbe7d758eaa4a86069ad81589
 
 mkdir release
 cd release
