@@ -86,7 +86,7 @@ test -d build && rm -rf build
 mkdir build
 cd build
 cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DROSE_ROOT=/usr/local \
-      -DXSB_ROOT=/usr/local/xsb-3.8.0 -DBOOST_ROOT=/usr/local \
+      -DXSB_ROOT=/usr/local/xsb-3.8.0 -DBOOST_ROOT=/usr \
       -DZ3_ROOT=/usr/local -DYAML_CPP_ROOT=/usr ../..
 make -k -j $NCPU || true
 make
