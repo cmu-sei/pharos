@@ -76,29 +76,4 @@ make
 sudo make -j $NCPU install
 test "$1" = "-reclaim" && rm -rf $DIR/rose
 
-# Pharos
-cd $DIR
-
-sudo ldconfig
-
-test -d build && rm -rf build
-mkdir build
-cd build
-cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DROSE_ROOT=/usr/local \
-      -DXSB_ROOT=/usr/local/xsb-3.8.0 \
-      -DZ3_ROOT=/usr/local -DYAML_CPP_ROOT=/usr ../..
-ninja -k $NCPU -j $NCPU || true
-ninja -j1
-sudo ninja install
-
-if [ "$1" = "-reclaim" ]
-then
-    # If we're reclaiming space, run tests now since we won't be able to
-    # later
-    ctest3 -j $NCPU || ctest -j $NCPU
-
-    # Reclaim space
-    rm -rf $DIR/build
-fi
-
 exit 0

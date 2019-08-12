@@ -7,6 +7,10 @@ RUN apt-get -y update \
 ARG NCPU=1
 ENV NCPU=$NCPU
 
+# only add the script so prereqs won't be rebuilt on pharos code change
+ADD scripts/build_prerequisites.bash /root/
+RUN /root/build_prerequisites.bash -reclaim
+
 ADD . /root/pharos
 
 # Put everything in the same layer so it's much smaller
