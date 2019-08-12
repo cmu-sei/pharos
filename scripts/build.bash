@@ -11,22 +11,14 @@ cd $DIR
 test -d XSB && sudo rm -rf XSB
 
 # XSB frequently fails to clone, so try very hard to clone with reasonable timeouts in between
+svn checkout https://svn.code.sf.net/p/xsb/src/trunk/XSB XSB
+
 RETRY=100
-if svn checkout https://svn.code.sf.net/p/xsb/src/trunk/XSB XSB; status=$?; then
-    echo svn checkout incomplete
-fi
-
-while [ $status -ne 0 -a $RETRY -gt 0 ]; do
+while (cd XSB && svn update); status=$?; [ $status -ne 0 -a $RETRY -gt 0 ]
+do
     RETRY=$(($RETRY-1))
-    echo SVN update needed
+    echo SVN update failed.
     sleep 5
-
-    pushd XSB
-        svn cleanup
-        if svn update; status=$?; then
-            echo svn update incomplete
-        fi
-    popd 
 done
 
 # Pre-create the XSB install target and give the user write access.
