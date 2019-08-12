@@ -11,10 +11,10 @@ cd $DIR
 test -d XSB && sudo rm -rf XSB
 
 # XSB frequently fails to clone, so try very hard to clone with reasonable timeouts in between
-svn checkout https://svn.code.sf.net/p/xsb/src/trunk/XSB XSB
+svn checkout https://svn.code.sf.net/p/xsb/src/trunk/XSB XSB || true
 
 RETRY=100
-while (cd XSB && svn update); status=$?; [ $status -ne 0 -a $RETRY -gt 0 ]
+while (cd XSB && svn cleanup && svn update); status=$?; [ $status -ne 0 -a $RETRY -gt 0 ]
 do
     RETRY=$(($RETRY-1))
     echo SVN update failed.
