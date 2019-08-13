@@ -62,7 +62,7 @@ cd release
 sudo ldconfig
 # The CXXFLAGS are to reduce the memory requirements.
 CXXFLAGS='--param ggc-min-expand=5 --param ggc-min-heapsize=32768' \
-cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local \
         -Denable-binary-analysis=yes -Denable-c=no -Denable-opencl=no -Denable-java=no -Denable-php=no \
         -Denable-fortran=no -Ddisable-tutorial-directory=yes \
         -Ddisable-tests-directory=yes ..
@@ -71,9 +71,9 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
 # shortages, try again one thread at a time.  This is a reasonable
 # compromise between waiting for a single threaded build, and the
 # reliability problems introduced by parallel builds.
-make -k -j $NCPU || true
-make
-sudo make -j $NCPU install
+ninja -k $NCPU -j $NCPU || true
+ninja -j1
+sudo ninja -j $NCPU install
 test "$1" = "-reclaim" && rm -rf $DIR/rose
 
 # Pharos
