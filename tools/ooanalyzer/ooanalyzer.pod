@@ -75,9 +75,9 @@ Mark a specific address as an implementation of the new()
 operator. Usually new() implementations are detected using a
 combination of import names and function hashes, but not all new()
 implementations are automatically recognized.  If no new
-implementations are detected, it can dramatically affect the detect of
-dynamically allocated objects.  This option may be specified multiple
-times.
+implementations are detected, it can dramatically affect the detection
+of dynamically allocated objects.  This option may be specified
+multiple times.
 
 =item B<--ignore-rtti>
 
