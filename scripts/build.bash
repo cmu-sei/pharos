@@ -56,8 +56,9 @@ test -d rose && rm -rf rose
 git clone --depth 1 -b v0.9.11.84 https://github.com/rose-compiler/rose rose
 cd rose
 
-mkdir release
-cd release
+# See rose issue #52
+mkdir ../rose-build
+cd ../rose-build
 
 sudo ldconfig
 # The CXXFLAGS are to reduce the memory requirements.
@@ -74,7 +75,7 @@ cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local \
 ninja -k $NCPU -j $NCPU || true
 ninja -j1
 sudo ninja -j $NCPU install
-test "$1" = "-reclaim" && rm -rf $DIR/rose
+test "$1" = "-reclaim" && rm -rf $DIR/rose $DIR/rose-build
 
 # Pharos
 cd $DIR
