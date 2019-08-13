@@ -6,7 +6,7 @@ ENV NCPU=$NCPU
 ADD . /root/pharos
 
 RUN apt-get -y update
-RUN apt-get -y install sudo build-essential wget flex ghostscript bzip2 git subversion automake libtool bison python libncurses-dev vim-common sqlite3 libsqlite3-0 libsqlite3-dev zlib1g-dev cmake libyaml-cpp-dev libboost-all-dev libboost-dev libxml2-dev
+RUN apt-get -y install sudo build-essential wget flex ghostscript bzip2 git subversion automake libtool bison python libncurses-dev vim-common sqlite3 libsqlite3-0 libsqlite3-dev zlib1g-dev cmake ninja-build libyaml-cpp-dev libboost-all-dev libboost-dev libxml2-dev
 
 # Put everything in the same layer so it's much smaller
 RUN /root/pharos/scripts/build.bash -reclaim && \
