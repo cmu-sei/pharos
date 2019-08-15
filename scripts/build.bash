@@ -17,8 +17,7 @@ cd build
 cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DROSE_ROOT=/usr/local \
       -DXSB_ROOT=/usr/local/xsb-3.8.0 -DBOOST_ROOT=/usr \
       -DZ3_ROOT=/usr/local -DYAML_CPP_ROOT=/usr ../..
-# Work around another ROSE dependency bug in CMake
-ninja -j 1 generate_rosePublicConfig
+
 ninja -k $NCPU -j $NCPU || true
 ninja -j 1
 sudo ninja install

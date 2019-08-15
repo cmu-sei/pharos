@@ -68,6 +68,9 @@ cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local \
         -Denable-fortran=no -Ddisable-tutorial-directory=yes \
         -Ddisable-tests-directory=yes ../rose
 
+# Work around another ROSE dependency bug in CMake
+ninja -j 1 generate_rosePublicConfig
+
 # Try once in parallel and then if things fail due to memory
 # shortages, try again one thread at a time.  This is a reasonable
 # compromise between waiting for a single threaded build, and the
