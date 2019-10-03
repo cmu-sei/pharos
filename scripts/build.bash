@@ -14,6 +14,8 @@ sudo ldconfig
 test -d build && rm -rf build
 mkdir build
 cd build
+CXXFLAGS='-O3 -flto -march=haswell' \
+LDFLAGS='-O3 -flto -march=haswell' \
 cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DROSE_ROOT=/usr/local \
       -DXSB_ROOT=/usr/local/xsb-3.8.0 -DBOOST_ROOT=/usr \
       -DZ3_ROOT=/usr/local -DYAML_CPP_ROOT=/usr ../..
