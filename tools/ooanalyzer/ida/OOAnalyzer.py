@@ -639,7 +639,37 @@ class PyOOAnalyzer(object):
 
       idc.SetFunctionCmt(method.start_ea, cmt, 1)
 
-      return
+      try:
+         import ida_hexrays
+         cfunc = ida_hexrays.decompile(method.start_ea)
+      except Exception as e:
+         print('%smerror_t(%d) @ %x' % (e, e.info.code, e.info.errea))
+         return
+
+      classtype = idaapi.tinfo_t()
+      classtype.get_named_type(idaapi.get_idati(), method.cls.ida_name)
+      thisptrtype = tinfo_t()
+      thisptrtype.create_ptr(classtype)
+
+      functypeinfo = cfunc.type
+      funcdata = idaapi.func_type_data_t()
+      functypeinfo.get_func_details(funcdata)
+      if len(funcdata):
+         funcdata[0].type = thisptrtype
+      else:
+         print('Info: decompiler did not recognize any this pointer')
+         # TODO: this usually occurs if ecx is never read
+         # but it could also be because it's a 'dynamic initializer' for a global
+         #thisarg = idaapi.funcarg_t()
+         #thisarg.name = 'this'
+         #thisarg.type = thisptrtype
+         #funcdata.push_back(thisarg)
+      # constructors also return this
+      if method.is_ctor == True:
+         funcdata.rettype = thisptrtype
+      function_tinfo = idaapi.tinfo_t()
+      function_tinfo.create_func(funcdata)
+      idaapi.apply_tinfo2(method.start_ea, function_tinfo, idaapi.TINFO_DEFINITE)
 
    def __apply_vftable(self, cid, cls, vft, off):
       '''
