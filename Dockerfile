@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:rolling AS buildenv
 
 ARG NCPU=1
 ENV NCPU=$NCPU
