@@ -615,7 +615,8 @@ class PyOOAnalyzer(object):
 
       # Does this function already have a user-defined name? If so, preserve it
 
-      cmt = cmt = "%s::%s" % (method.cls.ida_name, method.method_name)
+      fullname = "%s::%s" % (method.cls.ida_name, method.method_name)
+      cmt = fullname
 
       if method.is_virtual == True:
          cmt = "virtual %s" % cmt
@@ -634,7 +635,7 @@ class PyOOAnalyzer(object):
          idc.MakeFunction(method.start_ea)
 
       if not method.userdef_name and not method.is_import:
-         idc.MakeName(method.start_ea, method.method_name)
+         idc.MakeName(method.start_ea, fullname)
 
       idc.SetFunctionCmt(method.start_ea, cmt, 1)
 
