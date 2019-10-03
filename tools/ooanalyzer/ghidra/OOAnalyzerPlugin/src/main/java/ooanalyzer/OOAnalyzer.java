@@ -893,12 +893,17 @@ public class OOAnalyzer {
 							ghidraClassSymbol.getParentNamespace());
 				}
 
-				// We can have multiple labels in the symbol table
-				String label = vfunc.getSymbol().getName(false);
-				if (!label.startsWith("VIRT_")) {
-					label = "VIRT_" + vfunc.getName();
+				if (vfunc!=null) {
+					// We can have multiple labels in the symbol table
+					String label = vfunc.getSymbol().getName(false);
+					if (!label.startsWith("VIRT_")) {
+						label = "VIRT_" + vfunc.getName();
+					}
+					createOrUpdateLabel(vfunc.getEntryPoint(), label, clsScope, SourceType.USER_DEFINED);
 				}
-				createOrUpdateLabel(vfunc.getEntryPoint(), label, clsScope, SourceType.USER_DEFINED);
+				else {
+					Msg.warn(this, "Could not create label for function: " + vfEntry.getName());
+				}
 			});
 		}
 	}
@@ -922,12 +927,14 @@ public class OOAnalyzer {
 
 		int offset = 0;
 		for (Function vf : vfuncs) {
-			FunctionDefinitionDataType vfDef = new FunctionDefinitionDataType(ooanalyzerVirtualFunctionsCategory,
-					vf.getName(), vf.getSignature());
-			Pointer pvfDt = PointerDataType.getPointer(vfDef, dataTypeMgr);
-
-			vftableStruct.insertAtOffset(offset, pvfDt, pvfDt.getLength(), vf.getName() + "_" + String.valueOf(offset),
-					"virtual function table entry.");
+			if (vf != null) { 
+				FunctionDefinitionDataType vfDef = new FunctionDefinitionDataType(ooanalyzerVirtualFunctionsCategory,
+						vf.getName(), vf.getSignature());
+				Pointer pvfDt = PointerDataType.getPointer(vfDef, dataTypeMgr);
+	
+				vftableStruct.insertAtOffset(offset, pvfDt, pvfDt.getLength(), vf.getName() + "_" + String.valueOf(offset),
+						"virtual function table entry.");
+			} 
 			offset += pointerSize;
 		}
 	}
