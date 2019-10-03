@@ -628,6 +628,11 @@ class PyOOAnalyzer(object):
 
       print "Applying class method %s @ %x" % (method.method_name, method.start_ea)
 
+      if not idc.GetFunctionName(method.start_ea):
+         print("Have to define function first")
+         idc.MakeCode(method.start_ea)
+         idc.MakeFunction(method.start_ea)
+
       if not method.userdef_name and not method.is_import:
          idc.MakeName(method.start_ea, method.method_name)
 
