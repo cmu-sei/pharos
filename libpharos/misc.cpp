@@ -115,6 +115,16 @@ bool insn_is_call(const SgAsmX86Instruction* insn) {
   else return false;
 }
 
+// For detecting call and call-like unconditional jumps.
+bool insn_is_call_or_jmp(const SgAsmX86Instruction* insn) {
+  if (insn == NULL) return false;
+  else if (insn->get_kind() == x86_call) return true;
+  else if (insn->get_kind() == x86_farcall) return true;
+  else if (insn->get_kind() == x86_jmp) return true;
+  else if (insn->get_kind() == x86_farjmp) return true;
+  else return false;
+}
+
 // I think we meant insn_is_call() in all of these cases...
 bool insn_is_callNF(const SgAsmX86Instruction* insn) {
   if (insn == NULL) return false;

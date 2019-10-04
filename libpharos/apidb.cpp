@@ -10,6 +10,7 @@
 #pragma GCC diagnostic pop
 #include "apidb.hpp"
 #include "demangle.hpp"
+#include "threads.hpp"
 #include <sqlite3.h>
 #include <boost/range/adaptor/map.hpp>
 
@@ -683,7 +684,7 @@ struct SQLLiteApiDictionary::Data {
   }
 
   static std::int64_t next_regex_index;
-  static std::mutex regex_mutex;
+  static std_mutex regex_mutex;
   static std::map<int, regex const *> regex_map;
   static void regexp(sqlite3_context * ctx, int, sqlite3_value **args);
 
@@ -909,7 +910,7 @@ void SQLLiteApiDictionary::Data::regexp(sqlite3_context * ctx, int, sqlite3_valu
   auto pattern_idx = sqlite3_value_int64(args[0]);
   regex const *pattern;
   {
-    std::lock_guard<std::mutex> guard(regex_mutex);
+    write_guard<decltype(regex_mutex)> guard(regex_mutex);
     pattern = regex_map.at(pattern_idx);
   }
   int result = std::regex_search(str, *pattern);
@@ -928,7 +929,7 @@ constexpr char const * SQLLiteApiDictionary::Data::select_dll_exists[];
 constexpr char const * SQLLiteApiDictionary::Data::select_params[];
 constexpr char const SQLLiteApiDictionary::Data::select_version[];
 std::int64_t SQLLiteApiDictionary::Data::next_regex_index = 0;
-std::mutex SQLLiteApiDictionary::Data::regex_mutex;
+std_mutex SQLLiteApiDictionary::Data::regex_mutex;
 std::map<int, regex const *> SQLLiteApiDictionary::Data::regex_map;
 
 
@@ -1281,12 +1282,12 @@ SQLLiteApiDictionary::Data::get_api_definition(
 {
   std::int64_t idx;
   {
-    std::lock_guard<std::mutex> guard(regex_mutex);
+    write_guard<decltype(regex_mutex)> guard(regex_mutex);
     idx = next_regex_index++;
     regex_map[idx] = &func_name;
   }
   auto cleanup = make_finalizer([idx]() {
-    std::lock_guard<std::mutex> guard(regex_mutex);
+    write_guard<decltype(regex_mutex)> guard(regex_mutex);
     regex_map.erase(idx);
   });
   maybe_throw(sqlite3_reset(lookup_all_names));

@@ -4,9 +4,12 @@
 
 int main() {
   path_start();
-  int n=INT_RAND;
+  volatile int n=INT_RAND;
   if (n > 2 && n < 10) {
     n++;
+  }
+  if (n == 2 && n == -2) {
+    path_nongoal();
   }
   path_goal();
 }

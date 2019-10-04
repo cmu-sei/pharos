@@ -955,6 +955,9 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
     return;
   }
 
+  // Record that this function has a call involving the call descriptor.
+  current_function->add_outgoing_call(cd);
+
   // This is the function descriptor that contains our parameters.  It might come from the
   // function descriptor in the call descriptor, or it might come from the import descriptor
   // (which must be const).
@@ -1795,10 +1798,11 @@ DUAnalysis::debug_state_replaced(UNUSED const rose_addr_t baddr) const
 }
 
 SymbolicValuePtr
-DUAnalysis::get_eip_condition(const BlockAnalysis& pred_analysis,
-                              SgAsmBlock* pblock, const rose_addr_t bb_addr)
+DUAnalysis::get_address_condition(const BlockAnalysis& pred_analysis,
+                                  SgAsmBlock* pblock, const rose_addr_t bb_addr)
 {
   using namespace Rose::BinaryAnalysis;
+  static auto nullnode = TreeNodePtr();
 
   if (insn_is_call(last_x86insn_in_block(pblock))) {
     return SymbolicValue::treenode_instance(SymbolicExpr::makeBoolean(true));
@@ -1807,21 +1811,20 @@ DUAnalysis::get_eip_condition(const BlockAnalysis& pred_analysis,
   if (!pred_analysis.output_state) {
     return SymbolicValuePtr();
   }
-  SymbolicRegisterStatePtr eip_reg_state = pred_analysis.output_state->get_register_state();
+  SymbolicRegisterStatePtr ip_reg_state = pred_analysis.output_state->get_register_state();
 
-  if (!eip_reg_state) {
+  if (!ip_reg_state) {
     return SymbolicValuePtr();
   }
 
-  // RegisterDescriptor eiprd = global_descriptor_set->get_arch_reg("eip");
-  RegisterDescriptor eiprd = ds.get_ip_reg();
-  SymbolicValuePtr eip_sv = eip_reg_state->read_register(eiprd);
+  size_t arch_bits = ds.get_arch_bits();
+  TreeNodePtr leaf_addr = LeafNode::createInteger(arch_bits, bb_addr);
+  RegisterDescriptor iprd = ds.get_ip_reg();
+  SymbolicValuePtr ip_sv = ip_reg_state->read_register(iprd);
 
-  SymbolicValuePtr final_condition;
-  std::vector<TreeNodePtr> condition_list;
-  get_expression_condition(eip_sv, bb_addr, condition_list, final_condition);
+  return get_leaf_condition(ip_sv, leaf_addr, nullnode);
 
-  return final_condition;
+  // return final_condition;
 }
 
 // Merge all predecessor block's output states into a single state that becomes the input state
@@ -1927,10 +1930,10 @@ DUAnalysis::merge_predecessors_with_conditions(CFGVertex vertex)
 
       // This is a predecessor condition that must be conjoined with
       SymbolicValuePtr prev_cond = pred_analysis.entry_condition;
-      SymbolicValuePtr eip_cond = get_eip_condition(pred_analysis, pblock, baddr);
+      SymbolicValuePtr addr_cond = get_address_condition(pred_analysis, pblock, baddr);
       SymbolicValuePtr merge_cond =
         SymbolicValue::treenode_instance(
-          SymbolicExpr::makeAnd(eip_cond->get_expression(),
+          SymbolicExpr::makeAnd(addr_cond->get_expression(),
                                 prev_cond->get_expression()));
       DSTREAM << "Merged condition addr=" << addr_str(baddr)
               << " cond=" << *merge_cond << LEND;
@@ -2328,69 +2331,63 @@ DUAnalysis::analyze_basic_blocks_independently()
   return rstatus;
 }
 
-bool
-get_expression_condition(SymbolicValuePtr sv, rose_addr_t next_addr, std::vector<TreeNodePtr>& condition_list,
-                         SymbolicValuePtr& final_condition,
-                         bool direction) {
+SymbolicValuePtr
+get_leaf_condition(SymbolicValuePtr sv, TreeNodePtr target_leaf, TreeNodePtr parent_condition, bool direction) {
 
   using namespace Rose::BinaryAnalysis;
+  // static auto nullsval = SymbolicValuePtr
+
+  if (!target_leaf) {
+    return SymbolicValue::incomplete(1);
+  }
 
   TreeNodePtr tn = sv->get_expression();
+  if (!tn) {
+    return SymbolicValue::incomplete(1);
+  }
 
   // We are at a leaf, is it the target?
-  if (tn->isLeafNode() && tn->isLeafNode()->isNumber()) {
-    rose_addr_t node_addr = address_from_node(tn->isLeafNode());
-    if (next_addr == node_addr) {
-      // if we came here on the false branch, invert the last condition
-      if (false==direction) {
-        TreeNodePtr& last_condition = condition_list.back();
-        last_condition = SymbolicExpr::makeInvert(last_condition);
+  if (tn->isLeafNode()) {
+    if (target_leaf->isEquivalentTo(tn)) {
+      // if we came here on the false branch, invert the last condition (via the reference
+      if (parent_condition) {
+        if (false==direction) {
+          parent_condition = SymbolicExpr::makeInvert(parent_condition);
+        }
+        return SymbolicValue::treenode_instance(parent_condition);
       }
-      final_condition = SymbolicValue::treenode_instance(SymbolicExpr::makeBoolean(true));
-      return true;
+      // Can always get here
+      return SymbolicValue::treenode_instance(SymbolicExpr::makeBoolean(true));
     }
-    final_condition = SymbolicValue::treenode_instance(SymbolicExpr::makeBoolean(false));
-    return false;
+    // This leaf is not the address we are looking for
+    return SymbolicValue::incomplete(1);
   }
 
   const InternalNodePtr in = tn->isInteriorNode();
+
+  SymbolicValuePtr result = SymbolicValue::incomplete(1);
+
   // If an ITE, then recurse through the branches
   if (in && in->getOperator() == SymbolicExpr::OP_ITE) {
 
     const TreeNodePtrVector& children = in->children();
 
-    // Camee from a false branch, so invert the last controlling condition
-    if (false == direction && !condition_list.empty()) {
-      TreeNodePtr& last_condition = condition_list.back();
-      last_condition = SymbolicExpr::makeInvert(last_condition);
-    }
+    SymbolicValuePtr true_cond = get_leaf_condition(SymbolicValue::treenode_instance(children[1]), target_leaf, children[0], true);
+    SymbolicValuePtr false_cond = get_leaf_condition(SymbolicValue::treenode_instance(children[2]), target_leaf, children[0], false);
 
-    // Save this condition on the path and continue the search through the subtrees
-    condition_list.push_back(children[0]);
+    result = false == true_cond->is_incomplete() ? true_cond : false_cond;
 
-    if (get_expression_condition(SymbolicValue::treenode_instance(children[1]), next_addr, condition_list, final_condition, true) ||
-        get_expression_condition(SymbolicValue::treenode_instance(children[2]), next_addr, condition_list, final_condition, false)) {
-
-      // found the target in a subtree, now conjoin the path
-      TreeNodePtr and_cond = condition_list.at(0);
-      if (condition_list.size()>1) {
-        size_t i=1;
-        while (i<condition_list.size()) {
-          and_cond = SymbolicExpr::makeAnd(and_cond, condition_list.at(i));
-          i++;
+    if (result->is_incomplete() == false) {
+      if (parent_condition) {
+        if (!direction) {
+          // Came from a false branch, so invert the last controlling condition
+          parent_condition = SymbolicExpr::makeInvert(parent_condition);
         }
+        result = SymbolicValue::treenode_instance(SymbolicExpr::makeAnd(result->get_expression(), parent_condition));
       }
-      final_condition = SymbolicValue::treenode_instance(and_cond);
-      return true;
     }
   }
-
-  // next address not in this subtree
-  if (!condition_list.empty()) condition_list.pop_back();
-
-  // the default is to simply return an incomplete expression.
-  final_condition = SymbolicValue::incomplete(1);
-  return false;
+  return result;
 }
 
 } // Namespace pharos

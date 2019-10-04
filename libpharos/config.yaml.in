@@ -24,21 +24,11 @@ pharos:
 application:
   apianalyzer:
     signature_file: "apianalyzer/sig.json"
-  apianalyzer-static:
-    signature_file: "apianalyzer/sig.json"
   objdigger:
-  objdigger-static:
   fn2yara:
     pharos:
       allow-64bit: true
-  fn2yara-static:
-    pharos:
-      allow-64bit: true
   fn2hash:
-    pharos:
-      verbosity:
-      allow-64bit: true
-  fn2hash-static:
     pharos:
       verbosity:
       allow-64bit: true
@@ -47,9 +37,3 @@ application:
     convolution-key-limit: 50 # maximum number of keys deduced for a single string
     pharos:
       allow-64bit: true
-  stackstrings-static:
-    convolution-limit: 25 # maximum number of strings deduced for a single stack location
-    convolution-key-limit: 50 # maximum number of keys deduced for a single string
-    pharos:
-      allow-64bit: true
-

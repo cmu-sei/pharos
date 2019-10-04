@@ -211,11 +211,6 @@ ProgOptDesc cert_standard_options() {
     ("log",
      po::value<std::string>(),
      "log facility control string")
-#if 0  // maybe eventually...
-    ("threads",
-     po::value<unsigned int>(),
-     "enable threaded processing")
-#endif
     ("stockpart",
      "deprecated, use --parititioner=rose")
     ("rose-version",
@@ -414,7 +409,6 @@ ProgOptVarMap parse_cert_options(
   // Since the line above doesn't seem to work as expected...
   glog[Sawyer::Message::WARN].disable();
   slog[Sawyer::Message::WARN].disable();
-  plog[Sawyer::Message::WARN].disable();
 
   // The options log is the exception to the rule that only errors and above are reported.
   olog[Sawyer::Message::WARN].enable();
@@ -478,9 +472,10 @@ ProgOptVarMap parse_cert_options(
     // Prolog logging levels
     plog[Sawyer::Message::ERROR].enable(true);
     plog[Sawyer::Message::FATAL].enable(true);
-    plog[Sawyer::Message::WARN].enable(verbosity >= 4);
-    plog[Sawyer::Message::INFO].enable(verbosity >= 6);
-    plog[Sawyer::Message::TRACE].enable(verbosity >= 12);
+    plog[Sawyer::Message::WARN].enable(true);
+    plog[Sawyer::Message::INFO].enable(verbosity >= 3);
+    plog[Sawyer::Message::WHERE].enable(verbosity >= 6);
+    plog[Sawyer::Message::TRACE].enable(verbosity >= 9);
     plog[Sawyer::Message::DEBUG].enable(verbosity >= 13);
 
     // Enable everything everywhere...
@@ -536,6 +531,13 @@ ProgOptVarMap parse_cert_options(
         ODEBUG << "Excluding function: " << addr_str(addr) << LEND;
       }
     }
+  }
+
+  bool propagate_conditions = (vm.count("propagate-conditions") > 0);
+  if (propagate_conditions) {
+    int limit = *vm.get<int>("maximum-nodes-per-condition", "pharos.maximum_nodes_per_condition");
+    OINFO << "Propagating full conditions (up to " << limit
+          << " terms) during function analysis." << LEND;
   }
   // We might want to investigate allowing unknown options for pasthru to ROSE
   // http://www.boost.org/doc/libs/1_53_0/doc/html/program_options/howto.html

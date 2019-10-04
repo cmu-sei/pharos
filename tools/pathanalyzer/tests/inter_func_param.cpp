@@ -2,9 +2,12 @@
 
 #include "test.hpp"
 
-void func1(int n, int x) {
+void func1(volatile int n, int x) {
   if (n > 2 && x == 1) {
     path_goal();
+  }
+  if (n == 2 && n == 10) {
+    path_nongoal();
   }
 }
 void func0(int x) {

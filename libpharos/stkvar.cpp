@@ -251,7 +251,7 @@ StackVariableAnalyzer::uses_parameter(const SgAsmX86Instruction *insn) {
     GDEBUG << "Function " << addr_str(fd_->get_address()) << " contains "
            << outgoing_calls.size() << " calls" << LEND;
 
-    for (CallDescriptor *cd : outgoing_calls) {
+    for (const CallDescriptor *cd : outgoing_calls) {
 
       auto cd_params = cd->get_parameters().get_params();
 

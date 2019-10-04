@@ -1,80 +1,70 @@
 set(ALL_TESTS
-  acyclic
-  acyclic_nongoal
-  bad_diff_func
   bound_loop_with_var
-  compound_condition
-  compound_condition_param
+  call_trace_v1
+  call_trace_v2
+  call_trace_v3
+  call_trace_v4
+  call_trace_v5
+  call_trace_v6
+  compound_condition_param_v1
   compound_condition_param_v2
+  compound_condition_v1
   compound_condition_v2
   compound_condition_v3
-  condcall_one
-  condcall_two
+  condcall_v1
+  condcall_v2
+  down_call_chain
   empty
+  endless_loop
   exclusive_ite
   exclusive_ite_goal_in_else
-  func_array_goal
-  func_array_nongoal
-  goal_diff_func
-  global_var
-  global_var_updates
-  global_var_nongoal
+  func_array
+  global_var_v1
+  global_var_v2
+  global_var_v3
   independent_ite
   independent_ite_param
   input_inside_bound_loop
+  input_inside_bound_loop_mod
   inter_func_narrow_to_wide_constraint
   inter_func_param
   inter_func_wide_to_narrow_constraint
   inter_rv
-  invalid_compound_condition
-  invalid_compound_condition_param
-  invalid_compound_condition_v2
-  invalid_condition
-  invalid_inter_func
-  invalid_nested_conditions
   linear_flow
   loop_even_odd
-  loop_even_odd_nongoal
   multi_call_inter_cond
   multi_call_inter_cond_else
   multi_call_inter_seq
   multiple_ite
   multivar_compound_condition
-  nested_condition
+  nested_condition_v1
   nested_condition_v2
   nested_condition_v3
-  nested_ite_condition
-  nested_ite_condition_param
+  nested_condition_v4
+  nested_ite_condition_param_v1
   nested_ite_condition_param_v2
+  nested_ite_condition_v1
   nested_ite_condition_v2
   nested_loop
-  oo_simple_goal
-  oo_simple_nongoal
-  oo_virtual_func_goal
-  oo_virtual_func_nongoal
+  oo_simple
+  oo_virtual_func
   param_n_var_conpound_condition
   pointer_write
-  pointer_write_nongoal
   rv_cond
   rv_same_var
-  rv_seq
   rv_seq_v1
   rv_seq_v2
-  seq_call_five
-  seq_call_four
-  seq_call_one
-  seq_call_three
-  seq_call_two
-  seq_v4
-  single_condition
-  single_condition_param
+  rv_seq_v3
+  single_condition_param_v1
   single_condition_param_v2
+  single_condition_v1
   single_condition_v2
   strcmp
-  strcmp_nongoal
   unbound_loop_with_var
   var_values
   var_values_param
+  recurse
+  explosive_conditions_v1 
   # This makes it a little easier to manage the lists in CMake. Don't remove.
   fake_failed_test
   )
@@ -88,16 +78,12 @@ set(ALL_TESTS
 # Function summary approach
 set(FS_FAILING_TESTS
   # We only unroll loops up to five iterations?
-  acyclic
   strcmp
   # We don't support register variables?
   var_values
   # Reasons?
-  bad_diff_func
-  func_array_nongoal
-  input_inside_bound_loop
+  func_array
   loop_even_odd
-  pointer_write_nongoal
   # Began failing when we added a second iteration to loop.
   bound_loop_with_var
   # This makes it a little easier to manage the lists in CMake. Don't remove.
@@ -107,24 +93,23 @@ set(FS_FAILING_TESTS
 # Weakest precondition approach
 set(WP_FAILING_TESTS
   # Fails because loops are not unrolled
-  acyclic
   strcmp
   loop_even_odd
   bound_loop_with_var
   # IR does not support indirect calls
-  func_array_nongoal
-  # Times out for unknown reason (>90 seconds)
-  input_inside_bound_loop
+  func_array
+  # Times out because modulus is hard
+  input_inside_bound_loop_mod
   # This makes it a little easier to manage the lists in CMake. Don't remove.
   fake_failed_test
   )
 
 # SPACER approach
 set(SPACER_FAILING_TESTS
-  # Times out (>90 seconds).  Upstream problem in SPACER/Z3?  Reported to Arie?
-  acyclic_nongoal
   # IR does not support indirect calls
-  func_array_nongoal
+  func_array
+  # Times out because modulus is hard
+  input_inside_bound_loop_mod
   # This makes it a little easier to manage the lists in CMake. Don't remove.
   fake_failed_test
   )
@@ -151,7 +136,8 @@ if(NOT TIMEOUT_SECS)
 endif()
 
 foreach(test ${ALL_TESTS})
-  add_executable(${test} EXCLUDE_FROM_ALL ${test}.cpp)
+  add_executable(${test}_64 EXCLUDE_FROM_ALL ${test}.cpp)
+    list(APPEND ALL_64BIT_TESTS ${test}_64)
   if (CROSS32BIT)
     add_executable(${test}_32 EXCLUDE_FROM_ALL ${test}.cpp)
     list(APPEND ALL_32BIT_TESTS ${test}_32)
@@ -159,47 +145,67 @@ foreach(test ${ALL_TESTS})
   endif()
 endforeach()
 
-add_custom_target(pathanalyzer_tests DEPENDS ${ALL_TESTS} ${ALL_32BIT_TESTS})
+add_custom_target(pathanalyzer_tests DEPENDS ${ALL_64BIT_TESTS} ${ALL_32BIT_TESTS})
 
 add_dependencies(tests pathanalyzer_tests)
 
-set(PHAROS_RUN_PATHANALYZER_TESTS false CACHE BOOL "Run pathanalyzer tests (experimental)")
+set(PHAROS_RUN_PATHANALYZER_TESTS "" CACHE BOOL "Run pathanalyzer tests (experimental)")
 mark_as_advanced(PHAROS_RUN_PATHANALYZER_TESTS)
 if (PHAROS_RUN_PATHANALYZER_TESTS)
   foreach(test ${SPACER_PASSING_TESTS})
-    add_test(NAME pathanalyzer_spacer_${test}
-      COMMAND pathanalyzer_spacer_test --allow-64bit --seed=42 ${PHAROS_TEST_OPS} ${test})
-    set_tests_properties (pathanalyzer_spacer_${test}
+    add_test(NAME pathanalyzer_spacer_${test}_64
+      COMMAND pathanalyzer_test --method=spacer --no-semantics --allow-64bit
+              --goal-smt=${test}_goal_spacer_64.smt
+              --nongoal-smt=${test}_nongoal_spacer_64.smt
+              --seed=42 ${PHAROS_TEST_OPS} ${test}_64)
+    set_tests_properties (pathanalyzer_spacer_${test}_64
       PROPERTIES TIMEOUT ${TIMEOUT_SECS} LABELS pathanalyzer)
     if (CROSS32BIT)
       add_test(NAME pathanalyzer_spacer_${test}_32
-        COMMAND pathanalyzer_spacer_test --seed=42 ${PHAROS_TEST_OPS} ${test}_32)
+        COMMAND pathanalyzer_test --method=spacer --no-semantics
+                --goal-smt=${test}_goal_spacer_32.smt
+                --nongoal-smt=${test}_nongoal_spacer_32.smt
+                --seed=42 ${PHAROS_TEST_OPS} ${test}_32)
       set_tests_properties (pathanalyzer_spacer_${test}_32
         PROPERTIES TIMEOUT ${TIMEOUT_SECS} LABELS pathanalyzer)
     endif()
   endforeach()
-  
+
   foreach(test ${WP_PASSING_TESTS})
-    add_test(NAME pathanalyzer_wp_${test}
-      COMMAND pathanalyzer_wp_test --allow-64bit --seed=42 ${PHAROS_TEST_OPS} ${test})
-    set_tests_properties (pathanalyzer_wp_${test}
+    add_test(NAME pathanalyzer_wp_${test}_64
+      COMMAND pathanalyzer_test --method=wp --no-semantics --allow-64bit
+              --goal-smt=${test}_goal_wp_64.smt
+              --nongoal-smt=${test}_nongoal_wp_64.smt
+              --seed=42 ${PHAROS_TEST_OPS} ${test}_64)
+    set_tests_properties (pathanalyzer_wp_${test}_64
       PROPERTIES TIMEOUT ${TIMEOUT_SECS} LABELS pathanalyzer)
     if (CROSS32BIT)
       add_test(NAME pathanalyzer_wp_${test}_32
-        COMMAND pathanalyzer_wp_test --seed=42 ${PHAROS_TEST_OPS} ${test}_32)
+        COMMAND pathanalyzer_test --method=wp --no-semantics
+                --goal-smt=${test}_goal_wp_32.smt
+                --nongoal-smt=${test}_nongoal_wp_32.smt
+                --seed=42 ${PHAROS_TEST_OPS} ${test}_32)
       set_tests_properties (pathanalyzer_wp_${test}_32
         PROPERTIES TIMEOUT ${TIMEOUT_SECS} LABELS pathanalyzer)
     endif()
   endforeach()
-  
+
   foreach(test ${FS_PASSING_TESTS})
-    add_test(NAME pathanalyzer_fs_${test}
-      COMMAND pathanalyzer_test --allow-64bit --seed=42 ${PHAROS_TEST_OPS} ${test})
-    set_tests_properties (pathanalyzer_fs_${test}
+    add_test(NAME pathanalyzer_fs_${test}_64
+      COMMAND pathanalyzer_test --method=fs --no-semantics --allow-64bit
+              --propagate-conditions --maximum-nodes-per-condition=500000
+              --goal-smt=${test}_goal_fs_64.smt
+              --nongoal-smt=${test}_nongoal_fs_64.smt
+              --seed=42 ${PHAROS_TEST_OPS} ${test}_64)
+    set_tests_properties (pathanalyzer_fs_${test}_64
       PROPERTIES TIMEOUT ${TIMEOUT_SECS} LABELS pathanalyzer)
     if (CROSS32BIT)
       add_test(NAME pathanalyzer_fs_${test}_32
-        COMMAND pathanalyzer_test --seed=42 ${PHAROS_TEST_OPS} ${test}_32)
+        COMMAND pathanalyzer_test --method=fs --no-semantics
+                --propagate-conditions --maximum-nodes-per-condition=500000
+                --goal-smt=${test}_goal_fs_32.smt
+                --nongoal-smt=${test}_nongoal_fs_32.smt
+                --seed=42 ${PHAROS_TEST_OPS} ${test}_32)
       set_tests_properties (pathanalyzer_fs_${test}_32
         PROPERTIES TIMEOUT ${TIMEOUT_SECS} LABELS pathanalyzer)
     endif()

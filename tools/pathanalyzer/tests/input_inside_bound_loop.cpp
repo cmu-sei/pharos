@@ -8,7 +8,7 @@ int main() {
   sum = 0;
 
   while (sum < 100) {
-    sum += INT_RAND % 10;
+    sum += INT_RAND;
   }
 
   path_goal ();

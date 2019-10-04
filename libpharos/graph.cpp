@@ -4,6 +4,7 @@
 
 #include <rose.h>
 #include <Sawyer/GraphTraversal.h>
+#include <Sawyer/GraphIteratorSet.h>
 
 #include "graph.hpp"
 #include "descriptors.hpp"
@@ -396,7 +397,7 @@ Graph Graph::getFunctionCfgByReachability (const FunctionDescriptor *fd) const {
   SawyerPDG::VertexIterator entry_vi = fcfg.findVertexKey (entry_block->get_address ());
   assert (entry_vi != vertices ().end ());
 
-  std::set<SawyerPDG::ConstEdgeIterator> reachable_edges;
+  Sawyer::Container::GraphIteratorSet<SawyerPDG::ConstEdgeIterator> reachable_edges;
   std::vector<EdgeIterator> remove_edges;
   std::vector<VertexIterator> remove_vertices;
 
@@ -421,7 +422,7 @@ Graph Graph::getFunctionCfgByReachability (const FunctionDescriptor *fd) const {
   }
 
   for (SawyerPDG::EdgeIterator ei = fcfg.edges ().begin (); ei != fcfg.edges ().end (); ei++) {
-    if (reachable_edges.count (ei) == 0) {
+    if (!reachable_edges.exists(ei)) {
       remove_edges.push_back (ei);
     }
   }

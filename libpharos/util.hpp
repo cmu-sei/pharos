@@ -193,10 +193,10 @@ class Timer {
 
   Timer() : start_(clock::now()), stop_(start_) {}
 
-  duration stop() { stop_ = clock::now(); stopped_ = true; return start_ - stop_; }
+  duration stop() { stop_ = clock::now(); stopped_ = true; return stop_ - start_; }
   duration dur() const {
     if (!stopped_) { stop_ = clock::now(); }
-    return start_ - stop_;
+    return stop_ - start_;
   }
   template <typename Stream>
   Stream & dur(Stream & stream) const {

@@ -171,7 +171,7 @@ FunctionDescriptor::FunctionDescriptor(DescriptorSet& d, SgAsmFunction* f)
 
 void FunctionDescriptor::set_address(rose_addr_t addr)
 {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   auto old_addr = addr;
   address = addr;
   std::ostringstream os("sub_");
@@ -193,7 +193,7 @@ void FunctionDescriptor::set_address(rose_addr_t addr)
 
 // Get the name of the function.
 std::string FunctionDescriptor::get_name() const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
 
   if (p2func == NULL) {
     if (display_name.empty()) {
@@ -213,7 +213,7 @@ std::string FunctionDescriptor::get_name() const {
 
 // Set the name of the function.
 void FunctionDescriptor::set_name(const std::string& name) {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   if (p2func != NULL) {
     p2func->name(name);
   }
@@ -221,7 +221,7 @@ void FunctionDescriptor::set_name(const std::string& name) {
 }
 
 void FunctionDescriptor::set_api(const APIDefinition& fdata) {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   stack_delta = StackDelta(fdata.stackdelta, ConfidenceUser);
   // Get the calling convention from the API database.
   std::string convention;
@@ -306,7 +306,7 @@ void FunctionDescriptor::set_api(const APIDefinition& fdata) {
 
 void FunctionDescriptor::merge(const FunctionDescriptor *other) {
   if (this == other) return;
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   // Obviously not implemented yet.  I need to decide how to handle confidence levels.
   STRACE << "Merging call target " << other->address_string()
          << " into function descriptor for " << address_string() << LEND;
@@ -317,7 +317,7 @@ void FunctionDescriptor::merge(const FunctionDescriptor *other) {
 
 void FunctionDescriptor::propagate(const FunctionDescriptor *merged) {
   if (this == merged) return;
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   // Obviously not implemented yet.  I need to decide how to handle confidence levels.
   if (!merged) return;
   STRACE << "Propagating function descriptor for " << merged->_address_string()
@@ -325,7 +325,7 @@ void FunctionDescriptor::propagate(const FunctionDescriptor *merged) {
 }
 
 void FunctionDescriptor::print(std::ostream &o) const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
   o << "Func: addr=" << _address_string() << " delta=" << stack_delta << " conv=";
   for (const CallingConvention* cc : calling_conventions) {
     o << " " << cc->get_name();
@@ -338,7 +338,7 @@ void FunctionDescriptor::print(std::ostream &o) const {
 }
 
 std::string FunctionDescriptor::debug_deltas() const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
   std::stringstream s;
   s << " delta=" << stack_delta;
   return s.str();
@@ -453,7 +453,7 @@ void FunctionDescriptor::update_target_address() {
 void FunctionDescriptor::update_connections(FunctionDescriptorMap& fdmap) {
   FunctionDescriptor * tfunc = nullptr;
   {
-    auto && guard = write_guard(mutex);
+    write_guard<decltype(mutex)> guard{mutex};
 
     // Update connections between function descriptors.  Called for each function descriptor.
     if (target_address) {
@@ -477,7 +477,7 @@ void FunctionDescriptor::update_connections(FunctionDescriptorMap& fdmap) {
 }
 
 void FunctionDescriptor::propagate_thunk_info() {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   _propagate_thunk_info();
 }
 
@@ -579,13 +579,13 @@ void FunctionDescriptor::analyze() {
 }
 
 void FunctionDescriptor::validate(std::ostream &o) const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
   if (callers.empty())
     o << "No callers for function " << _address_string() << LEND;
 }
 
 void FunctionDescriptor::update_stack_delta(StackDelta sd) {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   if (sd.confidence < stack_delta.confidence) return;
   if (sd.confidence <= stack_delta.confidence && sd.delta != stack_delta.delta) {
     SERROR << "Attempt to change function stack delta without changing confidence for function: "
@@ -942,7 +942,7 @@ const PDG * FunctionDescriptor::get_pdg() const {
 
 static std::atomic_flag arch_warn_once = ATOMIC_FLAG_INIT;
 const PDG * FunctionDescriptor::_get_pdg() {
-  auto && pdg_guard = write_guard(pdg_mutex);
+  write_guard<decltype(pdg_mutex)> pdg_guard{pdg_mutex};
 
   if (pdg) return &(*pdg); // &(*pdg) to convert from std::unique_ptr to raw pointer.
   // If we're an excluded function, don't try to compute the PDG.
@@ -1054,8 +1054,8 @@ const PDG * FunctionDescriptor::_get_pdg() {
 }
 
 void FunctionDescriptor::free_pdg() {
-  auto && pdg_guard = write_guard(pdg_mutex);
-  pdg.release();
+  write_guard<decltype(pdg_mutex)> pdg_guard{pdg_mutex};
+  pdg.reset();
 }
 
 // Get the PDG hash for the function.  This turns out to be really expensive -- like half the
@@ -1096,7 +1096,7 @@ void FunctionDescriptor::_compute_function_hashes(ExtraFunctionHashData *extra) 
   assert(func);
 
   const CFG& cfg = get_pharos_cfg();
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   if (hashes_calculated) { return; }
   auto finally = make_finalizer([this]{hashes_calculated = true;});
 
@@ -1486,7 +1486,7 @@ const std::string& FunctionDescriptor::get_composite_pic_hash() const {
 // remaining code was not literally a thunk.  More investigation is needed.
 CFG const & FunctionDescriptor::get_pharos_cfg() const
 {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
 
   // If we've already done the work, just return the answer.
   if (pharos_control_flow_graph_cached) return pharos_control_flow_graph;
@@ -1546,7 +1546,7 @@ CFG const & FunctionDescriptor::get_pharos_cfg() const
 }
 
 CFG const & FunctionDescriptor::get_rose_cfg() const {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   return _get_rose_cfg();
 }
 
@@ -1571,7 +1571,7 @@ CFG const & FunctionDescriptor::_get_rose_cfg() const {
 // There may be a better way to do this, but if you have the address and want the instruction,
 // this is the only way Cory is currently aware of.
 SgAsmInstruction* FunctionDescriptor::get_insn(const rose_addr_t addr) const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
 
   // mwd: this code assumes this.  Is it guaranteed?
   assert(func);
@@ -1599,7 +1599,7 @@ SgAsmInstruction* FunctionDescriptor::get_insn(const rose_addr_t addr) const {
 // TODO: need an architecture agnostic version of this if we ever support non-x86 stuff
 // explicit sorting of instructions by address using a map:
 X86InsnVector FunctionDescriptor::get_insns_addr_order() const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
 
   // TODO: do this once & cache on object?  Also, should there be another variant for "only
   // ones in CFG" too?
@@ -1637,7 +1637,7 @@ X86InsnVector FunctionDescriptor::get_insns_addr_order() const {
 // NOTE: SgAsmFunction::get_extent() looks to return a map of Extents that should be able to be
 // used to check if addr is "in" a function (although not if it maps to an instruction exactly).
 bool FunctionDescriptor::contains_insn_at(rose_addr_t addr) const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
 
   // TODO: this should use the saved insn map in the future
   // No function means no addresses.
@@ -1734,7 +1734,7 @@ bool is_nop_block(SgAsmBlock* bb) {
 // constructs like function descriptors or import descriptors. It's easy to wrap the returned
 // address in a call to get a function descriptor or an import descriptor if desired.
 rose_addr_t FunctionDescriptor::follow_thunks(bool* endless) const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
   return _follow_thunks(endless);
 }
 
@@ -1793,7 +1793,7 @@ rose_addr_t FunctionDescriptor::_follow_thunks(bool* endless) const {
 
 // Forces the address returned from follow_thunks into a function descriptor or NULL.
 const FunctionDescriptor* FunctionDescriptor::follow_thunks_fd(bool* endless) const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
   rose_addr_t target = _follow_thunks(endless);
   const FunctionDescriptor* tfd = ds.get_func(target);
   return tfd;

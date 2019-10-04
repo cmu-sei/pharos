@@ -1,8 +1,5 @@
 set(_ROSE_SEARCHES)
 
-message(STATUS "Looking for Rose version ${ROSE_FIND_VERSION}")
-message(STATUS "Looking for Rose version ${PACKAGE_FIND_VERSION}")
-
 find_package(Z3 REQUIRED)
 
 set(Boost_USE_MULTITHREADED on)
@@ -33,27 +30,15 @@ foreach(search ${_ROSE_SEARCHES})
   if(NOT ROSE_LIBRARY)
     find_library(ROSE_LIBRARY NAMES ${ROSE_NAMES} ${${search}} PATH_SUFFIXES lib)
   endif()
-  find_program(ROSE_CONFIG NAMES rose-config ${${search}} PATH_SUFFIXES bin)
+  find_path(SAWYER_INCLUDE_DIR NAMES Sawyer/Sawyer.h ${${search}}
+    PATH_SUFFIXES include include/rose)
 endforeach()
 
-set(ROSE_VERSION)
-if(ROSE_CONFIG)
-  execute_process(
-    COMMAND ${ROSE_CONFIG} -V
-    ERROR_VARIABLE out
-    RESULT_VARIABLE res)
-  if (NOT res EQUAL 0)
-    message(FATAL_ERROR "Cannot run ${ROSE_CONFIG} -V")
-  endif()
-  string(REGEX REPLACE "[ \n\t]+$" "" ROSE_VERSION "${out}")
-endif()
-
-mark_as_advanced(ROSE_LIBRARY ROSE_INCLUDE_DIR ROSE_CONFIG)
+mark_as_advanced(ROSE_LIBRARY ROSE_INCLUDE_DIR SAWYER_INCLUDE_DIR)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Rose
-  VERSION_VAR ROSE_VERSION
-  REQUIRED_VARS ROSE_INCLUDE_DIR ROSE_LIBRARY)
+  REQUIRED_VARS ROSE_INCLUDE_DIR SAWYER_INCLUDE_DIR ROSE_LIBRARY)
 
 if(ROSE_FOUND)
 
@@ -66,9 +51,11 @@ if(ROSE_FOUND)
   if(NOT TARGET Rose::Rose)
     add_library(Rose::Rose UNKNOWN IMPORTED)
     set_property(TARGET Rose::Rose PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-      ${ROSE_INCLUDE_DIR} ${Z3_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${YAML_CPP_INCLUDE_DIR})
+      ${ROSE_INCLUDE_DIR} ${Z3_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${YAML_CPP_INCLUDE_DIR}
+      ${SAWYER_INCLUDE_DIR})
     set_property(TARGET Rose::Rose PROPERTY INTERFACE_SYSTEM_INCLUDE_DIRECTORIES
-      ${ROSE_INCLUDE_DIR} ${Z3_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${YAML_CPP_INCLUDE_DIR})
+      ${ROSE_INCLUDE_DIR} ${Z3_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${YAML_CPP_INCLUDE_DIR}
+      ${SAWYER_INCLUDE_DIR})
     set_property(TARGET Rose::Rose PROPERTY IMPORTED_LOCATION ${ROSE_LIBRARY})
     set_property(TARGET Rose::Rose PROPERTY INTERFACE_LINK_LIBRARIES
       ${ROSE_STATIC_LIBS} ${Boost_LIBRARIES} ${Z3_LIBRARIES}

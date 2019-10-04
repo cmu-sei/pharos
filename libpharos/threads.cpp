@@ -6,7 +6,7 @@
 
 namespace pharos {
 
-#if !defined(__cpp_lib_shared_mutex) && !defined(__cpp_lib_shared_timed_mutex)
+#if !defined(PHAROS_BROKEN_THREADS) && !defined(__cpp_lib_shared_mutex) && !defined(__cpp_lib_shared_timed_mutex)
 
 namespace detail {
 

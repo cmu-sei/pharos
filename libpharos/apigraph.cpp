@@ -892,7 +892,7 @@ bool ApiSearchExecutor::EvaluateApiMatchTable(const ApiSigFunc& sig_func,
           if (sig_param.index == pd.get_num()) {
 
             ApiParameterPtr api_param = nullptr;
-            if (sig_param.type == ApiParamType::OUT) {
+            if (sig_param.type == ApiSigFuncParam::ApiParamType::OUT) {
               // output parameters are pointers - dereference them
               GDEBUG << "Detected new output parameter - " << sig_param.name << LEND;
 

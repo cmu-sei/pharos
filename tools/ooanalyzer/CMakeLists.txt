@@ -26,19 +26,21 @@ foreach(previous ${OOANALYZER_TEST_PREVIOUS})
   string(REPLACE "/" "_" und_name ${tgt_name})
 
   add_test(NAME "ooanalyzer_test_${und_name}"
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tests/ooanalyzer-test.py
+    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/tests/ooanalyzer-test.py
     "--build-dir" ${CMAKE_BINARY_DIR} "--git-dir" ${CMAKE_SOURCE_DIR} ${tgt_name}
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_tests_properties("ooanalyzer_test_${und_name}" PROPERTIES LABELS ooanalyzer)
 
   add_test(NAME "ooprolog_test_${und_name}"
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tests/ooanalyzer-test.py
+    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/tests/ooanalyzer-test.py
     "--build-dir" ${CMAKE_BINARY_DIR} "--git-dir" ${CMAKE_SOURCE_DIR}
     "--xsb-path" "${XSB_PROGRAM}" -v -p ${tgt_name}
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_tests_properties("ooprolog_test_${und_name}" PROPERTIES LABELS ooprolog)
 
 endforeach()
+
+configure_file(tests/ooanalyzer-test.py.in ${CMAKE_CURRENT_BINARY_DIR}/tests/ooanalyzer-test.py @ONLY)
 
 # Set test costs for tests that take longer to run.
 # This should make these tests run earlier

@@ -26,8 +26,11 @@ You can also build your own Docker image with:
 ```
 $ docker build --build-arg NCPU=4 -t seipharos/pharos .
 ```
-where 4 is the number of cores you wish to use for building.  You
-should probably use 1 unless you have a lot of RAM.
+
+where 4 is the number of cores you wish to use for building.  Using
+more than one processor consumes more RAM.  For small numbers of CPUs
+(1-4) you should probably have 4GiB of RAM per CPU.  For larger
+numbers of CPUs (>16) about 1Gib of RAM per CPU should be sufficient.
 
 You can then run the container using the same `docker run` command as above.
 
@@ -183,11 +186,11 @@ ROSE.  Z3 is used primarily in the binary analysis component to answer
 questions about symbolic expression equivalence.  Some of the pharos
 tools require Z3 to work.  Z3 is under active development, and some
 commits have broken compatibility with our code from time to time.
-The latest release version of Z3 (4.8.5) has passed our testing.
+The latest release version of Z3 (4.8.6) has passed our testing.
 
 We build Z3 using commands like these:
 ```
-$ git clone -b Z3-4.8.5 https://github.com/Z3Prover/z3.git
+$ git clone -b Z3-4.8.6 https://github.com/Z3Prover/z3.git
 $ cd z3
 $ mkdir build
 $ cd build
@@ -214,10 +217,10 @@ $ cd rose
 This version has a reasonable chance of working or only having minor
 issues.  If you want to be conservative, and use the version of ROSE
 that was known to compile with the latest major commit to the Pharos
-repository, you can checkout this commit (ROSE version 0.9.11.84):
+repository, you can checkout this commit (ROSE version 0.9.11.114):
 
 ```
-$ git checkout fc6bb3504961cd8cbe7d758eaa4a86069ad81589
+$ git checkout 6d5586a9c9e9034d42240d104c6e5baf1a41aaf1
 ```
 
 ROSE can be configured in a multitude of ways, and some attention to

@@ -2,7 +2,8 @@
 
 #include "test.hpp"
 
-NOINLINE void func(int n) {
+// Static so that if it gets inlined, the non-inlined copy is removed.
+static void func(int n) {
   path_start();
   if (n == 2) {
     n++;

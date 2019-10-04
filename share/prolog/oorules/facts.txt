@@ -17,7 +17,7 @@ uninitializedReads(Method).
   Method has uninitialized reads that are often (but not always) indicative that Method is not
   a constructor.  Specifically, the method reads members from the object that are not
   initialized in the local evaluation context.  The most significant (only?) case that this
-  algorithm does not test for is reads of members that were initialized by a call to anotehr
+  algorithm does not test for is reads of members that were initialized by a call to another
   method such as a parent constructor.
 
 thisCallMethod(Address, ThisPtr, Certainty).
@@ -25,7 +25,7 @@ thisCallMethod(Address, ThisPtr, Certainty).
   The method at Address appears to be a thiscall method.  The ThisPtr argument is the hash of
   the apparent this-pointer, and the certainty field communicates our confidence.  A value of
   'certain' means that only thiscall matched the calling convention.  A value of 'uncertain'
-  means that otehr calling conventions were possible interpretations as well.
+  means that other calling conventions were possible interpretations as well.
 
 insnCallsDelete(Insn, Func, ThisPtr).
 
@@ -44,7 +44,7 @@ possibleVBTableWrite(Insn, Method, Offset, VBTable).
 
 initialMemory(Address, Value).
 
-  The Address containts the Value in the program's initlized memory.  Typically, the value is
+  The Address containts the Value in the program's initialized memory.  Typically, the value is
   an entry in a possible virtual function table or a possible virtual base table.
 
 funcOffset(Insn, Caller, Callee, Offset).
@@ -55,7 +55,7 @@ funcOffset(Insn, Caller, Callee, Offset).
 methodMemberAccess(Insn, Method, Offset, Size).
 
   Instruction Insn in Method accesses the current Size bytes of memory at Offset in the
-  currrent this-pointer.
+  current this-pointer.
 
 thisPtrAllocation(Insn, Function, ThisPtr, Type, Size).
 
@@ -90,7 +90,7 @@ rTTICompleteObjectLocator(Pointer, Address, TDAddress, CHDAddress, Offset, CDOff
 
   There's a pointer to an RTTI Complete Object Locator data structure at Pointer (address just
   before the VFTable) which points to Address which is where the RTTI Complete Object Locator
-  data structure is located in moemory.  TDAddress and CHDAddress are the addresses of the
+  data structure is located in memory.  TDAddress and CHDAddress are the addresses of the
   corresponding Type Descriptor and Class Hierarchy Descriptor respectively.  Offset is
   described as the offset of this VFTable in the class.  CDOffset is described as the
   constructor displacement offset (?).  This object occurs once per VFTable (not once per
@@ -133,7 +133,7 @@ symbolClass(Address, ClassName).
 
   The method at the Address is known to be on the class represented by ClassName.  This
   information comes from symbols such as imports by name, but might also come from embedded
-  debugging information in otehr architectures and file formats.
+  debugging information in other architectures and file formats.
 
   Ideally the ClassName would be represented in the same mangled name format as the names that
   appear in the RTTI data structures, but that's probably not convenient in the short term.  In

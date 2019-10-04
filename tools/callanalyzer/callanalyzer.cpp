@@ -132,7 +132,7 @@ class CallAnalyzer : public BottomUpAnalyzer {
   {
     fd->get_pdg();
     auto callset = fd->get_outgoing_calls();
-    for (CallDescriptor * call : callset) {
+    for (const CallDescriptor * call : callset) {
       handleCall(*call);
     }
   }

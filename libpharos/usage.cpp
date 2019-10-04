@@ -187,13 +187,13 @@ ObjectUse::ObjectUse(OOAnalyzer& ooa, const FunctionDescriptor* f) {
 using VertexFound = std::runtime_error;
 
 // Use a fancy std bidirectional thingie instead?
-using InsnVertexMap = std::map<SgAsmInstruction*, CFGVertex>;
-using VertexInsnMap = std::map<CFGVertex, SgAsmInstruction*>;
+using AddrVertexMap = std::map<rose_addr_t, CFGVertex>;
+using VertexAddrMap = std::map<CFGVertex, rose_addr_t>;
 
 class CallOrderVisitor: public boost::default_bfs_visitor {
  public:
-  InsnVertexMap call2vertex;
-  VertexInsnMap vertex2call;
+  AddrVertexMap call2vertex;
+  VertexAddrMap vertex2call;
   // The current start vertex (so we don't match ourself).
   CFGVertex current;
   CallOrderVisitor() { }
@@ -201,23 +201,23 @@ class CallOrderVisitor: public boost::default_bfs_visitor {
   void discover_vertex(CFGVertex v, const Graph & g UNUSED) const {
     // Don't match ourself.
     if (v == current) {
-      //const SgAsmInstruction* i = vertex2call.at(v);
-      //OINFO << "Instruction " << addr_str(i->get_address()) << " ignored." << LEND;
+      //rose_addr_t a = vertex2call.at(v);
+      //OINFO << "Instruction " << addr_str(a) << " ignored." << LEND;
       return;
     }
     // But if we match one of the other call instructions, we're done, so throw!
     if (vertex2call.find(v) != vertex2call.end()) {
-      const SgAsmInstruction* call_insn = vertex2call.at(v);
-      const SgAsmInstruction* curr_insn = vertex2call.at(current);
-      GDEBUG << "Address " << addr_str(curr_insn->get_address())
-             << " was disproven by address " << addr_str(call_insn->get_address()) << LEND;
+      rose_addr_t calladdr = vertex2call.at(v);
+      rose_addr_t curraddr = vertex2call.at(current);
+      GDEBUG << "Address " << addr_str(curraddr)
+             << " was disproven by address " << addr_str(calladdr) << LEND;
       throw VertexFound("found");
     }
   }
   // Add an instruction to the bidirectional map.
-  void add(SgAsmInstruction* i, CFGVertex v) {
-    call2vertex[i] = v;
-    vertex2call[v] = i;
+  void add(rose_addr_t a, CFGVertex v) {
+    call2vertex[a] = v;
+    vertex2call[v] = a;
   }
 };
 
@@ -284,10 +284,10 @@ void ThisPtrUsage::update_ctor_dtor(OOAnalyzer& ooa) const {
     // See if it's one of the methods that we're looking for.
     for (const MethodEvidenceMap::value_type& mpair : method_evidence) {
       SgAsmInstruction* callinsn = mpair.first;
-      if (lastinsn == callinsn) {
+      if (lastinsn->get_address() == callinsn->get_address()) {
         //OINFO << "Adding insn to map: " << addr_str(callinsn->get_address()) << LEND;
         // Add the vertex to the vector of interesting call vertices.
-        cov.add(callinsn, vertex);
+        cov.add(callinsn->get_address(), vertex);
         // We've found another...
         remaining--;
         // There's no point in looking through more method evidence since we found it.
@@ -310,7 +310,7 @@ void ThisPtrUsage::update_ctor_dtor(OOAnalyzer& ooa) const {
   // For each call instruction...
   for (const MethodEvidenceMap::value_type& mpair : method_evidence) {
     SgAsmInstruction* callinsn = mpair.first;
-    CFGVertex s = cov.call2vertex[callinsn];
+    CFGVertex s = cov.call2vertex.at(callinsn->get_address());
     //OINFO << "Considering call insn: " << addr_str(callinsn->get_address()) << LEND;
     // For each method called by that instruction... (usually just one)
     for (const ThisCallMethod* tcm : mpair.second) {
@@ -361,17 +361,37 @@ void ThisPtrUsage::update_ctor_dtor(OOAnalyzer& ooa) const {
   }
 }
 
+
+// Find the value of ECX at the time of the call, by inspecting the state that was saved when
+// the call was evaluated.  Previously in method.cpp, and noew use here only in
+// analyze_object_uses() immediately below.
+SymbolicValuePtr get_this_ptr_for_call(const CallDescriptor* cd) {
+  const SymbolicStatePtr state = cd->get_state();
+  if (state == NULL) {
+    // Moved to warning importance because it appears to be a cascading failure from
+    // a function analysis timeout.
+    GWARN << "No final state for call at " << cd->address_string() << LEND;
+    return SymbolicValue::instance();
+  }
+  // We should be able to find this globally somehow...
+  RegisterDescriptor this_reg = cd->ds.get_arch_reg(THIS_PTR_STR);
+  assert(this_reg.is_valid());
+  // Read ECX from the state immediately before the call.
+  SymbolicValuePtr this_value = state->read_register(this_reg);
+  return this_value;
+}
+
 // Analyze the function and populate the references member with information about each
 // this-pointer use in the function.  We were filtering based on which methods were known to be
 // object oriented by calling follow thunks, but that's heavily dependent on the order in which
 // the functions are analyzed.
 void ObjectUse::analyze_object_uses(OOAnalyzer const & ooa) {
-  for (CallDescriptor* cd : fd->get_outgoing_calls()) {
+  for (const CallDescriptor* cd : fd->get_outgoing_calls()) {
     // The the value in the this-pointer location (ECX) before the call.
     SymbolicValuePtr this_ptr = get_this_ptr_for_call(cd);
-    GDEBUG << "This-Ptr for call at " << cd->address_string() <<  " is " << *this_ptr << LEND;
     // We're only interested in valid pointers.
     if (!(this_ptr->is_valid())) continue;
+    GDEBUG << "This-Ptr for call at " << cd->address_string() <<  " is " << *this_ptr << LEND;
     // If the symbolic value is an ITE expression, pick the meaningful one.
     this_ptr = pick_this_ptr(this_ptr);
     GDEBUG << "Updated This-Ptr for call at " << cd->address_string()

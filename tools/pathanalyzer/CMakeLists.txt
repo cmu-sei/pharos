@@ -15,12 +15,6 @@ target_link_libraries(znode_test pharos gtest)
 add_executable(pathanalyzer_test pathanalyzer_test.cpp)
 target_link_libraries(pathanalyzer_test pharos gtest)
 
-add_executable(pathanalyzer_wp_test pathanalyzer_wp_test.cpp)
-target_link_libraries(pathanalyzer_wp_test pharos gtest)
-
-add_executable(pathanalyzer_spacer_test pathanalyzer_spacer_test.cpp)
-target_link_libraries(pathanalyzer_spacer_test pharos gtest)
-
 build_pharos_pod(pathanalyzer-man pathanalyzer.pod 1)
 
 add_subdirectory(tests)

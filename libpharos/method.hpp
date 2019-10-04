@@ -86,8 +86,8 @@ using MemberMap = std::map<unsigned int, Member>;
 // A map of functions to their offsets in something related to passing this-pointers.
 using FuncOffsetMap = std::map<rose_addr_t, FuncOffset>;
 
-// Provided by method.cpp and used in usage.cpp as well.  Messy design. :-(
-SymbolicValuePtr get_this_ptr_for_call(const CallDescriptor* cd);
+// Forward reference so an OOAnalyzer can be passed into find_passed_func_offsets.
+class OOAnalyzer;
 
 // This class is for tracking all object oriented methods, regardless of whether they're
 // constructors, destructors, or just normal methods.
@@ -146,7 +146,7 @@ public:
   // Most analysis methods in ThisCallMethod are private, but this one has to be called after
   // we've updated the oo_properties member on the function descriptors.  It updates the
   // passed_func_offsets map with the stack offsets of passed this-pointers.
-  void find_passed_func_offsets();
+  void find_passed_func_offsets(const OOAnalyzer& ooa);
 
   // Given an expression, return true if the expression contains a reference to our
   // this-pointer and false if it does not.  This logic still requires that our this-pointer be

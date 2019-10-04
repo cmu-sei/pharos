@@ -32,12 +32,15 @@ private:
   using time_point = std::chrono::time_point<clock>;
   using duration = std::chrono::duration<double>;
 
-  std::mutex mutex;
+  mutable std_mutex mutex;
 
   VFTableAddrMap vftables;
   VBTableAddrMap vbtables;
   VirtualFunctionCallMap vcalls;
   MethodMap methods;
+
+  // Map of call addresses to the symbolic values of the this-pointers at the time of the call.
+  std::map<rose_addr_t, SymbolicValuePtr> callptrs;
 
   ProcessedAddresses virtual_tables;
 
@@ -98,6 +101,8 @@ private:
   // Handlethem by adding them to the previously global map?
   void handle_heap_allocs(const rose_addr_t saddr);
 
+  // Record this-pointers in a map more efficiently than in call descriptor states.
+  void record_this_ptrs_for_calls(FunctionDescriptor* fd);
 
   bool identify_new_method(FunctionDescriptor const & fd);
   bool identify_delete_method(FunctionDescriptor const & fd);
@@ -108,12 +113,12 @@ private:
 
   // Mark methods as new(), delete(), and purecall() respectively.
   void set_new_method(rose_addr_t addr) {
-      auto && guard = write_guard(mutex);
+      write_guard<decltype(mutex)> guard{mutex};
       new_addrs.insert(addr);
   }
   void set_delete_method(rose_addr_t addr) {
     {
-      auto && guard = write_guard(mutex);
+      write_guard<decltype(mutex)> guard{mutex};
       delete_addrs.insert(addr);
     }
     // This update only works if the function descriptor is a "normal" one.  It's needed
@@ -157,6 +162,14 @@ public:
   }
 
   const MethodMap& get_methods() const { return methods; }
+
+  // Once the this-pointers have been recorded for each call, e.g. during visit(), then this
+  // method can be used to access them again during finish(), even though the states from the
+  // call descriptors have been freed.
+  const SymbolicValuePtr get_this_ptr_for_call(rose_addr_t addr) const {
+    if (callptrs.find(addr) == callptrs.end()) return SymbolicValuePtr();
+    return callptrs.at(addr);
+  }
 
   const ThisCallMethod* follow_thunks(rose_addr_t addr) const {
     const FunctionDescriptor* fd = ds.get_func(addr);

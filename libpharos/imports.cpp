@@ -16,7 +16,7 @@ namespace pharos {
 // Construct and import given an address, dll/so name, function name, and optionally an import.
 ImportDescriptor::ImportDescriptor(DescriptorSet& ds_, rose_addr_t addr_,
                                    std::string dll_, std::string name_, size_t ord_)
-  : ds(ds_), function_descriptor(ds_)
+  : function_descriptor(ds_)
 {
   address = addr_;
   dll = dll_;
@@ -44,7 +44,7 @@ std::string ImportDescriptor::get_dll_root() const {
 
 // Merge the important fields from the export descriptor loaded from a DLL config file.
 void ImportDescriptor::merge_api_definition(APIDefinition const & def) {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
 
   // Probably the most important case, where the input file tried to be sneaky and import by
   // ordinal, but we've figured out what the corrsponding name is?
@@ -59,7 +59,7 @@ void ImportDescriptor::merge_api_definition(APIDefinition const & def) {
 }
 
 std::string ImportDescriptor::get_normalized_name() const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
 
   // Return the name if we have one.
   if (name != unknown_name) {
@@ -76,7 +76,7 @@ std::string ImportDescriptor::get_normalized_name() const {
 // Report the "best available" name.  This is the case sensitive version of the name if it
 // exists, and the ordinal pseudo-name if it doesn't.
 std::string ImportDescriptor::get_best_name() const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
 
   // Return the name if we have one.
   if (name != unknown_name) {
@@ -95,7 +95,7 @@ void ImportDescriptor::print(std::ostream &o) const {
     << " name='" << get_long_name() << "'"
     << function_descriptor.debug_deltas()
     << " callers=[" << std::hex;
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
   for (CallTargetSet::iterator cit = callers.begin(); cit != callers.end(); cit++) {
     o << str(boost::format(" 0x%08X") % *cit);
   }
@@ -103,7 +103,7 @@ void ImportDescriptor::print(std::ostream &o) const {
 }
 
 void ImportDescriptor::validate(std::ostream &o) const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
   if (callers.size() == 0)
     o << "No callers for " << *this << LEND;
 }

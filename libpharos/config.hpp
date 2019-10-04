@@ -93,24 +93,8 @@ class BadNodeError : public ConfigException {
     : ConfigException(node, msg) {}
 };
 
-// Inherit privately from YAML::Node.  This lets us pick and choose which YAML::Node methods to
-// show up in a ConfigNode;
-class ConfigNode : protected YAML::Node {
+class ConfigNode : public YAML::Node {
  public:
-  // Allow the following methods inherited from Node to be public
-  using Node::Type;
-  using Node::IsDefined;
-  using Node::IsNull;
-  using Node::IsScalar;
-  using Node::IsSequence;
-  using Node::IsMap;
-  using Node::operator!;
-  using Node::Scalar;
-  using Node::Tag;
-  using Node::is;
-  using Node::size;
-  using Node::operator YAML::detail::unspecified_bool_type;
-
   /// Define the iterator type, which will iterate over std::pair<ConfigNode,ConfigNode>
   /// elements
   using iterator = detail::ConfigNode_iterator<ConfigNode, Node::const_iterator>;
