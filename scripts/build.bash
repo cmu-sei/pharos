@@ -28,7 +28,7 @@ if [ "$1" = "-reclaim" ]
 then
     # If we're reclaiming space, run tests now since we won't be able to
     # later
-    ctest -j $NCPU
+    #ctest -j $NCPU
 
     # Reclaim space
     rm -rf $DIR/build
