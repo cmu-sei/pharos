@@ -1229,33 +1229,29 @@ SolveResolvedVirtualCallFromProlog::solve(std::vector<OOClassDescriptorPtr>& cla
                                     var(from_addr),
                                     var(vfcall_id),
                                     var(to_addr));
+  while (!vcall_query->done()) {
+    for (OOClassDescriptorPtr cls : classes) {
+      for (OOVirtualFunctionTablePtr vftcall : cls->get_vftables()) {
+        if (vftcall->get_address() == vfcall_id) {
+          const CallDescriptor* vcall_cd = ds.get_call(from_addr);
 
-  for (OOClassDescriptorPtr cls : classes) {
-    for (OOVirtualFunctionTablePtr vftcall : cls->get_vftables()) {
-      if (vftcall->get_address() == vfcall_id) {
+          if (vcall_cd) {
+            vftcall->add_virtual_call(vcall_cd, to_addr);
 
-        for (OOMethodPtr mtd : cls->get_methods()) {
-          if (mtd->get_address() == to_addr) {
-
-            const CallDescriptor *vcall_cd = ds.get_call(from_addr);
-
-            if (vcall_cd) {
-              vftcall->add_virtual_call(vcall_cd, to_addr);
-
-              GDEBUG << "Added virtual function call for "<< cls->get_name()
-                     << " in vftable " << addr_str(vftcall->get_address())
-                     << " from=" << addr_str(vcall_cd->get_address()) << ", to=" << addr_str(mtd->get_address()) << LEND;
-            }
-            else {
-              GWARN << "Could not add virtual function call from="
-                    << addr_str(from_addr) << ", to=" << addr_str(mtd->get_address())
-                    << " due to invalid call descriptor" << LEND;
-            }
-            break;
+            OINFO << "Added virtual function call for " << cls->get_name()
+                  << " in vftable " << addr_str(vftcall->get_address())
+                  << " from=" << addr_str(vcall_cd->get_address())
+                  << ", to=" << addr_str(to_addr) << LEND;
+          } else {
+            OINFO << "Could not add virtual function call from="
+                  << addr_str(from_addr)
+                  << ", to=" << addr_str(to_addr)
+                  << " due to invalid call descriptor" << LEND;
           }
         }
       }
     }
+    vcall_query->next();
   }
   return true;
 }
