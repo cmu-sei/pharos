@@ -40,7 +40,7 @@ test "$1" = "-reclaim" && rm -rf $DIR/XSB
 cd $DIR
 test -d z3 && rm -rf z3
 
-git clone --depth 1 -b Z3-4.8.6 https://github.com/Z3Prover/z3.git z3
+git clone --depth 1 -b z3-4.8.6 https://github.com/Z3Prover/z3.git z3
 cd z3
 mkdir build
 cd build
