@@ -6,6 +6,7 @@
 #include "method.hpp"
 #include "vftable.hpp"
 #include "masm.hpp"
+#include "ooanalyzer.hpp"
 
 namespace pharos {
 
@@ -36,24 +37,6 @@ void Member::merge(Member& m) {
 // Order methods by their addresses.
 bool ThisCallMethodCompare::operator()(const ThisCallMethod *x, const ThisCallMethod *y) const {
   return (x->get_address() < y->get_address()) ? true : false;
-}
-
-// Find the value of ECX at the time of the call, by inspecting the state that was saved when
-// the call was evaluated.  Uses the state from the call descriptor!
-SymbolicValuePtr get_this_ptr_for_call(const CallDescriptor* cd) {
-  const SymbolicStatePtr state = cd->get_state();
-  if (state == NULL) {
-    // Moved to warning importance because it appears to be a cascading failure from
-    // a function analysis timeout.
-    GWARN << "No final state for call at " << cd->address_string() << LEND;
-    return SymbolicValue::instance();
-  }
-  // We should be able to find this globally somehow...
-  RegisterDescriptor this_reg = cd->ds.get_arch_reg(THIS_PTR_STR);
-  assert(this_reg.is_valid());
-  // Read ECX from the state immediately before the call.
-  SymbolicValuePtr this_value = state->read_register(this_reg);
-  return this_value;
 }
 
 // FunctionDescriptor should probably be a reference so that we don't have to keep checking
@@ -475,14 +458,15 @@ void ThisCallMethod::find_members() {
 }
 
 // This method is called in OOAnalyzer::finish(), not OOAnalyzer::visit().
-void ThisCallMethod::find_passed_func_offsets() {
+void ThisCallMethod::find_passed_func_offsets(const OOAnalyzer& ooa)
+{
   for (const CallDescriptor* cd : fd->get_outgoing_calls()) {
     SgAsmX86Instruction* insn = isSgAsmX86Instruction(cd->get_insn());
     assert(insn != NULL);
 
-    SymbolicValuePtr tPtr = get_this_ptr_for_call(cd);
+    SymbolicValuePtr tPtr = ooa.get_this_ptr_for_call(cd->get_address());
     // We're only interested in valid pointers.
-    if (!(tPtr->is_valid())) continue;
+    if (!tPtr || !(tPtr->is_valid())) continue;
 
     // Get any offset added to our this-pointer.
     boost::optional<int64_t> offset = get_offset(tPtr->get_expression());

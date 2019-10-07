@@ -81,8 +81,6 @@ class OOClassDescriptor : public OOElement {
 
   virtual ~OOClassDescriptor() = default;
 
-  OOClassDescriptor& operator=(const OOClassDescriptor&) = default;
-
   bool operator==(const OOClassDescriptor& other) const;
 
   rose_addr_t get_id();

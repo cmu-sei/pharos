@@ -73,8 +73,13 @@ namespace pharos {
 
 class SpacerAnalyzer {
   using Z3FixedpointPtr = std::unique_ptr<z3::fixedpoint>;
-  using SpacerRelations = std::map<boost::graph_traits<IRCFG>::vertex_descriptor,
-                                    std::pair<z3::func_decl, z3::func_decl> >;
+  typedef struct {
+    z3::func_decl before;
+    z3::func_decl after;
+    Z3RegMap intra_regs;
+  } SpacerRelations;
+  using SpacerRelationsMap = std::map<boost::graph_traits<IRCFG>::vertex_descriptor,
+				      SpacerRelations>;
 
   const DescriptorSet& ds_;
   PharosZ3Solver& z3_;

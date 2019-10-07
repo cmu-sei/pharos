@@ -329,6 +329,7 @@ void DB::add_type(const std::string & name, const YAML::Node & node)
           type = std::make_shared<Float>(name, size);
         } else {
           assert(false);
+          abort();
         }
       } else if (ftname == "pointer") {
         // Pointer

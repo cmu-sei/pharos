@@ -99,7 +99,7 @@ using CallTraceGraphVertexIter = CallTraceGraph::vertex_iterator;
 constexpr unsigned    CONVENTION_PARAMETER_SIZE = 32;
 constexpr rose_addr_t INVALID_ADDRESS = (rose_addr_t)(-1);
 constexpr unsigned    INVALID_INDEX = (unsigned)(-1);
-const CfgVertex            NULL_CFG_VERTEX = boost::graph_traits <CFG>::null_vertex();
+const CfgVertex       NULL_CFG_VERTEX = boost::graph_traits <CFG>::null_vertex();
 const CallTraceGraphVertex NULL_CTG_VERTEX = boost::graph_traits <CallTraceGraph>::null_vertex();
 
 // Information about edges, such as the conditions needed to take an
@@ -108,11 +108,6 @@ struct CfgEdgeInfo {
 
   // default stuff
   CfgEdgeInfo(z3::context *ctx) : edge_expr(*ctx), cond_expr(*ctx) { }
-  CfgEdgeInfo(const CfgEdgeInfo&) = default;
-  CfgEdgeInfo(CfgEdgeInfo && ie) = default;
-  ~CfgEdgeInfo() = default;
-  CfgEdgeInfo& operator=(const CfgEdgeInfo&) = default;
-  CfgEdgeInfo& operator=(CfgEdgeInfo&) = default;
 
   CfgEdge edge;
   unsigned index;
@@ -131,6 +126,7 @@ struct CfgEdgeInfo {
 };
 
 using CfgEdgeInfoVector = std::vector<CfgEdgeInfo>;
+using CfgEdgeInfoMap = std::map<CfgEdge, CfgEdgeInfo>;
 
 // This is a class for actual values needed for a traversal. Right now this
 // is an unsigned value because it is the lowest common denominator of
@@ -202,18 +198,19 @@ class CallTraceDescriptor {
   // this can never be null. The trace must always have a function
   const FunctionDescriptor& function_descriptor_;
 
-  const CallDescriptor* call_descriptor_;
-
   // This can be null, for example the first element in the trace will
   // not be called
-  //const CallDescriptor* call_descriptor_;
+
+  const CallDescriptor* call_descriptor_;
+
+  CallTraceDescriptorPtr prev_call_trace_desc_;
 
   // index the call trace to uniquely identify it
   unsigned index_;
 
   CfgEdgeValueMap edge_values_;
 
-  // These values will be part of the frame values
+   // These values will be part of the frame values
   ParamVector parameters_, return_values_;
   ParamVector called_from_parameters_, called_from_return_values_;
   std::vector<StackVariable> stkvars_;
@@ -224,21 +221,26 @@ class CallTraceDescriptor {
   // expressions to describe the call trace in Z3 terms
   z3::expr_vector cfg_conditions_;
   z3::expr_vector value_constraints_;
-  z3::expr_vector edge_constraints_;
+  CfgEdgeExprMap edge_constraints_;
 
   // Information about edges in the cfg for this call_trace
-  CfgEdgeInfoVector edge_info_;
+  CfgEdgeInfoMap edge_info_;
 
  public:
 
   CallTraceDescriptor(const FunctionDescriptor& fd,
                       const CallDescriptor* cd, unsigned i, z3::context* ctx)
     : function_descriptor_(fd), call_descriptor_(cd), index_(i),
-      cfg_conditions_(*ctx), value_constraints_(*ctx), edge_constraints_(*ctx) {  }
+      // These z3 structures require a context
+      cfg_conditions_(*ctx),
+      value_constraints_(*ctx) {  }
 
   // The call can be null, if it is the root of the trace (i.e. not
-  // called)
+  // called). Otherwise it is the caller function
   const CallDescriptor* get_call() const;
+  void set_caller(CallTraceDescriptorPtr c);
+
+  CallTraceDescriptorPtr get_caller() const;
   const FunctionDescriptor& get_function() const;
 
   // from the function & call
@@ -270,11 +272,12 @@ class CallTraceDescriptor {
   z3::expr_vector get_value_constraints();
   void add_value_constraint(z3::expr vconst);
 
-  z3::expr_vector get_edge_constraints();
-  void add_edge_constraint(z3::expr econst);
+  const CfgEdgeExprMap& get_edge_constraints();
+  void add_edge_constraint(CfgEdge edge, z3::expr constraint);
 
-  CfgEdgeInfoVector get_edge_info_list();
-  const CfgEdgeInfo* get_edge_info(rose_addr_t addr);
+  CfgEdgeInfoMap get_edge_info_map();
+
+  boost::optional<CfgEdgeInfo> get_edge_info(rose_addr_t addr);
   void add_edge_info(CfgEdgeInfo ei);
 
   unsigned get_index() const;
@@ -318,17 +321,20 @@ class PathFinder {
 
   TreeNodePtr evaluate_model_value(TreeNodePtr tn, const ExprMap& modelz3vals);
 
-  void generate_call_trace(CallTraceGraphVertex src_vtx,
-                           const FunctionDescriptor* start_fd,
-                           const FunctionDescriptor* goal_fd);
+  void generate_call_trace(CallTraceGraphVertex caller_vtx,
+                           const FunctionDescriptor* fd,
+                           const CallDescriptor* cd,
+                           std::vector<rose_addr_t>& trace_stack);
 
   const PharosZ3Solver& get_z3();
 
   bool analyze_path_solution();
 
+  void generate_chc();
+
   bool evaluate_path();
 
-  CallTraceDescriptorPtr create_call_trace_element(CallTraceGraphVertex caller_vtx,
+  CallTraceDescriptorPtr create_call_trace_element(CallTraceGraphVertex src_vtx,
                                                    const FunctionDescriptor* fd,
                                                    const CallDescriptor* cd,
                                                    CallFrameManager& valmgr);
@@ -339,8 +345,7 @@ class PathFinder {
 
   // The CFG conditions are the Z3 representation of the control flow
   // graph structure
-  bool generate_cfg_constraints(CallTraceDescriptorPtr call_trace_desc,
-                                CallTraceDescriptorPtr prev_call_trace_desc);
+  bool generate_cfg_constraints(CallTraceDescriptorPtr call_trace_desc);
 
   // The mapping from CFG edge to the conditions under which that edge
   // is taken.
@@ -351,8 +356,6 @@ class PathFinder {
 
   bool generate_edge_conditions(CallTraceDescriptorPtr call_trace_desc,
                                 CfgEdgeExprMap& edge_conditions);
-
-  // const CfgEdgeInfo* find_edge_info(rose_addr_t call_addr);
 
   bool generate_value_constraints();
 

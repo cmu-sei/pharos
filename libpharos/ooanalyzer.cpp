@@ -44,7 +44,7 @@ bool OOAnalyzer::identify_new_method(FunctionDescriptor const & fd) {
   std::string sig = fd.get_pic_hash();
   rose_addr_t fdaddr = fd.get_address();
   {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     if (new_addrs.find(fdaddr) != new_addrs.end()) {
       // This logic is a little strange now.  We used to set the flag on the function
       // descriptor, and now we're just incrementing the found count since calling
@@ -70,7 +70,7 @@ bool OOAnalyzer::identify_delete_method(FunctionDescriptor const & fd) {
   std::string sig = fd.get_pic_hash();
   rose_addr_t fdaddr = fd.get_address();
   {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     if (delete_addrs.find(fdaddr) != delete_addrs.end()) {
       // Same comment as on set_new_method().
       delete_methods_found++;
@@ -124,7 +124,7 @@ bool OOAnalyzer::identify_purecall_method(FunctionDescriptor const & fd) {
   std::string sig = fd.get_pic_hash();
   rose_addr_t faddr = fd.get_address();
   {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     if (purecall_addrs.find(fd.get_address()) != purecall_addrs.end()) {
       // Same comment as on set_new_method().
       purecall_methods_found++;
@@ -177,7 +177,7 @@ void OOAnalyzer::visit(FunctionDescriptor* fd) {
       SgAsmX86Instruction* insn = isSgAsmX86Instruction(cd->get_insn());
       VirtualFunctionCallAnalyzer vcall(insn, pdg);
       if (vcall.analyze()) {
-        auto && guard = write_guard(mutex);
+        write_guard<decltype(mutex)> guard{mutex};
         // The creation of entries in the vcalls map is intentional.
         // Move the vector of possible resolutions (information) into our map.
         vcalls[insn->get_address()] = std::move(vcall.vcall_infos);
@@ -195,7 +195,7 @@ void OOAnalyzer::visit(FunctionDescriptor* fd) {
   if (utcm->is_this_call()) {
     GINFO << "Function " << utcm->address_string() << " uses __thiscall convention." << LEND;
     // This is the only write to the methods map anywhere.  OOAnalyzer now owns the pointer.
-    auto && guard = write_guard(mutex);
+    write_guard<decltype(mutex)> guard{mutex};
     methods[fd->get_address()] = std::move(utcm);
   }
   else {
@@ -218,7 +218,7 @@ void OOAnalyzer::visit(FunctionDescriptor* fd) {
   ObjectUse u = ObjectUse(*this, fd);
   u.update_ctor_dtor(*this);
   {
-    auto && guard = write_guard(mutex);
+    write_guard<decltype(mutex)> guard{mutex};
     object_uses.insert(ObjectUseMap::value_type(fd->get_address(), u));
   }
 
@@ -228,6 +228,9 @@ void OOAnalyzer::visit(FunctionDescriptor* fd) {
 
   // Experimental new memory reduction undiscussed major design revision. ;-) ;-)
   fd->free_pdg();
+
+  // Record the symbolic value of the possible this-pointer at each call.
+  record_this_ptrs_for_calls(fd);
 }
 
 void OOAnalyzer::start() {
@@ -255,7 +258,7 @@ void OOAnalyzer::finish() {
 
   // Look for methods that pass their this-pointers to other methods.
   for (auto & tcm : boost::adaptors::values(methods)) {
-    tcm->find_passed_func_offsets();
+    tcm->find_passed_func_offsets(*this);
   }
 
   // Test virtual base tables and virtual function tables for overlaps.  This is the new Prolog
@@ -661,6 +664,31 @@ bool OOAnalyzer::analyze_possible_vtable(rose_addr_t address, bool allow_base) {
   return false;
 }
 
+// Find the value of ECX at the time of the call, by inspecting the state that was saved when
+// the call was evaluated.  Uses the state from the call descriptor!  The FunctionDescriptor is
+// non-const, because we're going to free the states in each CallDescriptor that we visit.
+void OOAnalyzer::record_this_ptrs_for_calls(FunctionDescriptor* fd) {
+  for (const CallDescriptor* cd : fd->get_outgoing_calls()) {
+    SymbolicStatePtr state = cd->get_state();
+    if (state == NULL) {
+      // Moved to warning importance because it appears to be a cascading failure from
+      // a function analysis timeout.
+      // GWARN << "No final state for call at " << cd->address_string() << LEND;
+      continue;
+    }
+    // We should be able to find this globally somehow...
+    RegisterDescriptor this_reg = cd->ds.get_arch_reg(THIS_PTR_STR);
+    assert(this_reg.is_valid());
+    // Read ECX from the state immediately before the call.
+    callptrs[cd->get_address()] = state->read_register(this_reg);
+    // Now that we've saved a copy of the this-pointer value, we don't need the the rest of the
+    // state anymore, and we can free a lot of memory simply by removing the reference to the
+    // state from the call descriptor.
+    CallDescriptor* nccd = ds.get_rw_call(cd->get_address());
+    nccd->discard_state();
+  }
+}
+
 void OOAnalyzer::find_vtable_installations(FunctionDescriptor const & fd) {
   const PDG* p = fd.get_pdg();
   if (p == NULL) return;
@@ -716,7 +744,7 @@ void OOAnalyzer::find_vtable_installations(FunctionDescriptor const & fd) {
         continue;
       }
 
-      auto && guard = write_guard(mutex);
+      write_guard<decltype(mutex)> guard{mutex};
       // The criteria for validating virtual tables differs a little bit right now based on
       // whether the method is an OO method.
       ThisCallMethod* tcm = get_method_rw(fd.get_address());

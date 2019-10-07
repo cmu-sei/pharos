@@ -273,7 +273,17 @@ result in additional incorrect code detection.
 
 Use I<LOG_CONTROL_STRING> to determine what log messages are output.
 These strings are documented in the Sawyer C++ library documentation,
-under C<Message::Facilities::control()>.
+under C<Message::Facilities::control()>.  While the full capability of
+the log control string requires a BNF language specification to
+describe, a useful example is:
+
+  --log="APID(>=where),PLOG(all)"
+
+This option enables messages at the "where" level and above in the API
+database logging facility and all Prolog messages.  Logging facility
+names are the first four characters (case sensitive) of log lines in
+Pharos tools.  The logging levels are: error, warn, info, where,
+debug, and trace.
 
 =item B<--stockpart>
 

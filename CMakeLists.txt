@@ -77,6 +77,11 @@ else()
   add_custom_target(tests)
 endif()
 
+option(PHAROS_BROKEN_THREADS "Turns off multi-threding and mutexes" OFF)
+if(PHAROS_BROKEN_THREADS)
+  add_definitions(-DPHAROS_BROKEN_THREADS)
+endif()
+
 # Add directories
 add_subdirectory(libpharos)
 add_subdirectory(tools)

@@ -11,14 +11,14 @@
 
 namespace pharos {
 
-enum ApiParamType {
-  UNKN, RET, IN, OUT
-};
-
 const size_t INVALID_INDEX = UINT_MAX;
 
 // this structure represents an API parameter taken from a signature
 struct ApiSigParam {
+
+  enum ApiParamType {
+    UNKN, RET, IN, OUT
+  };
 
   ApiSigParam() : name(""), type(UNKN) { }
 

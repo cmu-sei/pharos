@@ -8,6 +8,7 @@
 #include <boost/graph/graph_utility.hpp>
 #include <boost/graph/graphviz.hpp>
 #include <boost/range/adaptors.hpp>
+#include <boost/range/algorithm.hpp>
 #include <boost/graph/iteration_macros.hpp>
 #include <boost/graph/topological_sort.hpp>
 #include <boost/graph/breadth_first_search.hpp>
@@ -15,24 +16,12 @@
 
 namespace pharos {
 
-void debug_print_tn(TreeNodePtr tn) UNUSED;
-void
-debug_print_tn(TreeNodePtr tn) {
-  std::cout << *tn << std::endl;
-}
-void debug_print_sv(SymbolicValuePtr sv) UNUSED;
-void
-debug_print_sv(SymbolicValuePtr sv) {
-  std::cout << *sv->get_expression() << std::endl;
-}
-
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 // Beginning of PathFinder methods
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 bool
-PathFinder::generate_cfg_constraints(CallTraceDescriptorPtr call_trace_desc,
-                                     CallTraceDescriptorPtr prev_call_trace_desc) {
+PathFinder::generate_cfg_constraints(CallTraceDescriptorPtr call_trace_desc) {
 
   if (!call_trace_desc) {
     OERROR << "Invalid call trace information" << LEND;
@@ -47,64 +36,106 @@ PathFinder::generate_cfg_constraints(CallTraceDescriptorPtr call_trace_desc,
   // process edges and save edge information for this call trace
   // element, which is an entire function
 
-  BGL_FORALL_EDGES(edge, cfg, CFG) {
+  CallTraceDescriptorPtr prev_call_trace_desc = call_trace_desc->get_caller();
+  bool cfg_has_no_edges = boost::num_edges(cfg) == 0;
 
-    CfgEdgeInfo ei(ctx);
+  if (prev_call_trace_desc && cfg_has_no_edges && boost::num_vertices(cfg) == 1) {
 
-    ei.edge = edge;
+    // This function has no edges ... which is common for highly optimized code
 
-    SgAsmBlock *sb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, boost::source(edge, cfg)));
-    ei.edge_src_addr = sb->get_address();
+    OWARN << "CFG for function " << addr_str(fd.get_address()) << " has no edges" << LEND;
 
-    SgAsmBlock *tb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, boost::target(edge, cfg)));
-    ei.edge_tgt_addr = tb->get_address();
+     CfgEdgeInfo ei(ctx);
 
-    std::stringstream e_name, c_name;
-    e_name << edge_name(edge, cfg) << ":" << call_trace_desc->get_index();
-    ei.edge_str = e_name.str();
+     auto vp = boost::vertices(cfg);
+     CfgVertex v = *vp.first;
+     SgAsmBlock *vbb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, v));
+     ei.edge_src_addr = vbb->get_address();
+     ei.edge_tgt_addr = vbb->get_address();
 
-    c_name << edge_cond(edge, cfg) << ":" << call_trace_desc->get_index();
-    ei.cond_str = c_name.str();
+     std::stringstream e_name, c_name;
 
-    ei.edge_expr = ctx->bool_const(ei.edge_str.c_str());
-    ei.cond_expr = ctx->bool_const(ei.cond_str.c_str());
+     e_name << "edge_" << addr_str(vbb->get_address()) << ":" << call_trace_desc->get_index();
+     c_name << "cond_" << addr_str(vbb->get_address()) << ":" << call_trace_desc->get_index();
 
-    // brittle, but effective
-    ei.call_trace_desc = call_trace_desc;
+     ei.edge_str = e_name.str();
+     ei.cond_str = c_name.str();
 
-    call_trace_desc->add_edge_info(ei);
+     ei.edge_expr = ctx->bool_const(ei.edge_str.c_str());
+     ei.cond_expr = ctx->bool_const(ei.cond_str.c_str());
+
+     ei.call_trace_desc = call_trace_desc;
+
+     call_trace_desc->add_edge_info(ei);
+
   }
+  else {
 
+    BGL_FORALL_EDGES(edge, cfg, CFG) {
+
+      CfgEdgeInfo ei(ctx);
+
+      ei.edge = edge;
+
+      SgAsmBlock *sb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, boost::source(edge, cfg)));
+      ei.edge_src_addr = sb->get_address();
+
+      SgAsmBlock *tb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, boost::target(edge, cfg)));
+      ei.edge_tgt_addr = tb->get_address();
+
+      std::stringstream e_name, c_name;
+      e_name << edge_name(edge, cfg) << ":" << call_trace_desc->get_index();
+      ei.edge_str = e_name.str();
+
+      c_name << edge_cond(edge, cfg) << ":" << call_trace_desc->get_index();
+      ei.cond_str = c_name.str();
+
+      ei.edge_expr = ctx->bool_const(ei.edge_str.c_str());
+      ei.cond_expr = ctx->bool_const(ei.cond_str.c_str());
+
+      // brittle, but effective
+      ei.call_trace_desc = call_trace_desc;
+
+      call_trace_desc->add_edge_info(ei);
+    }
+  }
   // fill in predecessors
-  CfgEdgeInfoVector edge_info = call_trace_desc->get_edge_info_list();
+  CfgEdgeInfoMap edge_info_map = call_trace_desc->get_edge_info_map();
 
-  for (auto& ei : edge_info) {
+  for (auto& eipair : edge_info_map) {
 
-    CfgVertex src_vtx = boost::source(ei.edge, cfg);
+    CfgEdge edge = eipair.first;
+    CfgEdgeInfo ei = eipair.second;
 
     CfgEdgeInfoVector predecessors;
-    BGL_FORALL_INEDGES(src_vtx, in_edge, cfg, CFG) {
 
-      auto in_iter = std::find_if(edge_info.begin(), edge_info.end(),
-                                  [&in_edge](const CfgEdgeInfo &arg)
-                                  { return arg.edge == in_edge; });
+    if (!cfg_has_no_edges) {
 
-      if (in_iter != edge_info.end()) {
-        CfgEdgeInfo in_info = *in_iter;
-        predecessors.push_back(in_info);
+      // If there are edges in this CFG then collect the predecessors
+
+      CfgVertex src_vtx = boost::source(edge, cfg);
+
+      BGL_FORALL_INEDGES(src_vtx, in_edge, cfg, CFG) {
+
+        auto eiter = edge_info_map.find(in_edge);
+        if (eiter != edge_info_map.end()) {
+          CfgEdgeInfo in_info = eiter->second;
+          predecessors.push_back(std::move(in_info));
+        }
       }
     }
 
     // In edges are not enough, we also need to count callers among
     // the predecessors for the function entry point (which may be called)
+
     if (prev_call_trace_desc && ei.edge_src_addr == fd.get_address()) {
       rose_addr_t call_addr = call_trace_desc->get_call()->get_address();
       SgAsmBlock* caller_bb = ds_.get_block_containing_address(call_addr);
       rose_addr_t caller_bb_addr = caller_bb->get_address();
 
-      const CfgEdgeInfo* prev_ei = prev_call_trace_desc->get_edge_info(caller_bb_addr);
+      boost::optional<CfgEdgeInfo> prev_ei = prev_call_trace_desc->get_edge_info(caller_bb_addr);
       if (prev_ei) {
-        predecessors.push_back(*prev_ei);
+        predecessors.push_back(std::move(*prev_ei));
       }
     }
 
@@ -139,7 +170,7 @@ PathFinder::generate_cfg_constraints(CallTraceDescriptorPtr call_trace_desc,
 
   // Special case where the entire function is a single basic
   // block. This will always be executed (obviously)
-  if ((boost::num_vertices(cfg) == 1) && (edge_info.size() == 0)) {
+  if ((boost::num_vertices(cfg) == 1) && (edge_info_map.size() == 0)) {
     return true;
   }
 
@@ -265,6 +296,45 @@ PathFinder::generate_edge_conditions(CallTraceDescriptorPtr call_trace_desc,
   return true;
 }
 
+void
+PathFinder::generate_chc() {
+
+  std::vector<z3::func_decl> relations;
+  Z3FixedpointPtr fp = std::make_unique<z3::fixedpoint>(*z3_.z3Context());
+
+  /// For each call trace
+  BGL_FORALL_VERTICES(v, call_trace_, CallTraceGraph) {
+
+    CallTraceDescriptorPtr trx = boost::get(boost::vertex_calltrace, call_trace_, v);
+
+    auto existing_constraints = trx->get_edge_constraints();
+
+    boost::for_each(existing_constraints,
+                    [this, trx, &fp] (const auto &x) {
+
+                      z3::context& ctx = *z3_.z3Context();
+                      CfgEdge cfg_edge = x.first;
+                      z3::expr cond_expr = x.second;
+
+                      CfgEdgeInfoMap edge_info_map = trx->get_edge_info_map();
+                      auto eit = edge_info_map.find(cfg_edge);
+                      if (eit != edge_info_map.end()) {
+                        CfgEdgeInfo ei = eit->second;
+                        std::string edge_name = ei.edge_str;
+                        z3::sort cond_sort = cond_expr.get_sort();
+
+                        z3::func_decl rel = z3::function(edge_name.c_str(),
+                                                         cond_sort,
+                                                         ctx.bool_sort());
+                        fp->register_relation(rel);
+                      }
+                    });
+  }
+
+  OINFO << "FP: " << *fp << LEND;
+
+}
+
 bool
 PathFinder::generate_edge_constraints(CallTraceDescriptorPtr call_trace_desc) {
 
@@ -285,17 +355,13 @@ PathFinder::generate_edge_constraints(CallTraceDescriptorPtr call_trace_desc) {
   for (auto& edge_cond : edge_conditions) {
 
     CfgEdge edge = edge_cond.first;
-    CfgEdgeInfoVector edge_info_list = call_trace_desc->get_edge_info_list();
-    auto eni =
-      std::find_if(edge_info_list.begin(),
-                   edge_info_list.end(),
-                   [&edge](const CfgEdgeInfo &arg) {
-                     return arg.edge == edge;
-                   });
+    CfgEdgeInfoMap edge_info_map = call_trace_desc->get_edge_info_map();
 
-    if (eni == edge_info_list.end()) continue;
+    auto eni = edge_info_map.find(edge);
 
-    CfgEdgeInfo new_edge_info = *eni;
+    if (eni == edge_info_map.end()) continue;
+
+    CfgEdgeInfo new_edge_info = eni->second;
 
     z3::expr tnp_cond_expr = edge_cond.second;
     if (tnp_cond_expr.is_bool() == false) {
@@ -304,18 +370,14 @@ PathFinder::generate_edge_constraints(CallTraceDescriptorPtr call_trace_desc) {
 
     z3::expr edge_constraint_expr = z3::expr(new_edge_info.cond_expr == tnp_cond_expr);
 
-    // Don'path_taken add duplicate constraints
-    z3::expr_vector edge_constraints = call_trace_desc->get_edge_constraints();
-    bool skip_constraint=false;
-    for (unsigned i = 0; i < edge_constraints.size(); i++) {
-      if (z3::eq(edge_constraints[i], edge_constraint_expr)) {
-        skip_constraint=true;
-        break;
-      }
-    }
-    if (!skip_constraint) {
-      call_trace_desc->add_edge_constraint(edge_constraint_expr);
-      GDEBUG << " Added edge constraint: " << edge_constraint_expr << LEND;
+    // Don't add duplicate constraints
+    auto skip_it = std::find_if(edge_conditions.begin(), edge_conditions.end(),
+                                [edge_constraint_expr] ( const auto& cond_pair) {
+                                  z3::expr expression = cond_pair.second;
+                                  return z3::eq(expression, edge_constraint_expr);
+                                });
+    if (skip_it == edge_conditions.end()) {
+      call_trace_desc->add_edge_constraint(edge, edge_constraint_expr);
     }
   }
   return true;
@@ -353,9 +415,9 @@ PathFinder::generate_path_constraints(z3::expr& start_constraint,
 
     CallTraceDescriptorPtr call_trx = boost::get(boost::vertex_calltrace, call_trace_, vtx);
 
-    for (auto ei : call_trx->get_edge_info_list()) {
+    for (auto pair : call_trx->get_edge_info_map()) {
 
-      GINFO << "Generating path constraints for edge " << ei.edge_str << LEND;
+      auto ei = pair.second;
 
       z3::expr edgex = z3::expr(ei.edge_expr == ctx->bool_val(true));
 
@@ -363,7 +425,7 @@ PathFinder::generate_path_constraints(z3::expr& start_constraint,
       if (ei.edge_tgt_addr == goal_bb_addr && ei.edge_src_addr == start_bb_addr) {
         goal_edge_constraints.push_back(edgex);
         start_edge_constraints.push_back(edgex);
-        GINFO << "Possible Goal/Start Edge: " << edgex << LEND;
+        GDEBUG << "Possible Goal/Start Edge: " << edgex << LEND;
         break;
       }
       else {
@@ -373,12 +435,12 @@ PathFinder::generate_path_constraints(z3::expr& start_constraint,
         // the first block in a function
 
         if ((ei.edge_tgt_addr == goal_bb_addr) || (ei.edge_src_addr == goal_bb_addr)) {
-          GINFO << "Possible Goal Edge: " << edgex << LEND;
+          GDEBUG << "Possible Goal Edge: " << edgex << LEND;
           goal_edge_constraints.push_back(edgex);
         }
         // The source cannot be a target
         if (ei.edge_src_addr == start_bb_addr) {
-          GINFO << "Possible Start Edge: " << edgex << LEND;
+          GDEBUG << "Possible Start Edge: " << edgex << LEND;
           start_edge_constraints.push_back(edgex);
         }
       }
@@ -513,8 +575,12 @@ PathFinder::evaluate_path() {
       z3::expr_vector cfg_conds = trc_info->get_cfg_conditions();
       for (unsigned c=0; c<cfg_conds.size(); c++) solver->add(cfg_conds[c]);
 
-      z3::expr_vector edge_const = trc_info->get_edge_constraints();
-      for (unsigned e=0; e<edge_const.size(); e++) solver->add(edge_const[e]);
+      auto edge_constraint = trc_info->get_edge_constraints();
+      boost::for_each(edge_constraint | boost::adaptors::map_values,
+                      [solver](z3::expr edge_expr) { solver->add(edge_expr); });
+
+      // TODO Remove this if the above loop works
+      // for (unsigned e=0; e<edge_constraint.size(); e++) solver->add(edge_constraint[e]);
 
       z3::expr_vector val_const = trc_info->get_value_constraints();
       for (unsigned v=0; v<val_const.size(); v++)  solver->add(val_const[v]);
@@ -611,23 +677,29 @@ PathFinder::analyze_path_solution() {
 
       // add the edges to the traversal
 
-      for (auto ei : path_taken->call_trace_desc->get_edge_info_list()) {
+      for (auto pair : path_taken->call_trace_desc->get_edge_info_map()) {
+
+        CfgEdgeInfo ei = pair.second;
+
         auto evi = modelz3vals.find(ei.edge_str);
         if (evi != modelz3vals.end()) {
           z3::expr val = evi->second;
           if (val.bool_value() == Z3_L_TRUE) {
-            path_taken->traversal.push_back(ei);
+            path_taken->traversal.push_back(std::move(ei));
 
-            // This edge is taken, does it end in a call
-            SgAsmBlock *source_bb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, boost::source(ei.edge, cfg)));
-            const SgAsmX86Instruction* last_insn = last_x86insn_in_block(source_bb);
-            if (insn_is_call(last_insn)) {
-              called_funcs.push_back(last_insn->get_address());
-            }
-            SgAsmBlock *target_bb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, boost::target(ei.edge, cfg)));
-            if (target_bb->get_address() == goal_address_) {
-              // Once the target is found there is no need to continue processing a path. Indeed some
-              break;
+            if (boost::num_edges(cfg)>0) {
+              // This edge is taken, does it end in a call
+              SgAsmBlock *source_bb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, boost::source(ei.edge, cfg)));
+              const SgAsmX86Instruction* last_insn = last_x86insn_in_block(source_bb);
+              if (insn_is_call(last_insn)) {
+                called_funcs.push_back(last_insn->get_address());
+              }
+
+              SgAsmBlock *target_bb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, boost::target(ei.edge, cfg)));
+              if (target_bb->get_address() == goal_address_) {
+                // Once the target is found there is no need to continue processing a path. Indeed some
+                break;
+              }
             }
           }
         }
@@ -661,8 +733,8 @@ PathFinder::create_call_trace_element(CallTraceGraphVertex caller_vtx,
   if (!fd) {
     return nullptr;
   }
-  GDEBUG << "*** Creating call trace descriptor for "
-         << addr_str(fd->get_address()) << ":" << frame_index_ << LEND;
+  OINFO << "*** Creating call trace descriptor for "
+        << addr_str(fd->get_address()) << ":" << frame_index_ << LEND;
 
   z3::context* ctx = z3_.z3Context();
   CallTraceDescriptorPtr call_trace_desc
@@ -679,14 +751,15 @@ PathFinder::create_call_trace_element(CallTraceGraphVertex caller_vtx,
 
   frame_index_++;
 
-  CallTraceDescriptorPtr prev_call_trace_desc;
+  CallTraceDescriptorPtr prev_call_trace_desc = nullptr;
   if (caller_vtx != NULL_CTG_VERTEX) {
     prev_call_trace_desc = boost::get(boost::vertex_calltrace, call_trace_, caller_vtx);
   }
+  call_trace_desc->set_caller(prev_call_trace_desc);
 
   // Step 1 is to generate the structures that will encode the CFG as
   // a set of constraints
-  if (false == generate_cfg_constraints(call_trace_desc, prev_call_trace_desc)) {
+  if (false == generate_cfg_constraints(call_trace_desc)) {
     OWARN << "Failed to generate CFG constraints for function: "
           << addr_str(fd->get_address()) << LEND;
   }
@@ -702,59 +775,63 @@ PathFinder::create_call_trace_element(CallTraceGraphVertex caller_vtx,
 
 void
 PathFinder::generate_call_trace(CallTraceGraphVertex src_vtx,
-                                const FunctionDescriptor* start_fd,
-                                const FunctionDescriptor* goal_fd) {
+                                const FunctionDescriptor* fd,
+                                const CallDescriptor* cd,
+                                std::vector<rose_addr_t>& trace_stack) {
+
+  // base case: no where else to go
+  if (fd == nullptr) {
+    return;
+  }
+
+  // Attempt to avoid infinite recursion and loops by checking for cycles
+  auto trace_iter = std::find_if(trace_stack.begin(),
+                                 trace_stack.end(),
+                                 [fd](const rose_addr_t trace_addr) {
+                                   return trace_addr == fd->get_address();
+                                 });
+
+  if (trace_iter != trace_stack.end()) {
+    return;
+  }
+
+  // first time in this function, push it on the stack
+  trace_stack.push_back(fd->get_address());
 
   // declared here to preserve state down the call chain
   static CallFrameManager valmgr;
 
-  // first vertex in the trace is the root...
-  if (src_vtx == NULL_CTG_VERTEX) {
-
-    CallTraceDescriptorPtr src_trx = create_call_trace_element(NULL_CTG_VERTEX,
-                                                               start_fd,
-                                                               nullptr,
-                                                               valmgr);
-    if (src_trx == nullptr) {
-      OERROR << "Could not create root call trace descriptor!" << LEND;
-      return;
-    }
-
-    src_vtx = boost::add_vertex(call_trace_);
-    boost::put(boost::vertex_calltrace, call_trace_, src_vtx, src_trx);
+  // Create the new call trace element
+  CallTraceDescriptorPtr new_trx = create_call_trace_element(src_vtx, fd, cd, valmgr);
+  if (new_trx == nullptr) {
+    OERROR << "Could not create root call trace descriptor!" << LEND;
+    return;
   }
 
-  // process each outgoing call, following the call chain to its end
+  // and connect it to the graph
+  CallTraceGraphVertex new_vtx = boost::add_vertex(call_trace_);
+  boost::put(boost::vertex_calltrace, call_trace_, new_vtx, new_trx);
 
-  for (auto cd : start_fd->get_outgoing_calls()) {
-
-    const FunctionDescriptor* called_fd = cd->get_function_descriptor();
-
-    // valid local call, not an import. This may change in the future
-    // because imports can effect paths
-    if (called_fd && !cd->get_import_descriptor()) {
-      CallTraceDescriptorPtr called_trx = create_call_trace_element(src_vtx,
-                                                                    called_fd,
-                                                                    cd,
-                                                                    valmgr);
-      if (called_trx == nullptr) {
-        OERROR << "Could not create called call_trace!" << LEND;
-        return;
-      }
-
-      CallTraceGraphVertex called_vtx = boost::add_vertex(call_trace_);
-      boost::put(boost::vertex_calltrace, call_trace_, called_vtx, called_trx);
-
-      // not the first vertex -> add an edge.
-      boost::add_edge(src_vtx, called_vtx, call_trace_);
-
-      // on to the next leg of the trace...
-      generate_call_trace(called_vtx, called_fd, goal_fd);
-
-      // lateral outgoing calls must have unique values, sometimes
-      valmgr.pop(called_trx->get_index());
-    }
+  if (src_vtx != NULL_CTG_VERTEX) {
+    boost::add_edge(src_vtx, new_vtx, call_trace_);
   }
+
+  // Now recurse in to all the outgoing calls.
+
+  for (auto out_cd : fd->get_outgoing_calls()) {
+
+    // imports do not have function desc
+    if (!out_cd || out_cd->get_import_descriptor()) {
+      continue;
+    }
+
+    // the next element will be called from this vertex
+    generate_call_trace(new_vtx, out_cd->get_function_descriptor(), out_cd, trace_stack);
+
+  }
+
+  valmgr.pop(new_trx->get_index());
+  trace_stack.pop_back();
 }
 
 bool
@@ -783,7 +860,7 @@ PathFinder::generate_value_constraints() {
       GDEBUG << "Looking for edge: " << addr_str(caller_bb->get_address())
              << " index " <<  caller_info->get_index() << LEND;
 
-      const CfgEdgeInfo* caller_edge_info = caller_info->get_edge_info(caller_bb->get_address());
+      boost::optional<CfgEdgeInfo> caller_edge_info = caller_info->get_edge_info(caller_bb->get_address());
 
       if (!caller_edge_info) {
         OWARN << "Could not find edge information for call at BB: "
@@ -817,13 +894,20 @@ PathFinder::generate_value_constraints() {
                 z3::expr par_callee_expr = path_finder->z3_.treenode_to_z3(callee_tnp);
 
                 if (caller_tnp->nBits() != callee_tnp->nBits()) {
-                  OWARN << "Caller/Callee parmater sizes differ - skipping constraint" << LEND;
+
+                  OWARN << addr_str(caller_bb->get_address()) << ": Caller/Callee parmater sizes differ: caller_tnp: '"
+                        << *caller_tnp << "', callee_tnp: " << *callee_tnp << "' - skipping constraint" << LEND;
                 }
                 else {
                   z3::expr parval_expr = z3::implies(caller_edge_info->edge_expr, par_caller_expr == par_callee_expr);
                   // don't add duplicate value constraints per call_trace
 
                   z3::expr_vector called_value_constraints = called_info->get_value_constraints();
+
+
+                  // Don't add duplicate constraints. Because this is
+                  // a z3::expr_vector is funny, this check is done
+                  // the old fashioned way
 
                   bool skip_constraint = false;
                   for (unsigned i=0; i<called_value_constraints.size(); i++) {
@@ -1096,15 +1180,23 @@ PathFinder::find_path(rose_addr_t start_addr, rose_addr_t goal_addr) {
 
   const FunctionDescriptor* start_fd = ds_.get_func_containing_address(start_address_);
   const FunctionDescriptor* goal_fd = ds_.get_func_containing_address(goal_address_);
-  if (start_fd && goal_fd) {
-    if (detect_recursion()) {
-      OWARN << "Recursion not yet handled!" << LEND;
-      return false;
-    }
+
+    if (start_fd && goal_fd) {
+
+    // if (detect_recursion()) {
+    //   OWARN << "Recursion not yet handled!" << LEND;
+    //   return false;
+    // }
+
+    std::vector<rose_addr_t> trace_stack;
 
     // JSG is trying to turn this into a graph problem. The first step
     // is to "unwind" the call relationships in to a trace.
-    generate_call_trace(NULL_CTG_VERTEX, start_fd, goal_fd);
+
+    generate_call_trace(NULL_CTG_VERTEX, start_fd, nullptr, trace_stack);
+
+    generate_chc();
+
   }
   else {
     OERROR << "Could not find valid functions for start and/or goal" << LEND;
@@ -1154,10 +1246,10 @@ PathFinder::print_call_trace() {
       CallTraceDescriptorPtr caller_info = boost::get(boost::vertex_calltrace, g, caller_vtx);
       CallTraceDescriptorPtr called_info = boost::get(boost::vertex_calltrace, g, called_vtx);
 
-      OINFO << "Call Trace edge: " << addr_str(called_info->get_call()->get_address())
-            << ":" << caller_info->get_index()
-            << " => " << addr_str(called_info->get_function().get_address())
-            << ":" << called_info->get_index() << LEND;
+      GDEBUG << "Call Trace edge: " << addr_str(called_info->get_call()->get_address())
+             << ":" << caller_info->get_index()
+             << " => " << addr_str(called_info->get_function().get_address())
+             << ":" << called_info->get_index() << LEND;
     }
   };
 
@@ -1220,14 +1312,12 @@ PathFinder::detect_recursion() {
   }
 
   const FunctionDescriptor* start_fd = ds_.get_func_containing_address(start_address_);
-  if (start_fd == NULL) {
-    OERROR << "Unreachable: Cannot find start function!" << LEND;
+  if (start_fd) {
     return false;
   }
 
   const FunctionDescriptor* goal_fd = ds_.get_func_containing_address(goal_address_);
-  if (goal_fd == NULL) {
-    OERROR << "Unreachable: Cannot find goal function!" << LEND;
+  if (goal_fd) {
     return false;
   }
 
@@ -1285,6 +1375,16 @@ PathFinder::detect_recursion() {
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 // Beginning of CallTraceDescriptor methods
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+CallTraceDescriptorPtr
+CallTraceDescriptor::get_caller() const {
+  return prev_call_trace_desc_;
+}
+
+void
+CallTraceDescriptor::set_caller(CallTraceDescriptorPtr c) {
+  prev_call_trace_desc_ = c;
+}
 
 void
 CallTraceDescriptor::create_frame(CallFrameManager& valmgr) {
@@ -1418,7 +1518,7 @@ void
 CallTraceDescriptor::add_parameter(ParameterDefinition const & old_param,
                                    SymbolicValuePtr new_value)
 {
-  parameters_.push_back(old_param);
+  parameters_.push_back(std::move(old_param));
   parameters_.back().set_value(new_value);
 }
 
@@ -1426,7 +1526,7 @@ void
 CallTraceDescriptor::add_called_from_parameter(ParameterDefinition const & old_param,
                                                SymbolicValuePtr new_value)
 {
-  called_from_parameters_.push_back(old_param);
+  called_from_parameters_.push_back(std::move(old_param));
   called_from_parameters_.back().set_value(new_value);
 }
 
@@ -1434,7 +1534,7 @@ void
 CallTraceDescriptor::add_return_value(ParameterDefinition const & old_param,
                                       SymbolicValuePtr new_value)
 {
-  return_values_.push_back(old_param);
+  return_values_.push_back(std::move(old_param));
   return_values_.back().set_value(new_value);
 }
 
@@ -1442,23 +1542,25 @@ void
 CallTraceDescriptor::add_called_from_return_value(ParameterDefinition const & old_param,
                                                   SymbolicValuePtr new_value)
 {
-  called_from_return_values_.push_back(old_param);
+  called_from_return_values_.push_back(std::move(old_param));
   called_from_return_values_.back().set_value(new_value);
 }
 
-const CfgEdgeInfo*
+boost::optional<CfgEdgeInfo>
 CallTraceDescriptor::get_edge_info(rose_addr_t addr) {
 
-  auto FindEdgeLambda = [addr](const CfgEdgeInfo& edge_info) -> bool {
-                          return ((edge_info.edge_tgt_addr==addr) || (edge_info.edge_src_addr==addr)) ? true : false;
-                        };
+  auto edge_it = std::find_if(edge_info_.begin(), edge_info_.end(),
+                              [addr](auto entry) {
+                                CfgEdgeInfo edge_info = entry.second;
+                          return ((edge_info.edge_tgt_addr == addr) || (edge_info.edge_src_addr == addr));
+                        });
 
-  auto edge_it = std::find_if(edge_info_.begin(), edge_info_.end(), FindEdgeLambda);
-
+  // The edge information is a map keyed by edge (which is really just
+  // a number).
   if (edge_it != edge_info_.end()) {
-    return &(*edge_it);
+    return edge_it->second;
   }
-  return nullptr;
+  return boost::optional<CfgEdgeInfo>();
 }
 
 z3::expr_vector
@@ -1473,17 +1575,19 @@ CallTraceDescriptor::get_value_constraints() { return value_constraints_; }
 void
 CallTraceDescriptor::add_value_constraint(z3::expr vconst) { value_constraints_.push_back(vconst); }
 
-z3::expr_vector
+const CfgEdgeExprMap&
 CallTraceDescriptor::get_edge_constraints() { return edge_constraints_; }
 
 void
-CallTraceDescriptor::add_edge_constraint(z3::expr econst) { edge_constraints_.push_back(econst); }
+CallTraceDescriptor::add_edge_constraint(CfgEdge edge, z3::expr constraint) {
+  edge_constraints_.emplace(std::make_pair(edge, constraint));
+}
 
-CfgEdgeInfoVector
-CallTraceDescriptor::get_edge_info_list() { return edge_info_; }
+CfgEdgeInfoMap
+CallTraceDescriptor::get_edge_info_map() { return edge_info_; }
 
 void
-CallTraceDescriptor::add_edge_info(CfgEdgeInfo ei) { edge_info_.push_back(ei); }
+CallTraceDescriptor::add_edge_info(CfgEdgeInfo ei) { edge_info_.emplace(ei.edge, ei); }
 
 // The index uniquely identifies this call trace element
 bool

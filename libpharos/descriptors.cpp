@@ -21,6 +21,7 @@
 #include "vftable.hpp"
 #include "imports.hpp"
 #include "masm.hpp"
+#include "threads.hpp"
 
 #include <mutex>
 
@@ -31,9 +32,9 @@ size_t global_arch_bytes = 4;
 void set_global_arch_bytes(size_t arch_bytes)
 {
   static bool initialized = false;
-  static std::mutex mutex;
+  static std_mutex mutex;
 
-  std::lock_guard<decltype(mutex)> lock(mutex);
+  write_guard<decltype(mutex)> lock(mutex);
 
   if (initialized) {
     if (arch_bytes != global_arch_bytes) {
@@ -684,6 +685,10 @@ unsigned int DescriptorSet::get_concurrency_level(ProgOptVarMap const & vm)
   if (!level_opt) {
     return 1;
   }
+#ifdef PHAROS_BROKEN_THREADS
+  GWARN << "Multi-threading has been disabled in this binary." << LEND;
+  return 1;
+#else
   auto level = *level_opt;
   if (level > 0) {
     return unsigned(level);
@@ -697,6 +702,7 @@ unsigned int DescriptorSet::get_concurrency_level(ProgOptVarMap const & vm)
     return 1;
   }
   return hwc - inverted_level;
+#endif
 }
 
 

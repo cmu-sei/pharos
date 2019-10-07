@@ -8,6 +8,7 @@
 #include <Sawyer/ThreadWorkers.h>
 #include <Sawyer/GraphTraversal.h>
 #include <Sawyer/GraphAlgorithm.h>
+#include <Sawyer/GraphIteratorSet.h>
 #include <boost/range/adaptor/map.hpp>
 
 #include <atomic>
@@ -249,12 +250,12 @@ FDG::FDG(DescriptorSet & ds)
   // reverse depth first search from the indeterminate node, accumulating the vertices reached.
   auto traversal = Sawyer::Container::Algorithm::DepthFirstReverseVertexTraversal<Graph>{
     g_, indeterminate_iter};
-  std::set<Graph::VertexIterator> not_simple;
+  Sawyer::Container::GraphIteratorSet<Graph::VertexIterator> not_simple;
   traversal.mapVertices([&not_simple](auto v) { not_simple.insert(v); });
 
   // Connect the indeterminate node to all simple nodes that have no non-simple predecessors.
   auto is_simple = [&not_simple](auto vertex) {
-    return not_simple.find(vertex) == not_simple.end();
+    return !not_simple.exists(vertex);
   };
   auto vertices = g_.vertices();
   for (auto v = begin(vertices); v != end(vertices); ++v) {

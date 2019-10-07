@@ -211,9 +211,16 @@ class PathAnalyzer : public BottomUpAnalyzer {
           for (ConcreteParameter const & cp : traversal->required_param_values) {
             ParameterDefinition const & param = cp.element;
             boost::uint64_t param_val = cp.concrete_value;
-            TreeNodePtr param_memaddr_tnp = param.get_address()->get_expression();
+
             ss << "   " << param.get_num() << ": ";
-            param_memaddr_tnp->print(ss, fmt);
+            if (param.get_address()) {
+              TreeNodePtr param_memaddr_tnp = param.get_address()->get_expression();
+              param_memaddr_tnp->print(ss, fmt);
+            }
+            else {
+              // TODO: actually print the register-based param
+              ss << "reg-param";
+            }
             ss << " = " << param_val
                << " (" << static_cast<int>(param_val) << ")\n";
           }

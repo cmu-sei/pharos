@@ -49,6 +49,35 @@ ProgOptDesc digger_options() {
   return digopt;
 }
 
+std::string
+get_stats(std::vector<OOClassDescriptorPtr> ooclasses) {
+  size_t method_count=0;
+  size_t usage_count=0;
+  size_t vcall_count=0;
+
+  std::stringstream ss;
+
+  for (const auto& c : ooclasses) {
+
+    method_count += c->get_methods().size();
+
+    for (const auto& vf : c->get_vftables()) {
+      vcall_count += vf->get_virtual_call_targets().size();
+    }
+    for (const auto& m : c->get_members()) {
+      if (m.second!=nullptr)
+        usage_count += m.second->get_evidence().size();
+    }
+  }
+
+  ss << ooclasses.size() << " classes, "
+     << method_count << " methods, "
+     << vcall_count << " virtual calls, and "
+     << usage_count << " usage instructions." << LEND;
+
+  return ss.str();
+}
+
 static int ooanalyzer_main(int argc, char **argv)
 {
   // Parse options...
@@ -82,17 +111,25 @@ static int ooanalyzer_main(int argc, char **argv)
   ooa.analyze();
   std::vector<OOClassDescriptorPtr> ooclasses = ooa.get_result_classes();
 
-  // If we didn't find any C++ classes, report that.
-  if (ooclasses.size() == 0) {
-    OERROR << "No C++ classes were detected in the program." << LEND;
+  // Handle the various configuration options
+
+  if (!vm.count("prolog-results") && !vm.count("json")) {
+    OWARN << "OOAnalyzer did not perform C++ class analysis." << LEND;
   }
   else {
-    if (vm.count("json")) {
-      OOJsonExporter json(vm);
-      json.generate_json(ooclasses);
-      json.export_json();
-
+    // Otherwise the results were computed so there is output
+    if (ooclasses.size() == 0) {
+      OERROR << "No C++ classes were detected in the program." << LEND;
     }
+    else {
+      OINFO << "OOAnalyzer analysis complete, found: " << get_stats(ooclasses) << LEND;
+    }
+  }
+  if (vm.count("json")) {
+    OOJsonExporter json(vm);
+    json.generate_json(ooclasses);
+    json.export_json();
+
   }
   OINFO << "OOAnalyzer analysis complete." << LEND;
 

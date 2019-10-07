@@ -18,7 +18,20 @@ namespace pharos {
 
 namespace detail {
 
-#if defined(__cpp_lib_shared_mutex)
+class dummy_mutex
+{
+ public:
+  void lock() noexcept {}
+  bool try_lock() noexcept {return true;}
+  void unlock() noexcept {}
+  void lock_shared() noexcept {}
+  void unlock_shared() noexcept {}
+  bool try_lock_shared() noexcept {return true;}
+};
+
+#ifdef PHAROS_BROKEN_THREADS
+using shared_mutex = dummy_mutex;
+#elif defined(__cpp_lib_shared_mutex)
 using std::shared_mutex;
 #elif defined(__cpp_lib_shared_timed_mutex)
 using shared_mutex = std::shared_timed_mutex;
@@ -40,6 +53,12 @@ class shared_mutex
 };
 #endif  // shared_mutex
 
+#ifdef PHAROS_BROKEN_THREADS
+using std_mutex = dummy_mutex;
+#else
+using std_mutex = std::mutex;
+#endif
+
 #if defined(__cpp_lib_shared_mutex) || defined(__cpp_lib_shared_timed_mutex)
 template <typename Mutex>
 struct shared_lock : std::shared_lock<Mutex> {
@@ -50,10 +69,10 @@ template <typename Mutex>
 class shared_lock {
   Mutex * mutex;
  public:
-  shared_lock(Mutex & m) noexcept(noexcept(mutex.lock_shared())) : mutex(&m) {
+  shared_lock(Mutex & m) noexcept(noexcept(m.lock_shared())) : mutex(&m) {
     mutex->lock_shared();
   }
-  shared_lock(Mutex & m, std::adopt_lock_t t) : mutex(&m) {}
+  shared_lock(Mutex & m, std::adopt_lock_t) : mutex(&m) {}
   shared_lock(shared_lock && other) noexcept {
     std::swap(mutex, other.mutex);
   }
@@ -147,8 +166,8 @@ struct shadow_mutex_base
  public:
   shadow_mutex_base() = default;
   shadow_mutex_base(shadow_mutex_base const &) {};
-  shadow_mutex_base(shadow_mutex_base && other) {}
-  shadow_mutex_base & operator=(shadow_mutex_base && other) { return *this; }
+  shadow_mutex_base(shadow_mutex_base &&) {}
+  shadow_mutex_base & operator=(shadow_mutex_base &&) { return *this; }
   shadow_mutex_base & operator=(shadow_mutex_base const &) { return *this; }
   void lock() { mutex.lock(); }
   void unlock() { mutex.unlock(); }
@@ -171,6 +190,14 @@ struct shadow_mutex<M, std::enable_if_t<is_shared_mutex<M>()>> : shadow_mutex_ba
 };
 
 } // namespace detail
+
+using detail::std_mutex;
+
+template <typename M>
+using read_guard = detail::shared_lock<M>;
+
+template <typename M>
+using write_guard = std::lock_guard<M>;
 
 template <typename T, typename M, typename L>
 class locked_range {
@@ -209,23 +236,6 @@ using detail::shared_mutex;
 
 template <typename M>
 using shadow_mutex = detail::shadow_mutex<M>;
-
-template <typename Mutex>
-detail::shared_lock<Mutex> read_guard(Mutex & m) {
-  m.lock_shared();
-  return { m, std::adopt_lock };
-}
-
-inline std::lock_guard<std::mutex> read_guard(std::mutex & m) {
-  m.lock();
-  return { m, std::adopt_lock };
-}
-
-template <typename Mutex>
-std::lock_guard<Mutex> write_guard(Mutex & m) {
-  m.lock();
-  return { m, std::adopt_lock };
-}
 
 class ThreadPool {
  public:

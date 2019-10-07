@@ -59,12 +59,12 @@ TEST_F(ApiSigTest, TEST_VALID_SIG_PARAMS) {
           ApiSigFuncParam p1 = f.params.at(0);
           EXPECT_TRUE(boost::iequals(p1.name,"P1"));
           EXPECT_TRUE(p1.index == 0);
-          EXPECT_TRUE(p1.type == IN);
+          EXPECT_TRUE(p1.type == ApiSigFuncParam::IN);
 
           ApiSigFuncParam p2 = f.params.at(1);
           EXPECT_TRUE(boost::iequals(p2.name,"P2"));
           EXPECT_TRUE(p2.index == 1);
-          EXPECT_TRUE(p2.type == OUT);
+          EXPECT_TRUE(p2.type == ApiSigFuncParam::OUT);
 
           return;
         }
@@ -107,7 +107,7 @@ TEST_F(ApiSigTest, TEST_VALID_SIG_RETVAL) {
 
           ApiSigParam rv = f.retval;
           EXPECT_TRUE(boost::iequals(rv.name,"R"));
-          EXPECT_TRUE(rv.type == RET);
+          EXPECT_TRUE(rv.type == ApiSigFuncParam::RET);
 
           return;
         }

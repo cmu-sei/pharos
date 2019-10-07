@@ -10,22 +10,31 @@
 #include <libpharos/descriptors.hpp>
 #include <libpharos/bua.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include <boost/filesystem.hpp>
 
 using namespace pharos;
 using namespace pharos::ir;
 
-const std::string TEST_MARK = "test";
-const std::string TEST_START_MARK = "start";
-const std::string TEST_GOAL_MARK = "goal";
-const std::string TEST_BAD_MARK = "bad";
-
 struct PATestConfiguration {
   // The address of the function being tested
   rose_addr_t start, goal, bad;
+
+  // the name of the test
   std::string name;
+
+  // The method used to find the path.
+  std::string method;
+
+  // The file name where the goal SMT statements are stored for debugging.
+  std::string goal_smt_file;
+  // The file name where the nongoal SMT statements are stored for debugging.
+  std::string nongoal_smt_file;
+
   int seed;
-  PATestConfiguration(std::string n, int s = 0)
-    : start(INVALID_ADDRESS), goal(INVALID_ADDRESS), bad(INVALID_ADDRESS), name(n), seed(s) { }
+  PATestConfiguration(std::string n, std::string m = "none",
+                      std::string gs = "", std::string ngs = "", int s = 0)
+    : start(INVALID_ADDRESS), goal(INVALID_ADDRESS), bad(INVALID_ADDRESS),
+      name(n), method(m), goal_smt_file(gs), nongoal_smt_file(ngs), seed(s) { }
 
   std::string DebugString() const {
     std::stringstream ss;
@@ -61,51 +70,107 @@ class PATestAnalyzer : public BottomUpAnalyzer {
     if (vm.count("seed")>0) {
       s = vm["seed"].as<int>();
     }
-    test_config_.push_back(PATestConfiguration("test", s));
+
+    std::string goal_smt_file = "";
+    if (vm.count("goal-smt")>0) {
+      goal_smt_file = vm["goal-smt"].as<std::string>();
+      OINFO << "Saving goal SMT to '" << goal_smt_file << "'" << LEND;
+    }
+
+    std::string nongoal_smt_file = "";
+    if (vm.count("nongoal-smt")>0) {
+      nongoal_smt_file = vm["nongoal-smt"].as<std::string>();
+      OINFO << "Saving nongoal SMT to '" << nongoal_smt_file << "'" << LEND;
+    }
+
+    std::string method = "none";
+    if (vm.count("method") > 0) {
+      method = vm["method"].as<std::string>();
+      OINFO << "Using method '" << method << "'" << LEND;
+    }
+
+    std::string test_name;
+    if (vm.count("file") > 0) {
+      using namespace boost::filesystem;
+      test_name = basename (path (vm["file"].as<std::string>()));
+    }
+
+    test_config_.push_back(
+      PATestConfiguration(test_name, method, goal_smt_file, nongoal_smt_file, s));
      config_ = &(test_config_.back());
   }
 
   void visit(FunctionDescriptor *fd) override {
     fd->get_pdg();
-    auto callset = fd->get_outgoing_calls();
-    for (CallDescriptor * call : callset) {
-      for (rose_addr_t target : call->get_targets()) {
-        OINFO << "Call target from " << call->address_string() << " to " << addr_str(target) << LEND;
-        const FunctionDescriptor* tfd = ds.get_func(target);
-        if (tfd) {
-          const SgAsmFunction* func = tfd->get_func();
-          if (func) {
-            std::string name = func->get_name();
-            OINFO << "Found call to " << name << " at " << call->address_string() << LEND;
-            if (name == "_Z10path_startv") {
-              OINFO << "Found path_start() call at " << call->address_string() << LEND;
-              // This is a hack for Ed's code to avoid Jeff's breadcrumb calls
-              auto insn = call->get_insn ();
-              auto succ = insn->get_address () + insn->get_size ();
-              // If we've already seen a call to path_start(), mark the test invalid and return.
-              if (config_->start != INVALID_ADDRESS) {
-                config_->start = INVALID_ADDRESS;
-                return;
+
+    // Ick.  This was much nicer back when we were calling fd->get_outgoing_calls(), but not
+    // all of the calls are actually CALL instructions in -O2 in g++, so we need an approach
+    // that works for finding all instructions and their control flow targets.  This is
+    // probably a sign that get_outgoing_calls() is broken and needs some work, but that's
+    // a bigger change.
+    const CFG& cfg = fd->get_rose_cfg();
+    for (auto vertex : fd->get_vertices_in_flow_order(cfg)) {
+      SgNode *n = get(boost::vertex_name, cfg, vertex);
+      SgAsmBlock *blk = isSgAsmBlock(n);
+      assert(blk != NULL);
+      for (size_t j = 0; j < blk->get_statementList().size(); ++j) {
+        SgAsmStatement *stmt = blk->get_statementList()[j];
+        SgAsmInstruction *insn = isSgAsmInstruction(stmt);
+        SgAsmX86Instruction *xinsn = isSgAsmX86Instruction(stmt);
+        // We're only interested in calls and jumps.
+        if (!insn_is_call_or_jmp(xinsn)) continue;
+
+        bool complete;
+        for (rose_addr_t target : insn->getSuccessors(&complete)) {
+          //OINFO << "Call/Jump from " << addr_str(insn->get_address()) << " to " << addr_str(target) << LEND;
+          const FunctionDescriptor* tfd = ds.get_func(target);
+          if (tfd) {
+            const SgAsmFunction* func = tfd->get_func();
+            if (func) {
+              std::string name = func->get_name();
+              //OINFO << "Found call to " << name << " at " << addr_str(insn->get_address()) << LEND;
+              if (name == "_Z10path_startv") {
+                OINFO << "Found path_start() call at " << addr_str(insn->get_address()) << LEND;
+
+                // If we've already seen a call to path_start(), mark the test invalid and return.
+                if (config_->start != INVALID_ADDRESS) {
+                  OINFO << "Found duplicate path_start() call at " << addr_str(insn->get_address()) << LEND;
+                  config_->start = INVALID_ADDRESS;
+                  return;
+                }
+
+                // We used to start at the instruction following the call to path_start().  That
+                // doesn't really work because if we're going to be using the stack, we'll need
+                // to have a proper setup of the RSP & RBP registers.  So instead, we're just
+                // going to use the path_start() call to mean that the start location is at the
+                // beginning of the current function!  Hopefully this retroactive redefinition
+                // won't cause too many problems, and if it does we may have to use something
+                // better defined like that path_start() is always main().
+
+                // auto start = insn->get_address () + insn->get_size ();
+                config_->start = fd->get_address();
               }
-              config_->start = succ;
-            }
-            if (name == "_Z9path_goalv") {
-              OINFO << "Found path_goal() call at " << call->address_string() << LEND;
-              // If we've already seen a call to path_goal(), mark the test invalid and return.
-              if (config_->goal != INVALID_ADDRESS) {
-                config_->goal = INVALID_ADDRESS;
-                return;
+              if (name == "_Z9path_goalv") {
+                OINFO << "Found path_goal() call at " << addr_str(insn->get_address()) << LEND;
+                // If we've already seen a call to path_goal(), mark the test invalid and return.
+                if (config_->goal != INVALID_ADDRESS && config_->goal != target) {
+                  OINFO << "Found duplicate path_goal() call at " << addr_str(insn->get_address()) << LEND;
+                  config_->goal = INVALID_ADDRESS;
+                  return;
+                }
+                //config_->goal = insn->get_address();
+                config_->goal = target;
               }
-              config_->goal = call->get_address();
-            }
-            if (name == "_Z12path_nongoalv") {
-              OINFO << "Found path_nongoal() call at " << call->address_string() << LEND;
-              // If we've already seen a call to path_nongoal(), mark the test invalid and return.
-              if (config_->bad != INVALID_ADDRESS) {
-                config_->bad = INVALID_ADDRESS;
-                return;
+              if (name == "_Z12path_nongoalv") {
+                OINFO << "Found path_nongoal() call at " << addr_str(insn->get_address()) << LEND;
+                // If we've already seen a call to path_nongoal(), mark the test invalid and return.
+                if (config_->bad != INVALID_ADDRESS && config_->bad != target) {
+                  OINFO << "Found duplicate path_nongoal() call at " << addr_str(insn->get_address()) << LEND;
+                  config_->bad = INVALID_ADDRESS;
+                  return;
+                }
+                config_->bad = target;
               }
-              config_->bad = call->get_address();
             }
           }
         }
@@ -113,7 +178,7 @@ class PATestAnalyzer : public BottomUpAnalyzer {
     }
   }
 
-  void finish () override {  }
+  void finish () override { }
 
   TestConfigVector get_test_config() {
     return test_config_;
@@ -152,9 +217,17 @@ ProgOptDesc pathanalyzer_test_options() {
 
   ProgOptDesc ptopt("PathAnalyzer Test options");
   ptopt.add_options()
-    ("disable-tests,d", po::value<std::string>(), "The comma-separated list of tests discovered in the binary to skip")
-    ("include-tests,i", po::value<std::string>(), "The comma-separated list of tests discovered in the binary to include")
-    ("seed,s", po::value<int>(), "The random seed for Z3.");
+    ("disable-tests,d", po::value<std::string>(),
+     "The comma-separated list of tests discovered in the binary to skip")
+    ("include-tests,i", po::value<std::string>(),
+     "The comma-separated list of tests discovered in the binary to include")
+    ("seed,s", po::value<int>(), "The random seed for Z3")
+    ("goal-smt", po::value<std::string>(),
+     "The name of the file to save goal SMT output")
+    ("nongoal-smt", po::value<std::string>(),
+     "The name of the file to save nongoal SMT output")
+    ("method,m", po::value<std::string>(),
+     "The analysis method to use (fs, wp or spacer)");
 
   return ptopt;
 }
@@ -224,3 +297,9 @@ void configure_tests(PATestAnalyzer& pa, const ProgOptVarMap& ovm) {
     exit(1);
   }
 }
+
+/* Local Variables:   */
+/* mode: c++          */
+/* fill-column:    95 */
+/* comment-column: 0  */
+/* End:               */

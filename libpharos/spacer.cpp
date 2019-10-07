@@ -7,6 +7,7 @@
 #include <boost/range/algorithm/set_algorithm.hpp>
 
 #include "znode.hpp"
+#include "znode_boost.hpp"
 
 #include "spacer.hpp"
 
@@ -62,7 +63,7 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
   auto irmap = boost::get (boost::vertex_ir_t (), cfg);
   auto cond_map = boost::get (boost::edge_name_t (), cfg);
   z3::context& ctx = *z3_.z3Context();
-  SpacerRelations relations;
+  SpacerRelationsMap relations;
 
   auto bb_name = [&bb_map] (const IRCFGVertex v) {
     std::stringstream ss;
@@ -135,30 +136,49 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
                    z3_vector_back_inserter (evdbl));
     }
 
-    // Iterate over each BB and create _before and _after relations
-    boost::copy (boost::vertices (cfg) |
-                 boost::adaptors::transformed([&bb_name, &svboth, &ctx, &name, this] (const auto &v) {
+    // The following two functions make the z3 before and after
+    // relations for the given BB
 
-                     std::stringstream ss;
-                     ss << std::hex << std::showbase << name << ": " << bb_name (v) << " before";
-                     z3::func_decl before = z3::function (ss.str (), svboth, ctx.bool_sort ());
-                     fp_->register_relation (before);
-                     // -------------
-                     ss.str (std::string ());
-                     ss << std::hex << std::showbase << name << ": " << bb_name (v) << " after";
-                     z3::func_decl after = z3::function (ss.str (), svboth, ctx.bool_sort ());
-                     fp_->register_relation (after);
-                     return std::make_pair (v, std::make_pair (before, after));
-                   }),
-                 std::inserter (relations, relations.end ()));
+    auto make_before = [&] (const CFGVertex &v) {
+      std::stringstream ss;
+      ss << std::hex << std::showbase << name << ": " << bb_name (v) << " before";
+      z3::func_decl before = z3::function (ss.str (), svboth, ctx.bool_sort ());
+      fp_->register_relation (before);
+      return before;
+    };
+
+    auto make_after = [&] (const CFGVertex &v, Z3RegMap intra_substs) {
+      std::stringstream ss;
+      ss << std::hex << std::showbase << name << ": " << bb_name (v) << " after";
+
+      // We need to add any intra-block variables to the after
+      // state here.  We need this specifically because outgoing edge
+      // conditions may refer to these variables, even though
+      // subsequent basic blocks will not.
+      z3::sort_vector svafter (ctx);
+
+      boost::copy (svboth,
+		   z3_vector_back_inserter (svafter));
+
+      boost::copy (intra_substs
+		       | boost::adaptors::map_values
+		       | boost::adaptors::transformed ([&svafter] (const auto &exp) {
+			   return exp.get_sort ();
+			 }),
+		       z3_vector_back_inserter (svafter));
+
+      z3::func_decl after = z3::function (ss.str (), svafter, ctx.bool_sort ());
+      fp_->register_relation (after);
+      return after;
+    };
 
     // Now we add rules that describe the transition from a _before
     // location to an _after location
     // z3::expr r1 = z3::forall(i,j, z3::implies(loop(i,j) && i<10, loop(i+1,j+2)));
 
     for (const auto &v : boost::make_iterator_range (boost::vertices (cfg))) {
-      auto before = relations.at (v).first;
-      auto after = relations.at (v).second;
+      z3::func_decl before = make_before (v);
+
       const Stmts& stmts = *irmap[v];
 
       // av are the after exps. first half are the original input
@@ -167,13 +187,6 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
       z3::expr_vector av (ctx);
       boost::copy (z3inputnodes | boost::adaptors::map_values,
                    z3_vector_back_inserter (av));
-
-      // boost::copy (subst_regs (stmts, mem, regs)
-      //                  | boost::adaptors::transformed([this] (const IRExprPtr &x)
-      //                                                 { return z3_.to_bv (z3_.treenode_to_z3 (x)); }),
-      //                       z3_vector_back_inserter (av));
-
-      // std::cout << stmts << std::endl;
 
       // Bind before expression here. We use this inside convert_call
       // to create rules saying that the entrance to a function is
@@ -191,16 +204,44 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
 
       boost::copy (substs | boost::adaptors::map_values,
                    z3_vector_back_inserter (av));
+      boost::copy (intra_substs | boost::adaptors::map_values,
+                   z3_vector_back_inserter (av));
+
+      // The after relation consists of inter-block regs followed by
+      // intra-block regs at the end.  This is necessary because
+      // conditions may refer to the intra-block regs (e.g.,
+      // temporaries).  Here we keep a list of the intraprocedural
+      // regs used in the after relation to make using it easier
+      // later.
+      
+      Z3RegMap intra_regs;
+      // Create fresh variables for the intra-block registers
+      boost::copy (intra_substs
+		   | boost::adaptors::map_keys
+		   | boost::adaptors::transformed([this] (const Register &x) {return std::make_pair (x, z3_.treenode_to_z3 (x)); }),
+		   std::inserter (intra_regs, intra_regs.end ()));
+
+      z3::func_decl after = make_after (v, intra_substs);
+
+      // We also need to store these intra-block registers with the
+      // relations so that we can use them below as we create rules
+      // transitioning from one block to another
+      relations.emplace (v, SpacerRelations { before, after, intra_regs });
 
       z3::expr after_applied = after (av);
 
-      // We also need to quantify over any new variables introduced
-      // for the output variables of the summary call
+      // Quantify over the variables in the rule.  Note that we do not
+      // need to quantify over intra_regs here because their initial
+      // value should never be used in these rules.  They are always
+      // use to save the state of another register at a particular
+      // time.
       z3::expr_vector quantified_vars (ctx);
       boost::copy (z3nodes | boost::adaptors::map_values,
                    z3_vector_back_inserter (quantified_vars));
       boost::copy (z3inputnodes | boost::adaptors::map_values,
                    z3_vector_back_inserter (quantified_vars));
+      // We also need to quantify over any new variables introduced
+      // for the output variables of the summary call
       boost::copy (fresh_vars,
                    z3_vector_back_inserter (quantified_vars));
 
@@ -215,17 +256,29 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
   for (const auto &e : boost::make_iterator_range (boost::edges (cfg))) {
     // The source relation is after the source BB
     auto source = boost::source (e, cfg);
-    auto source_relation = relations.at (source).second;
-    auto source_app = source_relation (evboth);
+    auto source_relation = relations.at (source).after;
+
+    // Here we need to build the source arguments, which consist of
+    // the normal args from evboth and the intra-block registers
+    z3::expr_vector source_args (ctx);
+    // Copy the normal regs from evboth
+    boost::copy (evboth,
+		 z3_vector_back_inserter (source_args));
+    // And then copy the intra-block regs
+    boost::copy (relations.at (source).intra_regs | boost::adaptors::map_values,
+		 z3_vector_back_inserter (source_args));
+
+    auto source_app = source_relation (source_args);
     // The target relation is before the destination BB
     auto target = boost::target (e, cfg);
-    auto target_relation = relations.at (target).first;
+    auto target_relation = relations.at (target).before;
     auto target_app = target_relation (evboth);
     auto cond = z3_.to_bool (z3_.treenode_to_z3 (boost::get_optional_value_or (cond_map[e], SymbolicExpr::makeBoolean (true))));
 
-    z3::expr rule = z3::forall (evboth,
+    z3::expr rule = z3::forall (source_args,
                                 z3::implies (source_app && cond,
                                              target_app));
+
     std::stringstream ss;
     ss << std::hex << std::showbase
        << name
@@ -251,7 +304,7 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
 
   // And we add a rule connecting the entry relation to the before entry BB
   auto entry_bb = ir.get_entry ();
-  auto entry_bb_before = relations.at (entry_bb).first;
+  auto entry_bb_before = relations.at (entry_bb).before;
   // \forall A B C. entry_relation (A, B, C) => entry_bb_before (A, B, C, A, B, C).
   z3::expr erule = z3::forall (ev,
                                z3::implies ((*entry_relation) (ev),
@@ -267,7 +320,7 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
   // Connect each exit to the goal and any_exit relations
   auto exits = ir.get_exits ();
   for (IRCFGVertex exit : exits) {
-    auto an_exit_relation = relations.at (exit).second;
+    auto an_exit_relation = relations.at (exit).after;
     // Connect each exit to the goal
     z3::expr rule = z3::forall (evboth,
                                 z3::implies (an_exit_relation (evboth) && z3post,
@@ -316,7 +369,7 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
   std::map<CGVertex, IR> func_to_ir;
   Register hit_var = SymbolicExpr::makeVariable (1, "hit_target")->isLeafNode ();
   boost::copy (boost::vertices (cgg) |
-               boost::adaptors::transformed([&vertex_name_map, &hit_var, this, tgtaddr] (const auto &cgv) {
+               boost::adaptors::transformed([&vertex_name_map, &hit_var, tgtaddr] (const auto &cgv) {
                    IR ir = IR::get_ir (vertex_name_map [cgv]);
                    // Ensure that CallStmts can only appear at the
                    // start of a basic block.  This may simplify the
@@ -342,6 +395,7 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
   // Then we'll change the fromir
   IR fromir = func_to_ir.at (fromcgv);
   fromir = change_entry (fromir, srcaddr);
+  fromir = init_stackpointer (fromir);
   func_to_ir.at (fromcgv) = fromir;
 
   // Find all registers across all functions
@@ -351,6 +405,8 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
                      boost::copy (get_all_registers (ir),
                                   std::inserter (regs, regs.end ()));
                    });
+  // Make sure mem is included
+  regs.insert (fromir.get_mem ());
 
   // Build the sort (type) that will represent the state of the
   // program.  In this first implementation we will always use the
@@ -458,39 +514,39 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
 
                    // Summary rule
 
-		   // Note: The calling code will decrement the stack
-		   // pointer.  As part of our synthetic summary, we
-		   // must increment the stack pointer to maintain
-		   // stack neutrality.
+                   // Note: The calling code will decrement the stack
+                   // pointer.  As part of our synthetic summary, we
+                   // must increment the stack pointer to maintain
+                   // stack neutrality.
 
                    // \forall EAX EBX ECX ESP EAX'. entry(EAX EBX ECX) => summary(EAX EBX ECX ESP EAX' EBX ECX ESP+delta)
 
                    // Step 1: Identify eax and esp.
                    // XXX: We should do this once in the outer function
 
-		   auto find_reg = [&fromir, &z3inputnodes, this] (const std::string &regname) -> boost::optional<z3::expr> {
-		     auto it = boost::find_if (z3inputnodes,
-					       [&regname, &fromir, this] (const auto &p) {
-						 // XXX: Platform specific
-						 return p.first == fromir.get_reg (ds_.get_arch_reg(regname));
-					       });
-		     if (it == z3inputnodes.end ()) {
-		       GWARN << "Unable to produce summary for imported function because we were unable to find register " << regname << LEND;
-		       return boost::none;
-		     } else {
-		       return it->second;
-		     };
-		   };
+                   auto find_reg = [&fromir, &z3inputnodes, this] (const std::string &regname) -> boost::optional<z3::expr> {
+                     auto it = boost::find_if (z3inputnodes,
+                                               [&regname, &fromir, this] (const auto &p) {
+                                                 // XXX: Platform specific
+                                                 return p.first == fromir.get_reg (ds_.get_arch_reg(regname));
+                                               });
+                     if (it == z3inputnodes.end ()) {
+                       GWARN << "Unable to produce summary for imported function because we were unable to find register " << regname << LEND;
+                       return boost::none;
+                     } else {
+                       return it->second;
+                     };
+                   };
 
                    boost::optional<z3::expr> eax, esp, fresh_eax;
-		   eax = find_reg ("eax");
+                   eax = find_reg ("eax");
 
-		   if (eax) {
+                   if (eax) {
                      fresh_eax = z3::function ((eax->decl ().name ().str () + "_summary_output").c_str (), 0, NULL, eax->get_sort ()) ();
-		   }
+                   }
 
-		   esp = find_reg ("esp");
-		   assert (esp);
+                   esp = find_reg ("esp");
+                   assert (esp);
 
 
                    // Step 2: Create varlists
@@ -513,12 +569,12 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
                                 ([&] (const auto &exp) {
                                   if (eax && exp.id () == eax->id ()) {
                                     return *fresh_eax;
-				  } else if (exp.id () == esp->id ()) {
-				    // Here is where we increment the stack pointer
-				    // XXX: We should actually determine the stack delta by searching CallStmt for the appropriate import
-				    auto delta = esp->get_sort ().bv_size () / 8;
-				    z3::expr delta_const = z3_.z3Context ()->bv_val (delta, esp->get_sort ().bv_size ());
-				    return exp + delta_const;
+                                  } else if (exp.id () == esp->id ()) {
+                                    // Here is where we increment the stack pointer
+                                    // XXX: We should actually determine the stack delta by searching CallStmt for the appropriate import
+                                    auto delta = esp->get_sort ().bv_size () / 8;
+                                    z3::expr delta_const = z3_.z3Context ()->bv_val (delta, esp->get_sort ().bv_size ());
+                                    return exp + delta_const;
                                   } else {
                                     return exp;
                                   }
@@ -716,7 +772,8 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
 
                     });
 
-    z3_.do_log(to_string());
+    // Not needed any more, since we have --smt?
+    //z3_.do_log(to_string());
 
     z3::check_result result = fp_->query (goal_expr);
 

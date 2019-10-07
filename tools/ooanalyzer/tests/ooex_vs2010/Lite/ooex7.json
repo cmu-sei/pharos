@@ -1568,7 +1568,7 @@
         {
             "Name": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
             "DemangledName": "std::basic_streambuf<char, struct std::char_traits<char> >",
-            "Size": "88",
+            "Size": "60",
             "Members": [
                 {
                     "name": "vfptr_0",
@@ -1582,12 +1582,6 @@
                     "struc": "cls_40606c",
                     "parent": "no",
                     "offset": "4",
-                    "count": "1"
-                },
-                {
-                    "name": "mbr_10",
-                    "type": "dword",
-                    "offset": "10",
                     "count": "1"
                 },
                 {
@@ -1619,54 +1613,6 @@
                     "type": "dword",
                     "offset": "38",
                     "count": "1"
-                },
-                {
-                    "name": "mbr_3c",
-                    "type": "dword",
-                    "offset": "3c",
-                    "count": "1"
-                },
-                {
-                    "name": "mbr_40",
-                    "type": "dword",
-                    "offset": "40",
-                    "count": "1"
-                },
-                {
-                    "name": "mbr_44",
-                    "type": "dword",
-                    "offset": "44",
-                    "count": "1"
-                },
-                {
-                    "name": "mbr_48",
-                    "type": "dword",
-                    "offset": "48",
-                    "count": "1"
-                },
-                {
-                    "name": "mbr_49",
-                    "type": "byte",
-                    "offset": "49",
-                    "count": "1"
-                },
-                {
-                    "name": "mbr_4c",
-                    "type": "dword",
-                    "offset": "4c",
-                    "count": "1"
-                },
-                {
-                    "name": "mbr_50",
-                    "type": "byte",
-                    "offset": "50",
-                    "count": "1"
-                },
-                {
-                    "name": "mbr_54",
-                    "type": "dword",
-                    "offset": "54",
-                    "count": "1"
                 }
             ],
             "Methods": [
@@ -1678,32 +1624,11 @@
                     "type": "dtor"
                 },
                 {
-                    "ea": "404f10",
-                    "name": "meth_404f10",
-                    "demangled_name": "",
-                    "import": "no",
-                    "type": "meth"
-                },
-                {
                     "ea": "404fed",
                     "name": "ctor_404fed",
                     "demangled_name": "",
                     "import": "no",
                     "type": "ctor"
-                },
-                {
-                    "ea": "40578c",
-                    "name": "meth_40578c",
-                    "demangled_name": "",
-                    "import": "no",
-                    "type": "meth"
-                },
-                {
-                    "ea": "405b4f",
-                    "name": "meth_405b4f",
-                    "demangled_name": "",
-                    "import": "no",
-                    "type": "meth"
                 }
             ],
             "Vftables": [
@@ -3130,6 +3055,13 @@
             ],
             "Methods": [
                 {
+                    "ea": "404f10",
+                    "name": "meth_404f10",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                },
+                {
                     "ea": "404f31",
                     "name": "meth_404f31",
                     "demangled_name": "",
@@ -3153,6 +3085,20 @@
                 {
                     "ea": "405334",
                     "name": "meth_405334",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                },
+                {
+                    "ea": "40578c",
+                    "name": "meth_40578c",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                },
+                {
+                    "ea": "405b4f",
+                    "name": "meth_405b4f",
                     "demangled_name": "",
                     "import": "no",
                     "type": "meth"
@@ -3872,10 +3818,6 @@
                 },
                 {
                     "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "4057ae"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
                     "ea": "404c90"
                 },
                 {
@@ -3892,10 +3834,6 @@
                 },
                 {
                     "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "404f10"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
                     "ea": "404cd8"
                 },
                 {
@@ -3905,10 +3843,6 @@
                 {
                     "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
                     "ea": "404d62"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "404f23"
                 },
                 {
                     "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
@@ -3932,10 +3866,6 @@
                 },
                 {
                     "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "404f28"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
                     "ea": "404de3"
                 },
                 {
@@ -3949,74 +3879,6 @@
                 {
                     "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
                     "ea": "405029"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "404f1e"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "404f1a"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "40579c"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "4057ea"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "405b94"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "404f13"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "4057a5"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "405824"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "40585a"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "405b7e"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "4057fa"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "405b8e"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "405b7b"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "405847"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "405b5a"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "405b6a"
-                },
-                {
-                    "class": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-                    "ea": "405b86"
                 },
                 {
                     "class": ".?AVbad_exception@std@@",
@@ -4432,6 +4294,10 @@
                 },
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "4057ae"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
                     "ea": "405bab"
                 },
                 {
@@ -4449,6 +4315,10 @@
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
                     "ea": "404f57"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "404f10"
                 },
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
@@ -4493,6 +4363,10 @@
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
                     "ea": "404f5c"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "404f23"
                 },
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
@@ -4584,6 +4458,10 @@
                 },
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "404f28"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
                     "ea": "404f40"
                 },
                 {
@@ -4636,7 +4514,15 @@
                 },
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "404f1e"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
                     "ea": "40521f"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "404f1a"
                 },
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
@@ -4668,6 +4554,14 @@
                 },
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "40579c"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "4057ea"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
                     "ea": "4058dd"
                 },
                 {
@@ -4677,6 +4571,14 @@
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
                     "ea": "4059fc"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "405b94"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "404f13"
                 },
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
@@ -4700,7 +4602,23 @@
                 },
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "4057a5"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "405824"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "40585a"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
                     "ea": "405983"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "405b7e"
                 },
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
@@ -4709,6 +4627,10 @@
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
                     "ea": "4056d7"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "4057fa"
                 },
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
@@ -4728,7 +4650,15 @@
                 },
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "405b8e"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
                     "ea": "405048"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "405b7b"
                 },
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
@@ -4784,6 +4714,10 @@
                 },
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "405847"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
                     "ea": "4058cc"
                 },
                 {
@@ -4825,6 +4759,18 @@
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
                     "ea": "405af3"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "405b5a"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "405b6a"
+                },
+                {
+                    "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",
+                    "ea": "405b86"
                 },
                 {
                     "class": ".?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@",

@@ -361,7 +361,7 @@ class ParameterDefinition {
     *this = other;
   }
   ParameterDefinition &operator=(ParameterDefinition const & other) {
-    auto && guard = read_guard(other.mutex);
+    read_guard<decltype(other.mutex)> guard{other.mutex};
     d = other.d;
     return *this;
   }
@@ -374,37 +374,37 @@ class ParameterDefinition {
 
   size_t get_num() const { return d.num; }
   const std::string& get_name() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return d.name;
   }
   void set_name(std::string n) {
-    auto && guard = write_guard(mutex);
+    write_guard<decltype(mutex)> guard{mutex};
     d.name = std::move(n);
   }
   const std::string & get_type() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return d.type;
   }
   void set_type(std::string t) {
-    auto && guard = write_guard(mutex);
+    write_guard<decltype(mutex)> guard{mutex};
     d.type = std::move(t);
   }
   DirectionEnum get_direction() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return d.direction;
   }
   SymbolicValuePtr get_value() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return d.value;
   }
   void set_value(SymbolicValuePtr p) {
-    auto && guard = write_guard(mutex);
+    write_guard<decltype(mutex)> guard{mutex};
     d.value = p;
   }
   SymbolicValuePtr get_value_pointed_to() const { return d.value_pointed_to; }
   SymbolicValuePtr get_address() const { return d.address; }
   TreeNodePtr get_expression() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return d.value->get_expression();
   }
   void set_stack_attributes(const SymbolicValuePtr& v, const SymbolicValuePtr& a,
@@ -486,7 +486,7 @@ public:
     *this = other;
   }
   ParameterList & operator=(ParameterList const & other) {
-    auto && guard = read_guard(other.mutex);
+    read_guard<decltype(other.mutex)> guard{other.mutex};
     d = other.d;
     return *this;
   }

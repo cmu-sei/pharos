@@ -622,7 +622,7 @@ void ParameterDefinition::set_stack_attributes(
   const SymbolicValuePtr& v, const SymbolicValuePtr& a,
   SgAsmInstruction* i, const SymbolicValuePtr& p)
 {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   d.value = v;
   d.value_pointed_to = p;
   d.address = a;
@@ -633,7 +633,7 @@ void ParameterDefinition::set_reg_attributes(
   const SymbolicValuePtr& v, const SgAsmInstruction* i,
   const SymbolicValuePtr& p)
 {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   d.value = v;
   d.value_pointed_to = p;
   d.insn = i;
@@ -642,8 +642,8 @@ void ParameterDefinition::set_reg_attributes(
 void ParameterDefinition::copy_parameter_description(ParameterDefinition const & other)
 {
   if (this == &other) { return; }
-  auto && guard = write_guard(mutex);
-  auto && oguard = read_guard(other.mutex);
+  write_guard<decltype(mutex)> guard{mutex};
+  read_guard<decltype(other.mutex)> oguard{other.mutex};
   d.name = other.d.name;
   d.type = other.d.type;
   d.direction = other.d.direction;
@@ -651,7 +651,7 @@ void ParameterDefinition::copy_parameter_description(ParameterDefinition const &
 
 void ParameterDefinition::copy_parameter_description(APIParam const & ap)
 {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   if (!ap.name.empty()) {
     d.name = ap.name;
   }
@@ -664,7 +664,7 @@ void ParameterDefinition::copy_parameter_description(APIParam const & ap)
 void ParameterDefinition::set_parameter_description(
   std::string n, std::string t, ParameterDefinition::DirectionEnum dir)
 {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   d.name = std::move(n);
   d.type = std::move(t);
   d.direction = dir;
@@ -685,7 +685,7 @@ template<> char const* EnumStrings<ParameterDefinition::DirectionEnum>::data[] =
 // idea. Having a general to_string method that can be used to fetch a string representation
 // seems better.
 std::string ParameterDefinition::to_string() const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
 
   std::stringstream out;
   out << "  num=" << d.num;
@@ -745,7 +745,7 @@ std::string ParameterDefinition::to_string() const {
 }
 
 void ParameterDefinition::debug() const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
 
   OINFO << "  num=" << d.num;
   if (is_reg()) {
@@ -793,7 +793,7 @@ void ParameterDefinition::debug() const {
 // Find the parameter definition that matches a specific stack delta, or return NULL if it does
 // not exist.
 const ParameterDefinition* ParameterList::get_stack_parameter(size_t delta) const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
   for (ParameterDefinition const & p : d.params) {
     if (p.is_stack() && p.get_stack_delta() == delta) {
       return &p;
@@ -810,7 +810,7 @@ ParameterDefinition* ParameterList::get_rw_stack_parameter(size_t delta) {
 // Find the parameter definition that corresponds to a specific regsiter descriptior, or return
 // NULL if it does not exist.
 const ParameterDefinition* ParameterList::get_reg_parameter(RegisterDescriptor rd) const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
   for (ParameterDefinition const & p : d.params) {
     if (p.get_register() == rd) {
       return &p;
@@ -825,7 +825,7 @@ ParameterDefinition* ParameterList::get_rw_reg_parameter(RegisterDescriptor rd) 
 }
 
 const ParameterDefinition* ParameterList::get_return_reg(RegisterDescriptor rd) const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
   for (ParameterDefinition const & p : d.returns) {
     if (p.get_register() == rd) {
       return &p;
@@ -864,7 +864,7 @@ ParameterDefinition* ParameterList::create_stack_parameter(size_t delta) {
     return NULL;
   }
 
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
 
   // How many existing parameters are there?
   size_t psize = d.params.size();
@@ -918,7 +918,7 @@ ParameterList::create_reg_parameter(RegisterDescriptor r, const SymbolicValuePtr
     return *retval;
   }
 
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
 
   // How many existing parameters are there?
   size_t psize = d.params.size();
@@ -958,7 +958,7 @@ ParameterList::create_return_reg(RegisterDescriptor r, const SymbolicValuePtr v)
   retval = get_rw_return_reg(r);
   if (retval != NULL) return *retval;
 
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
 
   // How many existing return values are there?
   size_t psize = d.returns.size();
@@ -989,7 +989,7 @@ ParameterList::create_return_reg(RegisterDescriptor r, const SymbolicValuePtr v)
 }
 
 void ParameterList::debug() const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
 
   if (d.params.size() == 0) {
     OINFO << "none" << LEND;

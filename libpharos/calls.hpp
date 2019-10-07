@@ -144,7 +144,7 @@ public:
   }
 
   void update_connections() {
-    auto && guard = write_guard(mutex);
+    write_guard<decltype(mutex)> guard{mutex};
     _update_connections();
   }
 
@@ -179,11 +179,11 @@ public:
 
   // Get and set the return value.
   const SymbolicValuePtr & get_return_value() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return return_value;
   }
   void set_return_value(SymbolicValuePtr r) {
-    auto && guard = write_guard(mutex);
+    write_guard<decltype(mutex)> guard{mutex};
     return_value = r;
   }
 
@@ -199,7 +199,7 @@ public:
   }
 
   CallType get_call_type() const  {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return call_type;
   }
 
@@ -229,6 +229,10 @@ public:
     // pointer should protect against deallocation.  Do we really need a clone?  Cory thinks
     // this is only set in defuse.cpp evaluate bblock, and then never used?
     state = s->sclone();
+  }
+  // Discard the state, freeing memory by releasing references to the smart pointers.
+  void discard_state() {
+    state.reset();
   }
 
   // Validate the call description, complaining about any unusual.
