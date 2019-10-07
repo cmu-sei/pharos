@@ -6,7 +6,7 @@ int main() {
   path_start();
   int n=INT_RAND;
   for (int i=0; i < n; i++) {
-    for (int j=i; i < n; j++) {
+    for (int j=i; j < n; j++) {
       path_goal();
     }
   }

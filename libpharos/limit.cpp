@@ -36,6 +36,7 @@ inline double total_cpu_time(const rusage& ru) {
 inline void get_resource_usage(rusage& ru) {
   if (getrusage(RUSAGE_SELF, &ru) != 0) {
     assert(false);
+    abort();
   }
 }
 

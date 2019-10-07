@@ -261,6 +261,9 @@ void customize_message_facility(Sawyer::Message::Facility facility, std::string 
 // This should be a method on SgAsmX86Instruction and possibly on SgAsmInstruction as well.
 bool insn_is_call(const SgAsmX86Instruction* insn);
 
+// For detecting call and call-like unconditional jumps.
+bool insn_is_call_or_jmp(const SgAsmX86Instruction* insn);
+
 // I think we meant insn_is_call() in all of these cases...
 bool insn_is_callNF(const SgAsmX86Instruction* insn);
 

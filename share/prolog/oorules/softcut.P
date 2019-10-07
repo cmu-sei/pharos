@@ -1,0 +1,70 @@
+% Copyright 2017 Carnegie Mellon University.
+% if_(I, T, E) implements the so-called soft cut, which has the
+% following behavior.  If I can be proven, then if_(I, T, E) is
+% equivalent to (I, T).  If I can not be proven, it is equivalent to
+% (not(I), E).  Note that unlike the regular ->/2 operator,
+% backtracking is performed inside of I, T, and E.
+
+:- if(current_prolog_flag(version_data, xsb(_,_,_,_))).
+:- dynamic(if_counter/1).
+
+if_counter(0).
+
+:- dynamic(no_if_answer/1).
+if_(If_0, Then_0, Else_0) :-
+   once(if_counter(Id)),
+   Idx is Id+1,
+   (  Idx > Id -> true
+   ;  throw(error(representation_error(max_integer),
+               'XSB misses ISO conforming integers'))
+   ),
+   retractall(if_counter(_)),
+   asserta(if_counter(Idx)),
+   asserta(no_if_answer(Id)),
+   (  If_0,
+      retractall(no_if_answer(Id)),
+      Then_0
+   ;  retract(no_if_answer(Id)) ->
+      Else_0
+   ).
+
+commit([H|T]) :-
+    %logwarn('Commit to '), logwarn(H), logwarnln('?'),
+    if_(H, true, commit(T)).
+
+or([H|T]) :-
+    %(logwarn('Or: '), logwarnln(H), H);
+    H;
+    or(T).
+
+:- else.
+% SWI
+
+:- meta_predicate
+   if_(0,0,0),
+   or(:).
+
+if_(If, Then, Else) :-
+   (   '*->'(If, Then)                  % XSB compatible syntax
+   ;   Else
+   ).
+
+or(M:List) :-
+   or(M, List).
+
+or(M, [H|T]) :-
+    %(debug('Or: '), debugln(H), H);
+   (   M:H
+   ;   or(M:T)
+   ).
+
+user:goal_expansion(if_(If,Then,Else),
+                    ('*->'(If, Then) ; Else)).
+
+:- endif.
+
+/* Local Variables:   */
+/* mode: prolog       */
+/* fill-column:    95 */
+/* comment-column: 0  */
+/* End:               */

@@ -238,7 +238,7 @@ bool ApiTextSigParser::Parse(const std::string &sig_file, ApiSigVector& sigs,
 void ApiJsonSigParser::ParseSigRetn(boost::property_tree::ptree ret_tree, ApiSigFunc& api) {
 
   api.retval.name = ret_tree.get<std::string>("Name","");
-  api.retval.type = ApiParamType::RET;
+  api.retval.type = ApiSigFuncParam::ApiParamType::RET;
 
 }
 
@@ -255,10 +255,10 @@ void ApiJsonSigParser::ParseSigParams(boost::property_tree::ptree arg_tree, ApiS
 
     std::string t = arg_list.get<std::string>("Type","");
     if (boost::iequals(t,"In") == true) {
-      param.type = ApiParamType::IN;
+      param.type = ApiSigFuncParam::ApiParamType::IN;
     }
     else if (boost::iequals(t,"OUT") == true) {
-      param.type = ApiParamType::OUT;
+      param.type = ApiSigFuncParam::ApiParamType::OUT;
     }
     api.params.push_back(param);
   }

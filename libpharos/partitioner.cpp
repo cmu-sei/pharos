@@ -197,7 +197,6 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
       for (const rose_rva_t &rva : fileHeader->get_entry_rvas()) {
         // Get the address of the entry point.
         rose_addr_t va = rva.get_rva() + fileHeader->get_base_va();
-        auto const & address_map = map->at(va);
         // A constraint containing just the entry point address.
         auto segments = map->at(va).segments();
         if (segments.empty()) {
@@ -232,7 +231,7 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
     auto config_allow64 = vm.config().path_get("pharos.allow-64bit");
     // If it's not enabled in the config file, warn regardless of the command line option.
     if ((not config_allow64) or (not config_allow64.as<bool>())) {
-      GWARN << "Non 32-bit Windows PE support is still highly experimental for this tool!" << LEND;
+      OWARN << "Non 32-bit Windows PE support is still highly experimental for this tool!" << LEND;
       if (not vm.count("allow-64bit")) {
         GFATAL << "Please specify --allow-64bit to allow the analysis of 64-bit executables." << LEND;
         throw std::invalid_argument("Program analysis aborted.");
@@ -317,7 +316,7 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
     time_point start_ts = clock::now();
     engine->runPartitioner(partitioner);
     duration secs = clock::now() - start_ts;
-    OINFO << "Function partitioning took " << secs.count() << " seconds." << LEND;
+    OINFO << "Pharos function partitioning took " << secs.count() << " seconds." << LEND;
   }
 
   // Report statistics for what we found in the partitioner.  This function needs to be called

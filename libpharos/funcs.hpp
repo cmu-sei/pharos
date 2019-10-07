@@ -34,6 +34,7 @@ public:
 };
 // A set of function descriptors.
 using FunctionDescriptorSet = std::set<FunctionDescriptor*, FunctionDescriptorCompare>;
+using ConstFunctionDescriptorSet = std::set<const FunctionDescriptor*, FunctionDescriptorCompare>;
 // Forward declaration of call descriptor for recursive includes.
 class CallDescriptor;
 // This is to keep members in the CallDescriptorSet in a consistent address order.  The actual
@@ -145,7 +146,7 @@ private:
   // The addresses of the call instructions that call to this function.
   CallTargetSet callers;
   // The call descriptors that are located within this function (the outgoing calls).
-  CallDescriptorSet outgoing_calls;
+  std::set<const CallDescriptor*, CallDescriptorCompare> outgoing_calls;
 
   // The list of possible stack variables. Stored as a pointer vector
   StackVariablePtrList stack_vars;
@@ -272,7 +273,7 @@ private:
 
   void set_name(const std::string& name);
   void set_stack_parameters(StackDelta sd) {
-    auto && guard = write_guard(mutex);
+    write_guard<decltype(mutex)> guard{mutex};
     stack_parameters = sd;
   }
 
@@ -316,12 +317,12 @@ public:
   std::string get_name() const;
 
   rose_addr_t get_address() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return address;
   }
 
   std::string address_string() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return _address_string();
   }
 
@@ -336,28 +337,28 @@ public:
   }
 
   StackDelta get_stack_delta() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return stack_delta;
   }
   const LeafNodePtr get_stack_delta_variable() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return stack_delta_variable;
   }
   void update_stack_delta(StackDelta sd);
 
   // We still need this on the function descriptor a little longer. :-(
   bool is_delete_method() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return delete_method;
   }
   void set_delete_method(bool d) {
-    auto && guard = write_guard(mutex);
+    write_guard<decltype(mutex)> guard{mutex};
     delete_method = d;
   }
 
   // A boolean convenience function for when we only want to test if we're a thunk.
   bool is_thunk() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return (target_address != 0);
   }
 
@@ -372,7 +373,7 @@ public:
   // not a thunk, but it might also be NULL if the function jumps to an address that is not
   // recognized as a function.
   FunctionDescriptor* get_jmp_fd() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return target_func;
   }
 
@@ -383,13 +384,13 @@ public:
 
   // A convenience function to test whether we're the target of one or more thunks.
   bool is_thunk_target() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return (thunks.size() != 0);
   }
 
   // Add a function to the list of function descriptors who are thunks to this function.
   void add_thunk(FunctionDescriptor *t) {
-    auto && guard = write_guard(mutex);
+    write_guard<decltype(mutex)> guard{mutex};
     thunks.insert(t);
   }
   // Return the list of functions that are thunks to this function.
@@ -398,8 +399,8 @@ public:
   }
 
   // Add a call descriptor as an outgoing call.
-  void add_outgoing_call(CallDescriptor *cd) {
-    auto && guard = write_guard(mutex);
+  void add_outgoing_call(const CallDescriptor *cd) {
+    write_guard<decltype(mutex)> guard{mutex};
     outgoing_calls.insert(cd);
   }
   // Return the list of outgoing calls.
@@ -409,13 +410,13 @@ public:
 
   // Add a caller to the list of functions that call this function.
   void add_caller(rose_addr_t addr) {
-    auto && guard = write_guard(mutex);
+    write_guard<decltype(mutex)> guard{mutex};
     callers.insert(addr);
   }
   auto get_callers() const { return make_read_locked_range(callers, mutex); }
 
   StackDelta get_stack_parameters() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return stack_parameters;
   }
   // Cory wants to isolate this better.  Maybe with friend, or by moving defuse code into funcs?
@@ -423,19 +424,19 @@ public:
   const ParameterList& get_parameters() const { return parameters; }
 
   void set_returns_this_pointer(bool r) {
-    auto && guard = write_guard(mutex);
+    write_guard<decltype(mutex)> guard{mutex};
     returns_this_pointer = r;
   }
   bool get_returns_this_pointer() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return returns_this_pointer;
   }
   void set_never_returns(bool n) {
-    auto && guard = write_guard(mutex);
+    write_guard<decltype(mutex)> guard{mutex};
     never_returns = n;
   }
   bool get_never_returns() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return never_returns;
   }
 
@@ -445,7 +446,7 @@ public:
 
   // Get the number of stack delta analysis failures.
   size_t get_stack_analysis_failures() const {
-    auto && guard = write_guard(pdg_mutex);
+    write_guard<decltype(pdg_mutex)> guard{pdg_mutex};
     return stack_analysis_failures;
   }
 

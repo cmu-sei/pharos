@@ -22,7 +22,7 @@ protected:
   DescriptorSet const & descriptor_set;
 
   // Multi-threaded protection
-  mutable std::mutex mutex;
+  mutable std_mutex mutex;
 
 public:
 

@@ -243,8 +243,8 @@ protected:
   // ==================================================================================
 
   SymbolicValuePtr
-  get_eip_condition(const BlockAnalysis& pred_analysis,
-                    SgAsmBlock* pblock, const rose_addr_t bb_addr);
+  get_address_condition(const BlockAnalysis& pred_analysis,
+                        SgAsmBlock* pblock, const rose_addr_t bb_addr);
 
   // Create BlockAnalysis objects for each basic block in the function.
   void create_blocks();
@@ -376,13 +376,13 @@ public:
   void print_dependents() const;
 };
 
-// Fetch the condition for symbolic value. This method is fairly narrow and meant to extract
-// the condtion in a symbolic value that will reach an address (next_addr). This condition may
-// be nested or otherwise complex.
-bool
- get_expression_condition(SymbolicValuePtr sv, rose_addr_t next_addr,
-                          std::vector<TreeNodePtr>& condition_list,
-                          SymbolicValuePtr& final_condition, bool direction=true);
+// Fetch the combinared condition for an address. This method is fairly narrow and meant to
+// extract the condtion in a symbolic value that will reach an address (next_addr). This
+// condition may be nested or otherwise complex. Coud this be generalized to find the
+// conditions to an arbirary node regardless of whether it is a leaf? Probably, but testing
+// node equivalence is tricky
+SymbolicValuePtr
+get_leaf_condition(SymbolicValuePtr sv, TreeNodePtr target_leaf, TreeNodePtr parent_condition, bool direction=true);
 
 
 } // namespace pharos

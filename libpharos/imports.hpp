@@ -29,17 +29,11 @@ namespace pharos {
 class ImportDescriptor : private Immobile {
   static constexpr auto unknown_name = "*INVALID*";
 
-  DescriptorSet& ds;
-
   mutable shared_mutex mutex;
 
   // The address of the import descriptor.  This can be NULL or invalid if the import
   // descriptor has not been found yet.
   rose_addr_t address = 0;
-
-  // The SgAsmImportItem object.  This member call be NULL if the import descriptor was created
-  // by the user or resolved from so kind of import obfucsation technique.
-  SgAsmPEImportItem* item = nullptr;
 
   // This is a private function descriptor that records the stack delta, calling convention,
   // etc. for the function that the import ultimately calls out to.  This information can not
@@ -69,7 +63,7 @@ class ImportDescriptor : private Immobile {
 
  public:
 
-  ImportDescriptor(DescriptorSet& ds_) : ds(ds_), function_descriptor(ds_) {
+  ImportDescriptor(DescriptorSet& ds_) : function_descriptor(ds_) {
     name = unknown_name;
     dll = unknown_name;
     loader_variable = SymbolicValue::loader_defined();
@@ -79,33 +73,33 @@ class ImportDescriptor : private Immobile {
 
   auto get_callers() const { return make_read_locked_range(callers, mutex); }
   bool is_name_valid() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return name != unknown_name;
   }
   bool is_dll_valid() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return dll != unknown_name;
   }
   const std::string & get_name() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return name;
   }
   size_t get_ordinal() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return ordinal;
   }
   const std::string & get_dll_name() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return dll;
   }
   std::string get_long_name() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return dll + ":" + name;
   }
   std::string get_normalized_name() const;
   std::string get_best_name() const;
   std::string get_ordinal_name() const {
-    auto && guard = read_guard(mutex);
+    read_guard<decltype(mutex)> guard{mutex};
     return to_lower(dll) + ":" + str(boost::format("%d") % ordinal);
   }
   rose_addr_t get_address() const { return address; }
@@ -121,7 +115,7 @@ class ImportDescriptor : private Immobile {
   StackDelta get_stack_parameters() const { return function_descriptor.get_stack_parameters(); }
 
   void add_caller(rose_addr_t addr) {
-    auto && guard = write_guard(mutex);
+    write_guard<decltype(mutex)> guard{mutex};
     callers.insert(addr);
   }
 

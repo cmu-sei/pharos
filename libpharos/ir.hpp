@@ -260,10 +260,10 @@ namespace pharos {
 
       // Stream output
       friend std::ostream& operator<<(std::ostream &out, const IR &ir) {
-        auto cfg = ir.get_cfg ();
-        boost::write_graphviz (out, cfg,
-                               boost::make_label_writer(boost::get(boost::vertex_ir_t(), cfg)),
-                               boost::make_label_writer(boost::get(boost::edge_name_t(), cfg)));
+        auto tmpcfg = ir.get_cfg ();
+        boost::write_graphviz (out, tmpcfg,
+                               boost::make_label_writer(boost::get(boost::vertex_ir_t(), tmpcfg)),
+                               boost::make_label_writer(boost::get(boost::edge_name_t(), tmpcfg)));
         return out;
       }
     };
@@ -296,6 +296,10 @@ namespace pharos {
     // specified address.  The address must be present in the IR, and
     // can be in the middle of a basic block.
     IR change_entry (const IR& ir, rose_addr_t new_entry);
+
+    // Initialize the stack pointer to a constant value at the
+    // beginning of the program.
+    IR init_stackpointer (const IR& ir_);
 
     // This function returns a set of all registers used by the program.
     std::set<Register> get_all_registers (const IR& ir);
@@ -349,14 +353,6 @@ namespace pharos {
     // the call graph) from executions starting from 'from', and
     // ending at 'to'.
     void cut1_cg(CG& cg, CGVertex from, CGVertex to);
-
-    // This function inlines all calls from the specific function
-    // according to the provided call graph.
-    IR inline_cg(const CG& cg, const FunctionDescriptor* fd);
-
-    // This function inlines all calls from the provided entry
-    // function according to the provided call graph.
-    IR inline_cg(const CG& cg, const CGVertex entryv, const IR& entryir);
 
     // This function provides a CFG containing code that may be
     // executed in executions from 'from' to 'to', with function calls

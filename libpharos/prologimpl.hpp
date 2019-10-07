@@ -439,29 +439,28 @@ void p2c(T * & arg, xsb_term pt) {
 
 std::ostream & output_atom(std::ostream & stream, const char * atom);
 
-class restore_flags_t {
+class restore_flags {
  public:
-  explicit restore_flags_t(std::ostream & s) : stream(s), flags(s.flags()) {}
-  restore_flags_t(restore_flags_t const &) = delete;
-  restore_flags_t(restore_flags_t && other) : stream(other.stream), flags(other.flags) {
+  explicit restore_flags(std::ostream & s) : stream(s), flags(s.flags()) {}
+  restore_flags(restore_flags const &) = delete;
+  restore_flags(restore_flags && other) : stream(other.stream), flags(other.flags) {
     other.restore = false;
   }
-  restore_flags_t & operator=(restore_flags_t const &) = delete;
-  restore_flags_t & operator=(restore_flags_t &&) = delete;
-  ~restore_flags_t() { if (restore) stream.flags(flags); }
+  restore_flags & operator=(restore_flags const &) = delete;
+  restore_flags & operator=(restore_flags &&) = delete;
+  ~restore_flags() { if (restore) stream.flags(flags); }
  private:
   bool restore = true;
   std::ostream & stream;
   decltype(stream.flags()) flags;
 };
 
-inline auto restore_flags(std::ostream & stream) {
-  return restore_flags_t{stream};
-}
-
 std::ostream & term_to_stream(std::ostream & stream, xsb_term pt);
 
-struct print_term_t {
+class print_term_t {
+
+ public:
+
   std::ostream & stream;
   print_term_t(std::ostream & s) : stream(s) {}
 
@@ -471,7 +470,7 @@ struct print_term_t {
       stream << '-';
       sint = -sint;
     }
-    auto && flag_guard = restore_flags(stream);
+    restore_flags flag_guard{stream};
     stream << std::hex << std::showbase << sint;
     return stream;
   }
@@ -520,7 +519,7 @@ struct print_term_t {
   }
 
   template <typename T, typename... Args>
-  std::ostream & operator()(BaseFunctor<T, Args...> const & func, detail::Index<>) {
+  std::ostream & operator()(BaseFunctor<T, Args...> const &, detail::Index<>) {
     return stream;
   }
 
@@ -543,7 +542,7 @@ struct print_term_t {
 
   template <typename T>
   std::ostream & operator()(Var<T> const & arg) {
-    auto && flag_guard = restore_flags(stream);
+    restore_flags flag_guard{stream};
     stream << 'V' << std::hex << std::noshowbase << std::uintptr_t(&arg.var);
     return stream;
   }

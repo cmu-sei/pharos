@@ -106,6 +106,37 @@ namespace pharos {
 
       return regs;
     }
+
+    IR init_stackpointer (const IR& ir_) {
+      IR ir = ir_;
+      IRCFG cfg = ir.get_cfg ();
+      IRCFGVertex entry = ir.get_entry ();
+      auto stmts = boost::get (boost::vertex_ir_t (), cfg, entry);
+      auto sp = ir.get_reg (ir.get_ds ()->get_arch_reg ("esp"));
+
+      // Write a constant value to the stack pointer
+      int64_t constant;
+      switch (sp->nBits ()) {
+      case 32:
+	constant = 0xbfff0000L;
+	break;
+      case 64:
+	constant = 0x7fffffff0000L;
+	break;
+      default:
+	assert (false);
+        abort ();
+      }
+
+      auto stmt = RegWriteStmt (sp, SymbolicExpr::makeInteger (sp->nBits (), constant));
+
+      // Prepend stmt to the entry block
+      stmts->insert (stmts->begin (), stmt);
+
+      boost::put (boost::vertex_ir_t (), cfg, entry, stmts);
+
+      return ir;
+    }
   };
 };
 
@@ -131,7 +162,7 @@ namespace {
                        process_exp);
 
       boost::for_each (stmts,
-                       [&usedvars, &process_exp] (Stmt &stmt) {
+                       [&process_exp] (Stmt &stmt) {
                         std::set<IRExprPtr> myexps = expsFromStmt(stmt, false);
                         boost::for_each(myexps,
                                         process_exp);
@@ -796,12 +827,12 @@ namespace pharos {
       auto enamemap = boost::get(boost::edge_name_t(), newcfg);
       auto newnamemap = boost::get (boost::vertex_name_t(), newcfg);
       auto newirmap = boost::get (boost::vertex_ir_t(), newcfg);
-      std::map <PD::Graph::ConstVertexIterator, boost::graph_traits<IRCFG>::vertex_descriptor> vertexmap;
+      std::map <size_t, boost::graph_traits<IRCFG>::vertex_descriptor> vertexmap;
 
       // Copy vertices
       for (auto vi = cfg.vertices ().begin (); vi != cfg.vertices ().end (); ++vi) {
         auto nv = boost::add_vertex (newcfg); // Create the new vertex for v
-        vertexmap [vi] = nv;
+        vertexmap [vi->id()] = nv;
 
         const SgAsmInstruction* insn = vi->value ().get_insn ();
         newnamemap [nv] = insn;
@@ -816,9 +847,9 @@ namespace pharos {
       // Copy edges
       for (auto e : cfg.edges ()) {
         auto oldsrc = e.source ();
-        auto newsrc = vertexmap [oldsrc];
+        auto newsrc = vertexmap [oldsrc->id()];
         auto olddst = e.target ();
-        auto newdst = vertexmap [olddst];
+        auto newdst = vertexmap [olddst->id()];
 
         auto t = boost::add_edge (newsrc, newdst, newcfg);
         auto ne = t.first;
@@ -830,7 +861,7 @@ namespace pharos {
           case 0:
             // If we're copying an edge from oldsrc, how can the
             // outdegree be 0?
-            assert(false); break;
+            assert(false); abort();
           case 1:
             cond = EdgeCond (); break;
           case 2:
@@ -1352,12 +1383,20 @@ namespace pharos {
       cg.rebuild_indices ();
     }
 
-    IR inline_cg (const CG& cg, const CGVertex entryv, const IR& entryir) {
-      const CGG& cgg = cg.get_graph ();
+    using SeenFuncs = ConstFunctionDescriptorSet;
+
+    IR inline_cg (const CG& cg, const FunctionDescriptor* entryfd, SeenFuncs seen = {});
+    IR inline_cg (const CG& cg, const CGVertex entryv, const IR& ir, SeenFuncs seen = {});
+
+
+    // This function inlines all calls from the specific function
+    // according to the provided call graph.
+    IR inline_cg (const CG& cg, const CGVertex entryv, const IR& ir, SeenFuncs  seen) {
+      const CGG& cgg = cg.get_graph ();      
       CGVertex targetv;
 
       // Start from the entry node
-      IRCFG cfg = entryir.get_cfg ();
+      IRCFG cfg = ir.get_cfg ();
 
       auto ir_map = boost::get (boost::vertex_ir_t (), cfg);
       auto edgecond_map = boost::get (boost::edge_name_t (), cfg);
@@ -1384,7 +1423,7 @@ namespace pharos {
             assert (last_addr);
             //std::cout << "I am a call statement: " << stmt << " " << call_target << std::endl;
             // Are there any outgoing edges from entry to call_target's function from last_addr?
-            const FunctionDescriptor *targetfd = entryir.get_ds ()->get_func_containing_address (*call_target);
+            const FunctionDescriptor *targetfd = ir.get_ds ()->get_func_containing_address (*call_target);
 
             if (!targetfd) {
               GWARN << "Found an unresolved direct call" << LEND;
@@ -1415,15 +1454,32 @@ namespace pharos {
                             // GCC reports that *last_addr may be used uninitialized, but in
                             // fact this is not true because of fairly complex logic involving
                             // how last_addr is set at the beginning of this loop.
+#if (defined(__GNUC__) && !defined(__clang__))
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                             if (cd->get_address () == *last_addr)
                               return true;
                             else return false;
+#if (defined(__GNUC__) && !defined(__clang__))
 #pragma GCC diagnostic pop
+#endif
                           });
-            if (the_edge == cgoend) {
-              GWARN << "Didn't find the corresponding edge. Doing something like writing assert false." << LEND;
+
+	    // If we didn't find the edge, or if inlining the edge would create a cycle in the
+	    // callgraph, don't do the inlining.
+            if (the_edge == cgoend || seen.count (targetfd)) {
+	      std::string t;
+	      if (the_edge == cgoend) {
+		t = "Didn't find the corresponding edge in the callgraph.";
+	      } else if (seen.count (targetfd)) {
+		t = "Ignoring a backedge in the callgraph since it would create a cycle.";
+	      } else {
+		assert (false);
+                abort ();
+	      }
+
+              GWARN << t << " Doing something like writing assert false." << LEND;
 
               boost::graph_traits<IRCFG>::out_edge_iterator cfgobegin, cfgoend;
               std::tie (cfgobegin, cfgoend) = boost::out_edges (v, cfg);
@@ -1449,7 +1505,7 @@ namespace pharos {
 
 
               // Inline the callee
-              const IR inlinee = inline_cg (cg, targetfd);
+              const IR inlinee = inline_cg (cg, targetfd, seen);
               const IRCFG inlinee_cfg = inlinee.get_cfg ();
 
               boost::graph_traits<IRCFG>::vertex_iterator vi, viend;
@@ -1503,13 +1559,15 @@ namespace pharos {
         }
       }
 
-      return IR (entryir, cfg);
+      return IR (ir, cfg);
     }
 
-    IR inline_cg (const CG& cg, const FunctionDescriptor* entryfd) {
+    // This is just a convenience wrapper for the main definition of inline_cg.
+    IR inline_cg (const CG& cg, const FunctionDescriptor* entryfd, SeenFuncs seen) {
+      seen.insert (entryfd);
       CGVertex entryv = cg.findfd (entryfd);
       IR ir = IR::get_ir (entryfd);
-      return inline_cg (cg, entryv, ir);
+      return inline_cg (cg, entryv, ir, seen);
     }
 
     IR get_inlined_cfg (const CG& cg_,

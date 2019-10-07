@@ -79,7 +79,7 @@ GlobalMemoryDescriptor::to_string() const {
 }
 
 void GlobalMemoryDescriptor::add_value(SymbolicValuePtr new_val) {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
 
   // We should probably implement a std::set<SymbolicValuePtr> under some comparison operation
   // that used to be can_be_equal(), and is now must_be_equal().
@@ -97,7 +97,7 @@ void GlobalMemoryDescriptor::add_value(SymbolicValuePtr new_val) {
 }
 
 void GlobalMemoryDescriptor::short_print(std::ostream &o) const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
 
   o << "Global: addr=" << address_string();
 
@@ -121,7 +121,7 @@ void GlobalMemoryDescriptor::short_print(std::ostream &o) const {
 }
 
 void GlobalMemoryDescriptor::print(std::ostream &o) const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
 
   o << "Global: addr=" << address_string()
     << " asize=" << access_size << " tsize=" << size << LEND;
@@ -139,35 +139,35 @@ void GlobalMemoryDescriptor::print(std::ostream &o) const {
 
 // Are all known memory accesses reads?
 bool GlobalMemoryDescriptor::read_only() const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
   if (writes.size() == 0 && reads.size() > 0) return true;
   return false;
 }
 
 // Are there both read and write memory accesses?
 bool GlobalMemoryDescriptor::read_write() const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
   if (writes.size() > 0 && reads.size() > 0) return true;
   return false;
 }
 
 // Is the descriptor known to be used in memory accesses?
 bool GlobalMemoryDescriptor::known_memory() const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
   if (writes.size() > 0 || reads.size() > 0) return true;
   return false;
 }
 
 // Is the descriptor "suspicious"?  (One of several unlikely cases?)
 bool GlobalMemoryDescriptor::suspicious() const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
   // If we've got no reads, we're probably just missing them.
   if (reads.size() == 0) return true;
   return false;
 }
 
 void GlobalMemoryDescriptor::add_read(SgAsmInstruction* insn, int asize) {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   // Add the instruction to the reads list.
   reads.insert(insn);
 
@@ -184,7 +184,7 @@ void GlobalMemoryDescriptor::add_read(SgAsmInstruction* insn, int asize) {
 }
 
 void GlobalMemoryDescriptor::add_write(SgAsmInstruction* insn, int asize) {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   // Add the instruction to the writes list.
   writes.insert(insn);
 

@@ -193,7 +193,7 @@ void CallDescriptor::validate(std::ostream &o, const FunctionDescriptorMap& fdma
 // calling update_connections, but we want to discourage leaving things in an inconsistent
 // state.
 void CallDescriptor::add_target(rose_addr_t taddr) {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   if (targets.find(taddr) == targets.end()) {
     targets.insert(taddr);
     _update_connections();
@@ -233,7 +233,7 @@ bool CallDescriptor::get_never_returns() const {
 // has targets, we can't handle that properly.  Also, this routine should be kep in sync with
 // the analyze() function that also add an import (but before we can call update_connections).
 void CallDescriptor::add_import_target(ImportDescriptor* id) {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
 
   // If we've already resolved this call, just return immediately.
   if (import_descriptor == id)
@@ -377,7 +377,7 @@ void CallDescriptor::_update_connections() {
 }
 
 void CallDescriptor::update_call_type(CallType ct, GenericConfidence conf) {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   call_type = ct;
   confidence = conf;
 }
@@ -387,7 +387,7 @@ CallDescriptor::add_virtual_resolution(
   VirtualFunctionCallInformation& vci,
   GenericConfidence conf)
 {
-  auto && guard = write_guard(mutex);
+  write_guard<decltype(mutex)> guard{mutex};
   // Begin by marking the call as a virtual function call.
   call_type = CallVirtualFunction;
   confidence = conf;
@@ -396,7 +396,7 @@ CallDescriptor::add_virtual_resolution(
 }
 
 void CallDescriptor::print(std::ostream &o) const {
-  auto && guard = read_guard(mutex);
+  read_guard<decltype(mutex)> guard{mutex};
 
   if (insn != NULL) {
     o << "Call: insn=" << debug_instruction(insn, 7);

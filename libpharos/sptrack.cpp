@@ -27,7 +27,7 @@ std::string neghex(int x) {
 void spTracker::update_delta(rose_addr_t addr, StackDelta const & sd, size_t & failures) {
   StackDelta current = get_delta(addr);
 
-  std::lock_guard<std::mutex> guard{mutex};
+  write_guard<decltype(mutex)> guard{mutex};
 
   // This status reporting is substantially more verbose than we will need after we've
   // debugged this throughly.  In the mean time, I'd like to log every questionable update.
@@ -79,7 +79,7 @@ void spTracker::update_delta(rose_addr_t addr, StackDelta const & sd, size_t & f
 }
 
 const StackDelta spTracker::get_delta(rose_addr_t addr) const {
-  std::lock_guard<std::mutex> guard{mutex};
+  write_guard<decltype(mutex)> guard{mutex};
   auto finder = deltas.find(addr);
   if (finder == deltas.end()) return StackDelta(0, ConfidenceNone);
   else return finder->second;
@@ -90,7 +90,7 @@ const StackDelta spTracker::get_call_delta(rose_addr_t addr, size_t & failures) 
   const CallDescriptor* cd = descriptor_set.get_call(addr);
   SDEBUG << "Getting stack delta for call " << addr_str(addr) << LEND;
 
-  std::lock_guard<std::mutex> guard{mutex};
+  write_guard<decltype(mutex)> guard{mutex};
 
   if (cd == NULL) {
     failures++;
@@ -115,7 +115,7 @@ const StackDelta spTracker::get_call_delta(rose_addr_t addr, size_t & failures) 
 void spTracker::dump_deltas(std::string filename) const {
   FILE *csv = fopen(filename.c_str(), "w");
 
-  std::lock_guard<std::mutex> guard{mutex};
+  write_guard<decltype(mutex)> guard{mutex};
 
   for (const FunctionDescriptorMap::value_type& pair : descriptor_set.get_func_map()) {
     rose_addr_t faddr = pair.first;

@@ -152,8 +152,8 @@ public:
   // Perhaps this should be set at construction in the future?
   // void analyze(rose_addr_t addr);
 
-  size_t get_size() const { auto && guard = read_guard(mutex); return size; }
-  void set_size(size_t s) { auto && guard = write_guard(mutex); size = s; }
+  size_t get_size() const { read_guard<decltype(mutex)> guard{mutex}; return size; }
+  void set_size(size_t s) { write_guard<decltype(mutex)> guard{mutex}; size = s; }
   size_t get_access_size() const { return access_size; }
 
   void short_print(std::ostream &o) const;

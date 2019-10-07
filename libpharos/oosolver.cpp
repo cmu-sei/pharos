@@ -73,7 +73,7 @@ OOSolver::OOSolver(DescriptorSet & ds_, const ProgOptVarMap& vm) : ds(ds_)
 
   debugging_enabled = false;
   if (vm.count("prolog-debug")) {
-    debugging_enabled = true;
+    plog[Sawyer::Message::INFO].enable();
   }
 
   tracing_enabled = false;
@@ -1030,9 +1030,9 @@ SolveMemberAccessFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
         // words, the biggest size wins
         if (existing_elm->get_size() < mbr_size) {
 
-          OINFO << "Class member: "<< cls->get_name() << " @ " << addr_str(mbr_off)
+          GDEBUG << "Class member: "<< cls->get_name() << " @ " << addr_str(mbr_off)
                  << " has a conflicting size with access, previous size=" << existing_elm->get_size()
-                 << " access size=" << mbr_size;
+                 << " access size=" << mbr_size << LEND;
 
           existing_elm->set_size(mbr_size);
         }

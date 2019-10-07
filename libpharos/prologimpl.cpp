@@ -1,4 +1,4 @@
-// Copyright 2016-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Michael Duggan
 
@@ -80,7 +80,7 @@ std::ostream & output_atom(std::ostream & stream, const char * atom)
 
 std::ostream & term_to_stream(std::ostream & stream, xsb_term pt)
 {
-  auto && flag_guard = restore_flags(stream);
+  restore_flags flag_guard{stream};
   if (impl::is_int(pt)) {
     int64_t sint = int64_t(impl::p2c_int(pt));
     if (sint < 0) {

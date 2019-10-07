@@ -361,7 +361,10 @@ namespace {
         if (i != funcs.end ()) {
           int nbits = ds.get_arch_bits ();
           Register eax = ir.get_reg(ds.get_arch_reg("eax"));
-          IRExprPtr nv = SymbolicExpr::makeVariable (nbits, ec->first + "!" + ec->second + "@" + addr_str (std::get<2> (cs)->get_address ()));
+	  std::stringstream vname;
+	  vname << ec->first << "!" << ec->second << "@" << addr_str (std::get<2> (cs)->get_address ())
+		<< ":" << n;
+          IRExprPtr nv = SymbolicExpr::makeVariable (nbits, vname.str ());
           ignore = true;
           n++;
           return (Stmt) (RegWriteStmt (eax, nv));

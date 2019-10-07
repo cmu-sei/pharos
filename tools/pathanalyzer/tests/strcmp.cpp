@@ -3,11 +3,17 @@
 #include "test.hpp"
 
 int main () {
-  char str[20];
   path_start ();
+  char str[20];
 
   if (__builtin_strcmp (str, "Hello world!") == 0) {
     path_goal ();
+  }
+
+  str[4] = 0;
+
+  if (__builtin_strcmp (str, "Hello world!") == 0) {
+    path_nongoal ();
   }
   return 0;
 }
