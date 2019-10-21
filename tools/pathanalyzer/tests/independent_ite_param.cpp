@@ -18,6 +18,11 @@ void func(int n, int k, int j) {
   if (x == 3) {
     path_goal();
   }
+  // Not enough increments to reach 5.
+  volatile int t = n; // volatile to prevent optimization of nongoal
+  if (t == 5) {
+    path_nongoal();
+  }
 }
 
 int main() {

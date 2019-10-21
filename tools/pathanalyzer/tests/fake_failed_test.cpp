@@ -5,4 +5,5 @@
 int main() {
   path_start();
   path_goal();
+  if (false) { path_nongoal(); }
 }

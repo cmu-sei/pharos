@@ -10,6 +10,10 @@ void func(volatile int n) {
     }
   }
   path_goal();
+  volatile int x = n; // volatile to prevent optimization of nongoal
+  if (x > n) {
+    path_nongoal();
+  }
 }
 int main() {
   func(INT_RAND);

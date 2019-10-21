@@ -20,4 +20,9 @@ int main() {
   if (x == 3) {
     path_goal();
   }
+  // Not enough increments to reach 4.
+  volatile int t = x; // volatile to prevent optimization of nongoal
+  if (t == 4) {
+    path_nongoal();
+  }
 }

@@ -26,5 +26,11 @@ int main() {
     goal = 1;
   }
 
+  // Not one of the possible values of goal.
+  volatile int t = goal; // volatile to prevent optimization of nongoal
+  if (t == 3) {
+    path_nongoal();
+  }
+
   return goal;
 }

@@ -7,6 +7,10 @@ static void func(int n) {
   path_start();
   if (n == 2) {
     n++;
+    volatile int x = n; // volatile to prevent optimization of nongoal
+    if (x < 2) {
+      path_nongoal();
+    }
   }
   path_goal();
 }

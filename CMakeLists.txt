@@ -22,6 +22,10 @@ set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
 
 include(AddCXXCompilerFlags)
 add_cxx_compiler_flags(-Wall -Wextra -Wshadow -Wstrict-aliasing -Wno-misleading-indentation "-ftemplate-depth=1024")
+option(PHAROS_FAIL_ON_WARNING "Cause compilation to fail if a warning is generated" OFF)
+if(PHAROS_FAIL_ON_WARNING)
+  add_cxx_compiler_flags(-Werror)
+endif()
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH true)
 

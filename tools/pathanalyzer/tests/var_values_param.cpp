@@ -3,8 +3,12 @@
 #include "test.hpp"
 
 void func(int x, int y, int z, bool b, char c) {
+  volatile int t = z; // volatile to prevent optimization of nongoal
   if (x==2 && y==(x+8) && b==false && z>7 && c==12) {
     path_goal();
+    if (t < x) {
+      path_nongoal();
+    }
   }
 }
 int main() {

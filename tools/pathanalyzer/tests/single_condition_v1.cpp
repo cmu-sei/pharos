@@ -4,7 +4,7 @@
 
 int main() {
   path_start();
-  int n=INT_RAND;
+  int n = INT_RAND;
   if (n == 2) {
     n++;
   }

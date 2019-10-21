@@ -5,11 +5,16 @@
 // This function becomes inlined
 NOINLINE int func1(int n) {
   path_goal();
+  if (n < 1) {
+    path_nongoal();
+  }
   return n;
 }
 void func0(int n) {
-  func1(n);
-  func1(n+0x42);
+  if (n > 0 && n < 10) {
+    func1(n+2);
+    func1(n+4);
+  }
 }
 int main() {
   path_start();

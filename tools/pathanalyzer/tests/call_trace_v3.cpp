@@ -11,9 +11,15 @@ int far_add(int n) {
 int main() {
   int n = INT_RAND; // 3
   path_start();
-  n = far_add(n); // n = 3+1 = 4
-  n = far_add(n); // n = 4+1 = 5
-  if (n == 5) {
-    path_goal();
+  if (n >= 0 && n < 10) {
+    n = far_add(n); // n = 3+1 = 4
+    n = far_add(n); // n = 4+1 = 5
+    volatile int x = n; // volatile to prevent optimization of nongoal
+    if (n == 5) {
+      path_goal();
+    }
+    if (x == 1) {
+      path_nongoal();
+    }
   }
 }

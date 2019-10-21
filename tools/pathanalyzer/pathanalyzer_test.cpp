@@ -122,9 +122,12 @@ TEST_P(PATestFixture, TestWP) {
 
   PATestConfiguration test = GetParam();
 
-  if (test.name=="" || test.start==INVALID_ADDRESS ||
+  if (test.name=="" || test.start==INVALID_ADDRESS || test.bad==INVALID_ADDRESS ||
       (test.goal==INVALID_ADDRESS && test.bad==INVALID_ADDRESS)) {
-    FAIL() << "Improper configuration!";
+    // Rather than fail gracefully here, we want to abort so that's it's easier to
+    // differentiate cases where compilation optimized away the path_nongoal() test.
+    //FAIL() << "Improper configuration!";
+    abort();
     return;
   }
 

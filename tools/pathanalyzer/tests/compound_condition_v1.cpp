@@ -8,7 +8,8 @@ int main() {
   if (n > 2 && n < 10) {
     path_goal();
   }
-  if (n == 2 && n == 10) {
+  volatile int x = n; // volatile to prevent optimization of nongoal
+  if (x == 2 && x == 10) {
     path_nongoal();
   }
 }

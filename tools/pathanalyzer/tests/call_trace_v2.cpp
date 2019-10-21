@@ -14,9 +14,15 @@ int func0(int n) {
 int main() {
   int n = INT_RAND; // 2
   path_start();
-  n = func0(n); // n = (0+3) +1 +1 = 3
-  if (n == 5) {
-    path_goal();
+  if (n >= 0 && n < 10) {
+    n = func0(n); // n = (0+3) +1 +1 = 3
+    volatile int x = n; // volatile to prevent optimization of nongoal
+    if (n == 5) {
+      path_goal();
+    }
+    if (x == 2) {
+      path_nongoal();
+    }
   }
 }
 

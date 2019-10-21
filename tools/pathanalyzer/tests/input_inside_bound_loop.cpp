@@ -3,15 +3,19 @@
 #include "test.hpp"
 
 int main() {
-  int sum;
   path_start();
-  sum = 0;
+  int sum = 0;
 
   while (sum < 100) {
     sum += INT_RAND;
   }
 
   path_goal ();
+
+  volatile int t = sum; // volatile to prevent optimization of nongoal
+  if (t == 0) {
+    path_nongoal();
+  }
 
   return sum;
 }

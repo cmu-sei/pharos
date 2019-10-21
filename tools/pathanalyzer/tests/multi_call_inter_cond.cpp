@@ -7,6 +7,9 @@ void func2(int n) {
     // This is only reachable when the n==5 condition is true
     path_goal();
   }
+  if (n == 3) {
+    path_nongoal();
+  }
 }
 void func1(int n) {
   if (n==5) {
@@ -15,8 +18,8 @@ void func1(int n) {
   else if (n>5) {
     func2(n);
   }
-  else {
-    func2(n+0x42); // not valid because the arg!=5
+  else if (n > 0 && n < 20) {
+    func2(n+7); // not valid because the arg!=5
   }
 }
 int main() {

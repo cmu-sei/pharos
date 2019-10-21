@@ -1,2 +1,2 @@
 #!/bin/bash
-@XSB_PROGRAM@ --noprompt -e "asserta(library_directory('@CMAKE_CURRENT_BINARY_DIR@')),[setup],[report],assert(logLevel(7)),rTTISolve('${1}'),reportRTTIResults."
+@XSB_PROGRAM@ --noprompt -e "asserta(library_directory('@CMAKE_CURRENT_BINARY_DIR@')),[setup],[report],assert(logLevel(7)),rTTISolve('${1}'),reportRTTIResults,halt."

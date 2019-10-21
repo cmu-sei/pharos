@@ -11,5 +11,8 @@ int main() {
       path_goal();
     }
     ++i;
+    if (i > n) {
+      path_nongoal();
+    }
   }
 }

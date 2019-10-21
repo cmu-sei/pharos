@@ -618,7 +618,15 @@ reasonVFTableOverwrite(VFTable1, VFTable2, Offset) :-
     possibleVFTableOverwrite(_Insn1, _Insn2, Method, Offset, VFTable1, VFTable2),
     factVFTable(VFTable1),
     factVFTable(VFTable2),
-    factConstructor(Method).
+    factConstructor(Method),
+
+    % Debugging
+    %not(factVFTableOverwrite(VFTable1, VFTable2, Offset)),
+    %logtrace('reasonVFTableOverwrite_A('),
+    %logtrace(VFTable1), logtrace(', '),
+    %logtrace(VFTable2), logtrace(', '),
+    %logtrace(Offset), logtraceln(').'),
+    true.
 
 % Because VFTable1 is overwritten by VFTable2, and the method is a NOT a constructor, so we're
 % overwriting tables in the "opposite" direction, meaning that the order of the instructions is
@@ -635,7 +643,15 @@ reasonVFTableOverwrite(VFTable2, VFTable1, Offset) :-
     % a VFTable write, so it's a bit duplicative here.  In the end, factNOTConstructor() may be
     % sufficient even if it's a little confusing.
     certainConstructorOrDestructor(Method),
-    factNOTConstructor(Method).
+    factNOTConstructor(Method),
+
+    % Debugging
+    %not(factVFTableOverwrite(VFTable2, VFTable1, Offset)),
+    %logtrace('reasonVFTableOverwrite_B('),
+    %logtrace(VFTable2), logtrace(', '),
+    %logtrace(VFTable1), logtrace(', '),
+    %logtrace(Offset), logtraceln(').'),
+    true.
 
 % --------------------------------------------------------------------------------------------
 % A new approach to associating VFTables with Classes?  This is not a fact concluding rule
@@ -1815,6 +1831,7 @@ reasonMergeClasses_B(BaseClass, MethodClass) :-
     iso_dif(BaseClass, MethodClass),
 
     % Debugging.
+    %not(find(BaseClass, MethodClass)),
     %logtrace('reasonMergeClasses_B('),
     %logtrace(BaseClass), logtrace(', '),
     %logtrace(MethodClass), logtrace(', '),
@@ -1845,30 +1862,50 @@ reasonMergeClasses_C(Class, ExistingClass) :-
     not(factObjectInObject(ExistingClass, _0InnerClass, 0)),
 
     % Debugging
-    %not(find(Class1, Class2)),
+    %not(find(Class, ExistingClass)),
     %logtrace('reasonMergeClasses_C('),
     %logtrace(Class), logtrace(', '),
     %logtrace(ExistingClass), logtraceln(').'),
     true.
 
+% If there are two implementations of the constructor on the same class, they should be merged
+% into a single class.  For example Cls1(int x) and Cls1(char y).  When the class has virtual
+% methods, this case can be easily detected by observing that the same VFTable is written into
+% offset zero of the object.  Unfortunately, the inlining of base class constructors can
+% confuse this simple rule, because there is more than one VFTableWrite in the constructor (one
+% for this class and one for the inlined base class).  The solution is to block this rule from
+% applying in the cases where the VFTable is overwritten (the VFTable from the inlined base
+% class constructor).
 % PAPER: Merging-1
 % ED_PAPER_INTERESTING
 reasonMergeClasses_D(Method1, Method2) :-
-    % There's some recurring confusion about _which_ tables must be the same.  In particular
-    % when base class constructors are inlined and in multiple/virtual inheritance scenarios.
-    % In the strictest form, this rule would require that both offsets be zero.  In the loosest
-    % form, any two VFTable writes would be sufficient to merge them.  These rules need more
-    % discussion about what the compiler might actually generate.  Currently, we require that
-    % they match which is sort of midway inbetween.  Regardless of what the correct logic is,
-    % it's important that this rule continue to match the constraint, since allowing the two to
-    % be out of sync can result in excessive backtracking.
-    factVFTableWrite(_Insn1, Method1, ObjectOffset, VFTable),
-    factVFTableWrite(_Insn2, Method2, ObjectOffset, VFTable),
+    % We've been back and forth several times about whether the object offset that the VFTable
+    % address is written into should bound to zero or not.  Cory currently believes that while
+    % the rule _might_ apply in cases where the offset is non-zero, the obvious case occurs
+    % when the offset is zero.  Instances of object embedding at non-zero offsets might
+    % coincidentally be unrelated classes that happen to embed something at the same offset.
+    % Instances of multiple inheritance should always be accompanied by a VFTable at offset
+    % zero that will trigger the rule.  The interesting case is when our knowledge is
+    % imperfect because the VFTableWrite at offset zero has not been proven yet.  In those
+    % cases it's unclear if a weaker restriction on ObjectOffset would be helpful.
+    ObjectOffset = 0,
 
-    % Method1 and Method2 cannot be purecall already.
+    % Find two different methods that both install the same VFTable at the same offset.
+    factVFTableWrite(Insn1, Method1, ObjectOffset, VFTable),
+    factVFTableWrite(Insn2, Method2, ObjectOffset, VFTable),
+    % Just to block the silliness of picking the same method as early as possible.
+    iso_dif(Method1, Method2),
+    % Method1 and Method2 cannot be purecall already (due to factVFTableWrite)
 
-    % And the VFTable we're basing this conclusion on is not an overwritten VFTable.
-    not(factVFTableOverwrite(VFTable, _OtherVFTable, _OtherOffset)),
+    % Neither VFTable write may be overwritten by any other VFTable.  Use the unproven
+    % possibleVFTableOverwrite facts here, because this is an exception to the rule, and we may
+    % not have yet proven the pre-requisites to know that the overwrites are proven.  But we
+    % should not merge classes until we're sure that this exception does NOT apply!
+    % Unfortunately, because there's no way to "disprove" the possible facts, we'll never apply
+    % this rule if the possibilty of an exception exists.  That's ok because we can always
+    % merge for other proven reasons, or guess that this is a legitimate class merge.
+    not(possibleVFTableOverwrite(Insn1, _OtherInsn2, Method1, ObjectOffset, VFTable, _OtherVFTable1)),
+    not(possibleVFTableOverwrite(Insn2, _OtherInsn3, Method2, ObjectOffset, VFTable, _OtherVFTable2)),
 
     % And the existing classes are not the same already, which is obviously wrong...
     find(Method1, Class1),
@@ -1996,7 +2033,7 @@ reasonMergeClasses_H(DerivedClass, MethodClass) :-
     find(Method, MethodClass),
     iso_dif(DerivedClass, MethodClass),
     % Debugging
-    %not(find(Class1, Class2)),
+    %not(find(DerivedClass, MethodClass)),
     %logtrace('reasonMergeClasses_H('),
     %logtrace(DerivedVFTable), logtrace(', '),
     %logtrace(BaseVFTable), logtrace(', '),

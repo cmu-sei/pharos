@@ -15,6 +15,10 @@ tryBinarySearchInt(PosPred, NegPred, L) :-
     %logtrace('tryBinarySearch on '), logtraceln(L),
     !,
     (call(PosPred, X);
+     logwhere('The guess '), logwhere(PosPred), logwhere('('), logwhere(X),
+     logwhereln(') was inconsistent with a valid solution.'),
+     logwhere('Guessing '), logwhere(NegPred), logwhere('('), logwhere(X),
+     logwhereln(') instead.'),
      call(NegPred, X)).
 
 tryBinarySearchInt(PosPred, NegPred, List) :-
@@ -33,8 +37,9 @@ tryBinarySearchInt(PosPred, NegPred, List) :-
 
     tryBinarySearchInt(PosPred, NegPred, NewList).
 
-tryBinarySearchInt(_PP, _NP, _L) :-
-    %logtrace('tryBinarySearch completely failed on '), logtrace(L), logtraceln(' and will now backtrack to fix an upstream problem.'),
+tryBinarySearchInt(_PP, _NP, L) :-
+    logtrace('tryBinarySearch completely failed on '), logtrace(L),
+    logtraceln(' and will now backtrack to fix an upstream problem.'),
     fail.
 
 % This is a wrapper that limits the number of entries to assert at one time
@@ -97,10 +102,10 @@ guessVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset) :-
 
 guessVirtualFunctionCall :-
     minof((Insn, Constructor, OOffset, VFTable, VOffset),
-	  (likelyVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset),
-	   not(factNOTConstructor(Constructor)),
-	   not(factVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset)),
-	   not(factNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset)))),
+          (likelyVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset),
+           not(factNOTConstructor(Constructor)),
+           not(factVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset)),
+           not(factNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset)))),
 
     guessVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset).
 
@@ -187,33 +192,51 @@ tryNOTVBTable(VBTable) :-
 % --------------------------------------------------------------------------------------------
 % Try guessing that a virtual function table entry is valid.
 % --------------------------------------------------------------------------------------------
+
 prioritizedVFTableEntry(VFTable, Offset, Entry) :-
     % First establish that the guess meets minimal requirements.
     possibleVFTableEntry(VFTable, Offset, Entry),
     factVFTable(VFTable),
-
-    % We should really be able to enforce known methods here, but sadly in the current test
-    % suite we cannot, because a few tests rely on guessing the last member of the VFTable. :-(
-    % Probably the next thing to try is exporting thisCall(Method) facts from OOAnalyzer, so
-    % that we know which guesses are better than garbage.  In other words, guess factMethod()
-    % first based on something other than the VFtableEntry.  In the meantime leave it out.
-
-    % (factMethod(Entry); purecall(Entry)),
-
     % Then that it's not already proved or disproved.
     not(factVFTableEntry(VFTable, Offset, Entry)),
-    not(reasonNOTVFTableEntry(VFTable, Offset, Entry)).
+    not(factNOTVFTableEntry(VFTable, Offset, Entry)).
 
-% --------------------------------------------------------------------------------------------
-guessVFTableEntry(VFTable, Offset, Entry) :-
+% First priority guess, when we already know Entry is an OO method.
+guessVFTableEntry1(VFTable, Offset, Entry) :-
     % Choose a prioritized VFTable entry to guess.
     prioritizedVFTableEntry(VFTable, Offset, Entry),
+
+    % Prioritize guesses where we know that the method is actually an OO method first.  This
+    % means that we're not really guessing whether this is a valid entry, we're just guessing
+    % whether it's a valid entry in _this_ table.  This is a very safe guess.
+    (factMethod(Entry); purecall(Entry)),
+
     % Prioritize guessing the largest likely offset first.  This clause leads to make fewer
     % guesses that that imply all of the smaller offsets.  This turns out to be important from
     % a performance perspective because it reduces the number of times we need to check the
     % entire system against the valid solution constraints.
-    not(factVFTableEntry(VFTable, Offset, Entry)),
-    not(factNOTVFTableEntry(VFTable, Offset, Entry)),
+    % ejs: TEMPORARY RULE.  If (V, O, E) is not an entry, then do not guess for any E' <
+    % E. Otherwise we'll keep trying E-4, E-8, and so on.
+    not((factNOTVFTableEntry(VFTable, Offset, OtherEntry), OtherEntry > Entry)),
+    not((prioritizedVFTableEntry(VFTable, LargerOffset, _OtherEntry), LargerOffset > Offset)).
+
+% Second priority guess, when we also have to guess that Entry is an OO method.
+guessVFTableEntry2(VFTable, Offset, Entry) :-
+    % Choose a prioritized VFTable entry to guess.
+    prioritizedVFTableEntry(VFTable, Offset, Entry),
+
+    % While using a weaker standard than the previous VFTableEntry guessing rule, this is also
+    % reasonably safe, because we're only guessing entries where there's a plausible case that
+    % the Entry is at least a function, and also probably a method.  This guess should be
+    % eliminated in favor of the previous rule if possible, but in at least one case in the
+    % test suite, we still need this rule because the last entry in the VFTable has no other
+    % references and so we miss it entirely without this rule.
+    possibleMethod(Entry),
+
+    % Prioritize guessing the largest likely offset first.  This clause leads to make fewer
+    % guesses that that imply all of the smaller offsets.  This turns out to be important from
+    % a performance perspective because it reduces the number of times we need to check the
+    % entire system against the valid solution constraints.
     % ejs: TEMPORARY RULE.  If (V, O, E) is not an entry, then do not guess for any E' <
     % E. Otherwise we'll keep trying E-4, E-8, and so on.
     not((factNOTVFTableEntry(VFTable, Offset, OtherEntry), OtherEntry > Entry)),
@@ -221,7 +244,13 @@ guessVFTableEntry(VFTable, Offset, Entry) :-
 
 guessVFTableEntry :-
     osetof((VFTable, Offset, Entry),
-          guessVFTableEntry(VFTable, Offset, Entry),
+          guessVFTableEntry1(VFTable, Offset, Entry),
+          TupleSet),
+    tryBinarySearch(tryVFTableEntry, tryNOTVFTableEntry, TupleSet).
+
+guessVFTableEntry :-
+    osetof((VFTable, Offset, Entry),
+          guessVFTableEntry2(VFTable, Offset, Entry),
           TupleSet),
     tryBinarySearch(tryVFTableEntry, tryNOTVFTableEntry, TupleSet).
 
@@ -948,11 +977,11 @@ tryNOTMergeClasses(Method1, Method2) :-
 % --------------------------------------------------------------------------------------------
 guessRealDestructor :-
     minof(Method,
-	  (likelyDeletingDestructor(DeletingDestructor, Method),
-	   % Require that we've already confirmed the deleting destructor.
-	   factDeletingDestructor(DeletingDestructor),
-	   not(factRealDestructor(Method)),
-	   not(factNOTRealDestructor(Method)))),
+          (likelyDeletingDestructor(DeletingDestructor, Method),
+           % Require that we've already confirmed the deleting destructor.
+           factDeletingDestructor(DeletingDestructor),
+           not(factRealDestructor(Method)),
+           not(factNOTRealDestructor(Method)))),
 
     guessRealDestructor(Method).
 
@@ -1059,9 +1088,9 @@ tryNOTRealDestructor(Method) :-
 
 guessDeletingDestructor :-
     minof(Method,
-	  (likelyDeletingDestructor(Method, _RealDestructor),
-	   not(factDeletingDestructor(Method)),
-	   not(factNOTDeletingDestructor(Method)))),
+          (likelyDeletingDestructor(Method, _RealDestructor),
+           not(factDeletingDestructor(Method)),
+           not(factNOTDeletingDestructor(Method)))),
 
     guessDeletingDestructor(Method).
 

@@ -1238,15 +1238,15 @@ SolveResolvedVirtualCallFromProlog::solve(std::vector<OOClassDescriptorPtr>& cla
           if (vcall_cd) {
             vftcall->add_virtual_call(vcall_cd, to_addr);
 
-            OINFO << "Added virtual function call for " << cls->get_name()
-                  << " in vftable " << addr_str(vftcall->get_address())
-                  << " from=" << addr_str(vcall_cd->get_address())
-                  << ", to=" << addr_str(to_addr) << LEND;
+            GDEBUG << "Added virtual function call for " << cls->get_name()
+                   << " in vftable " << addr_str(vftcall->get_address())
+                   << " from=" << addr_str(vcall_cd->get_address())
+                   << ", to=" << addr_str(to_addr) << LEND;
           } else {
-            OINFO << "Could not add virtual function call from="
-                  << addr_str(from_addr)
-                  << ", to=" << addr_str(to_addr)
-                  << " due to invalid call descriptor" << LEND;
+            GDEBUG << "Could not add virtual function call from="
+                   << addr_str(from_addr)
+                   << ", to=" << addr_str(to_addr)
+                   << " due to invalid call descriptor" << LEND;
           }
         }
       }

@@ -6,8 +6,10 @@ void func(volatile int n) {
   path_start();
   if (n > 2 && n < 10) {
     path_goal();
+    n++;
   }
-  if (n == 3 && n == 4) {
+  volatile int x = n; // volatile to prevent optimization of nongoal
+  if (x > n) {
     path_nongoal();
   }
 }

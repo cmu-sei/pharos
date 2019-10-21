@@ -9,7 +9,7 @@ int far_add(int n) {
   return add(n);
 }
 int func1() {
-  int n = INT_RAND; // 3
+  int n = SMALL_POSITIVE_RAND; // 3
   n = far_add(n); // n = 3+1 = 4
   return n;
 }
@@ -20,5 +20,9 @@ int main() {
   n += func1();
   if (n == 5) {
     path_goal();
+  }
+  volatile int t = n; // volatile to prevent optimization of nongoal
+  if (t == 0) {
+    path_nongoal();
   }
 }

@@ -3,20 +3,19 @@
 #include "test.hpp"
 
 int main() {
-
-  int x, y, z;
-  bool b;
-  char c;
-
   path_start();
+  int x = INT_RAND;
+  int y = INT_RAND;
+  int z = INT_RAND;
+  bool b = BOOL_RAND;
+  char c = CHAR_RAND;
 
-  x = INT_RAND;
-  y = INT_RAND;
-  z = INT_RAND;
-  b = BOOL_RAND;
-  c = CHAR_RAND;
-
+  volatile int t = z; // volatile to prevent optimization of nongoal
   if (x==2 && y==(x+8) && b==false && z>7 && c==12) {
     path_goal();
+    if (t < x) {
+      path_nongoal();
+    }
   }
+
 }

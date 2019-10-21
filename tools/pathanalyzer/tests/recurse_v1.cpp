@@ -2,13 +2,20 @@
 
 #include "test.hpp"
 
+int func(int count) {
+  if (count==0) {
+    return 0;
+  }
+  return count+func(count-1);
+}
+
 int main() {
   path_start();
   int n = SMALL_POSITIVE_RAND;
-  n++;
-  volatile int t = n; // volatile to prevent optimization of nongoal
-  if (t == 0) {
+  int sum = func(n);
+  path_goal();
+  if (sum < n) {
     path_nongoal();
   }
-  path_goal();
+  return sum;
 }

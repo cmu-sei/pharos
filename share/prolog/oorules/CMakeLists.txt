@@ -1,4 +1,4 @@
-compile_prolog(setup.P progress_oosolver.P report.P rulerun.P util.P validate.P)
+compile_prolog(setup.P progress_oosolver.P report.P util.P validate.P)
 add_custom_target(oorules ALL DEPENDS
   "${CMAKE_CURRENT_BINARY_DIR}/setup.xwam"
   "${CMAKE_CURRENT_BINARY_DIR}/progress_oosolver.xwam"

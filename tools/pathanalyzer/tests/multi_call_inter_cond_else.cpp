@@ -7,13 +7,17 @@ void func1(int n) {
     // This is only reachable when the n==6 condition is true
     path_goal();
   }
+  // Not possible, because 4 becomes 5.
+  if (n==4) {
+    path_nongoal();
+  }
 }
 void func0(int n) {
   if (n==5) {
     func1(n);
   }
   else if (n==4) {
-    func1(n);
+    func1(n+1);
   }
   else {
     // Only valid option

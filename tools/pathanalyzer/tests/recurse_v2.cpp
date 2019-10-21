@@ -4,6 +4,7 @@
 
 int func(int count) {
   if (count==0) {
+    path_goal();
     return 0;
   }
   return count+func(count-1);
@@ -11,7 +12,10 @@ int func(int count) {
 
 int main() {
   path_start();
-  int sum = func(INT_RAND);
-  path_goal();
+  int n = INT_RAND;
+  int sum = func(n);
+  if (sum < n) {
+    path_nongoal();
+  }
   return sum;
 }

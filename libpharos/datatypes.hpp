@@ -349,6 +349,7 @@ public:
   TypeDwordSignedInt where_pdisp{memory};
   TypeDwordSignedInt where_vdisp{memory};
   TypeDword attributes{memory};
+  // The pClass(Hierarchy)Descriptor is optional, and is only present if attributes & 0x40.
   TypeDwordAddr pClassDescriptor{memory};
 
   TypeRTTITypeDescriptor type_desc{memory};

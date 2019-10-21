@@ -53,9 +53,9 @@ osetof(A, B, C) :-
 minof(A, B) :-
     deterministicEnabled
     ->
-	(bagof(A, B, Cp),
-	 sort(Cp, Cp2),
-	 nth0(1, Cp2, A))
+        (bagof(A, B, Cp),
+         sort(Cp, Cp2),
+         nth0(1, Cp2, A))
     ;   B.
 
 %% end list_to_set
@@ -69,22 +69,25 @@ tuple_to_list(A, [A]).
 
 % Call all predicates in list
 all(L) :-
+    all_int(L).
+
+all_debug(L) :-
     length(L, Len),
-    logdebug('Call to all/1 with '),
-    logdebug(Len),
-    logdebugln(' elements...'),
+    logtrace('Call to all/1 with '),
+    logtrace(Len),
+    logtraceln(' elements...'),
     cputime(BeforeTime),
     all_int(L),
     cputime(AfterTime),
     DiffTime is AfterTime - BeforeTime,
-    logdebug('... took '),
-    logdebug(DiffTime),
-    logdebug(' seconds on '),
-    logdebug(Len),
-    logdebug(' elements ('),
+    logtrace('... took '),
+    logtrace(DiffTime),
+    logtrace(' seconds on '),
+    logtrace(Len),
+    logtrace(' elements ('),
     Avg is DiffTime / (Len + 1),
-    logdebug(Avg),
-    logdebugln(' seconds avg).').
+    logtrace(Avg),
+    logtraceln(' seconds avg).').
 
 all_int([]).
 all_int([H|T]) :-
@@ -175,6 +178,11 @@ maplistm2([Elem|Tail], Goal) :-
 
 negative(N, R) :-
     R is 0x7fffffff + 0x7fffffff + 2 - N.
+
+% Bit mask testing.
+bitmask_check(Value, BitMask) :-
+    Result is Value /\ BitMask,
+    Result == BitMask.
 
 % ============================================================================================
 % Debugging and printing.

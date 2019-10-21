@@ -3,13 +3,17 @@
 #include "test.hpp"
 
 int func(int n) {
-  return n+1;
+  return n + 1;
 }
 int main() {
-  int n = INT_RAND;
   path_start();
-  int n2 = func(n+3);
+  int n = INT_RAND;
+  int n2 = func(n + 3);
   if (n2 == 5) {
     path_goal();
+  }
+  volatile int t = n2; // volatile to prevent optimization of nongoal
+  if (n == t) {
+    path_nongoal();
   }
 }

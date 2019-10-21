@@ -56,6 +56,21 @@ possibleVBTableEntry(VBTable, NewOffset, Value) :-
     initialMemory(Address, Value).
 
 % --------------------------------------------------------------------------------------------
+:- table possibleMethod/1 as opaque.
+
+% There's at least some evidence that that address is a function.  Primarily used for
+% separating plausible methods from arbitrary addresses during guessing.
+possibleMethod(Address) :-
+    callingConvention(Address, _CallingConvention);
+    thisCallMethod(Address, _, _);
+    thunk(Address, _Target1);
+    noCallsAfter(Address);
+    noCallsBefore(Address);
+    returnsSelf(Address);
+    purecall(Address);
+    callTarget(_Insn, Address, _Target2).
+
+% --------------------------------------------------------------------------------------------
 :- table possibleVFTable/1 as opaque.
 
 % VFTable writes are sometimes currently missed for a variety of strange reasons.  See 0x40247e

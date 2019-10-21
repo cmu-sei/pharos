@@ -10,7 +10,10 @@ int main() {
   bool b = BOOL_RAND;
   char c = CHAR_RAND;
 
-   if ( (x > 2 && y < 10) || (b==false && z == 7) || (b || c == 'c')) {
+   if ( (x > 2 && y < 10) || (b == false && z == 7) || (b || c == 'c')) {
      path_goal();
+     if (y == 11 && z == 8 && (b == false) && c == 'd') {
+       path_nongoal();
+     }
    }
 }

@@ -4,8 +4,8 @@
 
 int main() {
   path_start();
-  int goal=0;
-  int n=INT_RAND;
+  volatile int goal = 0; // volatile to prevent optimization of nongoal
+  int n = INT_RAND;
 
   if (n >= 1) {
     goal = 1;
@@ -33,6 +33,10 @@ int main() {
     else {
       goal = -10;
     }
+  }
+
+  if (goal == 33) {
+    path_nongoal();
   }
 
   return goal;

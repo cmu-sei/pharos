@@ -7,5 +7,9 @@ int main() {
   int n = 0;
   n++;
   path_goal();
+  volatile int t = n; // volatile to prevent optimization of nongoal
+  if (t == 0) {
+    path_nongoal();
+  }
   return n;
 }

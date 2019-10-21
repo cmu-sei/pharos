@@ -36,7 +36,8 @@ set(ALL_TESTS
   multi_call_inter_cond_else
   multi_call_inter_seq
   multiple_ite
-  multivar_compound_condition
+  multivar_compound_condition_v1
+  multivar_compound_condition_v2
   nested_condition_v1
   nested_condition_v2
   nested_condition_v3
@@ -48,7 +49,6 @@ set(ALL_TESTS
   nested_loop
   oo_simple
   oo_virtual_func
-  param_n_var_conpound_condition
   pointer_write
   rv_cond
   rv_same_var
@@ -61,9 +61,11 @@ set(ALL_TESTS
   single_condition_v2
   strcmp
   unbound_loop_with_var
+  up_and_down_v1
   var_values
   var_values_param
-  recurse
+  recurse_v1
+  recurse_v2
   explosive_conditions_v1 
   # This makes it a little easier to manage the lists in CMake. Don't remove.
   fake_failed_test
@@ -78,14 +80,15 @@ set(ALL_TESTS
 # Function summary approach
 set(FS_FAILING_TESTS
   # We only unroll loops up to five iterations?
-  strcmp
+  # strcmp
   # We don't support register variables?
-  var_values
-  # Reasons?
+  # var_values
+  # Pharos control flow graph incomplete for indirect calls.
   func_array
-  loop_even_odd
+  # Reasons?
+  # loop_even_odd
   # Began failing when we added a second iteration to loop.
-  bound_loop_with_var
+  # bound_loop_with_var
   # This makes it a little easier to manage the lists in CMake. Don't remove.
   fake_failed_test
   )
@@ -93,13 +96,13 @@ set(FS_FAILING_TESTS
 # Weakest precondition approach
 set(WP_FAILING_TESTS
   # Fails because loops are not unrolled
-  strcmp
-  loop_even_odd
-  bound_loop_with_var
+  # strcmp
+  # loop_even_odd
+  # bound_loop_with_var
   # IR does not support indirect calls
   func_array
   # Times out because modulus is hard
-  input_inside_bound_loop_mod
+  # input_inside_bound_loop_mod
   # This makes it a little easier to manage the lists in CMake. Don't remove.
   fake_failed_test
   )
@@ -109,7 +112,7 @@ set(SPACER_FAILING_TESTS
   # IR does not support indirect calls
   func_array
   # Times out because modulus is hard
-  input_inside_bound_loop_mod
+  # input_inside_bound_loop_mod
   # This makes it a little easier to manage the lists in CMake. Don't remove.
   fake_failed_test
   )

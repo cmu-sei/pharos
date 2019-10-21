@@ -7,5 +7,10 @@ int main() {
   int n=INT_RAND;
   if (n == 2) {
     path_goal();
+    n++;
+    volatile int x = n; // volatile to prevent optimization of nongoal
+    if (x == 2) {
+      path_nongoal();
+    }
   }
 }

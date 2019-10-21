@@ -4,10 +4,14 @@
 
 int main() {
   path_start();
-  int n=INT_RAND;
-  for (int i=0; i < n; i++) {
-    for (int j=i; j < n; j++) {
+  int n = INT_RAND;
+  volatile int x = n; // volatile to prevent optimization of nongoal
+  for (int i = 0; i < n; i++) {
+    for (int j = i; j < n; j++) {
       path_goal();
+      if (i > x) {
+        path_nongoal();
+      }
     }
   }
 }

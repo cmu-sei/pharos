@@ -6,11 +6,14 @@ int func(int n) {
   return n+1;
 }
 int main() {
-  int n = INT_RAND;
   path_start();
+  int n = INT_RAND;
+  volatile int x = n; // volatile to prevent optimization of nongoal
   n = func(n);
-
   if (n==37) { // n must start as 36
     path_goal();
+  }
+  if (x == n) {
+    path_nongoal();
   }
 }

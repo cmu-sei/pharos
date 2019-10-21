@@ -4,6 +4,7 @@
 #include <time.h>
 
 #define INT_RAND (rand())
+#define SMALL_POSITIVE_RAND (rand() & 0xFFFF)
 #define BOOL_RAND ((bool)rand())
 #define CHAR_RAND ((char)rand())
 

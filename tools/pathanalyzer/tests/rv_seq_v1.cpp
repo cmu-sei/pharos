@@ -6,11 +6,15 @@ int func(int n) {
   return n+1;
 }
 int main() {
-  int n = INT_RAND; // n = 3
   path_start();
+  int n = INT_RAND; // n = 3
+  volatile int x = n; // volatile to prevent optimization of nongoal
   n = func(n); // n = 4
   n = func(n); // n = 5
   if (n == 5) {
     path_goal();
+  }
+  if (x == n) {
+    path_nongoal();
   }
 }

@@ -5,6 +5,7 @@
 int func(int n) {
   path_start();
   int goal = 0;
+  volatile int x = n; // volatile to prevent optimization of nongoal
 
   if (n >= 1) {
     goal = 1;
@@ -22,12 +23,16 @@ int func(int n) {
           }
         }
         else {
-          goal =  -75;
+          goal = -75;
         }
       }
       else {
-        goal =  -50;
+        goal = -50;
+        if (x == 55) {
+          path_nongoal();
+        }
       }
+
     }
     else {
       goal = -10;

@@ -2,9 +2,10 @@
 
 #include "test.hpp"
 
-int func(int n) {
+int main() {
   path_start();
   int goal=0;
+  int n=INT_RAND;
   int x=INT_RAND;
 
   if (n > 2 && x <= 10) {
@@ -17,8 +18,10 @@ int func(int n) {
     goal = 3;
   }
 
+  volatile int t = goal; // volatile to prevent optimization of nongoal
+  if (t == 2) {
+    path_nongoal();
+  }
+
   return goal;
-}
-int main() {
-  func(INT_RAND);
 }
