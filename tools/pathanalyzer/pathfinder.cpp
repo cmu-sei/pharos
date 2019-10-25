@@ -50,7 +50,7 @@ int pathfinder_main(int argc, char **argv) {
   z3::check_result res;
   boost::optional<z3::expr> ans;
 
-  std::tie(res, ans) = sa.find_path_hierarchical(srcaddr, tgtaddr);
+  std::tie(res, ans) = sa.find_path_hierarchical(srcaddr, tgtaddr, std::shared_ptr<std::ofstream>());
 
   OINFO << "The CHC encoding is:\n" << LEND;
   std::cout << sa.to_string() << "\n";

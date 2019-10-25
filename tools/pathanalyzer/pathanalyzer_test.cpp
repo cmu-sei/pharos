@@ -40,6 +40,7 @@ ImportRewriteSet get_imports () {
     // selected.  As a result we need to include time.
     std::make_pair ("bogus.so", "time"),
     std::make_pair ("bogus.so", "rand"),
+    std::make_pair ("bogus.so", "random"),
     std::make_pair ("bogus.so", "_Znwm"),
     std::make_pair ("MSVCR100D.dll", "rand"),
     std::make_pair ("ucrtbased.dll", "rand")
@@ -102,7 +103,7 @@ bool spacer_method(PATestConfiguration& test, rose_addr_t target, std::shared_pt
 
   SpacerAnalyzer sa(*global_ds, z3, get_imports(), "spacer");
 
-  auto result = sa.find_path_hierarchical (test.start, target);
+  auto result = sa.find_path_hierarchical (test.start, target, smt);
   bool zresult = std::get<0> (result) == z3::sat;
 
 #if 0
@@ -112,8 +113,9 @@ bool spacer_method(PATestConfiguration& test, rose_addr_t target, std::shared_pt
   }
 #endif
 
-  if (smt)
-    *smt << sa.to_string();
+  // Disabled because we're pass the stream to find_path_hierarchical to print before the query.
+  //if (smt)
+  //  *smt << sa.to_string();
 
   return zresult;
 }

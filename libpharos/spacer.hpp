@@ -79,7 +79,7 @@ class SpacerAnalyzer {
     Z3RegMap intra_regs;
   } SpacerRelations;
   using SpacerRelationsMap = std::map<boost::graph_traits<IRCFG>::vertex_descriptor,
-				      SpacerRelations>;
+                                      SpacerRelations>;
 
   const DescriptorSet& ds_;
   PharosZ3Solver& z3_;
@@ -127,6 +127,7 @@ private:
   SpacerResult find_path(rose_addr_t source_addrress, rose_addr_t target_address);
 
   SpacerResult find_path_hierarchical(rose_addr_t source_addrress, rose_addr_t target_address,
+                                      std::shared_ptr<std::ofstream> smt_stream,
                                       std::function<void(CG& cg, CGVertex from, CGVertex to)> cutf = cut1_cg);
 
   // Dump the Fixedpoint

@@ -158,14 +158,14 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
       z3::sort_vector svafter (ctx);
 
       boost::copy (svboth,
-		   z3_vector_back_inserter (svafter));
+                   z3_vector_back_inserter (svafter));
 
       boost::copy (intra_substs
-		       | boost::adaptors::map_values
-		       | boost::adaptors::transformed ([&svafter] (const auto &exp) {
-			   return exp.get_sort ();
-			 }),
-		       z3_vector_back_inserter (svafter));
+                       | boost::adaptors::map_values
+                       | boost::adaptors::transformed ([&svafter] (const auto &exp) {
+                           return exp.get_sort ();
+                         }),
+                       z3_vector_back_inserter (svafter));
 
       z3::func_decl after = z3::function (ss.str (), svafter, ctx.bool_sort ());
       fp_->register_relation (after);
@@ -213,13 +213,13 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
       // temporaries).  Here we keep a list of the intraprocedural
       // regs used in the after relation to make using it easier
       // later.
-      
+
       Z3RegMap intra_regs;
       // Create fresh variables for the intra-block registers
       boost::copy (intra_substs
-		   | boost::adaptors::map_keys
-		   | boost::adaptors::transformed([this] (const Register &x) {return std::make_pair (x, z3_.treenode_to_z3 (x)); }),
-		   std::inserter (intra_regs, intra_regs.end ()));
+                   | boost::adaptors::map_keys
+                   | boost::adaptors::transformed([this] (const Register &x) {return std::make_pair (x, z3_.treenode_to_z3 (x)); }),
+                   std::inserter (intra_regs, intra_regs.end ()));
 
       z3::func_decl after = make_after (v, intra_substs);
 
@@ -263,10 +263,10 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
     z3::expr_vector source_args (ctx);
     // Copy the normal regs from evboth
     boost::copy (evboth,
-		 z3_vector_back_inserter (source_args));
+                 z3_vector_back_inserter (source_args));
     // And then copy the intra-block regs
     boost::copy (relations.at (source).intra_regs | boost::adaptors::map_values,
-		 z3_vector_back_inserter (source_args));
+                 z3_vector_back_inserter (source_args));
 
     auto source_app = source_relation (source_args);
     // The target relation is before the destination BB
@@ -344,6 +344,7 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
 
 SpacerResult
 SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
+                                       std::shared_ptr<std::ofstream> smt_stream,
                                        std::function<void(CG& cg, CGVertex from, CGVertex to)> cutf) {
   CG cg = CG::get_cg (ds_);
   const CGG& cgg = cg.get_graph ();
@@ -772,8 +773,12 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
 
                     });
 
-    // Not needed any more, since we have --smt?
-    //z3_.do_log(to_string());
+    // Write the problem out before making the query...
+    if (smt_stream) {
+      *smt_stream << "(set-option :fp.engine spacer)" << std::endl;
+      *smt_stream << to_string();
+      *smt_stream << "(query |hierarchical goal|)" << std::endl;
+    }
 
     z3::check_result result = fp_->query (goal_expr);
 
