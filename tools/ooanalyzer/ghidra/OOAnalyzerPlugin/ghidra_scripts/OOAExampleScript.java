@@ -14,6 +14,7 @@ import java.util.Optional;
 
 import docking.widgets.OptionDialog;
 import ghidra.app.script.GhidraScript;
+import ghidra.util.Msg;
 import ooanalyzer.OOAnalyzer;
 import ooanalyzer.OOAnalyzerDialog;
 import ooanalyzer.jsontypes.OOAnalyzerType;
@@ -40,8 +41,12 @@ public class OOAExampleScript extends GhidraScript {
 		}
 
 		// Verify the JSON file is the intended file
-		if (!OOAnalyzer.doNamesMatch(jsonFile.getName(), currentProgram.getName())) {
-			return;
+		String baseJsonName = jsonFile.getName().split("\\.(?=[^\\.]+$)")[0];
+		String baseProgName = currentProgram.getName().split("\\.(?=[^\\.]+$)")[0];
+		if (baseJsonName.equalsIgnoreCase(baseProgName) == false) {
+			if (!askYesNo("JSON file name mismatch", "The selected JSON name does not match the executable, continue?")) {
+				return;
+			}			
 		}
 
 		try {
@@ -50,8 +55,7 @@ public class OOAExampleScript extends GhidraScript {
 			Optional<List<OOAnalyzerType>> optList = OOAnalyzer.parseJsonFile(jsonFile);
 
 			if (optList.isEmpty()) {
-				new OptionDialog("Error", "Could not load JSON from " + jsonFile.getName(), OptionDialog.ERROR_MESSAGE,
-						null).show();
+				Msg.showError(this, null, "Error",  "Could not load JSON from " + jsonFile.getName());
 				return;
 			}
 
@@ -61,20 +65,16 @@ public class OOAExampleScript extends GhidraScript {
 			// project. If this number is <0 then something went wrong. 
 
 			if (count < 0) {
-				new OptionDialog("Error", "No current program for OOAnalyzer.", OptionDialog.ERROR_MESSAGE, null)
-						.show();
-
+				Msg.showError(this,null,"Error", "No current program for OOAnalyzer.");
+				
 			} else if (count > 0) {
-
-				new OptionDialog("Results", "OOAnalyzer loaded " + count + " classes.",
-						OptionDialog.INFORMATION_MESSAGE, null).show();
+				Msg.showInfo(this, null, "Results", "OOAnalyzer loaded " + count + " classes");
 
 			} else {
 				
 				// No classes found
 				
-				new OptionDialog("Results", "OOAnalyzer could not load classes", OptionDialog.WARNING_MESSAGE, null)
-						.show();
+				Msg.showInfo(this, null, "Results", "OOAnalyzer could not find any classes");
 			}
 		} catch (Exception e) {
 			e.printStackTrace();

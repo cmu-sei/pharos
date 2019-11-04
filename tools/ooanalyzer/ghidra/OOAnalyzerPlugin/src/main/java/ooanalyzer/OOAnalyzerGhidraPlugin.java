@@ -9,25 +9,24 @@ import java.io.File;
 import java.util.List;
 import java.util.Optional;
 
+import javax.swing.JOptionPane;
+
 import docking.ActionContext;
 import docking.action.DockingAction;
 import docking.action.KeyBindingData;
 import docking.action.MenuData;
-import docking.widgets.OptionDialog;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.plugin.ProgramPlugin;
+import ghidra.app.script.AskDialog;
 import ghidra.framework.plugintool.PluginInfo;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.plugintool.util.PluginStatus;
 import ghidra.program.model.listing.Program;
+import ghidra.util.Msg;
 import ooanalyzer.jsontypes.OOAnalyzerType;
 
 // @formatter:off
-@PluginInfo(status = PluginStatus.STABLE, 
-			packageName = OOAnalyzerGhidraPlugin.NAME, 
-			category = PluginCategoryNames.ANALYSIS, 
-			shortDescription = "CERT OOAnalyzer JSON results importer.", 
-			description = "Import and apply CERT OOAnalyzer results to a Ghidra project.")
+@PluginInfo(status = PluginStatus.STABLE, packageName = OOAnalyzerGhidraPlugin.NAME, category = PluginCategoryNames.ANALYSIS, shortDescription = "CERT OOAnalyzer JSON results importer.", description = "Import and apply CERT OOAnalyzer results to a Ghidra project.")
 // @formatter:on
 
 /**
@@ -47,7 +46,7 @@ public class OOAnalyzerGhidraPlugin extends ProgramPlugin {
 		super(tool, true, true);
 		setupActions();
 	}
-	
+
 	/**
 	 * Run the script
 	 */
@@ -59,21 +58,25 @@ public class OOAnalyzerGhidraPlugin extends ProgramPlugin {
 
 		if (ooaDialog.isCancelled()) {
 			return;
-		}
-		else if (jsonFile == null) {
-			new OptionDialog("Error", "Invalid JSON file", OptionDialog.ERROR_MESSAGE, null).show();
+		} else if (jsonFile == null) {
+			Msg.showError(this, null, "Error", "Invalid JSON file");
 			return;
 		}
 
-		if (!OOAnalyzer.doNamesMatch(jsonFile.getName(), currentProgram.getName())) {
-			return;
+		String baseJsonName = jsonFile.getName().split("\\.(?=[^\\.]+$)")[0];
+		String baseProgName = currentProgram.getName().split("\\.(?=[^\\.]+$)")[0];
+		if (baseJsonName.equalsIgnoreCase(baseProgName) == false) {
+			if (0 != JOptionPane.showConfirmDialog(null, "JSON file name mismatch",
+					"The selected JSON name does not match the executable, continue?", JOptionPane.YES_NO_OPTION,
+					JOptionPane.WARNING_MESSAGE)) {
+				Msg.info(null, "OOAnalyzer cancelled");
+				return;
+			}
 		}
 
 		Optional<List<OOAnalyzerType>> optJson = OOAnalyzer.parseJsonFile(jsonFile);
 		if (optJson.isEmpty()) {
-			new OptionDialog("Error", "Could not load/parse JSON file " + jsonFile.getName(),
-					OptionDialog.ERROR_MESSAGE, null).show();
-
+			Msg.showError(this, null, "Error", "Could not load/parse JSON file " + jsonFile.getName());
 		} else {
 			if (OOAnalyzerGhidraPlugin.this.currentProgram != null) {
 
@@ -84,14 +87,11 @@ public class OOAnalyzerGhidraPlugin extends ProgramPlugin {
 					result = OOAnalyzer.execute(optJson.get(), OOAnalyzerGhidraPlugin.this.currentProgram,
 							ooaDialog.useOOAnalyzerNamespace());
 					if (result < 0) {
-						new OptionDialog("Error", "No current program for OOAnalyzer.", OptionDialog.ERROR_MESSAGE,
-								null).show();
+						Msg.showError(this, null, "Error", "No current program for OOAnalyzer");
 					} else if (result > 0) {
-						new OptionDialog("Results", "OOAnalyzer loaded " + result + " classes.", 
-								OptionDialog.INFORMATION_MESSAGE, null).show();
+						Msg.showInfo(this, null, "Results", "OOAnalyzer loaded " + result + " classes");
 					} else {
-						new OptionDialog("Results", "OOAnalyzer could not load any classes",
-								OptionDialog.WARNING_MESSAGE, null).show();
+						Msg.showInfo(this, null, "Results", "OOAnalyzer could not find any classes");
 					}
 				} finally {
 					OOAnalyzerGhidraPlugin.this.currentProgram.endTransaction(tid, (result > 0));
@@ -113,8 +113,8 @@ public class OOAnalyzerGhidraPlugin extends ProgramPlugin {
 		final String ooaActionName = OOAnalyzerGhidraPlugin.NAME;
 		final String ooaMenu = CERT_MENU;
 
-		ooaAction.setMenuBarData(new MenuData(new String[] { ooaMenu, ooaActionName }, null, OOAnalyzerGhidraPlugin.NAME,
-				MenuData.NO_MNEMONIC, null));
+		ooaAction.setMenuBarData(new MenuData(new String[] { ooaMenu, ooaActionName }, null,
+				OOAnalyzerGhidraPlugin.NAME, MenuData.NO_MNEMONIC, null));
 
 		ooaAction.setKeyBindingData(new KeyBindingData(KeyEvent.VK_F12, 0));
 		ooaAction.setEnabled(false);

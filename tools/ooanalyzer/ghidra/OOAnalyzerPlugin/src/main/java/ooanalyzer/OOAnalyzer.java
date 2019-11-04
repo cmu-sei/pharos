@@ -32,12 +32,10 @@ import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 
-import docking.widgets.OptionDialog;
 import ghidra.app.util.demangler.CharacterIterator;
 import ghidra.app.util.demangler.DemangledObject;
 import ghidra.app.util.demangler.Demangler;
@@ -830,8 +828,11 @@ public class OOAnalyzer {
 									sym.setNamespace(this.ooanalyzerNamespace);
 								}
 							}
-						} catch (DuplicateNameException | InvalidInputException | CircularDependencyException e) {
-							// Not sure what to do here ...
+						} catch (NullPointerException | DuplicateNameException | InvalidInputException
+								| CircularDependencyException e) {
+							
+							Msg.error(this, "Could not create symbol for class: " + ghidraClassType.getName()
+									+ ". Has this class already been imported already?");
 						}
 
 						return;
@@ -893,15 +894,14 @@ public class OOAnalyzer {
 							ghidraClassSymbol.getParentNamespace());
 				}
 
-				if (vfunc!=null) {
+				if (vfunc != null) {
 					// We can have multiple labels in the symbol table
 					String label = vfunc.getSymbol().getName(false);
 					if (!label.startsWith("VIRT_")) {
 						label = "VIRT_" + vfunc.getName();
 					}
 					createOrUpdateLabel(vfunc.getEntryPoint(), label, clsScope, SourceType.USER_DEFINED);
-				}
-				else {
+				} else {
 					Msg.warn(this, "Could not create label for function: " + vfEntry.getName());
 				}
 			});
@@ -927,14 +927,14 @@ public class OOAnalyzer {
 
 		int offset = 0;
 		for (Function vf : vfuncs) {
-			if (vf != null) { 
+			if (vf != null) {
 				FunctionDefinitionDataType vfDef = new FunctionDefinitionDataType(ooanalyzerVirtualFunctionsCategory,
 						vf.getName(), vf.getSignature());
 				Pointer pvfDt = PointerDataType.getPointer(vfDef, dataTypeMgr);
-	
-				vftableStruct.insertAtOffset(offset, pvfDt, pvfDt.getLength(), vf.getName() + "_" + String.valueOf(offset),
-						"virtual function table entry.");
-			} 
+
+				vftableStruct.insertAtOffset(offset, pvfDt, pvfDt.getLength(),
+						vf.getName() + "_" + String.valueOf(offset), "virtual function table entry.");
+			}
 			offset += pointerSize;
 		}
 	}
@@ -1002,7 +1002,7 @@ public class OOAnalyzer {
 							.filter(mbr -> mbr.getOffset() == vfptr.getOffset() && mbr.getStruc().isPresent())
 							// short circuit search
 							.findFirst();
-					
+
 					if (pOpt.isPresent()) {
 						Member p = pOpt.get();
 						vftableName = ghidraType.getName() + "::" + p.getName() + "::vftable_"
@@ -1390,37 +1390,6 @@ public class OOAnalyzer {
 	}
 
 	/**
-	 * Sanity check to make sure the right JSON is run. If the user opens a JSON
-	 * file that doesn't match the program name they are warned.
-	 * 
-	 * @param jsonName The json file name
-	 * @param progName The program name
-	 * @return true if the script can continue, false to cancel
-	 */
-	public static boolean doNamesMatch(String jsonName, String progName) {
-		try {
-			String baseJsonName = jsonName.split("\\.(?=[^\\.]+$)")[0];
-			String baseProgName = progName.split("\\.(?=[^\\.]+$)")[0];
-			if (baseJsonName.equalsIgnoreCase(baseProgName) == false) {
-
-				var contDialog = new OptionDialog("Careful",
-						"The JSON file name does not match the program name, continue?", "Continue",
-						OptionDialog.WARNING_MESSAGE, null);
-
-				contDialog.show();
-
-				return (contDialog.getResult() != OptionDialog.CANCEL_OPTION);
-
-			}
-		} catch (Exception x) {
-			// Nothing to do ...
-		}
-
-		// Assume the user knows what they are doing and allow the script to continue
-		return true;
-	}
-
-	/**
 	 * Load Pharos JSON file.
 	 * 
 	 * @param jsonFile The JSON file
@@ -1453,7 +1422,7 @@ public class OOAnalyzer {
 					@Override
 					public OOAnalyzerType deserialize(JsonElement json, Type typeOfT,
 							JsonDeserializationContext context) throws JsonParseException {
-						
+
 						JsonObject jsonObject = json.getAsJsonObject();
 
 						String namespace = "";
