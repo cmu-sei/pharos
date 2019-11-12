@@ -1,4 +1,4 @@
-// Copyright 2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2018-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/graph/iteration_macros.hpp>
 #include "znode.hpp"
@@ -104,10 +104,10 @@ PharosZ3Solver::z3_to_treenode(z3::expr const & e) {
        uint64_t id = get_id_from_string(F.name().str());
        if (S.is_bv() == true) {
 
-         TreeNodePtr tn = LeafNode::createExistingVariable(S.bv_size(), id, F.name().str());
+         TreeNodePtr tn = SymbolicExpr::makeIntegerVariable(S.bv_size(), id, F.name().str());
          if (!tn) {
            // Can't find the node so create a new one ...
-           tn = LeafNode::createVariable(S.bv_size(), F.name().str());
+           tn = SymbolicExpr::makeIntegerVariable(S.bv_size(), F.name().str());
          }
 
          return tn;
@@ -126,7 +126,7 @@ PharosZ3Solver::z3_to_treenode(z3::expr const & e) {
            // id should be the same as any other existing
            // treenode. The domain is the address width and the range
            // is the value width
-           return SymbolicExpr::makeExistingMemory(d.bv_size(),
+           return SymbolicExpr::makeMemoryVariable(d.bv_size(),
                                                    r.bv_size(),
                                                    id,
                                                    F.name().str());
@@ -154,15 +154,15 @@ PharosZ3Solver::z3_to_treenode(z3::expr const & e) {
        // will be this kind
        assert(e.is_numeral()==true);
 
-       // SymbolicExpr::makeInteger takes a uint64_t so interpret as a unsigned 64b int
-       return SymbolicExpr::makeInteger(S.bv_size(), e.get_numeral_uint64());
+       // SymbolicExpr::makeIntegerConstant takes a uint64_t so interpret as a unsigned 64b int
+       return SymbolicExpr::makeIntegerConstant(S.bv_size(), e.get_numeral_uint64());
      }
      case Z3_OP_TRUE:
       assert(e.is_bool() == true);
-      return SymbolicExpr::makeBoolean(true);
+      return SymbolicExpr::makeBooleanConstant(true);
      case Z3_OP_FALSE:
       assert(e.is_bool() == true);
-      return SymbolicExpr::makeBoolean(false);
+      return SymbolicExpr::makeBooleanConstant(false);
 
       // -----------------------------------------
       // Concat / extract treenodes
@@ -186,8 +186,8 @@ PharosZ3Solver::z3_to_treenode(z3::expr const & e) {
       //
       // It turns out that the high and low operands will always be 32
       // bits wide when creating an extract expression
-      return SymbolicExpr::makeExtract(SymbolicExpr::makeInteger(32, e.lo()),
-                                       SymbolicExpr::makeInteger(32, e.hi()+1),
+      return SymbolicExpr::makeExtract(SymbolicExpr::makeIntegerConstant(32, e.lo()),
+                                       SymbolicExpr::makeIntegerConstant(32, e.hi()+1),
                                        z3_to_treenode(e.arg(0)));
 
       // -----------------------------------------

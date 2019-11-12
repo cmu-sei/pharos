@@ -67,8 +67,8 @@ BlockAnalysis::BlockAnalysis(DUAnalysis & _du, const ControlFlowGraph& cfg,
   conditions.reserve(num_conds);
 
   // assume every block can be entered
-  entry_condition = SymbolicValue::treenode_instance(Rose::BinaryAnalysis::SymbolicExpr::makeBoolean(true));
-  exit_condition =  SymbolicValue::treenode_instance(Rose::BinaryAnalysis::SymbolicExpr::makeBoolean(true));
+  entry_condition = SymbolicValue::treenode_instance(SymbolicExpr::makeBooleanConstant(true));
+  exit_condition =  SymbolicValue::treenode_instance(SymbolicExpr::makeBooleanConstant(true));
 
   size_t i = 0;
   for (const SgAsmBlock *pblock : cfg_in_bblocks(cfg, vertex)) {
@@ -493,7 +493,6 @@ BlockAnalysis::handle_stack_delta(SgAsmBlock *bb, SgAsmX86Instruction* insn,
   // By default, we have wrong knowledge of the stack pointer.
   StackDelta newdelta(0, ConfidenceWrong);
   // Get the stack register descriptor.
-  size_t arch_bits = du.ds.get_arch_bits();
   size_t arch_bytes = du.ds.get_arch_bytes();
   RegisterDescriptor esprd = du.ds.get_stack_reg();
   // Are confident in our current knowledge of the stack pointer based on emulation?  With
@@ -587,8 +586,8 @@ BlockAnalysis::handle_stack_delta(SgAsmBlock *bb, SgAsmX86Instruction* insn,
             auto sdv = cd->get_stack_delta_variable();
             if (sdv) {
               using Rose::BinaryAnalysis::SymbolicExpr::OP_ADD;
-              sum = InternalNode::create(arch_bits, OP_ADD, sum, sdv,
-                                         Rose::BinaryAnalysis::SmtSolverPtr());
+              sum = InternalNode::instance(OP_ADD, sum, sdv,
+                                           Rose::BinaryAnalysis::SmtSolverPtr());
             }
           }
           SymbolicValuePtr newesp = SymbolicValue::promote(oldesp->copy());
@@ -1805,7 +1804,7 @@ DUAnalysis::get_address_condition(const BlockAnalysis& pred_analysis,
   static auto nullnode = TreeNodePtr();
 
   if (insn_is_call(last_x86insn_in_block(pblock))) {
-    return SymbolicValue::treenode_instance(SymbolicExpr::makeBoolean(true));
+    return SymbolicValue::treenode_instance(SymbolicExpr::makeBooleanConstant(true));
   }
 
   if (!pred_analysis.output_state) {
@@ -1818,7 +1817,7 @@ DUAnalysis::get_address_condition(const BlockAnalysis& pred_analysis,
   }
 
   size_t arch_bits = ds.get_arch_bits();
-  TreeNodePtr leaf_addr = LeafNode::createInteger(arch_bits, bb_addr);
+  TreeNodePtr leaf_addr = SymbolicExpr::makeIntegerConstant(arch_bits, bb_addr);
   RegisterDescriptor iprd = ds.get_ip_reg();
   SymbolicValuePtr ip_sv = ip_reg_state->read_register(iprd);
 
@@ -2357,7 +2356,7 @@ get_leaf_condition(SymbolicValuePtr sv, TreeNodePtr target_leaf, TreeNodePtr par
         return SymbolicValue::treenode_instance(parent_condition);
       }
       // Can always get here
-      return SymbolicValue::treenode_instance(SymbolicExpr::makeBoolean(true));
+      return SymbolicValue::treenode_instance(SymbolicExpr::makeBooleanConstant(true));
     }
     // This leaf is not the address we are looking for
     return SymbolicValue::incomplete(1);

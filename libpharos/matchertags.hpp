@@ -1,4 +1,4 @@
-// Copyright 2016-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2017, 2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Michael Duggan
 
@@ -120,12 +120,13 @@ struct HasType;
 template <typename S>
 struct HasType<S> : std::false_type {};
 
-// Inductive step:  true if S is same as T, recurse on Rest otherwise
+// Good case: true
+template <typename T, typename... Rest>
+struct HasType<T, T, Rest...> : std::true_type {};
+
+// Otherwise, recurse
 template <typename S, typename T, typename... Rest>
-struct HasType<S, T, Rest...> :
-    std::conditional<std::is_same<S, T>::value,
-                     std::true_type,
-                     HasType<S, Rest...>>::type {};
+struct HasType<S, T, Rest...> : HasType<S, Rest...> {};
 
 // Allow a Types<> argument instead of template parameter pack
 template <typename S, typename... Rest>
@@ -201,21 +202,11 @@ struct CommonCaptures_<Types<Acc...>, S, T...> :
 
 } // namespace detail
 
-
-template <typename T>
-using IsTag = detail::IsTag<T>;
-
-template <typename... T>
-using Captures = detail::Captures<T...>;
-
-template <typename... T>
-using SubTags = detail::SubTags<T...>;
-
-template <typename... T>
-using Tag = detail::Tag<T...>;
-
-template <typename T>
-using CapturesOf = detail::CapturesOf<T>;
+using detail::IsTag;
+using detail::Captures;
+using detail::SubTags;
+using detail::Tag;
+using detail::CapturesOf;
 
 // Returns true if the type T is a valid capture type for the tag Tg
 template <typename T, typename Tg>

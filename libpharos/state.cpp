@@ -159,7 +159,7 @@ CellMapChunks::CellMapChunks(const DUAnalysis & usedef, bool df_flag) {
   RegisterDescriptor df_reg = regdict.lookup("df");
   const auto & df_sym = const_cast<SymbolicStatePtr &>(input_state)->read_register(df_reg);
   const auto & df_tn = df_sym ? df_sym->get_expression() : TreeNodePtr();
-  auto df_value = LeafNode::createBoolean(df_flag);
+  auto df_value = SymbolicExpr::makeBooleanConstant(df_flag);
 
   // Build the sorted memory map
   const SymbolicMemoryMapStatePtr& mstate =
@@ -192,9 +192,8 @@ CellMapChunks::CellMapChunks(const DUAnalysis & usedef, bool df_flag) {
       const auto & value = SymbolicValue::promote(cell->get_value())->get_expression();
       if (last_value) {
         // If a value already existed, add this value to it via an ITE
-        auto tcond = LeafNode::createVariable(1, "", INCOMPLETE);
-        auto ite = InternalNode::create(std::max(last_value->nBits(), value->nBits()),
-                                        OP_ITE, std::move(tcond), value, last_value);
+        auto tcond = SymbolicExpr::makeIntegerVariable(1, "", INCOMPLETE);
+        auto ite = InternalNode::instance(OP_ITE, std::move(tcond), value, last_value);
         last_value = std::move(ite);
       } else {
         // Otherwise, store the value
@@ -549,9 +548,9 @@ SymbolicValuePtr create_equality(
   using Rose::BinaryAnalysis::SymbolicExpr::OP_XOR;
   using Rose::BinaryAnalysis::SymbolicExpr::OP_ZEROP;
   using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
-  TreeNodePtr xor_expr = InternalNode::create(atn->nBits(), OP_XOR, atn, btn);
-  TreeNodePtr zerop_expr = InternalNode::create(1, OP_ZEROP, xor_expr);
-  TreeNodePtr ite_expr = InternalNode::create(ctn->nBits(), OP_ITE, zerop_expr, ctn, dtn);
+  TreeNodePtr xor_expr = InternalNode::instance(OP_XOR, atn, btn);
+  TreeNodePtr zerop_expr = InternalNode::instance(OP_ZEROP, xor_expr);
+  TreeNodePtr ite_expr = InternalNode::instance(OP_ITE, zerop_expr, ctn, dtn);
 
   // Create a symbolic value from the newly created expression.
   SymbolicValuePtr retval = SymbolicValue::treenode_instance(ite_expr);

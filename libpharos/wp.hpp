@@ -12,9 +12,13 @@ namespace pharos {
 
   IRExprPtr expand_lets (const IRExprPtr& expr);
 
-  std::pair<IR,IRExprPtr> add_reached_postcondition (const IR& ir,
-						     const std::set<rose_addr_t> targets,
-						     boost::optional<Register> hit_var = boost::none);
+  // This function adds a new (or optionally specified) hit_var that
+  // is set to true whenever the specified targets are hit.  Returns
+  // the instrumented IR, the hit variable, and the vertices
+  // containing hits.
+  std::tuple<IR, IRExprPtr, std::set<IRCFGVertex>> add_reached_postcondition (const IR& ir,
+                                                                            const std::set<rose_addr_t> targets,
+                                                                            boost::optional<Register> hit_var = boost::none);
 
   // This is a helper function that identifies calls to selected
   // external functions and replaces them with a write of EAX with a

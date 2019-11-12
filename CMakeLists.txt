@@ -28,6 +28,7 @@ if(PHAROS_FAIL_ON_WARNING)
 endif()
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH true)
+set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
 
 # Load the user's customizations, then the site customization, then
 # the local customization.  This lets the local customization take

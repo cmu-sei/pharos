@@ -1,4 +1,4 @@
-// Copyright 2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2018-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "memory.hpp"
 #include "state.hpp"
@@ -54,7 +54,8 @@ SymbolicValuePtr Memory::read_value(rose_addr_t addr, Bits nbits) const
   auto bv = read_bits(addr, nbits);
   if (tget<std::size_t>(bv) == nbits) {
     return SymbolicValue::treenode_instance(
-      LeafNode::createConstant(*tget<std::unique_ptr<Sawyer::Container::BitVector>>(bv)));
+      SymbolicExpr::makeIntegerConstant(
+        *tget<std::unique_ptr<Sawyer::Container::BitVector>>(bv)));
   }
   return SymbolicValuePtr();
 }
@@ -67,8 +68,8 @@ SymbolicValuePtr Memory::read_value(
     return val;
   }
   const auto & exp = addr->get_expression();
-  if (exp && exp->isNumber()) {
-    return read_value(exp->toInt(), bits);
+  if (exp && exp->isIntegerConstant()) {
+    return read_value(*exp->toUnsigned(), bits);
   }
   return SymbolicValuePtr{};
 }

@@ -421,8 +421,8 @@ boost::optional<T> interpret(const TreeNodePtr & tn);
 template <>
 boost::optional<uint64_t> interpret<uint64_t>(const TreeNodePtr & tn)
 {
-  if (tn && tn->isNumber() && tn->nBits() <= 64) {
-    return tn->toInt();
+  if (tn && tn->isIntegerConstant() && tn->nBits() <= 64) {
+    return *tn->toUnsigned();
   }
   return boost::none;
 }
@@ -493,9 +493,9 @@ boost::optional<std::basic_string<Char>> parse_string_value(
     auto c = image.read_value(memory, sym, Bytes(sizeof(Char)));
     if (c) {
       auto & cexp = c->get_expression();
-      if (cexp && cexp->isNumber()) {
+      if (cexp && cexp->isIntegerConstant()) {
         Char n = std::char_traits<Char>::to_char_type(
-          (typename std::char_traits<Char>::int_type)(cexp->toInt()));
+          (typename std::char_traits<Char>::int_type)(*cexp->toUnsigned()));
         if (n) {
           result.push_back(n);
           continue;
@@ -519,7 +519,7 @@ boost::optional<std::string> Value::as_string(bool wide) const
     throw IllegalConversion("Illegal call on non-string");
   }
   auto & exp = node->get_expression();
-  if (exp && exp->isNumber() && exp->isLeafNode()->bits().isAllClear()) {
+  if (exp && exp->isIntegerConstant() && exp->isLeafNode()->bits().isAllClear()) {
     return boost::none;
   } else if (memory) {
     if (s->get_string_type() == String::WCHAR ||
@@ -568,7 +568,7 @@ bool Value::is_nullptr() const
 {
   if (node && (is_pointer() || is_string())) {
     auto & exp = node->get_expression();
-    return exp && exp->isNumber() && exp->isLeafNode()->bits().isAllClear();
+    return exp && exp->isIntegerConstant() && exp->isLeafNode()->bits().isAllClear();
   }
   return false;
 }
@@ -584,7 +584,7 @@ Value Value::dereference() const
     return t->get_value(node, image, memory);
   }
   auto & exp = node->get_expression();
-  if (exp && exp->isNumber() && exp->isLeafNode()->bits().isAllClear()) {
+  if (exp && exp->isIntegerConstant() && exp->isLeafNode()->bits().isAllClear()) {
     throw IllegalConversion("Cannot dereference NULL");
   }
   if (!memory) {

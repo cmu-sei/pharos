@@ -38,12 +38,11 @@ using Z3RegMap = std::map <Register, z3::expr>;
 
 // This information is obtained from find_path_hierarchical
 using PartialConvertCallFun = std::function<boost::optional<z3::func_decl>(const CallStmt &callstmt,
-                                                          const z3::expr_vector &call_input_args)>;
-// The remaining information (before_bb, bb_vars) is obtained from encode_cfg
+                                                                           const z3::expr_vector &call_input_args)>;
+// The remaining information is obtained from encode_cfg
 using ConvertCallFun = std::function<boost::optional<z3::func_decl>(const CallStmt &callstmt,
-                                                   const z3::expr &before_bb,
-                                                   const z3::expr_vector &bb_vars,
-                                                   const z3::expr_vector &call_input_args)>;
+                                                                    const IRCFGVertex &before,
+                                                                    const z3::expr_vector &call_input_args)>;
 
 // Inter-procedural state, intra-procedural state, fresh variables, and constraints
 using TupleState = std::tuple<Z3RegMap, Z3RegMap, std::vector<z3::expr>, z3::expr>;
@@ -55,7 +54,7 @@ namespace {
 
   pharos::ConvertCallFun dummy_convert_call =
     [] (
-      const CallStmt &, const z3::expr &, const z3::expr_vector &, const z3::expr_vector &)
+        const CallStmt &, const IRCFGVertex &, const z3::expr_vector &)
     -> z3::func_decl {
       throw std::logic_error("Internal logic error: called dummy_convert_call()!");
     };
@@ -96,15 +95,16 @@ private:
   // the state.  Otherwise all accessed registers will be used.  If
   // convert_call is supplied, it should convert the given CallStmt to
   // a z3 summary relation, which is used for hierarchical encoding.
-  std::tuple <Z3RegMap, z3::func_decl, z3::func_decl, z3::func_decl>
+  std::tuple <Z3RegMap, z3::func_decl, z3::func_decl>
   encode_cfg (const IR &ir,
-              const z3::expr &z3post,
+              const z3::expr &z3post_input,
+              const z3::expr &z3post_output,
               bool propagate_input = false,
               std::string name = "",
               boost::optional<std::vector<Register>> regsIn = boost::none,
               boost::optional<z3::func_decl> entry = boost::none,
               boost::optional<z3::func_decl> exit = boost::none,
-              boost::optional<z3::func_decl> goal = boost::none,
+              boost::optional <std::function<bool(const IRCFGVertex &)>> short_circuit = boost::none,
               ConvertCallFun convert_call = dummy_convert_call);
 
   // Encode a block, returning mappings of inter-block regstate,

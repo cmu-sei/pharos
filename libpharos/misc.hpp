@@ -34,12 +34,13 @@ using ::operator<<;
 // Duplicative with funcs.hpp. :-(
 using AddrSet = std::set<rose_addr_t>;
 
-using LeafNode = Rose::BinaryAnalysis::SymbolicExpr::Leaf;
-using LeafNodePtr = Rose::BinaryAnalysis::SymbolicExpr::LeafPtr;
-using InternalNode = Rose::BinaryAnalysis::SymbolicExpr::Interior;
-using InternalNodePtr = Rose::BinaryAnalysis::SymbolicExpr::InteriorPtr;
-using TreeNode = Rose::BinaryAnalysis::SymbolicExpr::Node;
-using TreeNodePtr = Rose::BinaryAnalysis::SymbolicExpr::Ptr;
+namespace SymbolicExpr = Rose::BinaryAnalysis::SymbolicExpr;
+using LeafNode = SymbolicExpr::Leaf;
+using LeafNodePtr = SymbolicExpr::LeafPtr;
+using InternalNode = SymbolicExpr::Interior;
+using InternalNodePtr = SymbolicExpr::InteriorPtr;
+using TreeNode = SymbolicExpr::Node;
+using TreeNodePtr = SymbolicExpr::Ptr;
 
 using LeafNodePtrSet = std::set<LeafNodePtr>;
 using TreeNodePtrSet = std::set<TreeNodePtr>;

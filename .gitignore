@@ -29,6 +29,11 @@ TAGS
 /tools/fn2yara/fn2yara
 /tools/objdigger/objdigger
 
+# site.cmake is site-specific.  Do not check in.
+/site.cmake
+# Don't complain about the user file either.
+/local.cmake
+
 # test cruft
 /apitests.dot
 /tools/ooanalyzer/tests/**/*.ground.errors

@@ -171,7 +171,7 @@ class PathAnalyzer : public BottomUpAnalyzer {
     std::stringstream ss;
     Rose::BinaryAnalysis::SymbolicExpr::Formatter fmt;
     fmt.use_hexadecimal = false;
-    fmt.show_width = false;
+    fmt.show_type = false;
     fmt.show_flags = false;
 
     const PathPtrList& path = path_finder_.get_path();

@@ -102,7 +102,7 @@ smart_can_be_equal(SymbolicValuePtr sv1, SymbolicValuePtr sv2) {
 
   if (sv1->contains_ite()) {
     for (const TreeNodePtr& tn : sv1->get_possible_values()) {
-      if (tn->isNumber() && tn->isLeafNode()->bits().isAllClear()) {
+      if (tn->isIntegerConstant() && tn->isLeafNode()->bits().isAllClear()) {
         continue;
       }
       sv1_treenodes.insert(tn);
@@ -113,7 +113,7 @@ smart_can_be_equal(SymbolicValuePtr sv1, SymbolicValuePtr sv2) {
   }
   if (sv2->contains_ite()) {
     for (const TreeNodePtr& tn : sv2->get_possible_values()) {
-      if (tn->isNumber() && tn->isLeafNode()->bits().isAllClear()) {
+      if (tn->isIntegerConstant() && tn->isLeafNode()->bits().isAllClear()) {
         continue;
       }
       sv2_treenodes.insert(tn);
@@ -505,7 +505,7 @@ TypeSolver::assert_value_facts(TreeNodePtr tnp) {
     OWARN << "Detected possible floating point value: " << *tnp << ", Not asserting value" << LEND;
     return;
   }
-  session_->add_fact(VAL_FACT, treenode_to_xsb(tnp), tnp->toInt());
+  session_->add_fact(VAL_FACT, treenode_to_xsb(tnp), *tnp->toUnsigned());
 }
 
 // assert facts concerning the size of tree nodes. The format of this fact is
@@ -1236,7 +1236,7 @@ TypeSolver::assert_initial_facts(TreeNodePtr tnp) {
 
   assert_bitwidth_fact(tnp);
 
-  if (tnp->isNumber()) {
+  if (tnp->isIntegerConstant()) {
     if (tnp->nBits() <= 64) { // <= this is a hack to prevent a core dump in ROSE
       MDEBUG << "This param is a number and will receive a value fact" << LEND;
 
@@ -1599,7 +1599,7 @@ TypeSolver::recursively_assert_facts(TreeNodePtr tnp) {
   // assert initial facts for this type descriptor (size and value)
   assert_bitwidth_fact(tnp);
 
-  if (tnp->isNumber()) {
+  if (tnp->isIntegerConstant()) {
     if (tnp->nBits() <= 64) { // <= this is a hack to prevent a core dump in ROSE
       MDEBUG << "This param is a number and will receive a value fact" << LEND;
       assert_value_facts(tnp);

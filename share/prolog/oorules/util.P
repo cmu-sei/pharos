@@ -17,6 +17,11 @@
 :- dynamic debuggingStoreEnabled/0.
 :- dynamic deterministicEnabled/0.
 
+% When an "upstream problem" occurs, by default we will terminate the analysis because it can
+% take a very long time to find the problematic guess.  If this option is set, we will continue
+% to backtrack until we fix the upstream problem.
+:- dynamic backtrackForUpstream/0.
+
 list_to_set(List, Set) :-
     number_list(List, 1, Numbered),
     keysort(Numbered, ONum),
@@ -205,14 +210,14 @@ logwhereln(X) :- logln('WHERE', X).
 logdebugln(X) :- logln('DEBUG', X).
 logtraceln(X) :- logln('TRACE', X).
 
-% Convert log level strings to numbers.  Perhaps we should alter the C++ API?
-numericLogLevel('FATAL', N) :- N is 1.
-numericLogLevel('ERROR', N) :- N is 2.
-numericLogLevel('WARN', N) :- N is 3.
-numericLogLevel('INFO', N) :- N is 4.
-numericLogLevel('WHERE', N) :- N is 5.
-numericLogLevel('DEBUG', N) :- N is 6.
-numericLogLevel('TRACE', N) :- N is 7.
+% Associate log level strings with numbers.  Perhaps we should alter the C++ API?
+numericLogLevel('FATAL', 1).
+numericLogLevel('ERROR', 2).
+numericLogLevel('WARN', 3).
+numericLogLevel('INFO', 4).
+numericLogLevel('WHERE', 5).
+numericLogLevel('DEBUG', 6).
+numericLogLevel('TRACE', 7).
 
 writeHexList_([X|Rest]) :-
     writeHex(X),
@@ -230,7 +235,7 @@ writeHex(T) :-
     T =.. [Functor|Arguments],
     write(Functor),
     write('('),
-    writeHex(Arguments),
+    writeHexList_(Arguments),
     write(')').
 
 writeHex(X) :-
@@ -260,7 +265,14 @@ debug_store(X) :-
 
 % For use with timed_call
 
-show_progress:-
+:- if(current_prolog_flag(version_data, xsb(_,_,_,_))).
+show_progress_idg :-
+    statistics(summarize_idg).
+:- else.
+show_progress_idg.
+:- endif.
+
+show_progress :-
     logdebugln('-------------------------------------------'),
     cputime(T),
     conget(numfacts,FN),
@@ -270,7 +282,7 @@ show_progress:-
     logdebugln('total number of guesses is'(GN,T)),
     logdebugln('total number of reasoningForward steps is'(RFN,T)),
     statistics,
-    statistics(summarize_idg).
+    show_progress_idg.
 
 shut_down :-
     show_progress, halt.

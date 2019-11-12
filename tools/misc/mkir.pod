@@ -1,0 +1,79 @@
+=pod
+
+=head1 NAME
+
+B<mkir> - Output the intermediate representation of instruction
+semantics used by some Pharos utilities
+
+=head1 SYNOPSIS
+
+mkir [--dot=DIRECTORY] [...Pharos options...] EXECUTABLE_FILE
+
+mkir --help
+
+@PHAROS_OPTS_POD@ 
+
+=head1 DESCRIPTION
+
+B<mkir> outputs a textual intermediate representation of instruction
+semantics that are used by some Pharos utilities.
+
+=head1 OPTIONS
+
+=head2 B<mkir> OPTIONS
+
+The following options are specific to the B<mkir> program.
+
+=over 4
+
+=item B<--dot>=I<DIRECTORY>, B<-d>=I<DIRECTORY>
+
+Instead of writing output to standard out, produce files in the specified I<DIRECTORY>.
+
+=back
+
+@PHAROS_OPTIONS_POD@
+
+=head1 EXAMPLES
+
+To output the intermediate representation to standard output:
+
+  $ mkir input.exe
+
+To output to a directory instead:
+
+  $ mkir -d /tmp/ir input.exe
+
+=head1 ENVIRONMENT
+
+=over 4
+
+@PHAROS_ENV_POD@
+
+=back
+
+=head1 FILES
+
+=over 4 
+
+@PHAROS_FILES_POD@
+
+=back
+
+=head1 AUTHOR
+
+Written by the Software Engineering Institute at Carnegie Mellon
+University.  The primary author was Edward J. Schwartz.
+
+=head1 COPYRIGHT
+
+Copyright 2018 Carnegie Mellon University.  All rights reserved.  This
+software is licensed under a "BSD" license.  Please see I<LICENSE.txt>
+for details.
+
+=cut
+
+Local Variables:
+mode:text
+indent-tabs-mode:nil
+End:

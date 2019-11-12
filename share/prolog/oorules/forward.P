@@ -51,11 +51,41 @@
 makeObjects(Set) :-
     maplist(make, Set).
 
+% This predicate is called to retract subsumed facts
+class_size_remove_redundant(factClassSizeGTE(Class, Size)) :-
+    !,
+    (setof(factClassSizeGTE(Class, TSize),
+           (factClassSizeGTE(Class, TSize),
+            TSize < Size),
+           SizeFactSet) ->
+         maplist(try_retract, SizeFactSet);
+     true).
+
+class_size_remove_redundant(factClassSizeLTE(Class, Size)) :-
+    !,
+    (setof(factClassSizeLTE(Class, TSize),
+          (factClassSizeLTE(Class, TSize),
+           TSize > Size),
+          SizeFactSet) ->
+     maplist(try_retract, SizeFactSet);
+    true).
+
+class_size_remove_redundant(X) :-
+    logerrorln(X),
+    throw('class_size_remove_redundant/1 called on unexpected argument'),
+    fail.
+
+ignore_one_arg(_X).
+
 % Helper that produces an action from the arguments
 try_assert_builder(Pred, ArgTuple, Out) :-
+    try_assert_builder(ignore_one_arg, Pred, ArgTuple, Out).
+
+try_assert_builder(Extra, Pred, ArgTuple, Out) :-
     tuple_to_list(ArgTuple, TupleElements),
     Fact =.. [Pred|TupleElements],
-    Out = try_assert(Fact).
+    Out = (try_assert(Fact),
+           call(Extra, Fact)).
 
 concludeMethod(Out) :-
     setof(Method,
@@ -368,7 +398,7 @@ concludeClassSizeGTE(Out) :-
            loginfo(Class), loginfo(', '),
            loginfo(Size), loginfoln(').')),
           TupleSets),
-    maplist(try_assert_builder(factClassSizeGTE), TupleSets, ActionSets),
+    maplist(try_assert_builder(class_size_remove_redundant, factClassSizeGTE), TupleSets, ActionSets),
     Out = all(ActionSets).
 
 concludeClassSizeLTE(Out) :-
@@ -379,7 +409,7 @@ concludeClassSizeLTE(Out) :-
            loginfo(Class), loginfo(', '),
            loginfo(Size), loginfoln(').')),
           TupleSets),
-    maplist(try_assert_builder(factClassSizeLTE), TupleSets, ActionSets),
+    maplist(try_assert_builder(class_size_remove_redundant, factClassSizeLTE), TupleSets, ActionSets),
     Out = all(ActionSets).
 
 concludeClassHasNoBase(Out) :-

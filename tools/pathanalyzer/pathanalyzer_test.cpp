@@ -55,7 +55,7 @@ bool wp_method(PATestConfiguration& test, rose_addr_t target, std::shared_ptr<st
   IRExprPtr post;
   ir = rewrite_imported_calls (*global_ds, ir, get_imports());
   ir = init_stackpointer (ir);
-  std::tie (ir, post) = add_reached_postcondition (ir, {target});
+  std::tie (ir, post, std::ignore) = add_reached_postcondition (ir, {target});
 
   //std::cout << ir << std::endl;
 

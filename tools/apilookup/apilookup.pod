@@ -1,0 +1,113 @@
+=pod
+
+=head1 NAME
+
+B<apilookup> - Look up entries in the API database.
+
+=head1 SYNOPSIS
+
+apilookup [--json=JSON_FILENAME] [--pretty-json[=INDENT]]
+  [[DLL:]SYMBOL|DLL:ORDINAL]...
+
+apilookup --help
+
+@PHAROS_OPTS_POD@
+
+=head1 DESCRIPTION
+
+B<apilookup> looks up and reports entries in the API database.
+Entries are specified as I<DLL>:I<NAME>, I<DLL>:I<ORDINAL>, or just
+I<NAME>.  In the latter case, all matching entries from any DLL will
+be reported.
+
+DLL names are case insensitive, and may include or elide the C<.dll>
+extension.  Function names are case sensitive.
+
+=head1 OPTIONS
+
+=begin comment
+
+=head2 B<stackstrings> OPTIONS
+
+The following options are specific to the B<apilookup> program.
+
+=over 4
+
+=item B<--json>=I<JSON_FILENAME>, B<-j>=I<JSON_FILENAME>
+
+Output apilookup data in JSON format to the given
+I<JSON_FILENAME>.  If I<JSON_FILENAME> is C<->, JSON will output to
+stdout.
+
+=item B<--pretty-json>[=I<INDENT>], B<-p>[=I<INDENT>]
+
+When outputting JSON, use newlines and indentation, making the output
+human-readable.  I<INDENT> is the indentation level, and defaults to
+C<4>.
+
+=back
+
+=end comment
+
+@PHAROS_OPTIONS_POD@
+
+=head1 EXAMPLES
+
+    $ apilookup kernel32:ReadFile
+    Lookup: kernel32:ReadFile
+      Definition found
+        Name: ReadFile
+        DLL: KERNEL32
+        Calling convention: stdcall
+        Return_type:  BOOL
+        Parameters: HANDLE hFile[in], LPVOID lpBuffer[out], DWORD nNumberOfBytesToRead[in], LPDWORD lpNumberOfBytesRead[out], LPOVERLAPPED lpOverlapped[inout]
+        Stack delta: 20
+        Ordinal: 960
+      Definition found
+        Name: ReadFile
+        DLL: KERNEL32
+        Calling convention: stdcall
+        Return_type:  BOOL
+        Parameters: HANDLE hFile[in], LPVOID lpBuffer[out], DWORD nNumberOfBytesToRead[in], LPDWORD lpNumberOfBytesRead[out], LPOVERLAPPED lpOverlapped[inout]
+        Stack delta: 20
+        Ordinal: 961
+
+=head1 ENVIRONMENT
+
+=over 4
+
+@PHAROS_ENV_POD@
+
+=back
+
+=head1 FILES
+
+=over 4 
+
+@PHAROS_FILES_POD@
+
+=back
+
+=for comment
+head1 NOTES
+
+=head1 AUTHOR
+
+Written by the Software Engineering Institute at Carnegie Mellon
+University.  The primary author was Michael Duggan.
+
+=head1 COPYRIGHT
+
+Copyright 2018 Carnegie Mellon University.  All rights reserved.  This
+software is licensed under a "BSD" license.  Please see I<LICENSE.txt>
+for details.
+
+=for comment
+head1 SEE ALSO
+
+=cut
+
+Local Variables:
+mode:text
+indent-tabs-mode:nil
+End:

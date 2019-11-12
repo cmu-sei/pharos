@@ -1,4 +1,4 @@
-// Copyright 2016-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Michael Duggan
 
@@ -165,15 +165,11 @@ using Wrapper = typename Wrapper_<left, Matcher, Left, Right...>::type;
 
 // A left wrapper is an IndexedMatcher that matches the Ref arguments for Left
 template <typename Matcher, typename Left>
-struct LeftWrapper : Wrapper<true, Matcher, Left> {
-  using Wrapper<true, Matcher, Left>::Wrapper;
-};
+using LeftWrapper = Wrapper<true, Matcher, Left>;
 
-// A left wrapper is an IndexedMatcher that matches the Ref arguments for Right
+// A right wrapper is an IndexedMatcher that matches the Ref arguments for Right
 template <typename Matcher, typename Left, typename... Right>
-struct RightWrapper : Wrapper<false, Matcher, Left, Right...> {
-  using Wrapper<false, Matcher, Left, Right...>::Wrapper;
-};
+using RightWrapper = Wrapper<false, Matcher, Left, Right...>;
 
 // A MultiMatcher implements a matcher for a list of tags.  Left is the matcher for the first
 // tag.  LeftTags is that tag.  Right is the matcher for the rest of the tags.  RightTags are
@@ -260,9 +256,7 @@ struct NodeListMatcher<idx, T, Rest...>  :
 
 } // namespace detail
 
-
-template <typename Left, typename LeftTag, typename Right, typename... RightTags>
-using MultiMatcher = detail::MultiMatcher<Left, LeftTag, Right, RightTags...>;
+using detail::MultiMatcher;
 
 template <typename... T>
 using NodeListMatcher = detail::NodeListMatcher<0, T...>;

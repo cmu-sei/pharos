@@ -215,8 +215,17 @@ eventualThunk(Thunk, Func) :-
     eventualThunk(Middle, Func),
     thunk(Thunk, Middle).
 
-%:- table dethunk/2 as opaque.
+:- table dethunk/2 as opaque.
 dethunk(Thunk, Result) :-
+    dethunk_nontabled(Thunk, Result).
+
+dethunk_nontabled(Thunk, Result) :-
+    var(Thunk),
+    ground(Result),
+    backtrace(100),
+    throw(error('dethunk/2 called in a bizarre manner.')).
+
+dethunk_nontabled(Thunk, Result) :-
     eventualThunk(Thunk, Target) -> Result = Target; Result = Thunk.
 
 % Is this thunk the only thunk that eventually executes this method?
@@ -234,8 +243,21 @@ conflictedThunk(Thunk1, Thunk2, Method) :-
 
 :- table possiblyVirtual/1 as opaque.
 possiblyVirtual(Method) :-
+    var(Method),
+    !,
     possibleVFTableEntry(_VFTable1, _VFTableOffset, Entry),
+    % It's ok to call the tabled version because Method is unbound here
     dethunk(Entry, Method).
+
+possiblyVirtual(Method) :-
+    ground(Method),
+    !,
+    possibleVFTableEntry(_VFTable1, _VFTableOffset, Entry),
+    % Call the non tabled version to avoid huge table blow-ups. Another solution would be to
+    % allow calls to dethunk to be properly handled when only the second argument is bound.
+    dethunk_nontabled(Entry, Method).
+
+
 
 % ============================================================================================
 % Rules for setting up preconditions for good guesses...

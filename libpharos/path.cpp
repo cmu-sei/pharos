@@ -253,7 +253,7 @@ PathFinder::generate_edge_conditions(CallTraceDescriptorPtr call_trace_desc,
           edge_conditions.emplace(std::make_pair(edge, not_condition_expr));
         }
       }
-      catch(z3::exception z3x) {
+      catch(z3::exception &z3x) {
         OERROR << "generate_edge_conditions: Z3 Exception caught: " << z3x << LEND;
         return false;
       }
@@ -266,9 +266,9 @@ PathFinder::generate_edge_conditions(CallTraceDescriptorPtr call_trace_desc,
     // terminates in a function call. If the block ends in a
     // call, then we cannot declare the edge dead.
 
-    else if (src_eip_tnp->isNumber()) {
+    else if (src_eip_tnp->isIntegerConstant()) {
       if (!insn_is_call(last_x86insn_in_block(src_bb))) {
-        rose_addr_t next_addr = static_cast<rose_addr_t>(src_eip_tnp->toInt());
+        rose_addr_t next_addr = static_cast<rose_addr_t>(*src_eip_tnp->toUnsigned());
 
         // If the next address is the entry to a known function,
         // then it is probably not an taken edge that is never
@@ -1019,10 +1019,10 @@ PathFinder::assign_traversal_values(PathPtr trv, ExprMap& modelz3vals) {
     GDEBUG << "Evaluating param: " << *param_tnp <<  LEND;
     TreeNodePtr pt = evaluate_model_value(param_tnp, modelz3vals);
 
-    if (pt && pt->isNumber()) {
+    if (pt && pt->isIntegerConstant()) {
       GDEBUG << "Returned parameter treenode : " << *pt << LEND;
 
-      uint64_t raw_val = pt->toInt();
+      uint64_t raw_val = *pt->toUnsigned();
       trv->required_param_values.emplace_back(param, raw_val);
     }
   }
@@ -1041,8 +1041,8 @@ PathFinder::assign_traversal_values(PathPtr trv, ExprMap& modelz3vals) {
              << ", search term: " << *ret_tnp << LEND;
 
       TreeNodePtr rt = evaluate_model_value(ret_tnp, modelz3vals);
-      if (rt && rt->isNumber()) {
-        uint64_t raw_val = rt->toInt();
+      if (rt && rt->isIntegerConstant()) {
+        uint64_t raw_val = *rt->toUnsigned();
         trv->required_ret_values.emplace_back(ret, raw_val);
       }
     }
@@ -1069,8 +1069,8 @@ PathFinder::assign_traversal_values(PathPtr trv, ExprMap& modelz3vals) {
       // The tricky part is that there can be multiple values per
       // variable depending on how they are set
       TreeNodePtr st = evaluate_model_value(stkvar_val_tnp, modelz3vals);
-      if (st && st->isNumber()) {
-        uint64_t raw_val = st->toInt();
+      if (st && st->isIntegerConstant()) {
+        uint64_t raw_val = *st->toUnsigned();
         trv->required_stkvar_values.push_back(ConcreteStackVariable(stkvar, raw_val));
       }
     }
@@ -1094,7 +1094,8 @@ PathFinder::evaluate_model_value(TreeNodePtr tn, const ExprMap& modelz3vals) {
     auto leaf_iter = modelz3vals.find(leaf->toString().c_str());
     if (leaf_iter != modelz3vals.end()) {
       uint64_t leaf_val = leaf_iter->second.get_numeral_uint64();
-      auto leaf_tnp = LeafNode::createInteger(leaf->nBits(), leaf_val, leaf_comment.str());
+      auto leaf_tnp = SymbolicExpr::makeIntegerConstant(
+        leaf->nBits(), leaf_val, leaf_comment.str());
       leaf_map.emplace(leaf, leaf_tnp);
     }
   }
@@ -1398,7 +1399,8 @@ CallTraceDescriptor::create_frame(CallFrameManager& valmgr) {
     // x86). There is a quasi-bug where pharos does not follow this
     TreeNodePtr old_var = par.get_value()->get_expression();
     if (old_var->nBits() != CONVENTION_PARAMETER_SIZE) {
-      auto conv_var = LeafNode::createVariable(CONVENTION_PARAMETER_SIZE, old_var->comment());
+      auto conv_var = SymbolicExpr::makeIntegerVariable(
+        CONVENTION_PARAMETER_SIZE, old_var->comment());
       SymbolicValuePtr conv_val = SymbolicValue::treenode_instance(conv_var);
       add_parameter(par, valmgr.create_frame_value(conv_val, index_));
     }
@@ -1652,7 +1654,7 @@ CallFrameManager::create_frame_tnp(const TreeNodePtr old_tnp, unsigned id) {
       cmt_ss << cmt << ":" << id;
 
       // this is a new variable, so clone it and save it
-      auto new_var = LeafNode::createVariable(old_var->nBits(), cmt_ss.str());
+      auto new_var = SymbolicExpr::makeIntegerVariable(old_var->nBits(), cmt_ss.str());
 
       GDEBUG << "Replacing old var " << *old_var << " with new var " << *new_var << LEND;
 

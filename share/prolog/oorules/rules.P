@@ -1431,10 +1431,11 @@ reasonNOTDerivedClass(DerivedClass, BaseClass, ObjectOffset) :-
 % PAPER: Logic
 reasonNOTDerivedClass(DerivedClass, BaseClass, ObjectOffset) :-
     factEmbeddedObject(DerivedClass, BaseClass, ObjectOffset),
-    factConstructor(DerivedConstructor),
-    factConstructor(BaseConstructor),
     find(DerivedConstructor, DerivedClass),
-    find(BaseConstructor, BaseClass).
+    find(BaseConstructor, BaseClass),
+    % ejs: Why do these need to be constructors?
+    factConstructor(DerivedConstructor),
+    factConstructor(BaseConstructor).
 
 % Add rule for: We cannot be a derived constructor if the table we write was the certain normal
 % (unmodified) table of the base constructor.
@@ -1487,15 +1488,16 @@ reasonClassHasNoBaseSet(Set) :-
 :- table reasonClassHasUnknownBase_B/1 as incremental.
 :- table reasonClassHasUnknownBase_C/1 as incremental.
 :- table reasonClassHasUnknownBase_D/1 as incremental.
-:- table reasonClassHasUnknownBase_E/1 as incremental.
+:- table reasonClassHasUnknownBase_E/3 as incremental.
 
 reasonClassHasUnknownBase(Class) :-
     %logwarnln('Recomputing reasonClassHasUnknownBase...'),
     or([reasonClassHasUnknownBase_A(Class),
         reasonClassHasUnknownBase_B(Class),
         reasonClassHasUnknownBase_C(Class),
-        reasonClassHasUnknownBase_D(Class),
-        reasonClassHasUnknownBase_E(Class)
+        reasonClassHasUnknownBase_D(Class)
+        % in trigger.P
+        %reasonClassHasUnknownBase_E(Class)
       ]).
 
 % Because it is already known to be true.
@@ -1523,31 +1525,31 @@ reasonClassHasUnknownBase_C(DerivedClass) :-
     % we really mean any two entries that dethunk to the same actual method.
     factVFTableEntry(AncestorVFTable, _AncestorVFTableOffset, Entry),
     factVFTableEntry(DerivedVFTable, _DerivedVFTableOffset, Entry),
-    dethunk(Entry, Method),
     iso_dif(DerivedVFTable, AncestorVFTable),
 
     % The method must be assigned to the ancestor class because ancestor classes can't call
     % methods on the derived class.
+    dethunk(Entry, Method),
     find(Method, AncestorClass),
 
-    % Find a constructor in the base class.
+    % Ensure the ancestor constructor is in the base class.
     find(AncestorConstructor, AncestorClass),
     factConstructor(AncestorConstructor),
 
-    % And other constructor that's different from the base constructor.
-    factConstructor(DerivedConstructor),
-    iso_dif(DerivedConstructor, AncestorConstructor),
+    % Both constructors wrote confirmed vtables into offsets in the object.  In the derived
+    % class, the offset is the location of the object, but in the base class it will always be
+    % the table written to offset zero.
+    factVFTableWrite(_Insn2, AncestorConstructor, 0, AncestorVFTable),
 
-    % The derived class must be different from the base class.
-    find(DerivedConstructor, DerivedClass),
-    iso_dif(DerivedClass, AncestorClass),
-
-    % Both methods wrote confirmed vtables into offsets in the object.  In the derived class,
-    % the offset is the location of the object, but in the base class it will always be the
-    % table written to offset zero.
+    % And the other constructor is different from the base constructor.
     factVFTableWrite(_Insn1, DerivedConstructor, _ObjectOffset, DerivedVFTable),
-    factVFTableWrite(_Insn2, AncestorConstructor, 0, AncestorVFTable).
+    factConstructor(DerivedConstructor),
+    % We don't need to check this because we check that both are on different classes below.
+    %iso_dif(DerivedConstructor, AncestorConstructor),
 
+    % And is on a different class.
+    find(DerivedConstructor, DerivedClass),
+    iso_dif(DerivedClass, AncestorClass).
 
 % Because RTTI tells us so.
 reasonClassHasUnknownBase_D(Class) :-
@@ -1565,10 +1567,11 @@ reasonClassHasUnknownBase_D(Class) :-
     true.
 
 % Because the class shares a method that we know is not assigned to the class.
-reasonClassHasUnknownBase_E(Class) :-
+reasonClassHasUnknownBase_E(Class, Method, MethodClass) :-
     factClassCallsMethod(Class, Method),
     find(Method, MethodClass),
-    factNOTMergeClasses(Class, MethodClass),
+    (factNOTMergeClasses(Class, MethodClass);
+     factNOTMergeClasses(MethodClass, Class)),
     % Debugging
     %logtrace('reasonClassHasUnknownBase_E('), logtrace(Class), logtraceln(').'),
     true.
@@ -1807,8 +1810,8 @@ reasonMergeClasses_B(BaseClass, MethodClass) :-
     factConstructor(BaseConstructor),
     % That base class is in a dervied class relationship.
     factDerivedClass(DerivedClass, BaseClass, ObjectOffset),
-    factConstructor(DerivedConstructor),
     find(DerivedConstructor, DerivedClass),
+    factConstructor(DerivedConstructor),
 
     % There are two entries in the vftables (at the same object offset) for those classes.
     % Those methods must
@@ -2057,7 +2060,7 @@ reasonMergeClasses_H(DerivedClass, MethodClass) :-
 %:- table reasonNOTMergeClasses_B/2 as incremental.
 :- table reasonNOTMergeClasses_C/2 as incremental.
 %:- table reasonNOTMergeClasses_D/2 as incremental.
-:- table reasonNOTMergeClasses_E/2 as incremental.
+:- table reasonNOTMergeClasses_E/6 as incremental.
 :- table reasonNOTMergeClasses_F/2 as incremental.
 :- table reasonNOTMergeClasses_G/2 as incremental.
 %:- table reasonNOTMergeClasses_H/2 as incremental.
@@ -2065,8 +2068,8 @@ reasonMergeClasses_H(DerivedClass, MethodClass) :-
 :- table reasonNOTMergeClasses_J/2 as incremental.
 :- table reasonNOTMergeClasses_K/2 as incremental.
 :- table reasonNOTMergeClasses_L/2 as incremental.
-:- table reasonNOTMergeClasses_M/2 as incremental.
-:- table reasonNOTMergeClasses_N/2 as incremental.
+:- table reasonNOTMergeClasses_M/4 as incremental.
+:- table reasonNOTMergeClasses_N/4 as incremental.
 :- table reasonNOTMergeClasses_O/2 as incremental.
 :- table reasonNOTMergeClasses_P/2 as incremental.
 
@@ -2081,15 +2084,18 @@ reasonNOTMergeClasses_new(M1,M2) :-
         %reasonNOTMergeClasses_B(M1,M2),
         reasonNOTMergeClasses_C(M1,M2),
         %reasonNOTMergeClasses_D(M1,M2),
-        reasonNOTMergeClasses_E(M1,M2),
+        % _E is now handled in trigger.P
+        %reasonNOTMergeClasses_E(M1,M2),
         reasonNOTMergeClasses_F(M1,M2),
         reasonNOTMergeClasses_G(M1,M2),
         %reasonNOTMergeClasses_H(M1,M2),
         reasonNOTMergeClasses_I(M1,M2),
         reasonNOTMergeClasses_K(M1,M2),
         reasonNOTMergeClasses_L(M1,M2),
-        reasonNOTMergeClasses_M(M1,M2),
-        reasonNOTMergeClasses_N(M1,M2),
+        % _M is now handled in trigger.P
+        %reasonNOTMergeClasses_M(M1,M2),
+        % _N is now handled in trigger.P
+        %reasonNOTMergeClasses_N(M1,M2),
         reasonNOTMergeClasses_O(M1,M2),
         reasonNOTMergeClasses_P(M1,M2)
       ]).
@@ -2144,11 +2150,11 @@ reasonNOTMergeClasses_C(DerivedClass, MethodClass) :-
 % cannot be the same class.
 % PAPER: Merging-7
 % ED_PAPER_INTERESTING
-reasonNOTMergeClasses_E(Class1, Class2) :-
+reasonNOTMergeClasses_E(Class1, Class2, Insn1, Method1, ObjectOffset, VFTable1) :-
     % Two VFTables are written into the same object offsets in two different methods.  The
     % sterotypical case is of course two compeltely unrelated classes.  This rule applies
     % equally to constructors and destructors.
-    factVFTableWrite(_Insn1, Method1, ObjectOffset, VFTable1),
+    factVFTableWrite(Insn1, Method1, ObjectOffset, VFTable1),
     factVFTableWrite(_Insn2, Method2, ObjectOffset, VFTable2),
     find(Method1, Class1),
     find(Method2, Class2),
@@ -2292,11 +2298,12 @@ reasonNOTMergeClasses_L(Class1, Class2) :-
 
 % Because the sizes are incomaptible.
 % PAPER: Class size constraints
-reasonNOTMergeClasses_M(Class1, Class2) :-
-    factClassSizeGTE(Class1, Size1),
-    factClassSizeLTE(Class2, Size2),
+% Called by trigger.P
+reasonNOTMergeClasses_M(Class1, Class2, GTESize, LTESize) :-
+    factClassSizeGTE(Class1, GTESize),
+    factClassSizeLTE(Class2, LTESize),
     iso_dif(Class1, Class2),
-    Size2 < Size1,
+    LTESize < GTESize,
     % Debugging
     %not(factNOTMergeClasses(Class1, Class2)),
     %not(factNOTMergeClasses(Class2, Class1)),
@@ -2309,11 +2316,12 @@ reasonNOTMergeClasses_M(Class1, Class2) :-
 
 % Because the sizes are incomaptible.
 % PAPER: Class size constraints
-reasonNOTMergeClasses_N(Class1, Class2) :-
-    factClassSizeLTE(Class1, Size1),
-    factClassSizeGTE(Class2, Size2),
+% Called by trigger.P
+reasonNOTMergeClasses_N(Class1, Class2, GTESize, LTESize) :-
+    factClassSizeLTE(Class1, LTESize),
+    factClassSizeGTE(Class2, GTESize),
     iso_dif(Class1, Class2),
-    Size2 > Size1,
+    GTESize > LTESize,
     % Debugging
     %not(factNOTMergeClasses(Class1, Class2)),
     %not(factNOTMergeClasses(Class2, Class1)),

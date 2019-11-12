@@ -5,31 +5,40 @@
 
 :- import take/3 from lists.
 
+countGuess :-
+    delta_con(guesses, 1).
+
+countGuess :-
+    delta_con(guesses, -1),
+    fail.
+
 tryBinarySearchInt(_PosPred, _NegPred, []) :-
-    %logtraceln('tryBinarySearch empty.'),
+    logtraceln('tryBinarySearch empty.'),
     fail.
 
 tryBinarySearchInt(PosPred, NegPred, L) :-
     length(L, 1),
     member(X, L),
-    %logtrace('tryBinarySearch on '), logtraceln(L),
+    logtrace('tryBinarySearch on '), logtrace(PosPred), logtraceln(L),
     !,
     (call(PosPred, X);
-     logwhere('The guess '), logwhere(PosPred), logwhere('('), logwhere(X),
-     logwhereln(') was inconsistent with a valid solution.'),
-     logwhere('Guessing '), logwhere(NegPred), logwhere('('), logwhere(X),
-     logwhereln(') instead.'),
+     logtrace('The guess '), logtrace(PosPred), logtrace('('), logtrace(X),
+     logtraceln(') was inconsistent with a valid solution.'),
+     logtrace('Guessing '), logtrace(NegPred), logtrace('('), logtrace(X),
+     logtraceln(') instead.'),
      call(NegPred, X)).
 
 tryBinarySearchInt(PosPred, NegPred, List) :-
     length(List, ListLen),
-    %logtrace('tryBinarySearch on '), logtrace(ListLen), logtrace(': '), logtraceln(List),
+    logtrace('tryBinarySearch on '), logtrace(PosPred), logtrace(': '), logtraceln(ListLen),
+    logtraceln(List),
     % First try the positive guess on everything. If that fails, we want to retract all the
     % guesses and recurse on a subproblem.
     maplist(PosPred, List);
 
     % We failed! Recurse on first half of the list
-    %logtrace('We failed! tryBinarySearch on '), logtraceln(List),
+    logtrace('We failed! tryBinarySearch on '), logtraceln(List),
+    %(sanityChecks -> true; (logerrorln('sanityChecks failed after retracting guesses; this should never happen'), halt)),
     length(List, ListLen),
     NewListLen is min(16, (ListLen+1)//2),
 
@@ -63,51 +72,62 @@ trySetGroup(NewN) :-
     assert(numGroup(NewN)).
 
 trySetGroup(NewN) :-
-    % logtraceln(['setting group to', NewN, 'failed and setting to 1']),
+    logtrace('setting numGroup to '), logtrace(NewN), logtraceln('failed so setting to 1'),
     % We're backtracking!  Crap.
     retract(numGroup(NewN)),
     assert(numGroup(1)),
     fail.
 
 tryBinarySearch(PP, NP, L) :-
-    %logtraceln('Looking for numGroup......'),
     numGroup(NG),
-    %logtraceln(['Old numGroup is ', NG]),
+    logtrace('Old numGroup is '), logtraceln(NG),
     !,
     tryBinarySearch(PP, NP, L, NG),
-    %logtraceln('success?'),
     % We're successful.  Adjust numgroup.  We need to query again to see if NG changed.
     numGroup(NGagain),
-    %logtraceln(['Old numGroup is again', NGagain]),
+    logtrace('Old numGroup is (again) '), logtraceln(NGagain),
     length(L, ListLength),
     NGp is max(NGagain, min(ListLength, NGagain*2)),
-    %logtraceln(['New numGroup is ', NGp]),
+    logtrace('New numGroup is '), logtraceln(NGp),
     trySetGroup(NGp).
+
+% Do not guess if either fact is already true, or if doNotGuess(Fact) exists.
+doNotGuessHelper(Fact, _) :-
+    Fact, !, fail.
+doNotGuessHelper(Fact, _) :-
+    doNotGuess(Fact), !, fail.
+doNotGuessHelper(_, Fact) :-
+    Fact, !, fail.
+doNotGuessHelper(_, Fact) :-
+    doNotGuess(Fact), !, fail.
+% Otherwise we're good!
+doNotGuessHelper(_, _).
 
 % --------------------------------------------------------------------------------------------
 % Try guessing that a virtual function call is correctly interpreted.
 % --------------------------------------------------------------------------------------------
-guessVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset) :-
+guessVirtualFunctionCall(Out) :-
+    minof((Insn, Constructor, OOffset, VFTable, VOffset),
+          (likelyVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset),
+           not(factNOTConstructor(Constructor)),
+           doNotGuessHelper(factVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset),
+                            factNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset)))),
+
+    Out = tryOrNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset).
+
+tryOrNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset) :-
     likelyVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset),
     not(factNOTConstructor(Constructor)),
-    not(factVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset)),
-    not(factNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset)),
+    doNotGuessHelper(factVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset),
+                     factNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset)),
     (
+        countGuess,
         tryVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset);
         tryNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset);
         logwarn('Something is wrong upstream: invalidVirtualFunctionCall('),
         logwarn(Insn), logwarnln(').'),
         fail
     ).
-
-guessVirtualFunctionCall :-
-    minof((Insn, Constructor, OOffset, VFTable, VOffset),
-          (likelyVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset),
-           not(factNOTConstructor(Constructor)),
-           not(factVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset)),
-           not(factNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset)))),
-
-    guessVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset).
 
 tryVirtualFunctionCall(Insn, Method, OOffset, VFTable, VOffset) :-
     loginfo('Guessing factVirtualFunctionCall('),
@@ -133,19 +153,17 @@ tryNOTVirtualFunctionCall(Insn, Method, OOffset, VFTable, VOffset) :-
 % Try guessing that a virtual function table is correctly identified.
 % --------------------------------------------------------------------------------------------
 
-guessVFTable :-
+guessVFTable(Out) :-
     % See the commentary at possibleVFTable for how this goal constrains our guesses (and
     % ordering).
     osetof(VFTable,
           (possibleVFTable(VFTable),
-           not(factVFTable(VFTable)),
-           not(factNOTVFTable(VFTable))),
+           doNotGuessHelper(factVFTable(VFTable),
+                            factNOTVFTable(VFTable))),
           VFTableSet),
-    length(VFTableSet, VFTableLen),
-    logwhere('There are '), logwhere(VFTableLen), logwhereln(' VFTable Guesses to make.'),
-    tryBinarySearch(tryVFTable, tryNOTVFTable, VFTableSet).
+    Out = tryBinarySearch(tryVFTable, tryNOTVFTable, VFTableSet).
 
-tryOrNotVFTable(VFTable) :-
+tryOrNOTVFTable(VFTable) :-
     tryVFTable(VFTable);
     tryNOTVFTable(VFTable);
     logwarn('Something is wrong upstream: invalidVFTable('),
@@ -153,11 +171,13 @@ tryOrNotVFTable(VFTable) :-
     fail.
 
 tryVFTable(VFTable) :-
+    countGuess,
     loginfo('Guessing factVFTable('), loginfo(VFTable), loginfoln(').'),
     try_assert(factVFTable(VFTable)),
     try_assert(guessedVFTable(VFTable)).
 
 tryNOTVFTable(VFTable) :-
+    countGuess,
     loginfo('Guessing factNOTVFTable('), loginfo(VFTable), loginfoln(').'),
     try_assert(factNOTVFTable(VFTable)),
     try_assert(guessedNOTVFTable(VFTable)).
@@ -166,12 +186,13 @@ tryNOTVFTable(VFTable) :-
 % --------------------------------------------------------------------------------------------
 % Try guessing that a virtual base table is correctly identified.
 % --------------------------------------------------------------------------------------------
-guessVBTable :-
+guessVBTable(Out) :-
     validVBTableWrite(_Insn, Method, _Offset, VBTable),
     factMethod(Method),
-    not(factVBTable(VBTable)),
-    not(factNOTVBTable(VBTable)),
-    (
+    doNotGuessHelper(factVBTable(VBTable),
+                     factNOTVBTable(VBTable)),
+    Out = (
+        countGuess,
         tryVBTable(VBTable);
         tryNOTVBTable(VBTable);
         logwarn('Something is wrong upstream: invalidVBTable('),
@@ -198,8 +219,8 @@ prioritizedVFTableEntry(VFTable, Offset, Entry) :-
     possibleVFTableEntry(VFTable, Offset, Entry),
     factVFTable(VFTable),
     % Then that it's not already proved or disproved.
-    not(factVFTableEntry(VFTable, Offset, Entry)),
-    not(factNOTVFTableEntry(VFTable, Offset, Entry)).
+    doNotGuessHelper(factVFTableEntry(VFTable, Offset, Entry),
+                     factNOTVFTableEntry(VFTable, Offset, Entry)).
 
 % First priority guess, when we already know Entry is an OO method.
 guessVFTableEntry1(VFTable, Offset, Entry) :-
@@ -242,20 +263,21 @@ guessVFTableEntry2(VFTable, Offset, Entry) :-
     not((factNOTVFTableEntry(VFTable, Offset, OtherEntry), OtherEntry > Entry)),
     not((prioritizedVFTableEntry(VFTable, LargerOffset, _OtherEntry), LargerOffset > Offset)).
 
-guessVFTableEntry :-
+guessVFTableEntry(Out) :-
     osetof((VFTable, Offset, Entry),
           guessVFTableEntry1(VFTable, Offset, Entry),
           TupleSet),
-    tryBinarySearch(tryVFTableEntry, tryNOTVFTableEntry, TupleSet).
+    Out = tryBinarySearch(tryVFTableEntry, tryNOTVFTableEntry, TupleSet).
 
-guessVFTableEntry :-
+guessVFTableEntry(Out) :-
     osetof((VFTable, Offset, Entry),
           guessVFTableEntry2(VFTable, Offset, Entry),
           TupleSet),
-    tryBinarySearch(tryVFTableEntry, tryNOTVFTableEntry, TupleSet).
+    Out = tryBinarySearch(tryVFTableEntry, tryNOTVFTableEntry, TupleSet).
 
 tryVFTableEntry((VFTable, Offset, Entry)) :- tryVFTableEntry(VFTable, Offset, Entry).
 tryVFTableEntry(VFTable, Offset, Entry) :-
+    countGuess,
     loginfo('Guessing factVFTableEntry('),
     loginfo(VFTable), loginfo(', '),
     loginfo(Offset), loginfo(', '),
@@ -265,6 +287,7 @@ tryVFTableEntry(VFTable, Offset, Entry) :-
 
 tryNOTVFTableEntry((VFTable, Offset, Entry)) :- tryNOTVFTableEntry(VFTable, Offset, Entry).
 tryNOTVFTableEntry(VFTable, Offset, Entry) :-
+    countGuess,
     loginfo('Guessing factNOTVFTableEntry('),
     loginfo(VFTable), loginfo(', '),
     loginfo(Offset), loginfo(', '),
@@ -284,17 +307,18 @@ guessDerivedClass(DerivedClass, BaseClass, Offset) :-
     % but it's sufficient to prevent the rule from making guesses in a really bad order (higher
     % offsets before offset zero).  We can tighten it further in the future, if needed.
     (Offset = 0; (factDerivedClass(DerivedClass, _BaseClass2, LowerO), LowerO < Offset)),
-    not(factDerivedClass(DerivedClass, BaseClass, Offset)),
-    not(factEmbeddedObject(DerivedClass, BaseClass, Offset)).
+    doNotGuessHelper(factDerivedClass(DerivedClass, BaseClass, Offset),
+                     factEmbeddedObject(DerivedClass, BaseClass, Offset)).
 
-guessDerivedClass :-
+guessDerivedClass(Out) :-
     osetof((DerivedClass, BaseClass, Offset),
           guessDerivedClass(DerivedClass, BaseClass, Offset),
           TupleSet),
-    tryBinarySearch(tryDerivedClass, tryEmbeddedObject, TupleSet).
+    Out = tryBinarySearch(tryDerivedClass, tryEmbeddedObject, TupleSet).
 
 tryEmbeddedObject((OuterClass, InnerClass, Offset)) :- tryEmbeddedObject(OuterClass, InnerClass, Offset).
 tryEmbeddedObject(OuterClass, InnerClass, Offset) :-
+    countGuess,
     loginfo('Guessing factEmbeddedObject('),
     loginfo(OuterClass), loginfo(', '),
     loginfo(InnerClass), loginfo(', '),
@@ -304,6 +328,7 @@ tryEmbeddedObject(OuterClass, InnerClass, Offset) :-
 
 tryDerivedClass((DerivedClass, BaseClass, Offset)) :- tryDerivedClass(DerivedClass, BaseClass, Offset).
 tryDerivedClass(DerivedClass, BaseClass, Offset) :-
+    countGuess,
     loginfo('Guessing factDerivedClass('),
     loginfo(DerivedClass), loginfo(', '),
     loginfo(BaseClass), loginfo(', '),
@@ -354,20 +379,20 @@ tryDerivedClass(DerivedClass, BaseClass, Offset) :-
 guessMethodA(Method) :-
     %callingConvention(Method, '__thiscall'),
     thisCallMethod(Method, _ThisPtr, uncertain),
-    not(factMethod(Method)),
-    not(factNOTMethod(Method)),
+    doNotGuessHelper(factMethod(Method),
+                     factNOTMethod(Method)),
     % Intentionally use the _unvalidated_ access to guess that the Method is actually object
     % oriented.  This will be a problem as we export more facts where we don't have the correct
     % calling convention data (e.g. Linux executables)
     methodMemberAccess(_Insn, Method, Offset, _Size),
     Offset < 100.
 
-guessMethod :-
+guessMethod(Out) :-
     osetof(Method,
           guessMethodA(Method),
           MethodSet),
     logdebug('Proposing factMethod_A('), logdebug(MethodSet), logdebugln(').'),
-    tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
+    Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 guessMethodB(Method) :-
     factMethod(Caller),
@@ -375,17 +400,17 @@ guessMethodB(Method) :-
     thisCallMethod(Caller, ThisPtr1, _Certainty),
     thisPtrOffset(ThisPtr1, _Offset, ThisPtr2),
     thisPtrUsage(_Insn1, Caller, ThisPtr2, Method),
-    not(factMethod(Method)),
-    not(factNOTMethod(Method)).
+    doNotGuessHelper(factMethod(Method),
+                     factNOTMethod(Method)).
 
 % Guess that calls passed offsets into existing objects are methods.  This rule is not
 % literally true, but objects are commonly in other objects.
-guessMethod :-
+guessMethod(Out) :-
     osetof(Method,
           guessMethodB(Method),
           MethodSet),
     logdebug('Proposing factMethod_B('), logdebug(MethodSet), logdebugln(').'),
-    tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
+    Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 % This guess is required (at least for our test suite) in cases where there's no certainty in
 % the calling convention, and effectively no facts that would allow us to reach the conclusion
@@ -394,8 +419,8 @@ guessMethod :-
 guessMethodC(Method) :-
     %callingConvention(Method, '__thiscall'),
     thisCallMethod(Method, _ThisPtr, uncertain),
-    not(factMethod(Method)),
-    not(factNOTMethod(Method)),
+    doNotGuessHelper(factMethod(Method),
+                     factNOTMethod(Method)),
     % Also intentionally an unvalidated methodMemberAccess because we're guessing the
     % factMethod() that is required for the validMethodMemberAccess.
     methodMemberAccess(_Insn1, Method, Offset, _Size1),
@@ -403,22 +428,23 @@ guessMethodC(Method) :-
     validFuncOffset(_Insn2, Caller, Method, _Size2),
     factMethod(Caller).
 
-guessMethod :-
+guessMethod(Out) :-
     osetof(Method,
           guessMethodC(Method),
           MethodSet),
     logdebug('Proposing factMethod_C('), logdebug(MethodSet), logdebugln(').'),
-    tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
+    Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 % More kludgy guessing rules. :-( This one is based on thre premise that a cluster of three or
 % more nearly OO methods is not a conincidence. A better fix would be for at least one of the
 % methods to be detected unambiguously as __thiscall, or to find dataflow from an already true
 % method.
+:- table guessMethodD/1 as incremental.
 guessMethodD(Method) :-
     % This may need to be weakened past uncertain... :-(
     thisCallMethod(Method, _ThisPtr, uncertain),
-    not(factMethod(Method)),
-    not(factNOTMethod(Method)),
+    doNotGuessHelper(factMethod(Method),
+                     factNOTMethod(Method)),
     validMethodMemberAccess(_Insn0, Method, Offset, _Size0),
     Offset < 100,
     validFuncOffset(_Insn1, Caller1, Method, _Size1),
@@ -427,12 +453,12 @@ guessMethodD(Method) :-
     validFuncOffset(_Insn3, Caller3, Method, _Size3),
     iso_dif(Caller1, Caller3).
 
-guessMethod :-
+guessMethod(Out) :-
     osetof(Method,
           guessMethodD(Method),
           MethodSet),
     logdebug('Proposing factMethod_D('), logdebug(MethodSet), logdebugln(').'),
-    tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
+    Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 % A variation of the previous rule using thisPtrUsage and passing around a this-pointer to
 % multiple methods.  Just guess the first and the rest will follow...
@@ -440,8 +466,8 @@ guessMethod :-
 guessMethodE(Method) :-
     % This may need to be weakened past uncertain... :-(
     thisCallMethod(Method, _ThisPtr, uncertain),
-    not(factMethod(Method)),
-    not(factNOTMethod(Method)),
+    doNotGuessHelper(factMethod(Method),
+                     factNOTMethod(Method)),
     validMethodMemberAccess(_Insn0, Method, Offset, _Size0),
     Offset < 100,
     thisPtrUsage(_Insn1, Caller, ThisPtr, Method),
@@ -451,12 +477,12 @@ guessMethodE(Method) :-
     iso_dif(Method, Method3).
 
 
-guessMethod :-
+guessMethod(Out) :-
     osetof(Method,
           guessMethodE(Method),
           MethodSet),
     logdebug('Proposing factMethod_E('), logdebug(MethodSet), logdebugln(').'),
-    tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
+    Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 % Another case where we're trying to implement the reasoning that there's a lot of stuff
 % suggesting that it's a method.  In this case, it's a possible constructor with memory
@@ -465,40 +491,40 @@ guessMethodF(Method) :-
     %thisCallMethod(Method, _ThisPtr, _Certainty),
     (thisCallMethod(Method, _ThisPtr, certain);
      thisCallMethod(Method, _ThisPtr, uncertain)),
-    not(factMethod(Method)),
-    not(factNOTMethod(Method)),
+    doNotGuessHelper(factMethod(Method),
+                     factNOTMethod(Method)),
     validMethodMemberAccess(_Insn1, Method, Offset, _Size1),
     Offset < 100,
     (possibleConstructor(Method); possibleDestructor(Method)).
 
-guessMethod :-
+guessMethod(Out) :-
     osetof(Method,
           guessMethodF(Method),
           MethodSet),
     logdebug('Proposing factMethod_F('), logdebug(MethodSet), logdebugln(').'),
-    tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
+    Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 % Also guess possible constructors and destructors with calls from known methods.
 guessMethodG(Method) :-
     %thisCallMethod(Method, _ThisPtr1, _Certainty),
     (thisCallMethod(Method, _ThisPtr1, certain);
      thisCallMethod(Method, _ThisPtr1, uncertain)),
-    not(factMethod(Method)),
-    not(factNOTMethod(Method)),
+    doNotGuessHelper(factMethod(Method),
+                     factNOTMethod(Method)),
     thisPtrUsage(_Insn, Caller, _ThisPtr2, Method),
     factMethod(Caller),
     (possibleConstructor(Method); possibleDestructor(Method)).
 
-guessMethod :-
+guessMethod(Out) :-
     osetof(Method,
           guessMethodG(Method),
           MethodSet),
     logdebug('Proposing factMethod_G('), logdebug(MethodSet), logdebugln(').'),
-    tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
+    Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 tryMethodNOTMethod(Method):-
-    not(factMethod(Method)),
-    not(factNOTMethod(Method)),
+    doNotGuessHelper(factMethod(Method),
+                     factNOTMethod(Method)),
     (
         tryMethod(Method);
         tryNOTMethod(Method);
@@ -508,12 +534,14 @@ tryMethodNOTMethod(Method):-
     ).
 
 tryMethod(Method) :-
+    countGuess,
     loginfo('Guessing factMethod('), loginfo(Method), loginfoln(').'),
     try_assert(factMethod(Method)),
     try_assert(guessedMethod(Method)),
     make(Method).
 
 tryNOTMethod(Method) :-
+    countGuess,
     loginfo('Guessing factNOTMethod('), loginfo(Method), loginfoln(').'),
     try_assert(factNOTMethod(Method)),
     try_assert(guessedNOTMethod(Method)).
@@ -546,10 +574,6 @@ tryNOTMethod(Method) :-
 % optimal order of the latter two incicators based on various arguments which cases are more
 % common and so forth...
 
-possiblyVirtual(Method):-
-    possibleVFTableEntry(_VFTable1, _VFTableOffset, Entry),
-    dethunk(Entry, Method).
-
 % Perfect virtual case, not in a vftable, writes a vftable, and has no uninitalized reads.
 % ED_PAPER_INTERESTING
 guessConstructor1(Method) :-
@@ -558,15 +582,15 @@ guessConstructor1(Method) :-
     not(possiblyVirtual(Method)),
     factVFTableWrite(_Insn, Method, _ObjectOffset, _VFTable2),
     not(uninitializedReads(Method)),
-    not(factConstructor(Method)),
-    not(factNOTConstructor(Method)).
+    doNotGuessHelper(factConstructor(Method),
+                     factNOTConstructor(Method)).
 
-guessConstructor :-
+guessConstructor(Out) :-
     osetof(Method,
           guessConstructor1(Method),
           MethodSet),
     logdebug('Proposing factConstructor1('), logdebug(MethodSet), logdebugln(').'),
-    tryBinarySearch(tryConstructor, tryNOTConstructor, MethodSet).
+    Out = tryBinarySearch(tryConstructor, tryNOTConstructor, MethodSet).
 
 % Likely virtual case, not in a vftable, writes a vftable, but has unitialized reads.
 guessConstructor2(Method) :-
@@ -576,15 +600,15 @@ guessConstructor2(Method) :-
     factVFTableWrite(_Insn, Method, _ObjectOffset, _VFTable2),
     % We don't whether their were unitialized reads or not.  Presumably we called our parent
     % constructor (which kind of makes sense giving that we've already got virtual methods).
-    not(factConstructor(Method)),
-    not(factNOTConstructor(Method)).
+    doNotGuessHelper(factConstructor(Method),
+                     factNOTConstructor(Method)).
 
-guessConstructor :-
+guessConstructor(Out) :-
     osetof(Method,
           guessConstructor2(Method),
           MethodSet),
     logdebug('Proposing factConstructor2('), logdebug(MethodSet), logdebugln(').'),
-    tryBinarySearch(tryConstructor, tryNOTConstructor, MethodSet).
+    Out = tryBinarySearch(tryConstructor, tryNOTConstructor, MethodSet).
 
 % Normal non-virtual case, not in a vftable, doesn't write a vftable, and has no uninitialized
 % reads.
@@ -595,15 +619,15 @@ guessConstructor3(Method) :-
     not(possiblyVirtual(Method)),
     % This case is for constructors of non-virtual classes.
     not(uninitializedReads(Method)),
-    not(factConstructor(Method)),
-    not(factNOTConstructor(Method)).
+    doNotGuessHelper(factConstructor(Method),
+                     factNOTConstructor(Method)).
 
-guessConstructor :-
+guessConstructor(Out) :-
     osetof(Method,
           guessConstructor3(Method),
           MethodSet),
     logdebug('Proposing factConstructor3('), logdebug(MethodSet), logdebugln(').'),
-    tryBinarySearch(tryConstructor, tryNOTConstructor, MethodSet).
+    Out = tryBinarySearch(tryConstructor, tryNOTConstructor, MethodSet).
 
 % Unusual non-virtual case presumably with inheritance -- not in a vftable, doesn't write a
 % vftable, but has uninitialized reads.  It's very likely that this class has a base, but we
@@ -613,19 +637,19 @@ guessConstructor4(Method) :-
     possibleConstructor(Method),
     not(possiblyVirtual(Method)),
     % This case is for constructors of non-virtual classes with uninitalized reads.
-    not(factConstructor(Method)),
-    not(factNOTConstructor(Method)).
+    doNotGuessHelper(factConstructor(Method),
+                     factNOTConstructor(Method)).
 
-guessUnlikelyConstructor :-
+guessUnlikelyConstructor(Out) :-
     osetof(Method,
           guessConstructor4(Method),
           MethodSet),
     logdebug('Proposing factConstructor4('), logdebug(MethodSet), logdebugln(').'),
-    tryBinarySearch(tryConstructor, tryNOTConstructor, MethodSet).
+    Out = tryBinarySearch(tryConstructor, tryNOTConstructor, MethodSet).
 
-tryConstructorNOTConstructor(Method):-
-    not(factConstructor(Method)),
-    not(factNOTConstructor(Method)),
+tryConstructorNOTConstructor(Method) :-
+    doNotGuessHelper(factConstructor(Method),
+                     factNOTConstructor(Method)),
     (
         tryConstructor(Method);
         tryNOTConstructor(Method);
@@ -635,11 +659,13 @@ tryConstructorNOTConstructor(Method):-
     ).
 
 tryConstructor(Method) :-
+    countGuess,
     loginfo('Guessing factConstructor('), loginfo(Method), loginfoln(').'),
     try_assert(factConstructor(Method)),
     try_assert(guessedConstructor(Method)).
 
 tryNOTConstructor(Method) :-
+    countGuess,
     loginfo('Guessing factNOTConstructor('), loginfo(Method), loginfoln(').'),
     try_assert(factNOTConstructor(Method)),
     try_assert(guessedNOTConstructor(Method)).
@@ -657,20 +683,20 @@ guessClassHasNoBaseB(Class) :-
 
     factVFTableWrite(_Insn1, Constructor, 0, VFTable),
     not((
-               factVFTableWrite(_Insn2, Constructor, _Offset, OtherVFTable),
+               factVFTableWrite(_Insn2, Constructor, _Offset1, OtherVFTable),
                iso_dif(VFTable, OtherVFTable)
        )),
 
-    not(factDerivedClass(Class, _BaseClass, _Offset)),
-    not(factClassHasNoBase(Class)),
-    not(factClassHasUnknownBase(Class)).
+    not(factDerivedClass(Class, _BaseClass, _Offset2)),
+    doNotGuessHelper(factClassHasNoBase(Class),
+                     factClassHasUnknownBase(Class)).
 
-guessClassHasNoBase :-
+guessClassHasNoBase(Out) :-
     osetof(Class,
           guessClassHasNoBaseB(Class),
           ClassSet),
     logdebug('Proposing ClassHasNoBase_B('), logdebug(ClassSet), logdebugln(').'),
-    tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
+    Out = tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
 
 % Then guess classes regardless of their VFTable writes.
 % ED_PAPER_INTERESTING
@@ -678,23 +704,25 @@ guessClassHasNoBaseC(Class) :-
     factConstructor(Constructor),
     find(Constructor, Class),
     not(factDerivedClass(Class, _BaseClass, _Offset)),
-    not(factClassHasNoBase(Class)),
-    not(factClassHasUnknownBase(Class)).
+    doNotGuessHelper(factClassHasNoBase(Class),
+                     factClassHasUnknownBase(Class)).
 
-guessClassHasNoBase :-
+guessClassHasNoBase(Out) :-
     osetof(Class,
           guessClassHasNoBaseC(Class),
           ClassSet),
     logdebug('Proposing ClassHasNoBase_C('),
     logdebug(ClassSet), logdebugln(').'),
-    tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
+    Out = tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
 
 tryClassHasNoBase(Class) :-
+    countGuess,
     loginfo('Guessing factClassHasNoBase('), loginfo(Class), loginfoln(').'),
     try_assert(factClassHasNoBase(Class)),
     try_assert(guessedClassHasNoBase(Class)).
 
 tryClassHasUnknownBase(Class) :-
+    countGuess,
     loginfo('Guessing factClassHasUnknownBase('), loginfo(Class), loginfoln(').'),
     try_assert(factClassHasUnknownBase(Class)),
     try_assert(guessedClassHasUnknownBase(Class)).
@@ -725,21 +753,23 @@ guessNOTMergeClasses(OuterClass, InnerClass) :-
     not(uninitializedReads(InnerConstructor)),
 
     % We've not already concluded that they're different classes.
-    not(factNOTMergeClasses(OuterClass, InnerClass)),
-    not(factNOTMergeClasses(InnerClass, OuterClass)).
+    doNotGuessHelper(factNOTMergeClasses(OuterClass, InnerClass),
+                     factNOTMergeClasses(InnerClass, OuterClass)).
 
-guessNOTMergeClasses :-
+guessNOTMergeClasses(Out) :-
     osetof((OuterClass, InnerClass),
           guessNOTMergeClasses(OuterClass, InnerClass),
           ClassPairSets),
-    tryBinarySearch(tryNOTMergeClasses, tryMergeClasses, ClassPairSets).
+    Out = tryBinarySearch(tryNOTMergeClasses, tryMergeClasses, ClassPairSets).
 
-tryNOTMergeClasses((Class1, Class2)) :- tryNOTMergeClasses(Class1, Class2).
-tryNOTMergeClasses(Class1, Class2) :-
-    loginfo('Guessing factNOTMergeClasses('), loginfo(Class1), loginfo(', '),
-    loginfo(Class2), loginfoln(').'),
-    try_assert(factNOTMergeClasses(Class1, Class2)),
-    try_assert(guessedNOTMergeClasses(Class1, Class2)).
+%% ejs: There is another definition of tryNOTMergeClasses later in the file!
+%% tryNOTMergeClasses((Class1, Class2)) :- tryNOTMergeClasses(Class1, Class2).
+%% tryNOTMergeClasses(Class1, Class2) :-
+%%     countGuess,
+%%     loginfo('Guessing factNOTMergeClasses('), loginfo(Class1), loginfo(', '),
+%%     loginfo(Class2), loginfoln(').'),
+%%     try_assert(factNOTMergeClasses(Class1, Class2)),
+%%     try_assert(guessedNOTMergeClasses(Class1, Class2)).
 
 % This is one of the strongest of several rules for guessing arbitrary method assignments.  We
 % know that the method is very likely to be assigned to one of the two constructors, so we
@@ -769,13 +799,13 @@ guessMergeClassesA(Class1, MethodClass) :-
     %logdebug(Method), logdebugln(').'),
     checkMergeClasses(Class1, MethodClass).
 
-guessMergeClasses :-
+guessMergeClasses(Out) :-
     osetof((Class, Method),
           guessMergeClassesA(Class, Method),
           TupleSet),
     logdebug('Proposing factMergeClasses_A('),
     logdebug(TupleSet), logdebugln(').'),
-    tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, TupleSet, 1).
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, TupleSet, 1).
 
 % Another good guessing heuristic is that if a virtual call was resolved through a specific
 % VFTable, and there's nothing contradictory, try assigning the call to the class that it was
@@ -821,13 +851,13 @@ guessMergeClassesB(Class1, Class2) :-
     %logdebug(Class2), logdebugln(').'),
     checkMergeClasses(Class1, Class2).
 
-guessMergeClasses :-
+guessMergeClasses(Out) :-
     osetof((Class, Method),
           guessMergeClassesB(Class, Method),
           TupleSet),
     logdebug('Proposing factMergeClasses_B('),
     logdebug(TupleSet), logdebugln(').'),
-    tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, TupleSet, 1).
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, TupleSet, 1).
 
 
 % This rule makes guesses about whether to assign methods to the derived class or the base
@@ -848,13 +878,13 @@ guessMergeClassesC(Class1, Class2) :-
     find(Method, Class2),
     checkMergeClasses(Class1, Class2).
 
-guessMergeClasses :-
+guessMergeClasses(Out) :-
     osetof((Class, Method),
           guessMergeClassesC(Class, Method),
           TupleSet),
     logdebug('Proposing factMergeClasses_C('),
     logdebug(TupleSet), logdebugln(').'),
-    tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, TupleSet, 1).
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, TupleSet, 1).
 
 % If that didn't work, maybe the method belongs on the base instead.
 % ED_PAPER_INTERESTING
@@ -867,13 +897,13 @@ guessMergeClassesD(Class1, Class2) :-
     find(Method, Class2),
     checkMergeClasses(Class1, Class2).
 
-guessMergeClasses :-
+guessMergeClasses(Out) :-
     osetof((Class, Method),
           guessMergeClassesD(Class, Method),
           TupleSet),
     logdebug('Proposing factMergeClasses_D('),
     logdebug(TupleSet), logdebugln(').'),
-    tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, TupleSet, 1).
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, TupleSet, 1).
 
 % And finally just guess regardless of derived class facts.
 % ED_PAPER_INTERESTING
@@ -887,14 +917,14 @@ guessMergeClassesE(Class1, Class2) :-
     find(Method, Class2),
     checkMergeClasses(Class1, Class2).
 
-guessMergeClasses :-
+guessMergeClasses(Out) :-
     osetof((Class, Method),
           guessMergeClassesE(Class, Method),
           TupleSet),
     logdebug('Proposing factMergeClasses_E('),
     take(1, TupleSet, OneTuple),
     logdebug(OneTuple), logdebugln(').'),
-    tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple).
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple).
 
 % If we have VFTable that is NOT associated with a class because there's no factVFTableWrite,
 % factClassCallsMethod is not true...  The problem here is that we don't which method call
@@ -925,13 +955,13 @@ guessMergeClassesF(Class, Method1) :-
     %logdebug(Method1), logdebugln(').'),
     checkMergeClasses(Class, Method1).
 
-guessMergeClasses :-
+guessMergeClasses(Out) :-
     osetof((Class, Method),
           guessMergeClassesF(Class, Method),
           TupleSet),
     logdebug('Proposing factMergeClasses_F('),
     logdebug(TupleSet), logdebugln(').'),
-    tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, TupleSet, 1).
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, TupleSet, 1).
 
 checkMergeClasses(Method1, Method2) :-
     iso_dif(Method1, Method2),
@@ -940,8 +970,9 @@ checkMergeClasses(Method1, Method2) :-
     % They're not already on the same class...
     iso_dif(Class1, Class2),
     % They're not already proven NOT to be on the same class.
-    not(factNOTMergeClasses(Class1, Class2)),
-    not(factNOTMergeClasses(Class2, Class1)),
+    doNotGuessHelper(factNOTMergeClasses(Class1, Class2),
+                     factNOTMergeClasses(Class2, Class1)),
+    % XXX: Check factMergeClasses?
     % Now derived relationships between the classes are not allowed either.
     not(reasonDerivedClassRelationship(Class1, Class2)),
     not(reasonDerivedClassRelationship(Class2, Class1)).
@@ -954,6 +985,7 @@ tryMergeClasses(Method1, Method2) :-
     Class1 = Class2,
     !.
 tryMergeClasses(Method1, Method2) :-
+    countGuess,
     find(Method1, Class1),
     find(Method2, Class2),
     loginfo('Guessing mergeClasses('),
@@ -962,8 +994,9 @@ tryMergeClasses(Method1, Method2) :-
     mergeClasses(Class1, Class2),
     try_assert(guessedMergeClasses(Class1, Class2)).
 
+tryNOTMergeClasses((Class1, Class2)) :- tryNOTMergeClasses(Class1, Class2).
 tryNOTMergeClasses(Method1, Method2) :-
-    sanityChecks,
+    countGuess,
     find(Method1, Class1),
     find(Method2, Class2),
     loginfo('Guessing factNOTMergeClasses('),
@@ -975,30 +1008,31 @@ tryNOTMergeClasses(Method1, Method2) :-
 % --------------------------------------------------------------------------------------------
 % Try guessing that method is a real destructor.
 % --------------------------------------------------------------------------------------------
-guessRealDestructor :-
+guessRealDestructor(Out) :-
     minof(Method,
           (likelyDeletingDestructor(DeletingDestructor, Method),
            % Require that we've already confirmed the deleting destructor.
            factDeletingDestructor(DeletingDestructor),
-           not(factRealDestructor(Method)),
-           not(factNOTRealDestructor(Method)))),
+           doNotGuessHelper(factRealDestructor(Method),
+                            factNOTRealDestructor(Method)))),
 
-    guessRealDestructor(Method).
+    Out = tryOrNOTRealDestructor(Method).
 
-guessRealDestructor(Method) :-
+tryOrNOTRealDestructor(Method) :-
     likelyDeletingDestructor(DeletingDestructor, Method),
     % Require that we've already confirmed the deleting destructor.
     factDeletingDestructor(DeletingDestructor),
-    not(factRealDestructor(Method)),
-    not(factNOTRealDestructor(Method)),
+    doNotGuessHelper(factRealDestructor(Method),
+                     factNOTRealDestructor(Method)),
+    countGuess,
     (tryRealDestructor(Method);
      tryNOTRealDestructor(Method)).
 
 % Establish that the candidate meets minimal requirements.
 minimalRealDestructor(Method) :-
     possibleDestructor(Method),
-    not(factRealDestructor(Method)),
-    not(factNOTRealDestructor(Method)),
+    doNotGuessHelper(factRealDestructor(Method),
+                     factNOTRealDestructor(Method)),
 
     % Trying a different approach to blocking singletons here.  Many singletons have no
     % interprocedural flow at all, and so also have no call before AND no calls after.
@@ -1021,54 +1055,38 @@ minimalRealDestructor(Method) :-
     true.
 
 % Prioritize methods called by deleteing destructors.
-guessFinalRealDestructor :-
+guessFinalRealDestructor(Out) :-
     minimalRealDestructor(Method),
     callTarget(_Insn, OtherDestructor, Method),
     factDeletingDestructor(OtherDestructor),
-    (
-        tryRealDestructor(Method);
-        tryNOTRealDestructor(Method);
-        logwarn('Something is wrong upstream: invalidRealDestructor('),
-        logwarn(Method), logwarnln(').'),
-        fail
-    ).
+    Out = tryOrNOTRealDestructor(Method).
 
 % Prioritize methods that call other real destructors.
-guessFinalRealDestructor :-
+guessFinalRealDestructor(Out) :-
     minimalRealDestructor(Method),
     callTarget(_Insn, Method, OtherDestructor),
     factRealDestructor(OtherDestructor),
-    (
-        tryRealDestructor(Method);
-        tryNOTRealDestructor(Method);
-        logwarn('Something is wrong upstream: invalidRealDestructor('),
-        logwarn(Method), logwarnln(').'),
-        fail
-    ).
+    Out = tryOrNOTRealDestructor(Method).
 
 % Prioritize methods that do not call delete to avoid confusion with deleting destructors.
 % This eliminates a couple of false positives in the fast test suite.
-guessFinalRealDestructor :-
+guessFinalRealDestructor(Out) :-
     minimalRealDestructor(Method),
     not(insnCallsDelete(_Insn, Method, _SV)),
-    (
-        tryRealDestructor(Method);
-        tryNOTRealDestructor(Method);
-        logwarn('Something is wrong upstream: invalidRealDestructor('),
-        logwarn(Method), logwarnln(').'),
-        fail
-    ).
+    Out = tryOrNOTRealDestructor(Method).
 
 % Guess if it meets the minimal criteria.
-guessFinalRealDestructor :-
+guessFinalRealDestructor(Out) :-
     minimalRealDestructor(Method),
-    (
-        tryRealDestructor(Method);
-        tryNOTRealDestructor(Method);
-        logwarn('Something is wrong upstream: invalidRealDestructor('),
-        logwarn(Method), logwarnln(').'),
-        fail
-    ).
+    Out = tryOrNOTRealDestructor(Method).
+
+tryOrNOTRealDestructor(Method) :-
+    countGuess,
+    tryRealDestructor(Method);
+    tryNOTRealDestructor(Method);
+    logwarn('Something is wrong upstream: invalidRealDestructor('),
+    logwarn(Method), logwarnln(').'),
+    fail.
 
 tryRealDestructor(Method) :-
     loginfo('Guessing factRealDestructor('), loginfo(Method), loginfoln(').'),
@@ -1086,19 +1104,18 @@ tryNOTRealDestructor(Method) :-
 
 % The criteria for guessing deleting destructors...
 
-guessDeletingDestructor :-
+guessDeletingDestructor(Out) :-
     minof(Method,
           (likelyDeletingDestructor(Method, _RealDestructor),
-           not(factDeletingDestructor(Method)),
-           not(factNOTDeletingDestructor(Method)))),
+           doNotGuessHelper(factDeletingDestructor(Method),
+                            factNOTDeletingDestructor(Method)))),
 
-    guessDeletingDestructor(Method).
+    Out = tryOrNOTDeletingDestructor(Method).
 
-
-guessDeletingDestructor(Method) :-
-    likelyDeletingDestructor(Method, _RealDestructor),
-    not(factDeletingDestructor(Method)),
-    not(factNOTDeletingDestructor(Method)),
+tryOrNOTDeletingDestructor(Method) :-
+    %likelyDeletingDestructor(Method, _RealDestructor),
+    doNotGuessHelper(factDeletingDestructor(Method),
+                     factNOTDeletingDestructor(Method)),
     (
         tryDeletingDestructor(Method);
         tryNOTDeletingDestructor(Method);
@@ -1107,10 +1124,10 @@ guessDeletingDestructor(Method) :-
         fail
     ).
 
-guessFinalDeletingDestructor :-
+guessFinalDeletingDestructor(Out) :-
     possibleDestructor(Method),
-    not(factDeletingDestructor(Method)),
-    not(factNOTDeletingDestructor(Method)),
+    doNotGuessHelper(factDeletingDestructor(Method),
+                     factNOTDeletingDestructor(Method)),
 
     insnCallsDelete(_Insn2, Method, _SV),
 
@@ -1124,20 +1141,14 @@ guessFinalDeletingDestructor :-
 
     %callTarget(_Insn1, Method, RealDestructor),
     %factRealDestructor(RealDestructor),
-    (
-        tryDeletingDestructor(Method);
-        tryNOTDeletingDestructor(Method);
-        logwarn('Something is wrong upstream: invalidDeletingDestructor('),
-        logwarn(Method), logwarnln(').'),
-        fail
-    ).
+    Out = tryOrNOTDeletingDestructor(Method).
 
 %
-guessFinalDeletingDestructor :-
+guessFinalDeletingDestructor(Out) :-
     % Establish that the candidate meets minimal requirements.
     possibleDestructor(Method),
-    not(factDeletingDestructor(Method)),
-    not(factNOTDeletingDestructor(Method)),
+    doNotGuessHelper(factDeletingDestructor(Method),
+                     factNOTDeletingDestructor(Method)),
 
     % The calls delete requirement was what was needed to keep false positives down.
     insnCallsDelete(_DeleteInsn, Method, _SV),
@@ -1151,13 +1162,7 @@ guessFinalDeletingDestructor :-
     iso_dif(Offset1, Offset2),
     dethunk(Entry1, Method),
 
-    (
-        tryDeletingDestructor(Method);
-        tryNOTDeletingDestructor(Method);
-        logwarn('Something is wrong upstream: invalidDeletingDestructor('),
-        logwarn(Method), logwarnln(').'),
-        fail
-    ).
+    Out = tryOrNOTDeletingDestructor(Method).
 
 tryDeletingDestructor(Method) :-
     loginfo('Guessing factDeletingDestructor('), loginfo(Method), loginfoln(').'),
@@ -1170,6 +1175,7 @@ tryNOTDeletingDestructor(Method) :-
     try_assert(guessedNOTDeletingDestructor(Method)).
 
 % A helper for guessing deleting destructors.
+:- table likelyDeletingDestructor/2 as incremental.
 likelyDeletingDestructor(DeletingDestructor, RealDestructor) :-
     % This indicates that the method met some basic criteria in C++.
     possibleDestructor(DeletingDestructor),

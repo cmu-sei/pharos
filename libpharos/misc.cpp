@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 // For timing our execution.
 #include <time.h>
@@ -55,11 +55,10 @@ TreeNodePtr operator+(const TreeNodePtr & a, int64_t b)
       bv.signExtend(bv.hull(),
                     Sawyer::Container::BitVector::BitRange::baseSize(0, bbits));
     }
-    auto c = LeafNode::createConstant(bv);
-    return InternalNode::create(a->nBits(), OP_ADD, a, c,
-                                Rose::BinaryAnalysis::SmtSolverPtr());
+    auto c = SymbolicExpr::makeIntegerConstant(bv);
+    return InternalNode::instance(OP_ADD, a, c, Rose::BinaryAnalysis::SmtSolverPtr());
   }
-  return LeafNode::createInteger(bbits, b);
+  return SymbolicExpr::makeIntegerConstant(bbits, b);
 }
 
 // Here's a helper function for cleaning up the mess that is stack delta constants.  Because we
@@ -906,10 +905,8 @@ void AddConstantExtractor::add(AddConstantExtractor && other)
         n = tget<const TreeNodePtr>(my_data);
       } else {
         // Use the sum of our variable portions
-        size_t nbits = std::max(tget<const TreeNodePtr>(my_data)->nBits(),
-                                tget<const TreeNodePtr>(other_data)->nBits());
-        n = InternalNode::create(nbits, OP_ADD, tget<const TreeNodePtr>(my_data),
-                                 tget<const TreeNodePtr>(other_data));
+        n = InternalNode::instance(OP_ADD, tget<const TreeNodePtr>(my_data),
+                                   tget<const TreeNodePtr>(other_data));
       }
 
       // Get the constant set for this variable portion
@@ -937,8 +934,9 @@ AddConstantExtractor::AddConstantExtractor(const TreeNodePtr& tn) {
   LeafNodePtr lp = tn->isLeafNode();
   if (lp) {
     // If this is a constant, insert as a null variable portion with single-value constant set
-    if (lp->isNumber() && lp->nBits() <= 64) {
-      int64_t val = IntegerOps::signExtend2(lp->toInt(), lp->nBits(), 8*sizeof(int64_t));
+    if (lp->isIntegerConstant() && lp->nBits() <= 64) {
+      int64_t val = IntegerOps::signExtend2(*lp->toUnsigned(), lp->nBits(), 8*sizeof(int64_t));
+      // TODO: replace with val = *lp->toSigned() once that is fixed in Rose
       data.emplace(std::make_pair(TreeNodePtr(), constset_t{val}));
       return;
     }
@@ -1045,8 +1043,8 @@ void backtrace(Sawyer::Message::Facility & log, Sawyer::Message::Importance leve
 
 rose_addr_t
 address_from_node(LeafNodePtr leaf) {
-   assert(leaf && leaf->isNumber());
-   return static_cast<rose_addr_t>(leaf->bits().toInteger());
+   assert(leaf && leaf->isIntegerConstant());
+   return static_cast<rose_addr_t>(*leaf->toUnsigned());
 }
 
 void print_expression(std::ostream & stream, TreeNode & e)

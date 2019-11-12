@@ -479,9 +479,9 @@ OOSolver::add_call_facts(const OOAnalyzer& ooa)
       TreeNodePtr expr = cpd.get_expression();
       if (!expr) continue;
       // If the expression is a constant and not a global variable we do not want to export it.
-      if (expr->isNumber()) {
+      if (expr->isIntegerConstant()) {
         if (expr->nBits() > 64) continue;
-        if (ooa.ds.get_global(expr->toInt()) == NULL) continue;
+        if (ooa.ds.get_global(*expr->toUnsigned()) == NULL) continue;
       }
       std::string term = "sv_" + std::to_string(expr->hash());
       if (debug_sv_facts) {
@@ -505,9 +505,9 @@ OOSolver::add_call_facts(const OOAnalyzer& ooa)
       TreeNodePtr expr = cpd.get_value()->get_expression();
       if (!expr) continue;
       // If the expression is a constant and not a global variable we do not want to export it.
-      if (expr->isNumber()) {
+      if (expr->isIntegerConstant()) {
         if (expr->nBits() > 64) continue;
-        if (ooa.ds.get_global(expr->toInt()) == NULL) continue;
+        if (ooa.ds.get_global(*expr->toUnsigned()) == NULL) continue;
       }
       std::string term = "sv_" + std::to_string(expr->hash());
       if (debug_sv_facts) {
@@ -587,9 +587,9 @@ OOSolver::add_function_facts(const OOAnalyzer& ooa)
       if (!expr) continue;
       // If the expression is a constant and not a global variable we do not want to export it.
       // Is it possible to have _function_ parameters that are constants, or only on calls?
-      if (expr->isNumber()) {
+      if (expr->isIntegerConstant()) {
         if (expr->nBits() > 64) continue;
-        if (ooa.ds.get_global(expr->toInt()) == NULL) continue;
+        if (ooa.ds.get_global(*expr->toUnsigned()) == NULL) continue;
       }
       std::string term = "sv_" + std::to_string(expr->hash());
       if (fpd.is_reg()) {
@@ -608,9 +608,9 @@ OOSolver::add_function_facts(const OOAnalyzer& ooa)
       TreeNodePtr expr = fpd.get_value()->get_expression();
       if (!expr) continue;
       // If the expression is a constant and not a global variable we do not want to export it.
-      if (expr->isNumber()) {
+      if (expr->isIntegerConstant()) {
         if (expr->nBits() > 64) continue;
-        if (ooa.ds.get_global(expr->toInt()) == NULL) continue;
+        if (ooa.ds.get_global(*expr->toUnsigned()) == NULL) continue;
       }
       std::string term = "sv_" + std::to_string(expr->hash());
       if (fpd.is_reg()) {

@@ -44,7 +44,8 @@ LeafNodePtr CallDescriptor::get_stack_delta_variable() const {
   }
   if (stack_delta_variable == nullptr) {
     size_t arch_bits = ds.get_arch_bits();
-    stack_delta_variable = LeafNode::createVariable(arch_bits, "", UNKNOWN_STACK_DELTA);
+    stack_delta_variable = SymbolicExpr::makeIntegerVariable(
+      arch_bits, "", UNKNOWN_STACK_DELTA);
   }
   return stack_delta_variable;
 }

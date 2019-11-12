@@ -96,7 +96,7 @@
 :- dynamic factVFTable/1 as incremental.
 :- dynamic factNOTVFTable/1 as incremental.
 :- index(factVFTableWrite/4, [1,2,4,3]).
-:- dynamic factVFTableWrite/4 as incremental.
+:- dynamic factVFTableWrite/4 as incremental,abstract(0).
 :- index(factVFTableOverwrite/3, [2,1]).
 :- dynamic factVFTableOverwrite/3 as incremental.
 :- index(factVFTableEntry/3, [1+2,3,1]).
@@ -179,6 +179,7 @@ classArgs(factClassSizeLTE/2, 1).
 % them back up to being consistently used and see if we can't develop more useful
 % infrastructure around them.
 
+:- dynamic doNotGuess/1 as incremental.
 :- dynamic guessedMethod/1 as incremental.
 :- dynamic guessedNOTMethod/1 as incremental.
 :- dynamic guessedConstructor/1 as incremental.
@@ -258,6 +259,7 @@ classArgs(factClassSizeLTE/2, 1).
 :- include(final).
 :- include(softcut).
 :- include(class).
+:- include(trigger).
 
 :- debug_ctl(profile, on).
 :- debug_ctl(prompt, off).
@@ -279,22 +281,41 @@ classArgs(factClassSizeLTE/2, 1).
 
 delta_con(Con,Delta):- conget(Con,Y), Z is Y+Delta, conset(Con,Z).
 
+% trigger facts are not incremental, but regular facts are
+assert_helper(trigger_fact(X)) :-
+    !,
+    assertz(trigger_fact(X)).
+assert_helper(X) :-
+    incr_asserta(X).
+retract_helper(trigger_fact(X)) :-
+    !,
+    retract(trigger_fact(X)),
+    % I believe that it is possible for class merging to re-introduce a trigger fact in between
+    % when it is retracted and when we backtrack.  If this happens, it introduces a choice
+    % point which messes up backtracking.  Thus we need another cut here.
+    !.
+retract_helper(X) :-
+    incr_retract(X).
+
 try_assert(X) :- X, !.
 try_assert(X) :- try_assert_real(X).
-try_assert_real(X) :- delta_con(numfacts, 1), incr_asserta(X).
+try_assert_real(X) :- delta_con(numfacts, 1), trigger_hook(X), assert_helper(X).
+% If we try to assert a trigger_fact and it fails, ignore it.  The worst that happens is we
+% reason about the errant trigger which is no longer true.  We do need to fail to avoid creating a choice point when backtracking.
+try_assert_real(X) :- X = trigger_fact(_), !, fail.
 try_assert_real(X) :-
-    %logtrace('Retracting '), logtrace(X), logtraceln('...'),
+    logtrace('Fail-Retracting '), logtrace(X), logtraceln('...'),
     delta_con(numfacts, -1),
-    incr_retract(X),
+    retract_helper(X),
     fail.
 
 try_retract(X) :- not(X), !.
 try_retract(X) :- try_retract_real(X).
-try_retract_real(X) :- delta_con(numfacts, -1), incr_retract(X).
+try_retract_real(X) :- delta_con(numfacts, -1), retract_helper(X).
 try_retract_real(X) :-
-    %logtrace('Asserting '), logtrace(X), logtraceln('...'),
+    logtrace('Fail-Asserting '), logtrace(X), logtraceln('...'),
     delta_con(numfacts, 1),
-    incr_asserta(X),
+    assert_helper(X),
     fail.
 
 % This predicate looks for arguments that are defined in classArgs as representing classes.  It
@@ -303,41 +324,47 @@ try_retract_real(X) :-
 % representative for each class.
 fixupClasses(From, To, OldTerm, NewTerm) :-
     classArgs(Pred/Arity, Index),
-    functor(OldTerm, Pred, Arity),
+    functor(IntermediateOldTerm, Pred, Arity),
 
-    % The OldTerm must already be asserted, since we're going to end up retracting it.
-    OldTerm,
+    % Ensure that the From argument is in the correct location for this replacement
+    arg(Index, IntermediateOldTerm, From),
+
+    % The IntermediateOldTerm must already be asserted, since we're going to end up retracting it.
+    ((IntermediateOldTerm, Trigger=false);
+     % OR we have a trigger fact that we haven't processed yet
+     (trigger_fact(IntermediateOldTerm), Trigger=true)),
 
     %logtrace('Considering class fact '), logtrace(Pred), logtrace('/'), logtrace(Arity),
     %logtrace(' index '), logtrace(Index),
     %logtrace(' from '), logtrace(From), logtrace(' to '), logtrace(To),
-    %logtrace(' in predicate '), logtraceln(OldTerm),
+    %logtrace(' in predicate '), logtraceln(IntermediateOldTerm),
 
-    % Ensure that the From argument is in the correct location for this replacement?
-    arg(Index, OldTerm, From),
 
     %logtrace('Fixing up '), logtrace(Pred), logtrace('/'), logtrace(Arity),
     %logtrace(' index '), logtrace(Index),
     %logtrace(' from '), logtrace(From), logtrace(' to '), logtrace(To),
-    %logtrace(' in predicate '), logtraceln(OldTerm),
+    %logtrace(' in predicate '), logtraceln(IntermediateOldTerm),
 
     % Now we'll break it apart.
-    OldTerm =.. OldTermElements,
+    IntermediateOldTerm =.. IntermediateOldTermElements,
     ListIndex is Index + 1,
 
     % Report what the terms list looks like before replacement
     %logtrace('Fixing up position '), logtrace(ListIndex),
-    %logtrace(' in old elements: '), logtraceln(OldTermElements),
+    %logtrace(' in old elements: '), logtraceln(IntermediateOldTermElements),
 
-    % Replace From in OldTermElements at ListIndex offset, with To, and return NewTermElements.
-    replace_ith(OldTermElements, ListIndex, From, To, NewTermElements),
+    % Replace From in IntermediateOldTermElements at ListIndex offset, with To, and return IntermediateNewTermElements.
+    replace_ith(IntermediateOldTermElements, ListIndex, From, To, IntermediateNewTermElements),
 
     % Report what the terms list looks like after replacement
     %logtrace('Fixing up position '), logtrace(ListIndex),
-    %logtrace(' resulted in new elements: '), logtraceln(NewTermElements),
+    %logtrace(' resulted in new elements: '), logtraceln(IntermediateNewTermElements),
 
     % Combine NetTermElements back into a predicate that we can assert.
-    NewTerm =.. NewTermElements.
+    IntermediateNewTerm =.. IntermediateNewTermElements,
+
+    ((Trigger=false, OldTerm=IntermediateOldTerm, NewTerm=IntermediateNewTerm);
+     (Trigger=true, OldTerm=trigger_fact(IntermediateOldTerm), NewTerm=trigger_fact(IntermediateNewTerm))).
 
 logtraceClasses :-
     classArgs(Pred/Arity, Index),
@@ -378,9 +405,12 @@ mergeClasses(M1, M2) :-
     % Compute OldRep
     (NewRep=S1 -> OldRep=S2; OldRep=S1),
 
+    % If we fail, the only thing we want to backtrack over is the actions we took
+    !,
+
     % We always use the identifier for the first one.  So this should be the NewRep
+    % Note: We must be able to backtrack through this to restore classes on failure.
     union(NewRep, OldRep),
-    %union(M1, M2),
 
     loginfo('Merging class '), loginfo(OldRep), loginfo(' into '), loginfo(NewRep), loginfoln(' ...'),
 
@@ -400,7 +430,8 @@ mergeClasses(M1, M2) :-
 % in the correct order should spend less time evaluating rules that don't accomplish anything.
 
 reasonForward :-
-    delta_con(reasonForwardSteps,1),
+    logdebugln('Starting reasonForward.'),
+    (delta_con(reasonForwardSteps, 1); (delta_con(reasonForwardSteps, -1), fail)),
     once((concludeMethod(Out);
           concludeVFTableOverwrite(Out);
           concludeVirtualFunctionCall(Out);
@@ -423,11 +454,13 @@ reasonForward :-
           concludeDeletingDestructor(Out);
           concludeRealDestructor(Out);
           concludeNOTRealDestructor(Out);
-          concludeClassSizeGTE(Out);
-          concludeClassSizeLTE(Out);
+	  concludeClassSizeGTE(Out);
+	  concludeClassSizeLTE(Out);
           concludeClassHasNoBase(Out);
           concludeClassHasUnknownBase(Out);
           concludeMergeClasses(Out);
+          % We should probably be more intelligent about how we order here for trigger
+          concludeTrigger(Out);
           concludeNOTMergeClasses(Out);
           concludeClassCallsMethod(Out)
         )),
@@ -438,40 +471,57 @@ reasonForward :-
     % Go ahead and try_assert the fact.
     call(Out).
 
-% If we can reason forward once, commit so we don't backtrack and try to pass without reasoning forward.
+% Reason forward as many times as possible.  It's ok if we can't reason forward any more.  But
+% if we _backtrack_ and can't reason forward, it means that we've exhausted this search tree,
+% and we should fail to our caller.  The if_ handles that, since if reasonForward suceeds once,
+% we will keep searching for alternatives.  If no alternative is found, it will fail because it
+% committed to the first branch.
 reasonForwardAsManyTimesAsPossible :-
-    %if_(reasonForward,
-    %    (reasonForwardAsManyTimesAsPossible),
-    %    debugln('Done with reasonForwardAsManyTimesAsPossible')).
-    if_(reasonForward, (reasonForwardAsManyTimesAsPossible), true).
-
-%% reasonForwardAtLeastOnce :-
-%%     reasonForward, !, reasonForwardAsManyTimesAsPossible.
+    logtraceln('reasonForwardAsManyTimesAsPossible'),
+    %(sanityChecks -> true; (logwarnln('Failed sanity check during forward reasoning'), fail)),
+    if_(reasonForward,
+        reasonForwardAsManyTimesAsPossible,
+        logdebugln('reasonForwardAsManyTimesAsPossible complete.')).
 
 countFacts(Total) :- conget(numfacts,Total).
 
 % Go forward: Make a guess, reason forward, and then sanity check
-reasoningLoop :-
-    % Disabled because debugClasses/0 isn't defined anywhere?
-    %(debuggingEnabled -> once((debugClasses; true)); true),
+tryAGuess :-
+    logtraceln('reasoningLoop: guess'),
     guess,
     countFacts(N),
-    progress(N),
-    sanityChecks,
+    progress(N).
+
+restOfLoop :-
+    logtraceln('reasoningLoop: pre-reason sanityChecks'),
+    (sanityChecks
+    -> loginfoln('Constraint checks succeeded, proceeding to reason forward!')
+    ; (logwarnln('Constraint checks failed, retracting guess!'), fail)),
+    logtraceln('reasoningLoop: reasonForardAsManyTimesAsPossible'),
     reasonForwardAsManyTimesAsPossible,
+    logdebugln('reasoningLoop: post-reason sanityChecks'),
     (sanityChecks
     -> loginfoln('Constraint checks succeeded, guess accepted!')
     ; (logwarnln('Constraint checks failed, retracting guess!'), fail)),
-    % If we have reached this point, sanity checks have passed, and we are choosing not to
-    % backtrack.  In particular, this means we will not backtrack into a previous
-    % reasoningLoop.  If we would have, it will trigger the error message below.
-    !,
-    (reasoningLoop
-    -> true
-    ; logerrorln('Unable to backtrace into previous reasoningLoop.  The results returned by this run may be less accurate as a result.')).
+    (backtrackForUpstream ->
+         (reasoningLoop;
+          % If we have reached this point, sanity checks have initially passed but we have
+          % backtracked here, which means an upstream problem caused us to backtrack.  This is
+          % controlled by the backtrackForUpstream/0 option.
+          (loginfoln('Backtracking into reasoningLoop/0 to fix an upstream problem.'),
+           fail));
+          % If we are not backtracking, we eagerly cut here to avoid wasting a lot of memory.
+          (!,
+           (reasoningLoop;
+            (logerrorln('Refusing to backtrack into reasoningLoop to fix an upstream problem.  The results returned by this run will be inaccurate.'),
+             % Don't recurse to force exit.
+             true)))).
 
-% The only way to terminate the reasoningLoop is if there are no more guesses
-reasoningLoop.
+% When reasoning, if we ever run out of guesses, we are done!  Otherwise, we execute the rest
+% of the loop, but we must preserve choice points so that we can backtrack to the latest guess
+% even if that is in another loop iteration.
+reasoningLoop :-
+    if_(tryAGuess, restOfLoop, true).
 
 % --------------------------------------------------------------------------------------------
 % The performance of our code is highly dependent on the ordering of these guesses.  Making bad
@@ -479,69 +529,74 @@ reasoningLoop.
 % well justified, but rather a hodge-podge of experimental results and gut feelings.  Cory has
 % no idea how to reason through this properly, so he's just going to take some notes.
 guess :-
-        delta_con(guesses,1),
+        conget(guesses, Guesses),
+        logdebug('Starting guess. There are currently '),
+        logdebug(Guesses), logdebugln(' guesses.'),
         % These three guesses are first on the principle that guesing them has lots of
         % consequences, and that they're probably not wrong, so there's little harm in guessing
         % them first.
-    or([guessVirtualFunctionCall,
-        guessVFTable,
-        guessVBTable,
-        guessDerivedClass,
-        % ejs: guessEmbeddedObject is redundant!
-        %guessEmbeddedObject,
+        once((guessVirtualFunctionCall(Out);
+              guessVFTable(Out);
+              guessVBTable(Out);
+              guessDerivedClass(Out);
 
-        % Guess that methods really are methods.  Currently the ordering for this rule was
-        % pretty random --  in time to guessing VFTable entries?
-        guessMethod,
+              % Guess that methods really are methods.  Currently the ordering for this rule was
+              % pretty random --  in time to guessing VFTable entries?
+              guessMethod(Out);
 
-        % Perhaps both of these should be guessed at once?  They're so closely related that we
-        % might get better results from requiring both or none...  But how to do that?  These area
-        % guessed before constructors in particular because the prevent some bas constructor
-        % guesses.
-        guessDeletingDestructor,
-        guessRealDestructor,
+              % Perhaps both of these should be guessed at once?  They're so closely related that we
+              % might get better results from requiring both or none...  But how to do that?  These area
+              % guessed before constructors in particular because the prevent some bas constructor
+              % guesses.
+              guessDeletingDestructor(Out);
+              guessRealDestructor(Out);
 
-        % Constructors are very important guesses that can sometimes be reasoned soundly in the
-        % presence of virtual function tables, but we often have to guess when there are not
-        % tables.
-        guessConstructor,
+              % Constructors are very important guesses that can sometimes be reasoned soundly in the
+              % presence of virtual function tables, but we often have to guess when there are not
+              % tables.
+              guessConstructor(Out);
 
-        % This is a fairly solid rule that used to be forward reasoning until it was found to
-        % be incorrect in certain rare cases.  It has to be before ClassHasNoBase because it
-        % will cause confusion about embedded object versus inheritance if it's after.
-        guessNOTMergeClasses,
+              % This is a fairly solid rule that used to be forward reasoning until it was found to
+              % be incorrect in certain rare cases.  It has to be before ClassHasNoBase because it
+              % will cause confusion about embedded object versus inheritance if it's after.
+              guessNOTMergeClasses(Out);
 
-        % This is a very important (and very speculative) guess that's required to make a lot of
-        % forward progress. :-( It's a very likely source of backtracking.  Its relationship with
-        % guessing constructors is very unclear.  We probably need to have a fairly complete set of
-        % constructors to derive base class relationships which prevent bad no-base guesses.
-        guessClassHasNoBase,
+              % This is a very important (and very speculative) guess that's required to make a lot of
+              % forward progress. :-( It's a very likely source of backtracking.  Its relationship with
+              % guessing constructors is very unclear.  We probably need to have a fairly complete set of
+              % constructors to derive base class relationships which prevent bad no-base guesses.
+              guessClassHasNoBase(Out);
 
-        % Guess some less likely constructors after having finished reasoning through the likely
-        % implications of the inheritance of the more likely constuctor guesses.
-        guessUnlikelyConstructor,
+              % Guess some less likely constructors after having finished reasoning through the likely
+              % implications of the inheritance of the more likely constuctor guesses.
+              guessUnlikelyConstructor(Out);
 
-        % This guess was move to almost last because in the case of overlapping VFTables, there's a
-        % lot of bad guesses that are very confusing.  Alternatively, we could choose not to make
-        % guesses that do not overlap with _possible_ tables initially, and then later make more
-        % speculative guesses that do.  These guesses probably don't drive a lot of logic
-        % currently, but could drive more later (we're currently lacking good rules limiting the
-        % relationships between virtual methods).
-        guessVFTableEntry,
+              % This guess was move to almost last because in the case of overlapping VFTables, there's a
+              % lot of bad guesses that are very confusing.  Alternatively, we could choose not to make
+              % guesses that do not overlap with _possible_ tables initially, and then later make more
+              % speculative guesses that do.  These guesses probably don't drive a lot of logic
+              % currently, but could drive more later (we're currently lacking good rules limiting the
+              % relationships between virtual methods).
+              guessVFTableEntry(Out);
 
-        % This shuold probably be the very last guess because a lot of it is pretty arbitrary.
-        % Alternatively we could break the different ways of proposing guesses into different rules
-        % and make higher confidence guesses earlier and lower confidence guesses later.  Right
-        % now, that's handled by clause ordering within this one rule, which precludes us from
-        % splitting it up.
-        guessMergeClasses,
+              % This shuold probably be the very last guess because a lot of it is pretty arbitrary.
+              % Alternatively we could break the different ways of proposing guesses into different rules
+              % and make higher confidence guesses earlier and lower confidence guesses later.  Right
+              % now, that's handled by clause ordering within this one rule, which precludes us from
+              % splitting it up.
+              guessMergeClasses(Out);
 
-        % Only after we've merged all the methods into the classes should we take wild guesses
-        % at real destructors.
-        guessFinalDeletingDestructor
-        % RealDestructorChange! (uncomment next line and add comma above)
-        %guessFinalRealDestructor
-      ]).
+              % Only after we've merged all the methods into the classes should we take wild guesses
+              % at real destructors.
+              guessFinalDeletingDestructor(Out)
+              % RealDestructorChange! (uncomment next line and add semicolon above)
+              %guessFinalRealDestructor(Out)
+             )),
+
+        (
+            call(Out);
+            (logdebug('guess: We have back-tracked to the call of '), logdebugln(Out), fail)
+        ).
 
 % Actually check to see if the solution is complete.
 checkCompleteness :-

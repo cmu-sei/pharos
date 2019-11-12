@@ -24,7 +24,7 @@ function(build_pharos_pod target podfile section)
     DEPENDS "${POD_BUILD}" ${POD_DEPENDS})
   add_custom_command(
     OUTPUT "${POD_MAN}"
-    COMMAND pod2man --section=${section} "${BUILT_POD}" "${POD_MAN}"
+    COMMAND pod2man --section=${section} --release=Pharos --center="Pharos Documentation" "${BUILT_POD}" "${POD_MAN}"
     MAIN_DEPENDENCY "${BUILT_POD}")
   add_custom_target(${target} ALL DEPENDS "${POD_MAN}")
   install(

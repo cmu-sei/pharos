@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <libpharos/defuse.hpp>
 #include <gtest/gtest.h>
@@ -21,15 +21,15 @@ class MergeTestFixture : public ::testing::Test {
 // address not part of condition
 TEST_F(MergeTestFixture, TEST_MERGE_MISSING_ADDR) {
 
-  TreeNodePtr zero = LeafNode::createInteger(32, 0);
-  TreeNodePtr C1 = makeEq(LeafNode::createVariable(32), zero);
-  TreeNodePtr T1 = LeafNode::createInteger(32, 0x1234);
-  TreeNodePtr F1 = LeafNode::createInteger(32, 0x4567);
-  TreeNodePtr ITE1 = InternalNode::create(32, OP_ITE, C1, T1, F1);
+  TreeNodePtr zero = SymbolicExpr::makeIntegerConstant(32, 0);
+  TreeNodePtr C1 = makeEq(SymbolicExpr::makeIntegerVariable(32), zero);
+  TreeNodePtr T1 = SymbolicExpr::makeIntegerConstant(32, 0x1234);
+  TreeNodePtr F1 = SymbolicExpr::makeIntegerConstant(32, 0x4567);
+  TreeNodePtr ITE1 = InternalNode::instance(OP_ITE, C1, T1, F1);
   SymbolicValuePtr ITE_sv = SymbolicValue::treenode_instance(ITE1);
 
   OINFO << "Full ITE: " << *ITE1 << LEND;
-  TreeNodePtr leaf = LeafNode::createInteger(32, 0xABCD);
+  TreeNodePtr leaf = SymbolicExpr::makeIntegerConstant(32, 0xABCD);
   SymbolicValuePtr result = get_leaf_condition(ITE_sv, leaf, nullnode);
   SymbolicValuePtr expected_sv = SymbolicValue::incomplete(1);
 
@@ -42,11 +42,11 @@ TEST_F(MergeTestFixture, TEST_MERGE_MISSING_ADDR) {
 // (ITE C1 T1 F1), T1 -> C1
 TEST_F(MergeTestFixture, TEST_MERGE_TRUE_ADDR) {
 
-  TreeNodePtr zero = LeafNode::createInteger(32, 0);
-  TreeNodePtr C1 = makeEq(LeafNode::createVariable(32), zero);
-  TreeNodePtr T1 = LeafNode::createInteger(32,0x1234);
-  TreeNodePtr F1 = LeafNode::createInteger(32, 0x4567);
-  TreeNodePtr ITE1 = InternalNode::create(32, OP_ITE, C1, T1, F1);
+  TreeNodePtr zero = SymbolicExpr::makeIntegerConstant(32, 0);
+  TreeNodePtr C1 = makeEq(SymbolicExpr::makeIntegerVariable(32), zero);
+  TreeNodePtr T1 = SymbolicExpr::makeIntegerConstant(32,0x1234);
+  TreeNodePtr F1 = SymbolicExpr::makeIntegerConstant(32, 0x4567);
+  TreeNodePtr ITE1 = InternalNode::instance(OP_ITE, C1, T1, F1);
   SymbolicValuePtr ITE_sv = SymbolicValue::treenode_instance(ITE1);
 
   OINFO << "Full ITE: " << *ITE1 << LEND;
@@ -64,11 +64,11 @@ TEST_F(MergeTestFixture, TEST_MERGE_TRUE_ADDR) {
 // (ITE C1 T1 F1), F1 -> !C1
 TEST_F(MergeTestFixture, TEST_MERGE_FALSE_ADDR) {
 
-  TreeNodePtr zero = LeafNode::createInteger(32, 0);
-  TreeNodePtr C1 = makeEq(LeafNode::createVariable(32), zero);
-  TreeNodePtr T1 = LeafNode::createInteger(32,0x1234);
-  TreeNodePtr F1 = LeafNode::createInteger(32, 0x4567);
-  TreeNodePtr ITE1 = InternalNode::create(32, OP_ITE, C1, T1, F1);
+  TreeNodePtr zero = SymbolicExpr::makeIntegerConstant(32, 0);
+  TreeNodePtr C1 = makeEq(SymbolicExpr::makeIntegerVariable(32), zero);
+  TreeNodePtr T1 = SymbolicExpr::makeIntegerConstant(32,0x1234);
+  TreeNodePtr F1 = SymbolicExpr::makeIntegerConstant(32, 0x4567);
+  TreeNodePtr ITE1 = InternalNode::instance(OP_ITE, C1, T1, F1);
   SymbolicValuePtr ITE_sv = SymbolicValue::treenode_instance(ITE1);
 
   OINFO << "Full ITE: " << *ITE1 << LEND;
@@ -84,18 +84,18 @@ TEST_F(MergeTestFixture, TEST_MERGE_FALSE_ADDR) {
 // (ITE C1 (ITE C2 T2 F2) F1): T2 -> C1 & C2
 TEST_F(MergeTestFixture, TEST_MERGE_COMPLEX_T2) {
 
-  TreeNodePtr zero = LeafNode::createInteger(32, 0);
-  TreeNodePtr one = LeafNode::createInteger(32, 1);
+  TreeNodePtr zero = SymbolicExpr::makeIntegerConstant(32, 0);
+  TreeNodePtr one = SymbolicExpr::makeIntegerConstant(32, 1);
 
-  TreeNodePtr C1 = makeEq(LeafNode::createVariable(32), zero);
-  TreeNodePtr F1 = LeafNode::createInteger(32, 0x1234);
-  TreeNodePtr C2 = makeEq(LeafNode::createVariable(32), one);
+  TreeNodePtr C1 = makeEq(SymbolicExpr::makeIntegerVariable(32), zero);
+  TreeNodePtr F1 = SymbolicExpr::makeIntegerConstant(32, 0x1234);
+  TreeNodePtr C2 = makeEq(SymbolicExpr::makeIntegerVariable(32), one);
 
-  TreeNodePtr T2 = LeafNode::createInteger(32,0x2468);
-  TreeNodePtr F2 = LeafNode::createInteger(32,0x369C);
-  TreeNodePtr ITE2 = InternalNode::create(32, OP_ITE, C2, T2, F2);
+  TreeNodePtr T2 = SymbolicExpr::makeIntegerConstant(32,0x2468);
+  TreeNodePtr F2 = SymbolicExpr::makeIntegerConstant(32,0x369C);
+  TreeNodePtr ITE2 = InternalNode::instance(OP_ITE, C2, T2, F2);
 
-  TreeNodePtr ITE1 = InternalNode::create(32, OP_ITE, C1, ITE2, F1);
+  TreeNodePtr ITE1 = InternalNode::instance(OP_ITE, C1, ITE2, F1);
   SymbolicValuePtr ITE_sv = SymbolicValue::treenode_instance(ITE1);
   SymbolicValuePtr result = get_leaf_condition(ITE_sv, T2, nullnode);
 
@@ -111,18 +111,18 @@ TEST_F(MergeTestFixture, TEST_MERGE_COMPLEX_T2) {
 // (ITE C1 (ITE C2 T2 F2) F1): F2 -> C1 & !C2
 TEST_F(MergeTestFixture, TEST_MERGE_COMPLEX_F2) {
 
-  TreeNodePtr zero = LeafNode::createInteger(32, 0);
-  TreeNodePtr one = LeafNode::createInteger(32, 1);
+  TreeNodePtr zero = SymbolicExpr::makeIntegerConstant(32, 0);
+  TreeNodePtr one = SymbolicExpr::makeIntegerConstant(32, 1);
 
-  TreeNodePtr C1 = makeEq(LeafNode::createVariable(32), zero);
-  TreeNodePtr F1 = LeafNode::createInteger(32, 0x1234);
-  TreeNodePtr C2 = makeEq(LeafNode::createVariable(32), one);
+  TreeNodePtr C1 = makeEq(SymbolicExpr::makeIntegerVariable(32), zero);
+  TreeNodePtr F1 = SymbolicExpr::makeIntegerConstant(32, 0x1234);
+  TreeNodePtr C2 = makeEq(SymbolicExpr::makeIntegerVariable(32), one);
 
-  TreeNodePtr T2 = LeafNode::createInteger(32,0x2468);
-  TreeNodePtr F2 = LeafNode::createInteger(32,0x369C);
-  TreeNodePtr ITE2 = InternalNode::create(32, OP_ITE, C2, T2, F2);
+  TreeNodePtr T2 = SymbolicExpr::makeIntegerConstant(32,0x2468);
+  TreeNodePtr F2 = SymbolicExpr::makeIntegerConstant(32,0x369C);
+  TreeNodePtr ITE2 = InternalNode::instance(OP_ITE, C2, T2, F2);
 
-  TreeNodePtr ITE1 = InternalNode::create(32, OP_ITE, C1, ITE2, F1);
+  TreeNodePtr ITE1 = InternalNode::instance(OP_ITE, C1, ITE2, F1);
 
   SymbolicValuePtr ITE_sv = SymbolicValue::treenode_instance(ITE1);
   SymbolicValuePtr result  = get_leaf_condition(ITE_sv, F2, nullnode);
@@ -139,18 +139,18 @@ TEST_F(MergeTestFixture, TEST_MERGE_COMPLEX_F2) {
 // (ITE C1 (ITE C2 T2 F2) F1): F1 -> !C1
 TEST_F(MergeTestFixture, TEST_MERGE_COMPLEX_F1) {
 
-  TreeNodePtr zero = LeafNode::createInteger(32, 0);
-  TreeNodePtr one = LeafNode::createInteger(32, 1);
+  TreeNodePtr zero = SymbolicExpr::makeIntegerConstant(32, 0);
+  TreeNodePtr one = SymbolicExpr::makeIntegerConstant(32, 1);
 
-  TreeNodePtr C1 = makeEq(LeafNode::createVariable(32), zero);
-  TreeNodePtr F1 = LeafNode::createInteger(32, 0x1234);
-  TreeNodePtr C2 = makeEq(LeafNode::createVariable(32), one);
+  TreeNodePtr C1 = makeEq(SymbolicExpr::makeIntegerVariable(32), zero);
+  TreeNodePtr F1 = SymbolicExpr::makeIntegerConstant(32, 0x1234);
+  TreeNodePtr C2 = makeEq(SymbolicExpr::makeIntegerVariable(32), one);
 
-  TreeNodePtr T2 = LeafNode::createInteger(32,0x2468);
-  TreeNodePtr F2 = LeafNode::createInteger(32,0x369C);
-  TreeNodePtr ITE2 = InternalNode::create(32, OP_ITE, C2, T2, F2);
+  TreeNodePtr T2 = SymbolicExpr::makeIntegerConstant(32,0x2468);
+  TreeNodePtr F2 = SymbolicExpr::makeIntegerConstant(32,0x369C);
+  TreeNodePtr ITE2 = InternalNode::instance(OP_ITE, C2, T2, F2);
 
-  TreeNodePtr ITE1 = InternalNode::create(32, OP_ITE, C1, ITE2, F1);
+  TreeNodePtr ITE1 = InternalNode::instance(OP_ITE, C1, ITE2, F1);
 
   SymbolicValuePtr ITE_sv = SymbolicValue::treenode_instance(ITE1);
   SymbolicValuePtr result = get_leaf_condition(ITE_sv, F1, nullnode);
@@ -167,23 +167,23 @@ TEST_F(MergeTestFixture, TEST_MERGE_COMPLEX_F1) {
 
 // (ITE C1 (ITE C2 T2 (ITE C3 T3 F3)) F1): F3 -> C1 & !C2 & !C3
 TEST_F(MergeTestFixture, TEST_MERGE_THRICE_NESTED_ITE_F3) {
-  TreeNodePtr zero = LeafNode::createInteger(32, 0);
-  TreeNodePtr one = LeafNode::createInteger(32, 1);
-  TreeNodePtr two = LeafNode::createInteger(32, 2);
+  TreeNodePtr zero = SymbolicExpr::makeIntegerConstant(32, 0);
+  TreeNodePtr one = SymbolicExpr::makeIntegerConstant(32, 1);
+  TreeNodePtr two = SymbolicExpr::makeIntegerConstant(32, 2);
 
-  TreeNodePtr C1 = makeEq(LeafNode::createVariable(32), zero);
-  TreeNodePtr F1 = LeafNode::createInteger(32, 0x1234);
+  TreeNodePtr C1 = makeEq(SymbolicExpr::makeIntegerVariable(32), zero);
+  TreeNodePtr F1 = SymbolicExpr::makeIntegerConstant(32, 0x1234);
 
-  TreeNodePtr C2 = makeEq(LeafNode::createVariable(32), one);
-  TreeNodePtr T2 = LeafNode::createInteger(32,0x2468);
+  TreeNodePtr C2 = makeEq(SymbolicExpr::makeIntegerVariable(32), one);
+  TreeNodePtr T2 = SymbolicExpr::makeIntegerConstant(32,0x2468);
 
-  TreeNodePtr T3 = LeafNode::createInteger(32,0xABCD);
-  TreeNodePtr F3 = LeafNode::createInteger(32,0xEF01); // target!
-  TreeNodePtr C3 = makeEq(LeafNode::createVariable(32), two);
+  TreeNodePtr T3 = SymbolicExpr::makeIntegerConstant(32,0xABCD);
+  TreeNodePtr F3 = SymbolicExpr::makeIntegerConstant(32,0xEF01); // target!
+  TreeNodePtr C3 = makeEq(SymbolicExpr::makeIntegerVariable(32), two);
 
-  TreeNodePtr ITE3 = InternalNode::create(32, OP_ITE, C3, T3, F3);
-  TreeNodePtr ITE2 = InternalNode::create(32, OP_ITE, C2, T2, ITE3);
-  TreeNodePtr ITE1 = InternalNode::create(32, OP_ITE, C1, ITE2, F1);
+  TreeNodePtr ITE3 = InternalNode::instance(OP_ITE, C3, T3, F3);
+  TreeNodePtr ITE2 = InternalNode::instance(OP_ITE, C2, T2, ITE3);
+  TreeNodePtr ITE1 = InternalNode::instance(OP_ITE, C1, ITE2, F1);
   SymbolicValuePtr ITE_sv = SymbolicValue::treenode_instance(ITE1);
 
   SymbolicValuePtr result = get_leaf_condition(ITE_sv, F3, nullnode);

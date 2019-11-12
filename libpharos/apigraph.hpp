@@ -108,7 +108,8 @@ using ApiCfgComponentMapIter = ApiCfgComponentMap::iterator;
 // search types
 
 using IndexMap = boost::property_map < ApiCfg, boost::vertex_index_t >::type;
-using PredecessorMap = boost::iterator_property_map <ApiCfgVertex*,IndexMap,ApiCfgVertex,ApiCfgVertex&>;
+using PredecessorMap = boost::iterator_property_map <ApiCfgVertex*,IndexMap, ApiCfgVertex, ApiCfgVertex&>;
+
 using ApiSearchResultVector = boost::ptr_vector<ApiSearchResult>;
 using ApiWaypointVector = std::vector<ApiWaypointDescriptor>;
 
@@ -666,7 +667,6 @@ struct ApiBackEdgeVisitor : public boost::base_visitor<ApiBackEdgeVisitor> {
   ApiSearchExecutor *search_executor_;
 };
 
-
 using ApiCfgPtr = std::shared_ptr<ApiCfg>;
 
 // Represents information about each CFG, notably the CFG itself and entry/exit blocks
@@ -692,6 +692,8 @@ class ApiCfgComponent {
 
   ApiCfgPtr CloneApiCfg(ApiCfgPtr src_cfg);
 
+  ApiCfgPtr CloneApiCfg(ApiCfgPtr src_cfg, ApiCfgVertex exclude_vtx);
+
   ~ApiCfgComponent();
 
   void Initialize(const FunctionDescriptor &fd, AddrSet &api_calls, XrefMap &xrefs);
@@ -707,6 +709,10 @@ class ApiCfgComponent {
   // remove a vertex from a CFG
   void DisconnectVertex(ApiCfgVertex &v);
 
+  void RemoveVertices(const std::set<ApiCfgVertex>& kill_list); 
+
+  void RemoveVertex(ApiCfgVertex ); 
+
   void Replace(ApiCfgVertex &out_vertex, ApiCfgVertex &in_entry, ApiCfgVertex &in_exit_vertex);
 
   void InsertBefore(ApiCfgVertex &insert_vertex, ApiCfgVertex &in_entry_vertex, ApiCfgVertex &in_exit_vertex);
@@ -719,7 +725,7 @@ class ApiCfgComponent {
 
   void Simplify();
 
-  void KillVertices(std::vector< rose_addr_t > &kill_list);
+  void KillVertices(std::set< ApiCfgVertex > &kill_list);
 
   ApiCfgVertex GetVertexByAddr(const rose_addr_t addr) const;
 

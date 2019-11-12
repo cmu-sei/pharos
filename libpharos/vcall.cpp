@@ -309,7 +309,7 @@ bool VirtualFunctionCallAnalyzer::analyze() {
             for (const TreeNodePtr& tn : object_sv->get_possible_values()) {
               GDEBUG << "VCall ITE this-ptr: " << *tn << LEND;
               // The most common non OO condition is the NULL pointer.
-              if (tn->isNumber() && tn->isLeafNode()->bits().isAllClear()) {
+              if (tn->isIntegerConstant() && tn->isLeafNode()->bits().isAllClear()) {
                 GDEBUG << "Skipping NULL pointer as possible object pointer." << LEND;
                 continue;
               }

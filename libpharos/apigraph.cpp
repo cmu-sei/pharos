@@ -1891,33 +1891,28 @@ bool ApiCfgComponent::ContainsCalls() const {
 void ApiCfgComponent::DisconnectVertex(ApiCfgVertex &v) {
 
   rose_addr_t vaddr = (*cfg_)[v].block->get_address();
+
   GDEBUG << "Disconnecting vertex: " << addr_str(vaddr) << LEND;
 
-  // removing only vertex - the entry and exit are now invalid
   if (boost::num_vertices(*cfg_) == 1) {
     entry_ = exit_ = INVALID_ADDRESS;
   }
   // Number of vertices > 1
   else {
-    // for each in-edge to the vertex to remove
 
-    BGL_FORALL_INEDGES(v, in_edge,*cfg_,ApiCfg) {
+    // for each in-edge to the vertex to remove
+    BGL_FORALL_INEDGES(v, in_edge, *cfg_, ApiCfg) {
       // get the previous vertex (source of the in edge)
       ApiCfgVertex prev = boost::source(in_edge, *cfg_);
       // connect the prev vertex to the next vertex with an edge
 
-      BGL_FORALL_OUTEDGES(v, out_edge,*cfg_,ApiCfg) {
+      BGL_FORALL_OUTEDGES(v, out_edge, *cfg_, ApiCfg) {
         ApiCfgVertex next = boost::target(out_edge, *cfg_);
 
         // if the edge doesn't already exist between these vertices
         if (false == boost::edge(prev, next, *cfg_).second) {
-
           // take the in edge and make it refer to next out edge vertex
           boost::add_edge(prev, next, *cfg_);
-
-          GDEBUG << "Adding edge from "
-                 << addr_str((*cfg_)[prev].block->get_address()) << " to "
-                 << addr_str((*cfg_)[next].block->get_address()) << LEND;
         }
       }
     }
@@ -1926,37 +1921,74 @@ void ApiCfgComponent::DisconnectVertex(ApiCfgVertex &v) {
   GDEBUG << "Deleting edges for " << addr_str(vaddr) << LEND;
   // remove in/out edges from the vertex to delete
   boost::clear_vertex(v, *cfg_);
-
-  // delete the vertex
-  boost::remove_vertex(v, *cfg_);
 }
 
 // remove every vertex that is not the entry, exit, of contains a function call
 void ApiCfgComponent::Simplify() {
 
-  std::vector < rose_addr_t > kill_list;
+  std::set<ApiCfgVertex> kill_list;
 
-  BGL_FORALL_VERTICES(vtx,*cfg_,ApiCfg) {
+  BGL_FORALL_VERTICES(vtx, *cfg_, ApiCfg) {
     ApiVertexInfo &vtxi = (*cfg_)[vtx];
     if (vtxi.block->get_address()!=entry_ && vtxi.block->get_address()!=exit_ && !vtxi.EndsInCall()) {
-      kill_list.push_back(vtxi.block->get_address());
+      kill_list.insert(vtx);
     }
   }
   KillVertices(kill_list);
 }
 
+void ApiCfgComponent::RemoveVertices(const std::set<ApiCfgVertex> &kill_list) {
+
+  struct IgnoreVertices {
+    const std::set<ApiCfgVertex> *kset;
+    IgnoreVertices() {}  // has to have a default constructor!
+    IgnoreVertices(const std::set<ApiCfgVertex> &k) : kset(&k) { }
+    bool operator()(ApiCfgVertex v) const {
+      return kset->find(v) == kset->end();
+    }
+  };
+
+  // ApiCfgPtr new_cfg_ = std::make_shared<ApiCfg>();
+  ApiCfg* new_cfg_ = new ApiCfg();
+  boost::copy_graph(boost::make_filtered_graph(*cfg_, boost::keep_all{},
+                                               IgnoreVertices(kill_list)),
+                    *new_cfg_);
+
+  cfg_.reset(new_cfg_);
+}
+
+void ApiCfgComponent::RemoveVertex(ApiCfgVertex target) {
+
+  if (boost::in_degree(target, *cfg_)>0 || boost::out_degree(target, *cfg_)>0) {
+    boost::clear_vertex(target, *cfg_);
+  }
+
+  struct IgnoreVertex {
+    IgnoreVertex() {}
+    IgnoreVertex(ApiCfgVertex v_) : v(v_) {}
+    bool operator()(ApiCfgVertex x) const { return x != v; }
+    ApiCfgVertex v;
+  };
+
+  ApiCfg* new_cfg_ = new ApiCfg();
+  boost::copy_graph(boost::make_filtered_graph(*cfg_, boost::keep_all{},
+                                               IgnoreVertex(target)),
+                    *new_cfg_);
+  cfg_.reset(new_cfg_);
+}
+
 // disconnect and delete a list of vertices
-void ApiCfgComponent::KillVertices(std::vector< rose_addr_t > &kill_list) {
+void ApiCfgComponent::KillVertices(std::set<ApiCfgVertex> &kill_list) {
 
   if (kill_list.empty() == true) {
     return;
   }
-  for (rose_addr_t kill_addr : kill_list)  {
-    ApiCfgVertex vertex2kill = GetVertexByAddr(kill_addr);
+  for (ApiCfgVertex vertex2kill : kill_list)  {
     if (vertex2kill != NULL_VERTEX) {
       DisconnectVertex(vertex2kill);
     }
   }
+  RemoveVertices(kill_list);
 }
 
 // Fetch the vertex associated with an address (by basic block address)
@@ -2289,10 +2321,8 @@ void ApiCfgComponent::Replace(ApiCfgVertex &out_vertex, ApiCfgVertex &in_entry_v
              << addr_str((*cfg_)[next].block->get_address()) << LEND;
     }
   }
-
   // disconnect and remove the out vertex
-  boost::clear_vertex(out_vertex, *cfg_);
-  boost::remove_vertex(out_vertex, *cfg_);
+  RemoveVertex(out_vertex);
 }
 
 void ApiCfgComponent::Print() {
@@ -2428,7 +2458,7 @@ void ApiGraph::BuildXrefs() {
 
 rose_addr_t ApiCfgComponent::ConsolidateReturns(BlockSet & retns) {
 
-  std::vector < rose_addr_t > kill_list; // the list of vertices (by address) to remove
+  std::set < ApiCfgVertex > kill_list; // the list of vertices (by address) to remove
 
   ApiCfgVertex exit_vertex = GetExitVertex();
   if (exit_vertex == NULL_VERTEX) {
@@ -2438,19 +2468,19 @@ rose_addr_t ApiCfgComponent::ConsolidateReturns(BlockSet & retns) {
   ApiVertexInfo &exit_info = (*cfg_)[exit_vertex]; // the vertex that corresponds to exit_
 
   for (const BlockSet::value_type & block : retns) {
-    if (block->get_address() != exit_info.block->get_address()) { // Not the exit vertex
-      ApiCfgVertex vtx = GetVertexByAddr(block->get_address());
-      if (vtx == NULL_VERTEX) {
+    ApiCfgVertex vtx = GetVertexByAddr(block->get_address());
+    if (vtx == NULL_VERTEX) {
         continue;
-      }
-
+    }
+    if (block->get_address() != exit_info.block->get_address()) { // Not the exit vertex
       // make the predecessors of the vertex to remove point to the one true return
       BGL_FORALL_INEDGES(vtx,in_edge,*cfg_,ApiCfg) {
         ApiCfgVertex src = boost::source(in_edge, *cfg_);
         boost::add_edge(src, exit_vertex, *cfg_);
       }
+
       // queue this vertex to be removed
-      kill_list.push_back(block->get_address());
+      kill_list.insert(vtx);
     }
   }
 
@@ -2504,6 +2534,7 @@ void ApiGraph::ConsolidateEmptyFunctions() {
             else {
 
               calling_cfg_comp->DisconnectVertex(call_vertex);
+              calling_cfg_comp->RemoveVertex(call_vertex);
 
               if (kill_list.find(empty_cfg_comp->GetEntryAddr()) == kill_list.end()) {
                 kill_list.insert(empty_cfg_comp->GetEntryAddr());

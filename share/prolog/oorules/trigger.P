@@ -1,0 +1,99 @@
+% New facts that may explicitly trigger some expensive rules.
+:- dynamic trigger_fact/1.
+
+% Called by try_assert_real/1
+trigger_hook(factVFTableWrite(A,B,C,D)) :-
+    !,
+    assertz(trigger_fact(factVFTableWrite(A,B,C,D))).
+
+trigger_hook(factClassSizeLTE(A,B)) :-
+    !,
+    assertz(trigger_fact(factClassSizeLTE(A,B))).
+
+trigger_hook(factClassSizeGTE(A,B)) :-
+    !,
+    assertz(trigger_fact(factClassSizeGTE(A,B))).
+
+trigger_hook(factClassCallsMethod(A,B)) :-
+    !,
+    assertz(trigger_fact(factClassCallsMethod(A,B))).
+
+trigger_hook(factNOTMergeClasses(A,B)) :-
+    !,
+    assertz(trigger_fact(factNOTMergeClasses(A,B))).
+
+trigger_hook(_X).
+
+% HasUnknownBase_E
+dispatchTrigger(factClassCallsMethod(Class, Method), Out) :-
+    setof(Class,
+          MethodClass^(reasonClassHasUnknownBase_E(Class, Method, MethodClass),
+           not(factClassHasUnknownBase(Class)),
+           not(factClassHasNoBase(Class)),
+           loginfo('Concluding factClassHasUnknownBase('), loginfo(Class), loginfoln(').')),
+          ClassSets),
+    maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
+    Out = all(ActionSets).
+dispatchTrigger(factNOTMergeClasses(Class, MethodClass), Out) :-
+    setof(Class,
+          Method^(reasonClassHasUnknownBase_E(Class, Method, MethodClass),
+           not(factClassHasUnknownBase(Class)),
+           not(factClassHasNoBase(Class)),
+           loginfo('Concluding factClassHasUnknownBase('), loginfo(Class), loginfoln(').')),
+          ClassSets),
+    maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
+    Out = all(ActionSets).
+% End
+
+dispatchTrigger(factVFTableWrite(A,Method1,C,D), Out) :-
+    find(Method1, Class1),
+    setof((Class1, Class2),
+          (reasonNOTMergeClasses_E(Class1, Class2, A, Method1, C, D),
+           iso_dif(Class1, Class2),
+           not(factNOTMergeClasses(Class1, Class2)),
+           not(factNOTMergeClasses(Class2, Class1)),
+           loginfo('Concluding factNOTMergeClasses('), loginfo(Class1), loginfo(', '),
+	   loginfo(Class2), loginfoln(').')),
+          ClassSets),
+    maplist(try_assert_builder(factNOTMergeClasses), ClassSets, ActionSets),
+    Out = all(ActionSets).
+
+dispatchTrigger(factClassSizeLTE(Class1,LTESize), Out) :-
+    setof((Class1, Class2),
+          GTESize1^GTESize2^((reasonNOTMergeClasses_M(Class1, Class2, GTESize1, LTESize);
+			      reasonNOTMergeClasses_N(Class1, Class2, GTESize2, LTESize)),
+			     iso_dif(Class1, Class2),
+			     not(factNOTMergeClasses(Class1, Class2)),
+			     not(factNOTMergeClasses(Class2, Class1)),
+			     loginfo('Concluding factNOTMergeClasses('), loginfo(Class1), loginfo(', '),
+			     loginfo(Class2), loginfoln(').')),
+          ClassSets),
+    maplist(try_assert_builder(factNOTMergeClasses), ClassSets, ActionSets),
+    Out = all(ActionSets).
+
+dispatchTrigger(factClassSizeGTE(Class1,GTESize), Out) :-
+    setof((Class1, Class2),
+          LTESize1^LTESize2^((reasonNOTMergeClasses_M(Class1, Class2, GTESize, LTESize1);
+			      reasonNOTMergeClasses_N(Class1, Class2, GTESize, LTESize2)),
+			     iso_dif(Class1, Class2),
+			     not(factNOTMergeClasses(Class1, Class2)),
+			     not(factNOTMergeClasses(Class2, Class1)),
+			     loginfo('Concluding factNOTMergeClasses('), loginfo(Class1), loginfo(', '),
+			     loginfo(Class2), loginfoln(').')),
+          ClassSets),
+    maplist(try_assert_builder(factNOTMergeClasses), ClassSets, ActionSets),
+    Out = all(ActionSets).
+
+
+concludeTrigger(Out) :-
+    setof(X,
+          (trigger_fact(X),
+           logtrace('Processing trigger fact... '), logtraceln(X),
+           retract(trigger_fact(X))),
+          Facts),
+    !,
+
+    setof(OutTemp,
+          Fact^OutTemp^(member(Fact, Facts), dispatchTrigger(Fact, OutTemp)),
+          ActionList),
+    Out = all(ActionList).

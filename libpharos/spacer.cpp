@@ -1,4 +1,4 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/range/numeric.hpp>
 #include <boost/range/adaptor/map.hpp>
@@ -47,15 +47,16 @@ SpacerAnalyzer::SpacerAnalyzer(const DescriptorSet& ds,
   import_set_ = std::move(import_set);
 }
 
-std::tuple <std::map <Register, z3::expr>, z3::func_decl, z3::func_decl, z3::func_decl>
+std::tuple <std::map <Register, z3::expr>, z3::func_decl, z3::func_decl>
 SpacerAnalyzer::encode_cfg(const IR &ir,
-                           const z3::expr &z3post,
+                           const z3::expr &z3post_input,
+                           const z3::expr &/*_z3post_output*/,
                            bool propagate_input,
                            std::string name,
                            boost::optional <std::vector<Register>> regsIn,
                            boost::optional <z3::func_decl> entry_relation,
                            boost::optional <z3::func_decl> exit_relation,
-                           boost::optional <z3::func_decl> goal_relation,
+                           boost::optional <std::function<bool(const IRCFGVertex &)>> short_circuit,
                            ConvertCallFun convert_call) {
   auto cfg = ir.get_cfg ();
   auto mem = ir.get_mem ();
@@ -65,6 +66,7 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
   z3::context& ctx = *z3_.z3Context();
   SpacerRelationsMap relations;
 
+  // XXX: This could use IRCFGVertexName
   auto bb_name = [&bb_map] (const IRCFGVertex v) {
     std::stringstream ss;
     ss << bb_map [v];
@@ -193,8 +195,8 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
       // reachable.
       z3::expr before_applied = before (evboth);
 
-      auto convert_call_partial = [&before_applied, &convert_call, &evboth] (const CallStmt &callstmt, const z3::expr_vector &call_input_args) {
-        return convert_call (callstmt, before_applied, evboth, call_input_args);
+      auto convert_call_partial = [&v, &convert_call] (const CallStmt &callstmt, const z3::expr_vector &call_input_args) {
+        return convert_call (callstmt, v, call_input_args);
       };
       auto substs_output = subst_stmts (stmts, mem, z3nodes, convert_call_partial);
       Z3RegMap substs = std::get<0> (substs_output);
@@ -251,6 +253,14 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
       ss << std::hex << std::showbase << name << ": " << bb_name (v) << " body";
       fp_->add_rule (rule, ctx.str_symbol(ss.str ().c_str ()));
     }
+    
+    // And (any) exit point
+
+    // Note: This must come before the transition rules
+    if (exit_relation == boost::none) {
+      exit_relation = z3::function (name + ": exit", svboth, ctx.bool_sort ());
+      fp_->register_relation (*exit_relation);
+    }
 
   // Now we add rules describing the transition from one basic block to another
   for (const auto &e : boost::make_iterator_range (boost::edges (cfg))) {
@@ -273,7 +283,9 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
     auto target = boost::target (e, cfg);
     auto target_relation = relations.at (target).before;
     auto target_app = target_relation (evboth);
-    auto cond = z3_.to_bool (z3_.treenode_to_z3 (boost::get_optional_value_or (cond_map[e], SymbolicExpr::makeBoolean (true))));
+    auto cond = z3_.to_bool (
+      z3_.treenode_to_z3 (
+        boost::get_optional_value_or (cond_map[e], SymbolicExpr::makeBooleanConstant (true))));
 
     z3::expr rule = z3::forall (source_args,
                                 z3::implies (source_app && cond,
@@ -288,6 +300,13 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
        << bb_name (target);
     fp_->add_rule (rule, ctx.str_symbol (ss.str ().c_str ()));
 
+    // Also create a short-circuit rule when the goal is hit to jump directly to the exit
+    if (short_circuit && (*short_circuit) (source)) {
+        z3::expr short_circuit_rule = z3::forall (source_args,
+                                                  z3::implies (source_app && z3post_input,
+                                                               (*exit_relation) (evboth)));
+        fp_->add_rule (short_circuit_rule, ctx.str_symbol ((name + ": goal short-circuit from " + bb_name (source)).c_str ()));
+      }
   }
 
   // Next we add a fact for the entry point
@@ -296,49 +315,25 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
     fp_->register_relation (*entry_relation);
   }
 
-  // And (any) exit point
-  if (exit_relation == boost::none) {
-    exit_relation = z3::function (name + ": exit", svboth, ctx.bool_sort ());
-    fp_->register_relation (*exit_relation);
-  }
-
   // And we add a rule connecting the entry relation to the before entry BB
   auto entry_bb = ir.get_entry ();
   auto entry_bb_before = relations.at (entry_bb).before;
-  // \forall A B C. entry_relation (A, B, C) => entry_bb_before (A, B, C, A, B, C).
+  // \forall A B C. entry_bb_before (A, B, C, A, B, C).
   z3::expr erule = z3::forall (ev,
-                               z3::implies ((*entry_relation) (ev),
-                                            entry_bb_before (evdbl)));
+                               entry_bb_before (evdbl));
   fp_->add_rule (erule, ctx.str_symbol ((name + ": entry rule").c_str ()));
 
-  // Add a goal relation
-  if (goal_relation == boost::none) {
-    goal_relation = z3::function (name + ": goal", svinput, ctx.bool_sort ());
-    fp_->register_relation (*goal_relation);
-  }
-
-  // Connect each exit to the goal and any_exit relations
+  // Connect each exit to the any_exit relations
   auto exits = ir.get_exits ();
   for (IRCFGVertex exit : exits) {
     auto an_exit_relation = relations.at (exit).after;
-    // Connect each exit to the goal
-    z3::expr rule = z3::forall (evboth,
-                                z3::implies (an_exit_relation (evboth) && z3post,
-                                             (*goal_relation) (evinput)));
-    std::stringstream ss;
-    ss << std::hex << std::showbase << name << ": " << bb_name (exit) << " goal";
-    fp_->add_rule (rule, ctx.str_symbol (ss.str ().c_str ()));
-
-    // Connect each exit to the any_exit relation
     z3::expr exit_rule = z3::forall (evboth,
                                      z3::implies (an_exit_relation (evboth),
                                                   (*exit_relation) (evboth)));
-    fp_->add_rule (exit_rule, ctx.str_symbol ((name + ": exit").c_str ()));
+    fp_->add_rule (exit_rule, ctx.str_symbol ((name + ": exit from " + bb_name (exit)).c_str ()));
   }
 
-  // Need to create an exit relation from any exit
-
-  return std::make_tuple (z3nodes, *entry_relation, *exit_relation, *goal_relation);
+  return std::make_tuple (z3nodes, *entry_relation, *exit_relation);
 
 }
 
@@ -366,11 +361,14 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
   z3::func_decl goal_relation = goal_expr.decl ();
   fp_->register_relation (goal_relation);
 
+  // Save targetbbs so we know where to add short-circuits
+  std::map<CGVertex, std::set<IRCFGVertex>> vertices_to_short_circuit;
+
   // First make a map from each function to its IR
   std::map<CGVertex, IR> func_to_ir;
-  Register hit_var = SymbolicExpr::makeVariable (1, "hit_target")->isLeafNode ();
+  Register hit_var = SymbolicExpr::makeIntegerVariable (1, "hit_target")->isLeafNode ();
   boost::copy (boost::vertices (cgg) |
-               boost::adaptors::transformed([&vertex_name_map, &hit_var, tgtaddr] (const auto &cgv) {
+               boost::adaptors::transformed([&vertex_name_map, &hit_var, &fromcgv, srcaddr, tgtaddr, &vertices_to_short_circuit] (const auto &cgv) {
                    IR ir = IR::get_ir (vertex_name_map [cgv]);
                    // Ensure that CallStmts can only appear at the
                    // start of a basic block.  This may simplify the
@@ -385,19 +383,26 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
 
                    // ir = split_calls (ir);
 
+                   // Entry specific changes
+                   if (cgv == fromcgv) {
+                     ir = change_entry (ir, srcaddr);
+                     ir = init_stackpointer (ir);
+                   }
+
                    // Add reached variables
-                   ir = add_reached_postcondition (ir, {tgtaddr}, hit_var).first;
+                   std::set<IRCFGVertex> vertices;
+                   std::tie (ir, std::ignore, vertices) = add_reached_postcondition (ir, {tgtaddr}, hit_var);
+                   if (vertices.size ()) {
+                     assert (vertices.size () == 1);
+                     vertices_to_short_circuit [cgv].insert (*vertices.begin ());
+                   }
 
                    return std::make_pair (cgv, ir);
                  }),
                std::inserter (func_to_ir, func_to_ir.end ()));
-  z3::expr z3post = z3_.to_bool (z3_.treenode_to_z3 (hit_var));
+  z3::expr z3post_input = z3_.to_bool (z3_.treenode_to_z3 (hit_var));
 
-  // Then we'll change the fromir
   IR fromir = func_to_ir.at (fromcgv);
-  fromir = change_entry (fromir, srcaddr);
-  fromir = init_stackpointer (fromir);
-  func_to_ir.at (fromcgv) = fromir;
 
   // Find all registers across all functions
   std::set<Register> regs;
@@ -425,9 +430,14 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
                    Register r = x.first;
                    z3::expr e = x.second;
 
-                   return std::make_pair (r, z3::function ((r->toString() + "_output").c_str (), 0, NULL, e.get_sort ()) ());
+                   std::ostringstream ss;
+                   ss << *r << "_output";
+
+                   return std::make_pair (r, z3::function (ss.str ().c_str (), 0, NULL, e.get_sort ()) ());
                  }),
                std::inserter (z3outputnodes, z3outputnodes.end ()));
+
+  z3::expr z3post_output = z3_.to_bool (z3outputnodes.at (hit_var));
 
   // Build vector of registers to pass to encode_cfg
   std::vector<Register> regsvec;
@@ -520,7 +530,7 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
                    // must increment the stack pointer to maintain
                    // stack neutrality.
 
-                   // \forall EAX EBX ECX ESP EAX'. entry(EAX EBX ECX) => summary(EAX EBX ECX ESP EAX' EBX ECX ESP+delta)
+                   // \forall EAX EBX ECX ESP EAX'. summary(EAX EBX ECX ESP EAX' EBX ECX ESP+delta)
 
                    // Step 1: Identify eax and esp.
                    // XXX: We should do this once in the outer function
@@ -584,8 +594,7 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
 
                    // Step 3: Make the rule
                    z3::expr rule = z3::forall (quantified_vars,
-                                               z3::implies (entry (evin),
-                                                            summary (summary_args)));
+                                               summary (summary_args));
 
                    ss.str ("");
                    ss << "Summary for " << import;
@@ -601,67 +610,10 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
                std::inserter (import_to_relations, import_to_relations.end ()));
 
 
-    // Create convert_call function to pass to encode_cfg.
-    // convert_call maps a CallStmt to its summary rule in z3.
-  auto convert_call = [&ctx,
-                       &cg,
-                       &func_to_relations,
-                       &import_to_relations,
-                       this] (const CallStmt &cs,
-                              const z3::expr &bb_before,
-                              const z3::expr_vector &bb_vars,
-                              const z3::expr_vector &call_input_args) -> boost::optional<z3::func_decl> {
-
-      boost::optional<Relations> r;
-
-      auto is_import = boost::get<ImportCall> (&(std::get<1> (cs)));
-      if (is_import) {
-        auto it = import_to_relations.find (*is_import);
-
-        if (it != import_to_relations.end ()) {
-          r = import_to_relations.at (*is_import);
-        } else {
-          GWARN << "Found an unexpected call to import " << cs << LEND;
-          return boost::none;
-        }
-      }
-      else if (boost::optional<rose_addr_t> call_target = targetOfCallStmt (cs)) { // Non-import
-        const FunctionDescriptor *targetfd = ds_.get_func_containing_address (*call_target);
-
-        if (!targetfd) {
-          GWARN << "Found an unresolved direct call" << cs << " " << call_target << LEND;
-          return boost::none;
-        }
-
-        CGVertex cgv = cg.findfd (targetfd);
-
-        if (cgv == boost::graph_traits<CGG>::null_vertex ()) {
-          GWARN << "Found an unresolved direct call" << cs << " " << call_target << LEND;
-          return boost::none;
-        }
-
-        r = func_to_relations.at (cgv);
-      }
-
-      if (r) {
-        // Create a rule saying that the called function's entry is reachable
-        z3::expr rule = z3::forall (bb_vars,
-                                    z3::implies (bb_before,
-                                                 r->entry (call_input_args)));
-        // XXX: Pass more information to make a better rule name
-        std::stringstream ss;
-        ss << "Call makes called function's entry reachable";
-        fp_->add_rule (rule, ctx.str_symbol (ss.str ().c_str ()));
-
-        return r->summary;
-      } else {
-        return boost::none;
-      }
-  };
 
     // Create summary rules for each function
     boost::for_each (func_to_ir,
-                     [&vertex_name_map, &z3post, &func_to_relations, &ctx, &goal_expr, &z3inputnodes, &z3outputnodes, &convert_call, &regsvec, &fromcgv, &evin, this] (const decltype(func_to_ir)::value_type &v) {
+                     [&vertex_name_map, &z3post_input, &z3post_output, &func_to_relations, &import_to_relations, &ctx, &goal_expr, &z3inputnodes, &z3outputnodes, &regsvec, &cg, &fromcgv, &evin, &evboth, &vertices_to_short_circuit, this] (const decltype(func_to_ir)::value_type &v) {
 
                        // Call encode_cfg to get the encoded version of the CFG and we'll go from there.
                        auto cgv = v.first;
@@ -670,33 +622,100 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
 
                        Relations relations = func_to_relations.at (cgv);
 
+                       // This function tells us which functions to
+                       // add a short circuit rule when encoding them.
+                       std::function<bool(const IRCFGVertex &)> short_circuit = [&vertices_to_short_circuit, &cgv] (const IRCFGVertex &shortv) {
+                         return vertices_to_short_circuit [cgv].count (shortv);
+                       };
+
+                       // Create convert_call function to pass to encode_cfg.
+                       // convert_call maps a CallStmt to its summary rule in z3.
+                       auto convert_call = [&ctx,
+                                            &cg,
+                                            &cgv,
+                                            &func_to_relations,
+                                            &import_to_relations,
+                                            &vertices_to_short_circuit,
+                                            this] (const CallStmt &cs,
+                                                   const IRCFGVertex &srcv,
+                                                   const z3::expr_vector &) -> boost::optional<z3::func_decl> {
+
+                         boost::optional<Relations> r;
+
+                         auto is_import = boost::get<ImportCall> (&(std::get<1> (cs)));
+                         if (is_import) {
+                           auto it = import_to_relations.find (*is_import);
+                           
+                           if (it != import_to_relations.end ()) {
+                             r = import_to_relations.at (*is_import);
+                           } else {
+                             GWARN << "Found an unexpected call to import " << cs << LEND;
+                             return boost::none;
+                           }
+                         }
+                         else if (boost::optional<rose_addr_t> call_target = targetOfCallStmt (cs)) { // Non-import
+                           const FunctionDescriptor *targetfd = ds_.get_func_containing_address (*call_target);
+                           
+                           if (!targetfd) {
+                             GWARN << "Found an unresolved direct call" << cs << " " << call_target << LEND;
+                             return boost::none;
+                           }
+
+                           CGVertex targetcgv = cg.findfd (targetfd);
+
+                           if (targetcgv == boost::graph_traits<CGG>::null_vertex ()) {
+                             GWARN << "Found an unresolved direct call" << cs << " " << call_target << LEND;
+                             return boost::none;
+                           }
+
+                           r = func_to_relations.at (targetcgv);
+                         }
+
+                         if (r) {
+                           // Create a rule saying that the called function's entry is reachable
+                           // z3::expr rule = z3::forall (bb_vars,
+                           //                             z3::implies (bb_before,
+                           //                                          r->entry (call_input_args)));
+                           // // XXX: Pass more information to make a better rule name
+                           // std::stringstream ss;
+                           // ss << "Call makes called function's entry reachable";
+                           // fp_->add_rule (rule, ctx.str_symbol (ss.str ().c_str ()));
+
+                           // This is really ugly but we'll mark the calling vertex as needing a short circuit
+                           vertices_to_short_circuit [cgv].insert (srcv);
+
+                           return r->summary;
+                         } else {
+                           return boost::none;
+                         }
+                       };
+
                        auto cfg_relations = encode_cfg (ir,
-                                                        z3post,
+                                                        z3post_input,
+                                                        z3post_output,
                                                         true,
                                                         name,
                                                         regsvec,
                                                         relations.entry,
                                                         boost::none,
-                                                        boost::none,
+                                                        //boost::none,
+                                                        short_circuit,
                                                         convert_call);
                        auto evfunc = std::get<0> (cfg_relations);
                        auto summary_relation = relations.summary;
                        z3::func_decl entry_relation = std::get<1> (cfg_relations);
                        z3::func_decl any_exit_relation = std::get<2> (cfg_relations);
-                       z3::func_decl func_goal_relation = std::get<3> (cfg_relations);
+                       //z3::func_decl func_goal_relation = std::get<3> (cfg_relations);
 
-                       // Is this the starting function?  If so add the entry_relation as a fact.
+                       // We have reached our goal when the hit
+                       // variable has been set at the end of the exit
+                       // relation for the source function.
                        if (cgv == fromcgv) {
-                         z3::expr global_entry_rule = z3::forall (evin,
-                                                                  entry_relation (evin));
-                         fp_->add_rule (global_entry_rule, ctx.str_symbol ("global entry fact"));
+                         z3::expr global_goal_rule = z3::forall (evboth,
+                                                                 z3::implies (any_exit_relation (evboth) && z3post_output,
+                                                                              goal_expr));
+                         fp_->add_rule (global_goal_rule, ctx.str_symbol ("global goal rule"));
                        }
-
-                       // Connect every function's goal to our main goal
-                       z3::expr goal_rule = z3::forall (evin,
-                                                        z3::implies (func_goal_relation (evin),
-                                                                     goal_expr));
-                       fp_->add_rule (goal_rule, ctx.str_symbol ((name + ": goal rule").c_str ()));
 
                        // Let's say we have a state with four variables
                        // Let A B C D be the input state, and E F G H be the output state.
@@ -796,48 +815,50 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
     return SpacerResult(z3::unknown, boost::optional<z3::expr>());
 }
 
-SpacerResult
-SpacerAnalyzer::find_path(rose_addr_t srcaddr, rose_addr_t tgtaddr) {
+// This needs to be rewritten if we're going to use it.  I've changed encode_cfg quite a bit since it was written.
 
-    // this will almost certainly change in the future as we consider
-    // interprocedural paths
-    IR ir = get_inlined_cfg (CG::get_cg (ds_), srcaddr, tgtaddr);
+// SpacerResult
+// SpacerAnalyzer::find_path(rose_addr_t srcaddr, rose_addr_t tgtaddr) {
 
-    // Handle known imports
-    if (import_set_.size () > 0) {
-      ir = rewrite_imported_calls (ds_, ir, import_set_);
-    }
+//     // this will almost certainly change in the future as we consider
+//     // interprocedural paths
+//     IR ir = get_inlined_cfg (CG::get_cg (ds_), srcaddr, tgtaddr);
 
-    // set up the post condition (i.e. the hit target)
-    IRExprPtr post;
-    std::tie(ir, post) = add_reached_postcondition (ir, {tgtaddr});
-    auto z3post = z3_.to_bool (z3_.treenode_to_z3 (post));
-    //z3::context& ctx = *z3_.z3Context ();
+//     // Handle known imports
+//     if (import_set_.size () > 0) {
+//       ir = rewrite_imported_calls (ds_, ir, import_set_);
+//     }
 
-    auto cfg_relations = encode_cfg (ir, z3post, false);
-    z3::func_decl entry_relation = std::get<1> (cfg_relations);
+//     // set up the post condition (i.e. the hit target)
+//     IRExprPtr post;
+//     std::tie(ir, post) = add_reached_postcondition (ir, {tgtaddr});
+//     auto z3post = z3_.to_bool (z3_.treenode_to_z3 (post));
+//     //z3::context& ctx = *z3_.z3Context ();
 
-    // Add a starting fact/rule
-    z3::expr entry_expr = entry_relation ();
-    fp_->add_fact (entry_relation, nullptr);
+//     auto cfg_relations = encode_cfg (ir, z3post, false);
+//     z3::func_decl entry_relation = std::get<1> (cfg_relations);
 
-    z3::func_decl goal_relation = std::get<3> (cfg_relations);
-    auto goal_expr = goal_relation ();
+//     // Add a starting fact/rule
+//     z3::expr entry_expr = entry_relation ();
+//     fp_->add_fact (entry_relation, nullptr);
 
-    z3::check_result result = fp_->query (goal_expr);
+//     z3::func_decl goal_relation = std::get<3> (cfg_relations);
+//     auto goal_expr = goal_relation ();
 
-    if (result == z3::sat) {
-      Z3_ast a = Z3_fixedpoint_get_ground_sat_answer(*z3_.z3Context(), *fp_);
-      z3::expr sat_answer = z3::to_expr(*z3_.z3Context(), a);
-      return SpacerResult(result, sat_answer);
-    }
-    else if (result == z3::unsat) {
-      return SpacerResult(result, fp_->get_answer());
-    }
+//     z3::check_result result = fp_->query (goal_expr);
 
-    // fall through to unknown / no answer
-    return SpacerResult(z3::unknown, boost::optional<z3::expr>());
-}
+//     if (result == z3::sat) {
+//       Z3_ast a = Z3_fixedpoint_get_ground_sat_answer(*z3_.z3Context(), *fp_);
+//       z3::expr sat_answer = z3::to_expr(*z3_.z3Context(), a);
+//       return SpacerResult(result, sat_answer);
+//     }
+//     else if (result == z3::unsat) {
+//       return SpacerResult(result, fp_->get_answer());
+//     }
+
+//     // fall through to unknown / no answer
+//     return SpacerResult(z3::unknown, boost::optional<z3::expr>());
+// }
 
 std::string
 SpacerAnalyzer::to_string() const {

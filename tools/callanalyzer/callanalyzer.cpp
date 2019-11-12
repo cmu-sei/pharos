@@ -255,9 +255,9 @@ TextOutputter::printable_t TextOutputter::output_value(const typedb::Value & val
       printable = true;
     } else {
       auto raw = value.get_expression();
-      if (raw && raw->isNumber()) {
+      if (raw && raw->isIntegerConstant()) {
         auto f = str.flags();
-        str << "0x" << std::hex << raw->toInt();
+        str << "0x" << std::hex << *raw->toUnsigned();
         str.flags(f);
         printable = true;
       } else {
@@ -464,9 +464,9 @@ bool JsonOutputter::build_value(
       bool aout = false;
       auto pob = builder->object();
       auto rawv = value.get_expression();
-      if (rawv && rawv->isNumber()) {
+      if (rawv && rawv->isIntegerConstant()) {
         std::ostringstream os;
-        os << "0x" << std::hex << rawv->toInt();
+        os << "0x" << std::hex << *rawv->toUnsigned();
         pob->add("address", os.str());
         aout = true;
       } else {

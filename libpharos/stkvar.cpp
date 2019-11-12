@@ -533,7 +533,7 @@ StackVariableAnalyzer::analyze_stkvar_evidence() {
           GDEBUG << "Checking parameter value for literal: " << *tnp << LEND;
 
           // Detect and discard things like "push 0"
-          if (!tnp->isNumber()) {
+          if (!tnp->isIntegerConstant()) {
             candidate->set_memory_address(evidence->aa.value);
             is_new_var = true;
           }
@@ -548,7 +548,7 @@ StackVariableAnalyzer::analyze_stkvar_evidence() {
           if (evidence->aa.memory_address) {
             TreeNodePtr tnp = evidence->aa.memory_address->get_expression();
 
-            if (!tnp->isNumber()) {
+            if (!tnp->isIntegerConstant()) {
               candidate->set_memory_address(evidence->aa.memory_address);
               is_new_var = true;
             }

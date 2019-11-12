@@ -118,17 +118,17 @@ namespace pharos {
       int64_t constant;
       switch (sp->nBits ()) {
       case 32:
-	constant = 0xbfff0000L;
-	break;
+        constant = 0xbfff0000L;
+        break;
       case 64:
-	constant = 0x7fffffff0000L;
-	break;
+        constant = 0x7fffffff0000L;
+        break;
       default:
-	assert (false);
+        assert (false);
         abort ();
       }
 
-      auto stmt = RegWriteStmt (sp, SymbolicExpr::makeInteger (sp->nBits (), constant));
+      auto stmt = RegWriteStmt (sp, SymbolicExpr::makeIntegerConstant (sp->nBits (), constant));
 
       // Prepend stmt to the entry block
       stmts->insert (stmts->begin (), stmt);
@@ -416,17 +416,19 @@ namespace {
         // Add high portion if necessary
         if (reg.get_nbits() + reg.get_offset() < fullreg.get_nbits() + fullreg.get_offset()) {
           // std::cout << "i'm high " << reg.get_nbits() << " " << reg.get_offset() << " " << fullreg.get_nbits() << std::endl;
-          IRExprPtr high = SymbolicExpr::makeExtract(SymbolicExpr::makeInteger(int_width, reg.get_nbits() + reg.get_offset()),
-                                                     SymbolicExpr::makeInteger(int_width, fullreg.get_nbits()),
-                                                     regleaf);
+          IRExprPtr high = SymbolicExpr::makeExtract(
+            SymbolicExpr::makeIntegerConstant(int_width, reg.get_nbits() + reg.get_offset()),
+            SymbolicExpr::makeIntegerConstant(int_width, fullreg.get_nbits()),
+            regleaf);
           exp = SymbolicExpr::makeConcat(high, exp);
         }
         // Add low portion if necessary
         if (reg.get_offset() > fullreg.get_offset()) {
           // std::cout << "i'm low " << fullreg << " " << reg.get_offset() << " " << reg.get_nbits() << std::endl;
-          IRExprPtr low = SymbolicExpr::makeExtract(SymbolicExpr::makeInteger(int_width, 0),
-                                                    SymbolicExpr::makeInteger(int_width, reg.get_offset()),
-                                                    regleaf);
+          IRExprPtr low = SymbolicExpr::makeExtract(
+            SymbolicExpr::makeIntegerConstant(int_width, 0),
+            SymbolicExpr::makeIntegerConstant(int_width, reg.get_offset()),
+            regleaf);
           exp = SymbolicExpr::makeConcat(exp, low);
         }
 
@@ -468,8 +470,8 @@ namespace {
       memset = false;
       // Create a dummy memory so we can return something in case
       // there is no memory accesses and someone calls getMemoryVar()
-      mem = SymbolicExpr::makeMemory(addrProto->get_width(),
-                                     valueProto->get_width())->isLeafNode();
+      mem = SymbolicExpr::makeMemoryVariable(addrProto->get_width(),
+                                             valueProto->get_width())->isLeafNode();
     }
 
   public:
@@ -492,8 +494,8 @@ namespace {
       if (!memset) {
         // This is the first time that readMemory was called, so let's
         // create a memory with the proper sizes
-        mem = SymbolicExpr::makeMemory(addr->get_width(),
-                                       dflt->get_width())->isLeafNode();
+        mem = SymbolicExpr::makeMemoryVariable(addr->get_width(),
+                                               dflt->get_width())->isLeafNode();
         assert (mem);
         mem->comment("M");
         memset = true;
@@ -535,8 +537,8 @@ namespace {
       if (!memset) {
         // This is the first time that writeMemory was called, so let's
         // create a memory with the proper sizes
-        mem = SymbolicExpr::makeMemory(addr->get_width(),
-                                       value->get_width())->isLeafNode();
+        mem = SymbolicExpr::makeMemoryVariable(addr->get_width(),
+                                               value->get_width())->isLeafNode();
         assert (mem);
         mem->comment("M");
         memset = true;
@@ -683,8 +685,9 @@ namespace pharos {
         IRExprPtr c;
         SymbolicLeafPtr l, r;
         std::tie(c, l, r) = targets.get();
-        if (l->isNumber() && l->toInt() == dest) return c;
-        else if (r->isNumber() && r->toInt() == dest) return SymbolicExpr::makeInvert(c);
+        if (l->isIntegerConstant() && *l->toUnsigned() == dest) return c;
+        else if (r->isIntegerConstant() && *r->toUnsigned() == dest)
+          return SymbolicExpr::makeInvert(c);
         else return boost::none;
       } else return boost::none;
     }
@@ -1329,8 +1332,8 @@ namespace pharos {
           return boost::none;
         }
         SymbolicLeafPtr leaf = std::get<0> (cs)->isLeafNode ();
-        if (leaf && leaf->isNumber ())
-          return leaf->toInt ();
+        if (leaf && leaf->isIntegerConstant ())
+          return *leaf->toUnsigned ();
         else
           return boost::none;
       }
@@ -1392,7 +1395,7 @@ namespace pharos {
     // This function inlines all calls from the specific function
     // according to the provided call graph.
     IR inline_cg (const CG& cg, const CGVertex entryv, const IR& ir, SeenFuncs  seen) {
-      const CGG& cgg = cg.get_graph ();      
+      const CGG& cgg = cg.get_graph ();
       CGVertex targetv;
 
       // Start from the entry node
@@ -1466,18 +1469,18 @@ namespace pharos {
 #endif
                           });
 
-	    // If we didn't find the edge, or if inlining the edge would create a cycle in the
-	    // callgraph, don't do the inlining.
+            // If we didn't find the edge, or if inlining the edge would create a cycle in the
+            // callgraph, don't do the inlining.
             if (the_edge == cgoend || seen.count (targetfd)) {
-	      std::string t;
-	      if (the_edge == cgoend) {
-		t = "Didn't find the corresponding edge in the callgraph.";
-	      } else if (seen.count (targetfd)) {
-		t = "Ignoring a backedge in the callgraph since it would create a cycle.";
-	      } else {
-		assert (false);
+              std::string t;
+              if (the_edge == cgoend) {
+                t = "Didn't find the corresponding edge in the callgraph.";
+              } else if (seen.count (targetfd)) {
+                t = "Ignoring a backedge in the callgraph since it would create a cycle.";
+              } else {
+                assert (false);
                 abort ();
-	      }
+              }
 
               GWARN << t << " Doing something like writing assert false." << LEND;
 
@@ -1487,7 +1490,8 @@ namespace pharos {
               // Set each out-going edge in the CFG to false
               std::for_each (cfgobegin, cfgoend,
                              [&] (CFGEdge e) {
-                               edgecond_map [e] = EdgeCond (SymbolicExpr::Leaf::createBoolean (false));
+                               edgecond_map [e] = EdgeCond (
+                                 SymbolicExpr::makeBooleanConstant (false));
                              });
             } else {
               //std::cout << "Found the edge! Inlining time!" << std::endl;

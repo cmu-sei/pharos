@@ -36,7 +36,7 @@ namespace {
     InteriorPtr i;
 
     if ((v = e->isLeafNode ())) {
-      if ((v->isVariable () || v->isMemory ()) && lm.count (v)) {
+      if (v->isVariable2 () && lm.count (v)) {
         // It's a reference to v that has been bound
         return lm[v];
       } else {
@@ -67,15 +67,14 @@ namespace {
                         [lm] (IRExprPtr childe) {
                           return expand_lets (childe, lm);
                         });
-        return SymbolicExpr::Interior::create (i->nBits (),
-                                               i->getOperator (),
-                                               new_children);
+        return SymbolicExpr::Interior::instance (i->getOperator (),
+                                                 new_children);
       }
     }
   }
 
   IRExprPtr makeLet (Register a, IRExprPtr b, IRExprPtr c) {
-    return SymbolicExpr::Interior::create (c->nBits (), OP_LET, a, b, c);
+    return SymbolicExpr::Interior::instance (OP_LET, a, b, c);
   }
 
 }
@@ -97,7 +96,7 @@ void
 Z3Solver::ctxVariableDeclarations(const VariableSet &vars) {
   BOOST_FOREACH (const SymbolicExpr::LeafPtr &var, vars.values()) {
     ASSERT_not_null(var);
-    ASSERT_require(var->isVariable() || var->isMemory());
+    ASSERT_require(var->isVariable2());
     if (ctxVarDecls_.exists(var)) {
       // already emitted a declaration for this variable
     } else if (var->isScalar()) {
@@ -143,11 +142,11 @@ namespace {
       }
       IRExprPtr operator()(UNUSED const SpecialStmt &ss) {
         // Return false? It's not clear what the best thing to do here is.
-        return SymbolicExpr::makeBoolean (false);
+        return SymbolicExpr::makeBooleanConstant (false);
       }
       IRExprPtr operator()(UNUSED const CallStmt &cs) {
         // Return false? It's not clear what the best thing to do here is.
-        return SymbolicExpr::makeBoolean (false);
+        return SymbolicExpr::makeBooleanConstant (false);
       }
       IRExprPtr operator()(UNUSED const InsnStmt &is) {
         // Instruction statements do not effect weakest preconditions
@@ -229,7 +228,7 @@ namespace pharos {
         auto it = boost::out_edges (v, cfg);
         bbpost = std::accumulate (it.first,
                                   it.second,
-                                  SymbolicExpr::makeBoolean (true),
+                                  TreeNodePtr(SymbolicExpr::makeBooleanConstant (true)),
                                   [&] (IRExprPtr exp, const IRCFGEdge &e) {
                                     auto sv = boost::target (e, cfg);
                                     assert (bbwp.count (sv) == 1);
@@ -248,7 +247,8 @@ namespace pharos {
                                     return (edgecond_map[e]);
                                   });
       if (edgeit != incoming_edges.second) {
-        wp = SymbolicExpr::makeIte (*edgecond_map[*edgeit], wp, SymbolicExpr::makeBoolean (true));
+        wp = SymbolicExpr::makeIte (*edgecond_map[*edgeit], wp,
+                                    SymbolicExpr::makeBooleanConstant (true));
         //std::cout << "added edge condition " << **edgecond_map[*edgeit] << std::endl;
       }
 
@@ -269,16 +269,18 @@ namespace pharos {
   }
 
 
-  std::pair<IR,IRExprPtr> add_reached_postcondition (const IR& ir, const std::set<rose_addr_t> targets, boost::optional<Register> hit_var_) {
+  std::tuple<IR, IRExprPtr, std::set<IRCFGVertex>> add_reached_postcondition (const IR& ir, const std::set<rose_addr_t> targets, boost::optional<Register> hit_var_) {
     IRCFG cfg = ir.get_cfg ();
 
     Register hit_var;
+
+    std::set<IRCFGVertex> vset;
 
     // Create the variable if necessary
     if (hit_var_) {
       hit_var = *hit_var_;
     } else {
-      hit_var = SymbolicExpr::makeVariable (1, "hit_target")->isLeafNode ();
+      hit_var = SymbolicExpr::makeIntegerVariable (1, "hit_target")->isLeafNode ();
     }
 
     std::set<rose_addr_t> targetbbs;
@@ -300,7 +302,7 @@ namespace pharos {
     // Initialize the variable to false in the entry
     auto entry = ir.get_entry ();
     auto irstmts = ir_map[entry];
-    auto newstmt = RegWriteStmt (hit_var, SymbolicExpr::makeBoolean (false));
+    auto newstmt = RegWriteStmt (hit_var, SymbolicExpr::makeBooleanConstant (false));
     irstmts->insert (irstmts->begin (), newstmt);
 
     // Loop over each BB.  If the BB matches one of the targets, adjust
@@ -324,20 +326,21 @@ namespace pharos {
         assert (firstaddrstmt != stmts->end ());
 
         stmts->erase (firstaddrstmt+1, stmts->end ());
-        newstmt = RegWriteStmt (hit_var, SymbolicExpr::makeBoolean (true));
+        newstmt = RegWriteStmt (hit_var, SymbolicExpr::makeBooleanConstant (true));
         stmts->push_back (newstmt);
+        vset.insert (v);
 
         // Remove all outgoing edges
         boost::clear_out_edges (v, cfg);
       } else if (boost::out_degree (v, cfg) == 0) {
         // This is just an optimization to make WP simplify a little bit better
         auto stmts = ir_map[v];
-        newstmt = RegWriteStmt (hit_var, SymbolicExpr::makeBoolean (false));
+        newstmt = RegWriteStmt (hit_var, SymbolicExpr::makeBooleanConstant (false));
         stmts->push_back (newstmt);
       }
     }
 
-    return std::make_pair (IR (ir, cfg), hit_var);
+    return std::make_tuple (IR (ir, cfg), hit_var, vset);
   }
 
 }
@@ -364,7 +367,7 @@ namespace {
 	  std::stringstream vname;
 	  vname << ec->first << "!" << ec->second << "@" << addr_str (std::get<2> (cs)->get_address ())
 		<< ":" << n;
-          IRExprPtr nv = SymbolicExpr::makeVariable (nbits, vname.str ());
+          IRExprPtr nv = SymbolicExpr::makeIntegerVariable (nbits, vname.str ());
           ignore = true;
           n++;
           return (Stmt) (RegWriteStmt (eax, nv));

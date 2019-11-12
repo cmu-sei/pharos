@@ -120,14 +120,31 @@ TEST_F(ApiAnalyzerInterproceduralTest, TEST_SHOULD_HANDLE_INTERPROCEDURAL_BACKTR
   rose_addr_t component1 = 0x004013E0;
   std::string expected1 = "0x004013E00x004013B00x004013BC0x004013C7";
   CheckResultTree(component1, expected1, results1);
+}
 
+// this is a basic inter-procedural signature
+TEST_F(ApiAnalyzerInterproceduralTest, TEST_SHOULD_NOT_FIND_INTERPROCEDURAL_SIG) {
+
+  // self-loop + additional APIs
+  ApiSig sig;
+  sig.name = "TEST_SHOULD_NOT_FIND_INTERPROCEDURAL_SIG";
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!PEEKNAMEDPIPE"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!WRITEFILE"));
+  sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!CREATEPROCESSA")); // This is in a sub-component
+  
+  sig.api_count = sig.api_calls.size();
+
+  ApiSearchResultVector results;
+
+  bool r = api_graph_.Search(sig, &results);
+  EXPECT_FALSE(r);
 }
 
 // this is a basic inter-procedural signature
 TEST_F(ApiAnalyzerInterproceduralTest, TEST_SHOULD_FIND_VALID_INTERPROCEDURAL_SIG) {
 
   // self-loop + additional APIs
-  ApiSig sig;;
+  ApiSig sig;
   sig.name = "TEST_SHOULD_FIND_VALID_SIG_INTERPROCEDURAL";
   sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!PEEKNAMEDPIPE"));
   sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!READFILE")); // This is in a sub-component
@@ -138,11 +155,11 @@ TEST_F(ApiAnalyzerInterproceduralTest, TEST_SHOULD_FIND_VALID_INTERPROCEDURAL_SI
   ApiSearchResultVector results;
 
   bool r = api_graph_.Search(sig, &results);
-
   EXPECT_TRUE(r);
-  EXPECT_EQ(results.size(),ApiSearchResultVector::size_type(1));
-
+  EXPECT_EQ(results.size(), ApiSearchResultVector::size_type(1));
+  
   rose_addr_t component = 0x00401160;
+  // "0x0040129A 0x004010D0 0x004010A4 0x00401060 0x00401040 0x00401084 0x00401307"
   std::string expected = "0x0040129A0x004010D00x004010A40x004010600x004010400x004010840x00401307";
 
   CheckResultTree(component, expected, results);

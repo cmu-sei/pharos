@@ -162,7 +162,7 @@ BaseSValuePtr SymbolicRiscOperators::readMemory(RegisterDescriptor segreg,
     // variables that nobody care about, so it's just as valid to replace it with a value of
     // our own that has the correct flag bits set.
     size_t nbits = sdflt->get_width();
-    TreeNodePtr tn = LeafNode::createVariable(nbits, "", INCOMPLETE);
+    TreeNodePtr tn = SymbolicExpr::makeIntegerVariable(nbits, "", INCOMPLETE);
     sdflt->set_expression(tn);
 #endif
     SDEBUG << "Marking as incomplete read of incomplete address: " << *saddr
@@ -195,8 +195,8 @@ void SingleThreadedAnalysisCallbacks::readMemory(
   // including reads of imports and reads of constant initialized data.  This has to be in
   // RiscOps and not the MemoryState because we want to handle full size (not byte size) reads.
   for (const TreeNodePtr& tn : saddr->get_possible_values()) {
-    if (tn->isNumber() && tn->nBits() <= 64) {
-      rose_addr_t known_addr = tn->toInt();
+    if (tn->isIntegerConstant() && tn->nBits() <= 64) {
+      rose_addr_t known_addr = *tn->toUnsigned();
       ImportDescriptor *id = ds.get_rw_import(known_addr); // Added to CD
       // Handle the special case of reading an import descriptor!  Let's mock this up so that
       // we return the value at the address, we return the address itself.  That's the
@@ -272,8 +272,8 @@ void SymbolicRiscOperators::writeMemory(UNUSED RegisterDescriptor segreg,
   // overwrites).  This makes more sense here, but it might actually be cleaner back in defuse
   // where it was before Cory moved it here.
   for (const TreeNodePtr& tn : saddr->get_possible_values()) {
-    if (tn->isNumber() && tn->nBits() <= 64) {
-      rose_addr_t known_addr = tn->toInt();
+    if (tn->isIntegerConstant() && tn->nBits() <= 64) {
+      rose_addr_t known_addr = *tn->toUnsigned();
       const ImportDescriptor *id = ds.get_import(known_addr);
       if (id != NULL) {
         SWARN << "Instruction " << debug_instruction(currentInstruction())

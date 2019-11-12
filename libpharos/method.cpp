@@ -95,7 +95,7 @@ boost::optional<int64_t> ThisCallMethod::get_offset(const TreeNodePtr& tn) {
   LeafNodePtr ln = offset_tn->isLeafNode();
   if (!ln) return boost::none;
   // If the simplified leaf node wasn't a constant, fail.
-  if (!ln->isNumber()) {
+  if (!ln->isIntegerConstant()) {
     GDEBUG << "Variable offset access into object" << *ln << " in " << *tn << LEND;
     GDEBUG << "This-pointer was: " << *leaf << LEND;
     GDEBUG << "Removed expression was: " << *offset_tn << LEND;
@@ -106,9 +106,10 @@ boost::optional<int64_t> ThisCallMethod::get_offset(const TreeNodePtr& tn) {
     return boost::none;
   }
 
-  // Otherwise, convert the expression to an int64_t, and return it.
-  int64_t offset = IntegerOps::signExtend2(ln->toInt(), ln->nBits(), 8*sizeof(int64_t));
+  // Otherwise, convert the expression to an int64_t and return it.
+  int64_t offset = IntegerOps::signExtend2(*ln->toUnsigned(), ln->nBits(), 8*sizeof(int64_t));
   return offset;
+  // TODO: replace with return *ln->toSigned() once that is fixed in Rose
 }
 
 bool ThisCallMethod::find_this_pointer()

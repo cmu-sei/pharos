@@ -1,20 +1,29 @@
 % SWI
 
+:- set_prolog_flag(optimise, true).
+
 % Web stat stuff
 
 :- multifile
      webstat:stat_series/2,
-     webstat:stat_value/2.
+     webstat:stat_value/2,
+     webstat:stat_disabled/1.
+
+% Mallinfo is too expensive on really large programs.
+webstat:stat_disabled(mallinfo).
 
 webstat:stat_series(numfacts,
-                     _{label: 'Pharos #facts'
-                      }).
+                    _{label: 'Pharos #facts',
+                      active:true
+                     }).
 webstat:stat_series(guesses,
-                     _{label: 'Pharos #guesses'
-                      }).
+                    _{label: 'Pharos #guesses',
+                      active: true
+                     }).
 webstat:stat_series(reasonForwardSteps,
-                     _{label: 'Pharos #reasoningForward steps'
-                      }).
+                    _{label: 'Pharos #reasoningForward steps',
+                      active: true
+                     }).
 
 webstat:stat_value(numfacts, Value) :-
      conget(numfacts,Value).
@@ -48,4 +57,5 @@ goal_expansion(iso_dif(X,Y), X \= Y).
 	      osetof/3,
 	      or/1,
 	      or/2
-	    )).
+	     )).
+

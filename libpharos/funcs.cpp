@@ -597,7 +597,8 @@ void FunctionDescriptor::update_stack_delta(StackDelta sd) {
   stack_delta.confidence = sd.confidence;
   if (sd.confidence == ConfidenceMissing && !stack_delta_variable) {
     size_t arch_bits = ds.get_arch_bits();
-    stack_delta_variable = LeafNode::createVariable(arch_bits, "", UNKNOWN_STACK_DELTA);
+    stack_delta_variable = SymbolicExpr::makeIntegerVariable(
+      arch_bits, "", UNKNOWN_STACK_DELTA);
   } else {
     stack_delta_variable = LeafNodePtr();
   }

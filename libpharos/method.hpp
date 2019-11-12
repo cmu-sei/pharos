@@ -164,7 +164,7 @@ public:
   TreeNodePtr remove_this_ptr_expr(const TreeNodePtr& tn) {
     assert(leaf != NULL);
     size_t nbits = leaf->nBits();
-    return tn->substitute(leaf, LeafNode::createInteger(nbits, 0, "thisptr"));
+    return tn->substitute(leaf, SymbolicExpr::makeIntegerConstant(nbits, 0, "thisptr"));
   }
 
   // Is the expression out this-pointer plus an offset?

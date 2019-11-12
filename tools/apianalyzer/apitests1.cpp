@@ -287,10 +287,12 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_DISCONNECT_ENTRY) {
   ApiCfgVertex target =  ci->GetVertexByAddr(entry_ea);
 
   size_t old_size = boost::num_vertices(*cfg);
-
   ci->DisconnectVertex(target);
+  ci->RemoveVertex(target);
 
-  // disconnecting the entry vertex
+  // TODO: make this a weak pointer
+  cfg = ci->GetCfg();
+  
 
   target =  ci->GetVertexByAddr(entry_ea);
 
@@ -318,7 +320,10 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_DISCONNECT_EXIT) {
   size_t old_size = boost::num_vertices(*cfg);
 
   ci->DisconnectVertex(target);
+  ci->RemoveVertex(target);
 
+  // TODO: make this a weak pointer
+  cfg = ci->GetCfg();
   // disconnecting the exit vertex
 
   target = ci->GetVertexByAddr(exit_ea);
@@ -348,6 +353,8 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_DISCONNECT_MIDDLE) {
 
   size_t old_size = boost::num_vertices(*cfg);
   ci->DisconnectVertex(target);
+  ci->RemoveVertex(target);
+  cfg = ci->GetCfg();
   size_t new_size = boost::num_vertices(*cfg);
 
   target = ci->GetVertexByAddr(blockea);
@@ -830,6 +837,7 @@ TEST_F(ApiAnalyzertSearchManagerTest, TEST_SHOULD_HANDLE_BACKTRACKING_INTRAPROCE
     break;
   }
   // this is the valid signature for
+                            //"0x0040125D 0x004012AB                       0x004012DF 0x004012E5"
   std::string expected_st = "0x0040125D0x004012AB0x004012BE0x004012D50x004012DF0x004012E5";
   EXPECT_EQ(st, expected_st);
 }

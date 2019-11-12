@@ -47,7 +47,7 @@ template<> char const* EnumStrings<MemoryType>::data[] = {
 
 BaseSValuePtr SymbolicValue::bottom_(size_t nbits) const {
   SymbolicValuePtr retval = SymbolicValuePtr(new SymbolicValue(nbits));
-  TreeNodePtr tn = LeafNode::createVariable(nbits, "", TreeNode::BOTTOM);
+  TreeNodePtr tn = SymbolicExpr::makeIntegerVariable(nbits, "", TreeNode::BOTTOM);
   retval->set_expression(tn);
   return retval;
 }
@@ -64,7 +64,7 @@ BaseSValuePtr SymbolicValue::undefined_(size_t nbits) const {
 
 BaseSValuePtr SymbolicValue::unspecified_(size_t nbits) const {
   SymbolicValuePtr retval = SymbolicValuePtr(new SymbolicValue(nbits));
-  TreeNodePtr tn = LeafNode::createVariable(nbits, "", TreeNode::UNSPECIFIED);
+  TreeNodePtr tn = SymbolicExpr::makeIntegerVariable(nbits, "", TreeNode::UNSPECIFIED);
   retval->set_expression(tn);
   return retval;
 }
@@ -75,7 +75,7 @@ BaseSValuePtr SymbolicValue::unspecified_(size_t nbits) const {
 // the BaseSValue, we can't call it from the protoval in the ROSE class anyway.
 SymbolicValuePtr SymbolicValue::incomplete(size_t nbits) {
   SymbolicValuePtr retval = SymbolicValuePtr(new SymbolicValue(nbits));
-  TreeNodePtr tn = LeafNode::createVariable(nbits, "", INCOMPLETE);
+  TreeNodePtr tn = SymbolicExpr::makeIntegerVariable(nbits, "", INCOMPLETE);
   retval->set_expression(tn);
   return retval;
 }
@@ -86,7 +86,7 @@ SymbolicValuePtr SymbolicValue::incomplete(size_t nbits) {
 SymbolicValuePtr SymbolicValue::loader_defined() {
   size_t nbits = global_arch_bytes * 8;
   SymbolicValuePtr retval = SymbolicValuePtr(new SymbolicValue(nbits));
-  TreeNodePtr tn = LeafNode::createVariable(nbits, "", LOADER_DEFINED);
+  TreeNodePtr tn = SymbolicExpr::makeIntegerVariable(nbits, "", LOADER_DEFINED);
   retval->set_expression(tn);
   return retval;
 }
@@ -188,7 +188,8 @@ void SymbolicValue::discard_oversized_expression() {
 
     // Here's the important bit...  Replace the value with a new incomplete variable.
     size_t nbits = get_expression()->nBits();
-    TreeNodePtr tn = LeafNode::createVariable(nbits, "", TreeNode::UNSPECIFIED | INCOMPLETE);
+    TreeNodePtr tn = SymbolicExpr::makeIntegerVariable(
+      nbits, "", TreeNode::UNSPECIFIED | INCOMPLETE);
     set_expression(tn);
 
     // Only report this error once per function? :-(
@@ -222,8 +223,8 @@ bool operator<(const SymbolicValue& a, const SymbolicValue& b) {
   STRACE << "SymbolicValue::operator< " << *aexpr << " < " << *bexpr << LEND;
 
   try {
-    TreeNodePtr lt = InternalNode::create(1, ULT_OP, aexpr, bexpr);
-    if (lt->isNumber() && lt->nBits() <= 64 && lt->toInt() == 1) return true;
+    TreeNodePtr lt = InternalNode::instance(ULT_OP, aexpr, bexpr);
+    if (lt->toUnsigned().isEqual(1)) return true;
 
     //using YicesSolver = Rose::BinaryAnalysis::YicesSolver;
     //YicesSolver solver;
@@ -366,11 +367,11 @@ boost::optional<int64_t> SymbolicValue::get_stack_const() const {
       // all the variables in the term to make this decision.
       if (!lp) confused = true;
       // If this term is a constant, add it to our accumlating delta.
-      else if (lp->isNumber()) {
+      else if (lp->isIntegerConstant()) {
         delta += get_signed_value(lp);
         //SDEBUG << "Increased delta to: " << delta << LEND;
       }
-      else if (lp->isVariable() && (lp->flags() & UNKNOWN_STACK_DELTA)) {
+      else if (lp->isIntegerVariable() && (lp->flags() & UNKNOWN_STACK_DELTA)) {
         // Ignore unknown stack delta variables
         // do nothing
       } else {
@@ -521,10 +522,10 @@ void SymbolicValue::merge(const SymbolicValuePtr& other,
   // right now).
   TreeNodePtr ite_expr;
   if (inverted) {
-    ite_expr = InternalNode::create(get_width(), OP_ITE, ctp, other_expr, my_expr);
+    ite_expr = InternalNode::instance(OP_ITE, ctp, other_expr, my_expr);
   }
   else {
-    ite_expr = InternalNode::create(get_width(), OP_ITE, ctp, my_expr, other_expr);
+    ite_expr = InternalNode::instance(OP_ITE, ctp, my_expr, other_expr);
   }
   // The only(?) place where we want to set the expression to a value not literally in sync
   // with the value set?
@@ -731,7 +732,7 @@ pharos_may_equal(
     InternalNodePtr in2 = n2->isInteriorNode();
     // If other is a leaf variable or an interior add operation, we may be able to prove that
     // the expressions are NOT equal.
-    if ((ln2 && ln2->isVariable()) || (in2 && in2->getOperator() == OP_ADD)) {
+    if ((ln2 && ln2->isIntegerVariable()) || (in2 && in2->getOperator() == OP_ADD)) {
       // The constant extractor is smart enough to handle all TreeNode cases.
       AddConstantExtractor n1ace = AddConstantExtractor(n1);
       AddConstantExtractor n2ace = AddConstantExtractor(n2);

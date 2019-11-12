@@ -1,4 +1,4 @@
-// Copyright 2016-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Michael Duggan
 
@@ -316,9 +316,9 @@ struct Convert<node_t, leaf_t> {
 template <>
 struct Convert<node_t, uint64_t> {
   static void assign(const node_t & from, uint64_t & to) {
-    leaf_t in = from->isLeafNode();;
-    assert(in && in->isNumber());
-    to = in->toInt();
+    auto val = from->toUnsigned();
+    assert(val);
+    to = *val;
   }
 };
 
@@ -382,8 +382,7 @@ template <>
 struct Matcher<Var> {
   bool operator()(const node_t &tn) const {
     if (!tn) { return false; }
-    auto n = tn->isLeafNode();
-    return n && n->isVariable();
+    return tn->isIntegerVariable();
   }
 };
 
@@ -392,8 +391,7 @@ template <>
 struct Matcher<Mem> {
   bool operator()(const node_t &tn) const {
     if (!tn) { return false; }
-    auto n = tn->isLeafNode();
-    return n && n->isMemory();
+    return tn->isMemoryVariable();
   }
 };
 
@@ -402,8 +400,7 @@ template <>
 struct Matcher<Int> {
   bool operator()(const node_t &tn) const {
     if (!tn) { return false; }
-    auto n = tn->isLeafNode();
-    return n && n->isNumber();
+    return tn->isIntegerConstant();
   }
 };
 
@@ -412,8 +409,7 @@ template <uint64_t val>
 struct Matcher<Const<val>> {
   bool operator()(const node_t &tn) const {
     if (!tn) { return false; }
-    auto n = tn->isLeafNode();
-    return n && (n->isNumber() && n->nBits() <= 64 && n->toInt() == val);
+    return tn->isIntegerConstant() && tn->nBits() <= 64 && *tn->toUnsigned() == val;
   }
 };
 
