@@ -676,6 +676,7 @@ void OOAnalyzer::record_this_ptrs_for_calls(FunctionDescriptor* fd) {
       // GWARN << "No final state for call at " << cd->address_string() << LEND;
       continue;
     }
+    write_guard<decltype(mutex)> guard{mutex};
     // We should be able to find this globally somehow...
     RegisterDescriptor this_reg = cd->ds.get_arch_reg(THIS_PTR_STR);
     assert(this_reg.is_valid());
