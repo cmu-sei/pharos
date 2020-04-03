@@ -116,14 +116,24 @@ bool ThisCallMethod::find_this_pointer()
 {
   GTRACE << "ThisCallMethod::find_this_pointer(): " << fd->address_string() << LEND;
 
-  // For thunks, we used to fail through with not finding the appropriate references to ECX (in
-  // the thunk function itself).  Then I made some changes to thunk propogation, and we ended
-  // up here more often, but it just generated more errors.  Later we found that it is super
-  // inconvenient to follow thunks here when analyzing in parallel, so it's fortunate that we
-  // no longer need to do so in order to pass our tests.  If at some point in the future, we
-  // find that this did not result in the correct answer for a thunk, we should almost
-  // certainly correct the problem in Prolog using the thunks facts that are now exported.
-  if (fd->is_thunk()) return false;
+  // We've changed our thinking about how to handle thunks at this point in the code several
+  // times. :-( The progression has roughly been: 1. No need to follow thunks, we'll just
+  // analyze the function they point to.  This was incorrect because multiple thunks
+  // representing functions in different classes can jump to the same implementation, which
+  // confused the prolog phase.  2.  Realizing that we should do more analysis of thunks,
+  // resulting in the exporting of thunk facts, but not being able to complete this particular
+  // analysis because of other errors and difficulties in obtaining the pdg cleanly in
+  // multi-threaded mode.  3. The current approach, which is to "make-up" a symbolic value for
+  // the ECX register just so that we can trigger other downstream processes that require a
+  // ThisCallMethod object, such as exporting noCallsBefore and noCallsAfter.  While not
+  // perfect, this approach brings us closer to the "right" thing in an increment way.  4? The
+  // next evolution is likely to be more sophisticated handling of tail-call optimized
+  // thunk-like functions where we need to conduct some proper analysis of this-pointer...
+  if (fd->is_thunk()) {
+    thisptr = SymbolicValue::incomplete(fd->ds.get_arch_bits());
+    leaf = thisptr->get_expression()->isLeafNode();
+    return true;
+  }
 
   // We should probably be using a RegisterDescriptor (or an AbstractAccess)
   // to describe the this pointer anyway.  Here we need it to pass to is_reg().
@@ -132,7 +142,7 @@ bool ThisCallMethod::find_this_pointer()
 
   const PDG* p = fd->get_pdg();
   if (p == NULL) return false;
-  //const Insn2DUChainMap& dd = p->get_usedef().get_dependencies();
+  //const Addr2DUChainMap& dd = p->get_usedef().get_dependencies();
 
   // What Cory would like to do here is check fd->calling_convention == ConventionThisCall, and
   // move on.   He tried enabling this code as part of fix while debugging another issue, but
@@ -190,7 +200,7 @@ bool ThisCallMethod::find_this_pointer()
       SgAsmX86Instruction *insn = isSgAsmX86Instruction(is);
       if (!insn) continue;
       // For each register access...
-      for (const AbstractAccess& aa : ud.get_reads(insn)) {
+      for (const AbstractAccess& aa : ud.get_reads(insn->get_address())) {
         // We're looking for an access to the "this-pointer" register.
         if (!aa.is_reg(this_reg)) continue;
 
@@ -295,7 +305,9 @@ ThisCallMethod::test_for_uninit_reads() const
 
   // For every memory read in the function...
   for (const AccessMap::value_type& access : du.get_accesses()) {
-    SgAsmX86Instruction* insn = isSgAsmX86Instruction(access.first);
+    SgAsmInstruction* ginsn = fd->ds.get_insn(access.first);
+    SgAsmX86Instruction* insn = isSgAsmX86Instruction(ginsn);
+    // This algorithm only works for X86 instructions? (Or maybe not?)
     if (!insn) continue;
     // The second entry of the pair is the vector of abstract accesses.
     for (const AbstractAccess& aa : access.second) {
@@ -313,7 +325,7 @@ ThisCallMethod::test_for_uninit_reads() const
       if (aa.latest_writers.size() != 0) continue;
 
       // Get the definers for this instruction.
-      const InsnSet &definers = aa.value->get_defining_instructions();
+      const RoseInsnSet &definers= aa.value->get_defining_instructions();
 
       // If there's more than one definer, we're definitely not reading an uninitialized value.
       if (definers.size() > 1) continue;
@@ -389,6 +401,7 @@ void ThisCallMethod::find_members() {
     for (SgAsmStatement* is : bb->get_statementList()) {
       SgAsmX86Instruction *insn = isSgAsmX86Instruction(is);
       if (!insn) continue;
+      rose_addr_t iaddr = insn->get_address();
 
       // NOPs don't result in member accesses.
       if (insn_is_nop(insn)) {
@@ -402,7 +415,7 @@ void ThisCallMethod::find_members() {
       // Handle LEA instructions specially....
       if (insn->get_kind() == x86_lea) {
         // The address we "accessed" will be in the write (there should be only one).
-        for (const AbstractAccess& aa : ud.get_reg_writes(insn)) {
+        for (const AbstractAccess& aa : ud.get_reg_writes(iaddr)) {
           boost::optional<int64_t> offset = get_offset(aa.value->get_expression());
           if (!offset) continue;
 
@@ -419,7 +432,7 @@ void ThisCallMethod::find_members() {
 
       // Look for memory accesses (typically of the form [tptr + offset]).
 
-      for (const AbstractAccess& aa : ud.get_mem_reads(insn)) {
+      for (const AbstractAccess& aa : ud.get_mem_reads(iaddr)) {
         // Assume that the expression is a properly formed offset into our object and attempt
         // to obtain the offset into that object.
         boost::optional<int64_t> offset = get_offset(aa.memory_address->get_expression());
@@ -442,7 +455,7 @@ void ThisCallMethod::find_members() {
       // Now for writes (same code as reads, but with no comments).  Cory would like to be able
       // to do something witty with a custom iterator here to process both lists with the same
       // block of code to be executed.
-      for (const AbstractAccess& aa : ud.get_mem_writes(insn)) {
+      for (const AbstractAccess& aa : ud.get_mem_writes(iaddr)) {
         boost::optional<int64_t> offset = get_offset(aa.memory_address->get_expression());
         if (!offset) continue;
 

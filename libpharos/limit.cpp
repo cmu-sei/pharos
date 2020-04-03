@@ -120,7 +120,7 @@ LimitCode ResourceLimit::check() {
     if (relative_cpu_limit > 0) {
       double total_now_cpu = total_cpu_time(now_ru);
       double total_start_cpu = total_cpu_time(start_ru);
-      double relative_cpu_delta = total_start_cpu - total_now_cpu;
+      double relative_cpu_delta = total_now_cpu - total_start_cpu;
       if (relative_cpu_delta >= relative_cpu_limit) {
         msg = "relative CPU time exceeded";
         return LimitRelativeCPU;

@@ -5,12 +5,11 @@
 
 #include <boost/iterator.hpp>
 #include <rose.h>
-#include <AstTraversal.h>
 #include <Partitioner2/Engine.h>
 
 namespace pharos {
 
-using FCG = Rose::BinaryAnalysis::FunctionCall::Graph;
+using FCG = Rose::BinaryAnalysis::Partitioner2::FunctionCallGraph;
 
 // Some forward declarations of our classes.
 
@@ -38,7 +37,7 @@ namespace pharos {
 using ImportVariableMap = std::map<size_t, ImportDescriptor*>;
 using AddrInsnMap = std::map<rose_addr_t, SgAsmInstruction*>;
 
-class DescriptorSet: public AstPreOrderTraversal
+class DescriptorSet
 {
  private:
   CallDescriptorMap call_descriptors;
@@ -58,14 +57,11 @@ class DescriptorSet: public AstPreOrderTraversal
   // The list of files to analyze
   std::vector<std::string> specimen_names;
 
-  // The Function call graph of this program.
+  // The Function call graph of this program. (Please use pdg_graph if possible).
   FCG function_call_graph;
 
   // The new style instruction-level, whole-progam dependency graph.
   ProgramDependencyGraph pdg_graph;
-
-  // A map of addresses to instructions.
-  AddrInsnMap insn_map;
 
   // Architecture word size in bytes.
   size_t arch_bytes;
@@ -103,14 +99,11 @@ class DescriptorSet: public AstPreOrderTraversal
   // Used to be public.  Could be again if needed.
   void update_connections();
   void validate(std::ostream &o);
-  void preOrderVisit(SgNode* n);
+  // Primary analysis pass to create the various descriptors.
+  void create();
 
   // Only used by update_import_target()
   ImportDescriptor* get_import_by_variable(SymbolicValuePtr v);
-
-  // Add instructions to the instruction map (soon to be replaced with a Partitioner2
-  // instruction provider).  Currently called only in preOrderVisit().
-  void add_insn(rose_addr_t addr, SgAsmInstruction* insn);
 
   // Ensure that all imports in import_descriptors are also in import_variables.
   ImportDescriptor *add_import(rose_addr_t addr, std::string dll, std::string name, size_t ord = 0);
@@ -148,14 +141,6 @@ public:
   // method of defuse.cpp (where most of the other updates occur).
   void update_global_variables_for_func(const FunctionDescriptor* fd);
 
-  // The AST must be non-const because the one place that uses this method (dumpmasm.cpp)
-  // requires a mutable AST to call unparse.  Why unparse needs a mutable AST is not clear.
-  // Bug in ROSE?  Once we're generating the AST dyanmically, it won't matter so much.
-  SgAsmInterpretation* get_ast();
-
-  // Only used in a non-const context in BottomUpAnalyzer?
-  std::vector<FunctionDescriptor *> rw_funcs_in_bottom_up_order();
-
   // Mostly in calls.cpp for updating callers, set_delete_method() in ooanalyzer.cpp
   FunctionDescriptor* get_rw_func(rose_addr_t a) {
     return function_descriptors.get_func(a);
@@ -173,6 +158,9 @@ public:
   GlobalMemoryDescriptor* get_rw_global(rose_addr_t a) {
     return global_descriptors.get_global(a);
   }
+
+  // Used in calls.cpp to update connections between call and function descriptors.
+  std::vector<FunctionDescriptor*> get_rw_funcs_containing_address(rose_addr_t addr);
 
   //======================================================================================
   // Const interface
@@ -200,14 +188,13 @@ public:
   const ImportDescriptorMap& get_import_map() const { return import_descriptors; }
   const GlobalMemoryDescriptorMap& get_global_map() const { return global_descriptors; }
 
-  // Find the function descriptor that contains a given instruction.
-  const FunctionDescriptor* get_fd_from_insn(const SgAsmInstruction *insn) const;
-  // Used to be in path.cpp, but is essentially a descriptor set responsibility.
+  // Return the first function containing an address.  The use of this API is not recommended,
+  // and it will emit errors to the log when called on addresses that are in more than one
+  // function, as a reminder to use the better vector-based API below.
   const FunctionDescriptor* get_func_containing_address(rose_addr_t addr) const;
-  SgAsmBlock* get_block_containing_address (rose_addr_t addr) const {
-    return insn_get_block(get_insn(addr));
-  }
-  // A newer interface to finding blocks based on addresses?
+  // Return a vector of functions that contain this address.
+  std::vector<const FunctionDescriptor*> get_funcs_containing_address(rose_addr_t addr) const;
+  // Return the partitioner basic block containing a given address.
   const P2::BasicBlock::Ptr get_block(rose_addr_t a) const {
     return partitioner.basicBlockContainingInstruction(a);
   }
@@ -226,15 +213,16 @@ public:
   const CallingConventionMatcher& get_calling_conventions() const { return calling_conventions; }
 
   const FCG& get_function_call_graph() const { return function_call_graph; }
-  std::vector<const FunctionDescriptor *> const_funcs_in_bottom_up_order() const;
 
   // Here's how you can get access to the new Partitioner 2 engine (maybe)...
   const P2::Engine* get_engine() const { return engine; }
   const P2::Partitioner& get_partitioner() const { return partitioner; }
   const RegisterDictionary get_regdict() const;
 
-  // And this should really be on an instruction provider (from P2::Partitioner).
-  SgAsmInstruction* get_insn(rose_addr_t addr) const;
+  // Pharos API for getting instructions from the Partitioner 2 instruction provider.
+  SgAsmInstruction* get_insn(rose_addr_t addr) const {
+    return partitioner.instructionProvider()[addr];
+  }
 
   // Return the default word size on the architecture.
   const std::string& get_arch_name() const { return arch_name; }

@@ -1,4 +1,4 @@
-// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2020 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Michael Duggan
 
@@ -70,11 +70,44 @@ std::ostream & output_atom(std::ostream & stream, const char * atom)
     }
   }
   stream << '\'';
-  while ((c = std::strchr(atom, '\''))) {
-    stream << std::string(atom, c) << "''";
-    atom = c + 1;
+  for (c = atom; *c; ++c) {
+    switch (*c) {
+     case '\\':
+      stream << "\\\\";
+      break;
+     case '\a':
+      stream << "\\a";
+      break;
+     case '\b':
+      stream << "\\b";
+      break;
+     case '\f':
+      stream << "\\f";
+      break;
+     case '\n':
+      stream << "\\n";
+      break;
+     case '\r':
+      stream << "\\r";
+      break;
+     case '\t':
+      stream << "\\t";
+      break;
+     case '\v':
+      stream << "\\v";
+      break;
+     case '\'':
+      stream << "''";
+      break;
+     default:
+      if (std::isprint(static_cast<unsigned char>(*c))) {
+        stream << *c;
+      } else {
+        stream << "\\x" << std::hex << static_cast<unsigned>(*c) << '\\';
+      }
+    }
   }
-  stream << atom << '\'';
+  stream <<  '\'';
   return stream;
 }
 

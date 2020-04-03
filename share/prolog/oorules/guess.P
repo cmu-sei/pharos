@@ -357,18 +357,12 @@ tryDerivedClass(DerivedClass, BaseClass, Offset) :-
 % Try guessing that an address is really method.
 % --------------------------------------------------------------------------------------------
 
-% This guess was: thisCallMethod(M, _T, certain), methodMemberAccess(_I, M, O, _S)...
+% This guess was: callingConvention(Method, '__thiscall'), methodMemberAccess(_I, M, O, _S)...
 %
 % But changing it to require validMethodMemberAccess is complete nonense, because we're now
 % _requiring_ that factMethod() be true for the member access to be valid.  The size filter in
 % this rule is more restrictive than the one in validMethodMemberAccess, so we're not really
 % losing anything by testing the unvalidated member access.
-%
-% Additionally, we were testing thisCallMethod(M, _T, certain), but in the "new" way of doing
-% things, we should be more dependent on factMethod() and callingConvention(M, '__thiscall').
-% I didn't remove the thisCallMethod(M, _T, certain) clause, but we _do_ pass our tests with
-% the slightly weaker callingConvention clause, which is likely to be more portable.  We should
-% conduct some tests against larger files (like the paper test suite) before making the change.
 %
 % Requiring a validMethodMemberAccess is essentialy requiring that something in the object be
 % accessed in the method.  The justification for using 100 as the limit for the offset size
@@ -377,8 +371,7 @@ tryDerivedClass(DerivedClass, BaseClass, Offset) :-
 % positives by reducing the limit further beyond what would obviously be too limiting for
 % validMethodMemberAccess.
 guessMethodA(Method) :-
-    %callingConvention(Method, '__thiscall'),
-    thisCallMethod(Method, _ThisPtr, uncertain),
+    callingConvention(Method, '__thiscall'),
     doNotGuessHelper(factMethod(Method),
                      factNOTMethod(Method)),
     % Intentionally use the _unvalidated_ access to guess that the Method is actually object
@@ -396,8 +389,11 @@ guessMethod(Out) :-
 
 guessMethodB(Method) :-
     factMethod(Caller),
-    % We explicitly don't care about certainty here, because factMethod(Caller).
-    thisCallMethod(Caller, ThisPtr1, _Certainty),
+    % It is sufficient for __thiscall to be possible, since our confidence derives from Caller.
+    % This rule currently needs to permit the slightly different ECX parameter standard.
+    % This bug is wrapped up in std::_Yarn and std::locale in Lite/ooex7 (and oo and poly).
+    (callingConvention(Caller, '__thiscall'); callingConvention(Caller, 'invalid')),
+    funcParameter(Caller, 'ecx', ThisPtr1),
     thisPtrOffset(ThisPtr1, _Offset, ThisPtr2),
     thisPtrUsage(_Insn1, Caller, ThisPtr2, Method),
     doNotGuessHelper(factMethod(Method),
@@ -417,8 +413,7 @@ guessMethod(Out) :-
 % logically.
 % ED_PAPER_INTERESTING
 guessMethodC(Method) :-
-    %callingConvention(Method, '__thiscall'),
-    thisCallMethod(Method, _ThisPtr, uncertain),
+    callingConvention(Method, '__thiscall'),
     doNotGuessHelper(factMethod(Method),
                      factNOTMethod(Method)),
     % Also intentionally an unvalidated methodMemberAccess because we're guessing the
@@ -441,8 +436,7 @@ guessMethod(Out) :-
 % method.
 :- table guessMethodD/1 as incremental.
 guessMethodD(Method) :-
-    % This may need to be weakened past uncertain... :-(
-    thisCallMethod(Method, _ThisPtr, uncertain),
+    callingConvention(Method, '__thiscall'),
     doNotGuessHelper(factMethod(Method),
                      factNOTMethod(Method)),
     validMethodMemberAccess(_Insn0, Method, Offset, _Size0),
@@ -464,8 +458,7 @@ guessMethod(Out) :-
 % multiple methods.  Just guess the first and the rest will follow...
 :- table guessMethodE/1 as incremental.
 guessMethodE(Method) :-
-    % This may need to be weakened past uncertain... :-(
-    thisCallMethod(Method, _ThisPtr, uncertain),
+    callingConvention(Method, '__thiscall'),
     doNotGuessHelper(factMethod(Method),
                      factNOTMethod(Method)),
     validMethodMemberAccess(_Insn0, Method, Offset, _Size0),
@@ -488,9 +481,7 @@ guessMethod(Out) :-
 % suggesting that it's a method.  In this case, it's a possible constructor with memory
 % accesses.
 guessMethodF(Method) :-
-    %thisCallMethod(Method, _ThisPtr, _Certainty),
-    (thisCallMethod(Method, _ThisPtr, certain);
-     thisCallMethod(Method, _ThisPtr, uncertain)),
+    callingConvention(Method, '__thiscall'),
     doNotGuessHelper(factMethod(Method),
                      factNOTMethod(Method)),
     validMethodMemberAccess(_Insn1, Method, Offset, _Size1),
@@ -506,9 +497,7 @@ guessMethod(Out) :-
 
 % Also guess possible constructors and destructors with calls from known methods.
 guessMethodG(Method) :-
-    %thisCallMethod(Method, _ThisPtr1, _Certainty),
-    (thisCallMethod(Method, _ThisPtr1, certain);
-     thisCallMethod(Method, _ThisPtr1, uncertain)),
+    callingConvention(Method, '__thiscall'),
     doNotGuessHelper(factMethod(Method),
                      factNOTMethod(Method)),
     thisPtrUsage(_Insn, Caller, _ThisPtr2, Method),
@@ -756,9 +745,21 @@ guessNOTMergeClasses(OuterClass, InnerClass) :-
     doNotGuessHelper(factNOTMergeClasses(OuterClass, InnerClass),
                      factNOTMergeClasses(InnerClass, OuterClass)).
 
+
+% The symmetry on guessNOTMergeClasses above was a little tricky, and a correction was required
+% to pass tests, resulting in this possibly suboptimal approach?
+guessNOTMergeClassesSymmetric(Class1, Class2) :-
+    guessNOTMergeClasses(A, B),
+    sort_tuple((A, B), (Class1, Class2)),
+    % Debugging.
+    %logtrace('guessNOTMergeClasses('),
+    %logtrace(Class1), logtrace(', '),
+    %logtrace(Class2), logtraceln(').'),
+    true.
+
 guessNOTMergeClasses(Out) :-
     osetof((OuterClass, InnerClass),
-          guessNOTMergeClasses(OuterClass, InnerClass),
+          guessNOTMergeClassesSymmetric(OuterClass, InnerClass),
           ClassPairSets),
     Out = tryBinarySearch(tryNOTMergeClasses, tryMergeClasses, ClassPairSets).
 
@@ -800,17 +801,32 @@ guessMergeClassesA(Class1, MethodClass) :-
     checkMergeClasses(Class1, MethodClass).
 
 guessMergeClasses(Out) :-
-    osetof((Class, Method),
-          guessMergeClassesA(Class, Method),
-          TupleSet),
+    minof((Class, Method),
+          guessMergeClassesA(Class, Method)),
+    !,
+    OneTuple=[(Class, Method)],
     logdebug('Proposing factMergeClasses_A('),
-    logdebug(TupleSet), logdebugln(').'),
-    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, TupleSet, 1).
+    logdebug(OneTuple), logdebugln(').'),
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % Another good guessing heuristic is that if a virtual call was resolved through a specific
 % VFTable, and there's nothing contradictory, try assigning the call to the class that it was
 % resolved through.  Technically, I think this is a case of choosing arbitrarily between
 % multiple valid solutions.  It might be possible to prove which constructor the method is on.
+
+% This fact was a sub-computation of guessMergeClassesB that added a lot of overhead.  By
+% putting it in a separate fact, we can make it a trigger-based fact that is maintained with
+% low overhead.
+% factMethodInVFTable/3
+
+% trigger
+% XXX: Should this be in rules.P?
+%:- table reasonMethodInVFTable/4 as incremental.
+reasonMethodInVFTable(VFTable, Offset, Method, Entry) :-
+    not(purecall(Entry)),
+    factVFTableEntry(VFTable, Offset, Entry),
+    dethunk(Entry, Method).
+
 guessMergeClassesB(Class1, Class2) :-
     factVFTableEntry(VFTable, _VFTableOffset, Entry1),
     not(purecall(Entry1)), % Never merge purecall methods into classes.
@@ -830,11 +846,20 @@ guessMergeClassesB(Class1, Class2) :-
     % The method is not also is some other VFTable.  When adding thunk support, Cory decided to
     % allow the second entry to differ so long as it resolved to the same place.  It's unclear
     % if this is really correct.
+
+    % Old code:
+    %% not((
+    %%            factVFTableEntry(OtherVFTable, _OtherVFTableOffset, Entry1A),
+    %%            % dethunk_nontabled?
+    %%            dethunk_nontabled(Entry1A, Method1),
+    %%            iso_dif(VFTable, OtherVFTable)
+    %%        )),
+
+    % New code using factMethodInVFTable/2
     not((
-               factVFTableEntry(OtherVFTable, _OtherVFTableOffset, Entry1A),
-               dethunk(Entry1A, Method1),
+               factMethodInVFTable(OtherVFTable, _Offset, Method1),
                iso_dif(VFTable, OtherVFTable)
-       )),
+           )),
 
     find(Method1, Class1),
 
@@ -852,12 +877,13 @@ guessMergeClassesB(Class1, Class2) :-
     checkMergeClasses(Class1, Class2).
 
 guessMergeClasses(Out) :-
-    osetof((Class, Method),
-          guessMergeClassesB(Class, Method),
-          TupleSet),
+    minof((Class, Method),
+          guessMergeClassesB(Class, Method)),
+    !,
+    OneTuple=[(Class, Method)],
     logdebug('Proposing factMergeClasses_B('),
-    logdebug(TupleSet), logdebugln(').'),
-    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, TupleSet, 1).
+    logdebug(OneTuple), logdebugln(').'),
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 
 % This rule makes guesses about whether to assign methods to the derived class or the base
@@ -879,12 +905,13 @@ guessMergeClassesC(Class1, Class2) :-
     checkMergeClasses(Class1, Class2).
 
 guessMergeClasses(Out) :-
-    osetof((Class, Method),
-          guessMergeClassesC(Class, Method),
-          TupleSet),
+    minof((Class, Method),
+          guessMergeClassesC(Class, Method)),
+    !,
+    OneTuple=[(Class, Method)],
     logdebug('Proposing factMergeClasses_C('),
-    logdebug(TupleSet), logdebugln(').'),
-    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, TupleSet, 1).
+    logdebug(OneTuple), logdebugln(').'),
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % If that didn't work, maybe the method belongs on the base instead.
 % ED_PAPER_INTERESTING
@@ -898,12 +925,13 @@ guessMergeClassesD(Class1, Class2) :-
     checkMergeClasses(Class1, Class2).
 
 guessMergeClasses(Out) :-
-    osetof((Class, Method),
-          guessMergeClassesD(Class, Method),
-          TupleSet),
+    minof((Class, Method),
+          guessMergeClassesD(Class, Method)),
+    !,
+    OneTuple=[(Class, Method)],
     logdebug('Proposing factMergeClasses_D('),
-    logdebug(TupleSet), logdebugln(').'),
-    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, TupleSet, 1).
+    logdebug(OneTuple), logdebugln(').'),
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % And finally just guess regardless of derived class facts.
 % ED_PAPER_INTERESTING
@@ -918,13 +946,13 @@ guessMergeClassesE(Class1, Class2) :-
     checkMergeClasses(Class1, Class2).
 
 guessMergeClasses(Out) :-
-    osetof((Class, Method),
-          guessMergeClassesE(Class, Method),
-          TupleSet),
+    minof((Class, Method),
+          guessMergeClassesE(Class, Method)),
+    !,
+    OneTuple=[(Class, Method)],
     logdebug('Proposing factMergeClasses_E('),
-    take(1, TupleSet, OneTuple),
     logdebug(OneTuple), logdebugln(').'),
-    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple).
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % If we have VFTable that is NOT associated with a class because there's no factVFTableWrite,
 % factClassCallsMethod is not true...  The problem here is that we don't which method call
@@ -935,16 +963,16 @@ guessMergeClasses(Out) :-
 guessMergeClassesF(Class, Method1) :-
     % There are two different entries in the same VFTable...
     factVFTableEntry(VFTable, _Offset1, Entry1),
+    not(purecall(Entry1)), % Never merge purecall methods into classes.
+    dethunk(Entry1, Method1),
+    not(purecall(Method1)), % Never merge purecall methods into classes.
     factVFTableEntry(VFTable, _Offset2, Entry2),
     iso_dif(Entry1, Entry2),
+    not(purecall(Entry2)), % Never merge purecall methods into classes.
     % Follow thunks for both entries.  What does it mean if the thunks differed but the methods
     % did not?  Cory's not sure right now, but this is what the original rule did.
-    dethunk(Entry1, Method1),
     dethunk(Entry2, Method2),
     iso_dif(Method1, Method2),
-    not(purecall(Entry1)), % Never merge purecall methods into classes.
-    not(purecall(Entry2)), % Never merge purecall methods into classes.
-    not(purecall(Method1)), % Never merge purecall methods into classes.
     not(purecall(Method2)), % Never merge purecall methods into classes.
     % One of the methods is in a class all by itself right now.
     % ejs: The prolog does not match the comment.
@@ -956,12 +984,13 @@ guessMergeClassesF(Class, Method1) :-
     checkMergeClasses(Class, Method1).
 
 guessMergeClasses(Out) :-
-    osetof((Class, Method),
-          guessMergeClassesF(Class, Method),
-          TupleSet),
+    minof((Class, Method),
+          guessMergeClassesF(Class, Method)),
+    !,
+    OneTuple=[(Class, Method)],
     logdebug('Proposing factMergeClasses_F('),
-    logdebug(TupleSet), logdebugln(').'),
-    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, TupleSet, 1).
+    logdebug(OneTuple), logdebugln(').'),
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 checkMergeClasses(Method1, Method2) :-
     iso_dif(Method1, Method2),
@@ -1018,15 +1047,15 @@ guessRealDestructor(Out) :-
 
     Out = tryOrNOTRealDestructor(Method).
 
-tryOrNOTRealDestructor(Method) :-
-    likelyDeletingDestructor(DeletingDestructor, Method),
-    % Require that we've already confirmed the deleting destructor.
-    factDeletingDestructor(DeletingDestructor),
-    doNotGuessHelper(factRealDestructor(Method),
-                     factNOTRealDestructor(Method)),
-    countGuess,
-    (tryRealDestructor(Method);
-     tryNOTRealDestructor(Method)).
+%% tryOrNOTRealDestructor(Method) :-
+%%     likelyDeletingDestructor(DeletingDestructor, Method),
+%%     % Require that we've already confirmed the deleting destructor.
+%%     factDeletingDestructor(DeletingDestructor),
+%%     doNotGuessHelper(factRealDestructor(Method),
+%%                      factNOTRealDestructor(Method)),
+%%     countGuess,
+%%     (tryRealDestructor(Method);
+%%      tryNOTRealDestructor(Method)).
 
 % Establish that the candidate meets minimal requirements.
 minimalRealDestructor(Method) :-
@@ -1109,7 +1138,7 @@ guessDeletingDestructor(Out) :-
           (likelyDeletingDestructor(Method, _RealDestructor),
            doNotGuessHelper(factDeletingDestructor(Method),
                             factNOTDeletingDestructor(Method)))),
-
+    !,
     Out = tryOrNOTDeletingDestructor(Method).
 
 tryOrNOTDeletingDestructor(Method) :-
@@ -1131,16 +1160,15 @@ guessFinalDeletingDestructor(Out) :-
 
     insnCallsDelete(_Insn2, Method, _SV),
 
-    % Instead of requiring a call to a real destructor, allow deleting destructors that don't
-    % call real destructors (just so long as they don't call anything else).  Net effect is a
-    % tiny improvement on the fast portion of the test suite.
+    % guessDeletingDestructor requires a call to a real destructor.  This rule relaxes that a
+    % bit, by ensuring we don't call any non-real destructors.  So calling a real destructor
+    % will trigger this rule, but it is not necessary.
     not((
                callTarget(_Insn1, Method, Called),
                not(factRealDestructor(Called))
        )),
 
-    %callTarget(_Insn1, Method, RealDestructor),
-    %factRealDestructor(RealDestructor),
+    !,
     Out = tryOrNOTDeletingDestructor(Method).
 
 %
@@ -1155,13 +1183,23 @@ guessFinalDeletingDestructor(Out) :-
 
     % If the method occurs twice in a single VFTable, wildly guess that it's a deleting
     % destructor based entirely on a common phenomenon in the Visual Studio compiler.
-    factVFTableEntry(VFTable, Offset1, Entry1),
-    dethunk(Entry1, Method),
-    factVFTableEntry(VFTable, Offset2, Entry2),
-    iso_dif(Entry1, Entry2),
-    iso_dif(Offset1, Offset2),
-    dethunk(Entry1, Method),
 
+    % There are two thunks to Method in VFTable
+    factMethodInVFTable(VFTable, Offset1, Method),
+    % XXX: By binding to _Other_Method instead of Method on the next line, we are preserving a
+    % known bug because it seems to produce better results for destructors.
+    factMethodInVFTable(VFTable, Offset2, _Other_Method),
+    iso_dif(Offset1, Offset2),
+
+    % For this rule to apply, there has to be two different entries that thunk to Method
+    factVFTableEntry(VFTable, Offset1, Entry1),
+    factVFTableEntry(VFTable, Offset2, Entry2),
+
+    % We are not sure if the entry actually has to differ or not.  We should experiment with
+    % whether removing the next line improves accuracy.
+    iso_dif(Entry1, Entry2),
+
+    !,
     Out = tryOrNOTDeletingDestructor(Method).
 
 tryDeletingDestructor(Method) :-
@@ -1176,26 +1214,27 @@ tryNOTDeletingDestructor(Method) :-
 
 % A helper for guessing deleting destructors.
 :- table likelyDeletingDestructor/2 as incremental.
+
+likelyDeletingDestructor(_, RealDestructor) :-
+    ground(RealDestructor),
+    throw_with_backtrace(error(uninstantiation_error(RealDestructor), likelyDeletingDestructor/2)).
+
 likelyDeletingDestructor(DeletingDestructor, RealDestructor) :-
-    % This indicates that the method met some basic criteria in C++.
-    possibleDestructor(DeletingDestructor),
-    % That's not already certain to NOT be a deleting destructor.
-    not(factNOTDeletingDestructor(DeletingDestructor)),
     % Deleting destructors must call the real destructor (we think).  Usually offset is zero,
     % but there are some unusual cases where there are multiple calls to real destructors, and
     % only one has offset zero and we missed it because we're not handling imported OO methods
     % correctly.  A cheap hack to just be a little looser here and accept any calls to
-    % destructors.
-    validFuncOffset(_RealDestructorInsn, DeletingDestructor, RealDestructor, _Offset),
-    % And while it's premature to require the real destructor to be certain, it shouldn't be
-    % disproven.
-    possibleDestructor(RealDestructor),
-    not(factNOTRealDestructor(RealDestructor)),
+    % destructors. Note we do NOT bind _RealDestructor.  See note below.
+    validFuncOffset(_RealDestructorInsn1, DeletingDestructor, _RealDestructor, _Offset1),
+
+    % This indicates that the method met some basic criteria in C++.
+    possibleDestructor(DeletingDestructor),
+    % That's not already certain to NOT be a deleting destructor.
+    not(factNOTDeletingDestructor(DeletingDestructor)),
     % And the deleting destructor must also call delete (we think), since that's what makes it
     % deleting.  Using this instead of the more complicated rule below led toa very slight
     % improvement in the fast test suite F=0.43 -> F=0.44.
     insnCallsDelete(DeleteInsn, DeletingDestructor, _SV),
-
     % This condition is complicated.  We want to ensure that the thing actually being deleted
     % is the this-pointer passed to the deleting destructor.  But the detection of parameters
     % to delete is sometimes complicated, and a non-trivial number of our facts are still
@@ -1203,12 +1242,24 @@ likelyDeletingDestructor(DeletingDestructor, RealDestructor) :-
     % delete(), in the mean time lets try accepting an fact-generation failure as well, but not
     % a pointer that's known to be unrelated).
 
-    % RealDestructorChange! (comment out through true).
-    thisCallMethod(DeletingDestructor, ThisPtr, _Certainty),
+    % This rule currently needs to permit the slightly different ECX parameter standard.  An
+    % example is std::basic_filebuf:~basic_filebuf in Lite/oo.
+    (callingConvention(DeletingDestructor, '__thiscall'); callingConvention(DeletingDestructor, 'invalid')),
+    funcParameter(DeletingDestructor, 'ecx', ThisPtr),
     (
         insnCallsDelete(DeleteInsn, DeletingDestructor, ThisPtr);
         insnCallsDelete(DeleteInsn, DeletingDestructor, invalid)
     ),
+
+    % Phew. Everything up until this point has been about the _deleting destructor_.  We
+    % intentionally did _not_ bind RealDestructor.  Now that we've checked out the deleting
+    % destructor, let's look for any possible real destructor.
+    validFuncOffset(_RealDestructorInsn2, DeletingDestructor, RealDestructor, _Offset2),
+
+    % And while it's premature to require the real destructor to be certain, it shouldn't be
+    % disproven.
+    possibleDestructor(RealDestructor),
+    not(factNOTRealDestructor(RealDestructor)),
     true.
 
 /* Local Variables:   */

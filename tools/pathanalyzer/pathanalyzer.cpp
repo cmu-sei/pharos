@@ -75,23 +75,21 @@ struct PathVertexWriter {
     // The CFG is displayed in terms of Basic blocks, so we have to
     // label vertices based on containing
 
-    SgAsmBlock* goal_bb =
-      insn_get_block(fd_.ds.get_insn(goal_address_));
+    P2::BasicBlockPtr goal_bb = fd_.ds.get_block(goal_address_);
 
     bool is_goal=false, is_start=false;
 
-    if (goal_bb != NULL) {
-      if (vtx_bb->get_address() == goal_bb->get_address()) {
+    if (goal_bb) {
+      if (vtx_bb->get_address() == goal_bb->address()) {
         is_goal = true;
 
       }
     }
 
-    SgAsmBlock* start_bb =
-      insn_get_block(fd_.ds.get_insn(start_address_));
+    P2::BasicBlockPtr start_bb = fd_.ds.get_block(start_address_);
 
-    if (start_bb != NULL) {
-      if (vtx_bb->get_address() == start_bb->get_address()) {
+    if (start_bb) {
+      if (vtx_bb->get_address() == start_bb->address()) {
         is_start = true;
       }
     }

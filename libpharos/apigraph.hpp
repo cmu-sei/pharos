@@ -185,12 +185,14 @@ struct ApiWaypointDescriptor {
     : block(NULL),
       component(INVALID_ADDRESS),
       vertex(NULL_VERTEX),
+      func(INVALID_ADDRESS),
       name(""),
       is_part_of_sig(false)
   {  }
 
-  ApiWaypointDescriptor(SgAsmBlock *b, rose_addr_t c, ApiCfgVertex v, std::string n, bool p)
-    : block(b), component(c), vertex(v), name(n), is_part_of_sig(p)
+  ApiWaypointDescriptor(SgAsmBlock *b, rose_addr_t c, ApiCfgVertex v,
+                        rose_addr_t f, std::string n, bool p)
+    : block(b), component(c), vertex(v), func(f), name(n), is_part_of_sig(p)
   {  }
 
   ApiWaypointDescriptor(const ApiWaypointDescriptor &other) {
@@ -198,6 +200,7 @@ struct ApiWaypointDescriptor {
     block = other.block;
     component = other.component;
     vertex = other.vertex;
+    func = other.func;
     name = other.name;
     is_part_of_sig = other.is_part_of_sig;
   }
@@ -241,6 +244,11 @@ struct ApiWaypointDescriptor {
   rose_addr_t component;
 
   ApiCfgVertex vertex;
+
+  // The address of one of the functions that the block is in.  This
+  // code really needs some more attention to handle the case where a
+  // single call is in more than one function.
+  rose_addr_t func;
 
   std::string name;
 
@@ -709,9 +717,9 @@ class ApiCfgComponent {
   // remove a vertex from a CFG
   void DisconnectVertex(ApiCfgVertex &v);
 
-  void RemoveVertices(const std::set<ApiCfgVertex>& kill_list); 
+  void RemoveVertices(const std::set<ApiCfgVertex>& kill_list);
 
-  void RemoveVertex(ApiCfgVertex ); 
+  void RemoveVertex(ApiCfgVertex );
 
   void Replace(ApiCfgVertex &out_vertex, ApiCfgVertex &in_entry, ApiCfgVertex &in_exit_vertex);
 

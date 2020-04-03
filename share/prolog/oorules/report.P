@@ -58,8 +58,7 @@ logln(Importance, Message) :-
 % Virtual Function Tables
 % ============================================================================================
 
-reportFinalVFTable((V, C, L, A, N)) :-
-    %finalVFTable(V, C, L, A, N),
+reportFinalVFTable(V, C, L, A, N) :-
     write('finalVFTable('),
     writeHex(V), write(', '),
     writeHex(C), write(', '),
@@ -68,29 +67,24 @@ reportFinalVFTable((V, C, L, A, N)) :-
     write('\''), writeHex(N), write('\''), writeln(').').
 
 reportVFTables :-
-    setof((V, C, L, A, N), finalVFTable(V, C, L, A, N), Set),
-    !,
-    maplist(reportFinalVFTable, Set).
-reportVFTables.
+    forall(finalVFTable(V, C, L, A, N),
+           reportFinalVFTable(V, C, L, A, N)).
 
-reportFinalVFTableEntry((A, O, M)) :-
+reportFinalVFTableEntry(A, O, M) :-
     write('finalVFTableEntry('),
     writeHex(A), write(', '),
     writeHex(O), write(', '),
     writeHex(M), writeln(').').
 
 reportVFTableEntries :-
-    setof((A, O, M), finalVFTableEntry(A, O, M), Set),
-    !,
-    maplist(reportFinalVFTableEntry, Set).
-reportVFTableEntries.
+    forall(finalVFTableEntry(A, O, M),
+           reportFinalVFTableEntry(A, O, M)).
 
 % ============================================================================================
 % Virtual Base Tables
 % ============================================================================================
 
-reportFinalVBTable((V, C, S, O)) :-
-    %finalVBTable(V, C, S, O),
+reportFinalVBTable(V, C, S, O) :-
     write('finalVBTable('),
     writeHex(V), write(', '),
     writeHex(C), write(', '),
@@ -98,29 +92,24 @@ reportFinalVBTable((V, C, S, O)) :-
     writeHex(O), writeln(').').
 
 reportVBTables :-
-    setof((V, C, S, O), finalVBTable(V, C, S, O), Set),
-    !,
-    maplist(reportFinalVBTable, Set).
-reportVBTables.
+    forall(finalVBTable(V, C, S, O),
+           reportFinalVBTable(V, C, S, O)).
 
-reportFinalVBTableEntry((A, O, V)) :-
+reportFinalVBTableEntry(A, O, V) :-
     write('finalVBTableEntry('),
     writeHex(A), write(', '),
     writeHex(O), write(', '),
     writeHex(V), writeln(').').
 
 reportVBTableEntries :-
-    setof((A, O, V), finalVBTableEntry(A, O, V), Set),
-    !,
-    maplist(reportFinalVBTableEntry, Set).
-reportVBTableEntries.
+    forall(finalVBTableEntry(A, O, V),
+           reportFinalVBTableEntry(A, O, V)).
 
 % ============================================================================================
 % Class Definitions
 % ============================================================================================
 
-reportFinalClass((C, V, S, L, R, M)) :-
-    %finalClass(C, V, S, L, R, M),
+reportFinalClass(C, V, S, L, R, M) :-
     write('finalClass('),
     writeHex(C), write(', '),
     writeHex(V), write(', '),
@@ -130,33 +119,28 @@ reportFinalClass((C, V, S, L, R, M)) :-
     writeList(M), writeln(').').
 
 reportClasses :-
-    setof((C, V, S, L, R, M), finalClass(C, V, S, L, R, M), Set),
-    !,
-    maplist(reportFinalClass, Set).
-reportClasses.
+    forall(finalClass(C, V, S, L, R, M),
+           reportFinalClass(C, V, S, L, R, M)).
 
 % ============================================================================================
 % Resolved Virtual Function Calls
 % ============================================================================================
 
-reportFinalResolvedVirtualCall((I, V, T)) :-
+reportFinalResolvedVirtualCall(I, V, T) :-
     write('finalResolvedVirtualCall('),
     writeHex(I), write(', '),
     writeHex(V), write(', '),
     writeHex(T), writeln(').').
 
 reportResolvedVirtualCalls :-
-    setof((I, V, T), finalResolvedVirtualCall(I, V, T), Set),
-    !,
-    maplist(reportFinalResolvedVirtualCall, Set).
-reportResolvedVirtualCalls.
+    forall(finalResolvedVirtualCall(I, V, T),
+           reportFinalResolvedVirtualCall(I, V, T)).
 
 % ============================================================================================
 % Embedded objects.
 % ============================================================================================
 
-reportFinalEmbeddedObject((C, O, E, X)) :-
-    %finalEmbeddedObject(C, O, E, X),
+reportFinalEmbeddedObject(C, O, E, X) :-
     write('finalEmbeddedObject('),
     writeHex(C), write(', '),
     writeHex(O), write(', '),
@@ -164,17 +148,14 @@ reportFinalEmbeddedObject((C, O, E, X)) :-
     writeHex(X), writeln(').').
 
 reportEmbeddedObjects :-
-    setof((C, O, E, X), finalEmbeddedObject(C, O, E, X), Set),
-    !,
-    maplist(reportFinalEmbeddedObject, Set).
-reportEmbeddedObjects.
+    forall(finalEmbeddedObject(C, O, E, X),
+           reportFinalEmbeddedObject(C, O, E, X)).
 
 % ============================================================================================
 % Inheritance relationships
 % ============================================================================================
 
-reportFinalInheritance((D, B, O, C, V)) :-
-    %finalInheritance(D, B, O, C, V),
+reportFinalInheritance(D, B, O, C, V) :-
     write('finalInheritance('),
     writeHex(D), write(', '),
     writeHex(B), write(', '),
@@ -183,18 +164,14 @@ reportFinalInheritance((D, B, O, C, V)) :-
     writeHex(V), writeln(').').
 
 reportInheritances :-
-    setof((D, B, O, C, V), finalInheritance(D, B, O, C, V), Set),
-    !,
-    maplist(reportFinalInheritance, Set).
-reportInheritances.
+    forall(finalInheritance(D, B, O, C, V),
+           reportFinalInheritance(D, B, O, C, V)).
 
 % ============================================================================================
 % Definitions of members on classes.
 % ============================================================================================
 
-reportFinalMember((C, O, S, L)) :-
-    % this call to finalMember is redundant
-    % finalMember(C, O, S, L),
+reportFinalMember(C, O, S, L) :-
     write('finalMember('),
     writeHex(C), write(', '),
     writeHex(O), write(', '),
@@ -202,16 +179,14 @@ reportFinalMember((C, O, S, L)) :-
     writeHex(L), writeln(').').
 
 reportMembers :-
-    setof((C, O, S, L), finalMember(C, O, S, L), Set),
-    !,
-    maplist(reportFinalMember, Set).
-reportMembers.
+    forall(finalMember(C, O, S, L),
+           reportFinalMember(C, O, S, L)).
 
 % ============================================================================================
 % Definitions of members on classes.
 % ============================================================================================
 
-reportFinalMemberAccess((C, O, S, E)) :-
+reportFinalMemberAccess(C, O, S, E) :-
     write('finalMemberAccess('),
     writeHex(C), write(', '),
     writeHex(O), write(', '),
@@ -219,64 +194,54 @@ reportFinalMemberAccess((C, O, S, E)) :-
     writeList(E), writeln(').').
 
 reportMemberAccesses :-
-    setof((C, O, S, E), finalMemberAccess(C, O, S, E), Set),
-    !,
-    maplist(reportFinalMemberAccess, Set).
-reportMemberAccesses.
+    forall(finalMemberAccess(C, O, S, E),
+           reportFinalMemberAccess(C, O, S, E)).
 
 % ============================================================================================
 % Method Properties
 % ============================================================================================
 
-reportFinalMethodProperty((M, P, C)) :-
+reportFinalMethodProperty(M, P, C) :-
     write('finalMethodProperty('),
     writeHex(M), write(', '),
     writeHex(P), write(', '),
     writeHex(C), writeln(').').
 
 reportMethodProperties :-
-    setof((M, P, C), finalMethodProperty(M, P, C), Set),
-    !,
-    maplist(reportFinalMethodProperty, Set).
-reportMethodProperties.
+    forall(finalMethodProperty(M, P, C),
+           reportFinalMethodProperty(M, P, C)).
 
 % ============================================================================================
 % Some thunk analysis (debugging?)
 % ============================================================================================
 
-reportEventualThunk((T, F)) :-
+reportEventualThunk(T, F) :-
     write('eventualThunk('),
     writeHex(T), write(', '),
     writeHex(F), writeln(').').
 
 reportEventualThunks :-
-    setof((T, F), eventualThunk(T, F), Set),
-    !,
-    maplist(reportEventualThunk, Set).
-reportEventualThunks.
+    forall(eventualThunk(T, F),
+           reportEventualThunks(T, F)).
 
-reportUniqueThunk((T, F)) :-
+reportUniqueThunk(T, F) :-
     write('uniqueThunk('),
     writeHex(T), write(', '),
     writeHex(F), writeln(').').
 
 reportUniqueThunks :-
-    setof((T, F), uniqueThunk(T, F), Set),
-    !,
-    maplist(reportUniqueThunk, Set).
-reportUniqueThunks.
+    forall(uniqueThunk(T, F),
+           reportUniqueThunk(T, F)).
 
-reportConflictedThunk((T, O, F)) :-
+reportConflictedThunk(T, O, F) :-
     write('conflictedThunk('),
     writeHex(T), write(', '),
     writeHex(O), write(', '),
     writeHex(F), writeln(').').
 
 reportConflictedThunks :-
-    setof((T, O, F), conflictedThunk(T, O, F), Set),
-    !,
-    maplist(reportConflictedThunk, Set).
-reportConflictedThunks.
+    forall(conflictedThunk(T, O, F),
+           reportConflictedThunk(T, O, F)).
 
 % ============================================================================================
 % The main reporting rule.

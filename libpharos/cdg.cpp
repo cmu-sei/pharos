@@ -13,7 +13,7 @@ namespace pharos {
 #define NULL_VERTEX boost::graph_traits<ControlFlowGraph>::null_vertex()
 using DomIdx = typename boost::property_map<ControlFlowGraph, boost::vertex_index_t>::type;
 
-CDG::CDG(FunctionDescriptor &f) {
+CDG::CDG(const DescriptorSet& ds_, FunctionDescriptor &f) : ds(ds_) {
   Rose::BinaryAnalysis::ControlFlow cfg_analysis;
 
   // Save a pointer to the FunctionDescriptor.
@@ -128,43 +128,47 @@ bool CDG::dominance_helper(
 // blocks or two control flow graph vertices.
 bool CDG::dominates(const SgAsmX86Instruction *i1, const SgAsmX86Instruction *i2) const {
   if (!i1 || !i2) return false;
-  SgAsmBlock *bb1 = insn_get_block(i1);
+  P2::BasicBlockPtr bb1 = ds.get_block(i1->get_address());
   assert(bb1);
-  SgAsmBlock *bb2 = insn_get_block(i2);
+  rose_addr_t bb1addr = bb1->address();
+  P2::BasicBlockPtr bb2 = ds.get_block(i2->get_address());
   assert(bb2);
+  rose_addr_t bb2addr = bb2->address();
 
   //GTRACE << "Insn " << addr_str(i1->get_address()) << " is in block " << addr_str(bb1->get_address()) << LEND;
   //GTRACE << "Insn " << addr_str(i2->get_address()) << " is in block " << addr_str(bb2->get_address()) << LEND;
-  if (bb1 == bb2) return i1->get_address() <= i2->get_address();
+  if (bb1addr == bb2addr) return i1->get_address() <= i2->get_address();
 
   // If the basic blocks aren't in the map return false.
-  if (block_to_vertex.find(bb1) == block_to_vertex.end() ||
-      block_to_vertex.find(bb2) == block_to_vertex.end()) return false;
+  if (block_to_vertex.find(bb1addr) == block_to_vertex.end() ||
+      block_to_vertex.find(bb2addr) == block_to_vertex.end()) return false;
 
   // Return the dominance result based on the vertexes.  Calling at() cannot throw since we
   // just checked that both blocks are in the map.
   //GTRACE << "Asking helper(" << block_to_vertex.at(bb1) << ", " << block_to_vertex.at(bb2) << ")" << LEND;
-  return dominates(block_to_vertex.at(bb1), block_to_vertex.at(bb2));
+  return dominates(block_to_vertex.at(bb1addr), block_to_vertex.at(bb2addr));
 }
 
 // Does i1 post-dominate i2?  This convenience version takes two instructions instead of two
 // basic blocks or two control flow graph vertices.
 bool CDG::post_dominates(const SgAsmX86Instruction *i1, const SgAsmX86Instruction *i2) const {
   if (!i1 || !i2) return false;
-  SgAsmBlock *bb1 = insn_get_block(i1);
+  P2::BasicBlockPtr bb1 = ds.get_block(i1->get_address());
   assert(bb1);
-  SgAsmBlock *bb2 = insn_get_block(i2);
+  rose_addr_t bb1addr = bb1->address();
+  P2::BasicBlockPtr bb2 = ds.get_block(i2->get_address());
   assert(bb2);
+  rose_addr_t bb2addr = bb2->address();
 
   if (bb1 == bb2) return i1->get_address() >= i2->get_address();
 
   // If the basic blocks aren't in the map return false.
-  if (block_to_vertex.find(bb1) == block_to_vertex.end() ||
-      block_to_vertex.find(bb2) == block_to_vertex.end()) return false;
+  if (block_to_vertex.find(bb1addr) == block_to_vertex.end() ||
+      block_to_vertex.find(bb2addr) == block_to_vertex.end()) return false;
 
   // Return the post dominance result based on the vertexes.  Calling at() cannot throw since
   // we just checked that both blocks are in the map.
-  return post_dominates(block_to_vertex.at(bb1), block_to_vertex.at(bb2));
+  return post_dominates(block_to_vertex.at(bb1addr), block_to_vertex.at(bb2addr));
 }
 
 void CDG::get_dependents_between(const CFGVertex& a, const CFGVertex& b, CFGVertexSet &dependents) const {
@@ -193,9 +197,8 @@ void CDG::initialize_block_dependencies() {
     CFGVertex vertex = forward_list[x];
 
     // Get the basic block
-    SgAsmBlock *bb = get(boost::vertex_name, cfg, vertex);
-    assert(bb != NULL);
-    block_to_vertex[bb] = vertex;
+    SgAsmBlock* bb = get(boost::vertex_name, cfg, vertex);
+    block_to_vertex[bb->get_address()] = vertex;
 
     // dumpBlock(vertex);
 
@@ -256,16 +259,15 @@ X86InsnSet CDG::getControlDependencies(const SgAsmX86Instruction *insn) const {
   if (insn == NULL) return out;
 
   // Get the parent block
-  SgAsmBlock *bb = insn_get_block(insn);
-  assert(bb);
-  if (block_to_vertex.find(bb) == block_to_vertex.end()) {
+  rose_addr_t bbaddr = insn->get_address();
+  if (block_to_vertex.find(bbaddr) == block_to_vertex.end()) {
     STRACE << "Parent of " << debug_instruction(insn) << " resides in another function" << LEND;
     return out;
   }
 
   // Get the controling blocks
   // STRACE << debug_instruction(insn) << " depends on blocks: ";
-  const CFGVertex& v = block_to_vertex.at(bb);
+  const CFGVertex& v = block_to_vertex.at(bbaddr);
   // Previously, this very suspiciously created entries in depends_on due to the undesired
   // creation behavior of the [x] operator.  It's unclear what the impact of that was, but it
   // seems very unlikely to have been intentional.
@@ -280,8 +282,8 @@ X86InsnSet CDG::getControlDependencies(const SgAsmX86Instruction *insn) const {
   return out;
 }
 
-Insn2InsnSetMap CDG::getControlDependencies() const {
-  Insn2InsnSetMap out;
+Addr2InsnSetMap CDG::getControlDependencies() const {
+  Addr2InsnSetMap out;
   for (const SgAsmStatement* bs : fd->get_func()->get_statementList()) {
     const SgAsmBlock *bb = isSgAsmBlock(bs);
     assert(bb);
@@ -293,7 +295,7 @@ Insn2InsnSetMap CDG::getControlDependencies() const {
         for (X86InsnSet::iterator it = deps.begin(); it != deps.end(); it++) {
           temp.insert(*it);
         }
-        out[insn] = temp;
+        out[insn->get_address()] = temp;
       }
     }
   }

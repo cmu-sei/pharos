@@ -84,7 +84,9 @@ reasonMethod_I(Method) :-
 % This is currently weak enough that we're guessing it instead.
 % But it might be fixed now, so we should try it again...
 %reasonMethod_I(Method) :-
-%    thisCallMethod(Method, _ThisPtr, certain).
+%    The method is marked __thiscall, and nothing else?
+%    callingConvention(Address, '__thiscall'),
+%    not((callingConvention(Address, Convention), iso_dif(Convention, '__thiscall'))).
 
 % Because it's called on a class that's known to be a class.
 reasonMethod_J(Method) :-
@@ -120,17 +122,20 @@ reasonMethod_M(Method) :-
 reasonMethod_N(Func) :-
     thisPtrUsage(_Insn1, Func, ThisPtr, Method),
     factMethod(Method),
-    % We explicitly don't care about certainty here, even it contradicts this rule.
-    thisCallMethod(Func, ThisPtr, _Certainty),
-    %logtrace('reasonMethod_N('), logtrace(Method), logtraceln(').'),
+    % This rule needs to permit invalid calling conventions for many correct results in Lite
+    % oo, poly, and ooex7 test cases.
+    (callingConvention(Func, '__thiscall'); callingConvention(Func, 'invalid')),
+    funcParameter(Func, 'ecx', ThisPtr),
+    %logtrace('reasonMethod_N('), logtrace(Func), logtraceln(').'),
     true.
 
 % First attempt at guessing that a cdecl method is really an OO cdecl method.
 reasonMethod_O(Method) :-
     % There's a method that we know is an OO method.
     factMethod(Proven),
-    % Obtain it's thisPtr... also in funcParameter(Proven, ecx, ThisPtr)?
-    thisCallMethod(Proven, ThisPtr, _Convention),
+    % We already now that Proven is a this call method...
+    callingConvention(Proven, '__thiscall'),
+    funcParameter(Proven, ecx, ThisPtr),
     % The ThisPtr is passed to another method in a call
     callParameter(Insn, Proven, 0, ThisPtr),
     % That Method is us.
@@ -659,6 +664,21 @@ reasonVFTableOverwrite(VFTable2, VFTable1, Offset) :-
 :- table reasonPrimaryVFTableForClass/2 as incremental.
 
 % PAPER: PrimaryVFTable
+
+% Free, Bound
+reasonPrimaryVFTableForClass(VFTable, Class) :-
+    var(VFTable),
+    nonvar(Class),
+    !,
+    find(Method, Class),
+    % Primary VFTables are always at offset zero?
+    factVFTableWrite(_Insn, Method, 0, VFTable),
+    not(factVFTableOverwrite(_OtherVFTable, VFTable, 0)).
+
+% Bound, Bound: OK
+% Bound, Free: OK
+% Free, Bound: Not OK
+% Free, Free: OK
 reasonPrimaryVFTableForClass(VFTable, Class) :-
     % Primary VFTables are always at offset zero?
     factVFTableWrite(_Insn, Method, 0, VFTable),
@@ -1073,8 +1093,7 @@ reasonObjectInObject_E(OuterClass, InnerClass, Offset) :-
     % can't prove that the two methods are on different classes yet.  This additional strength
     % is actually only required when the offset is zero, because it's always true that an
     % object can't embed or inherit itself at a non-zero offset.
-    (factNOTMergeClasses(InnerClass, OuterClass);
-     factNOTMergeClasses(OuterClass, InnerClass)),
+    dynFactNOTMergeClasses(InnerClass, OuterClass),
 
     % There's a poorly understood case demonstrated by constructors in Lite/oo:
     %   0x40365c = std::length_error
@@ -1486,15 +1505,19 @@ reasonClassHasNoBaseSet(Set) :-
 :- table reasonClassHasUnknownBase/1 as incremental.
 :- table reasonClassHasUnknownBase_A/1 as incremental.
 :- table reasonClassHasUnknownBase_B/1 as incremental.
-:- table reasonClassHasUnknownBase_C/1 as incremental.
+% This was broken up into several triggered rules
+%:- table reasonClassHasUnknownBase_C/8 as incremental.
 :- table reasonClassHasUnknownBase_D/1 as incremental.
-:- table reasonClassHasUnknownBase_E/3 as incremental.
+
+% trigger
+%:- table reasonClassHasUnknownBase_E/3 as incremental.
 
 reasonClassHasUnknownBase(Class) :-
     %logwarnln('Recomputing reasonClassHasUnknownBase...'),
     or([reasonClassHasUnknownBase_A(Class),
         reasonClassHasUnknownBase_B(Class),
-        reasonClassHasUnknownBase_C(Class),
+        % in trigger.P
+        %reasonClassHasUnknownBase_C(Class),
         reasonClassHasUnknownBase_D(Class)
         % in trigger.P
         %reasonClassHasUnknownBase_E(Class)
@@ -1519,7 +1542,9 @@ reasonClassHasUnknownBase_B(Class) :-
 % base class as well.
 % PAPER: Relate-6
 % ED_PAPER_INTERESTING
-reasonClassHasUnknownBase_C(DerivedClass) :-
+
+% factVFTableEntry: VFTable could be AncestorVFTable or DerivedVFTable
+reasonClassHasUnknownBase_C1(DerivedClass, AncestorVFTable, DerivedVFTable, Entry) :-
     % And there's a method that appears in two different VFTables...  During the thunk
     % conversion Cory chose to make the VFTable entries match exactly, but it's possible that
     % we really mean any two entries that dethunk to the same actual method.
@@ -1551,6 +1576,84 @@ reasonClassHasUnknownBase_C(DerivedClass) :-
     find(DerivedConstructor, DerivedClass),
     iso_dif(DerivedClass, AncestorClass).
 
+% find: (FindMethod, FindClass) could be (Method, AncestorClass) or (AncestorConstructor, AncestorClass)
+% How do we get to Entry?
+% AncestorClass -> AncestorConstructor -> AncestorVFTable -> Entry
+reasonClassHasUnknownBase_C2(DerivedClass, Method, AncestorConstructor, AncestorClass, AncestorVFTable) :-
+
+    % Ensure the ancestor constructor is in the base class.
+    find(AncestorConstructor, AncestorClass),
+    factConstructor(AncestorConstructor),
+
+    % Both constructors wrote confirmed vtables into offsets in the object.  In the derived
+    % class, the offset is the location of the object, but in the base class it will always be
+    % the table written to offset zero.
+    factVFTableWrite(_Insn2, AncestorConstructor, 0, AncestorVFTable),
+
+    % And there's a method that appears in two different VFTables...  During the thunk
+    % conversion Cory chose to make the VFTable entries match exactly, but it's possible that
+    % we really mean any two entries that dethunk to the same actual method.
+    factVFTableEntry(AncestorVFTable, _AncestorVFTableOffset, Entry),
+
+    % The method must be assigned to the ancestor class because ancestor classes can't call
+    % methods on the derived class.
+    dethunk(Entry, Method),
+
+    find(Method, AncestorClass),
+
+    % And there's a method that appears in two different VFTables...  During the thunk
+    % conversion Cory chose to make the VFTable entries match exactly, but it's possible that
+    % we really mean any two entries that dethunk to the same actual method.
+    factVFTableEntry(DerivedVFTable, _DerivedVFTableOffset, Entry),
+    iso_dif(DerivedVFTable, AncestorVFTable),
+
+    % And the other constructor is different from the base constructor.
+    factVFTableWrite(_Insn1, DerivedConstructor, _ObjectOffset, DerivedVFTable),
+    factConstructor(DerivedConstructor),
+    % We don't need to check this because we check that both are on different classes below.
+    %iso_dif(DerivedConstructor, AncestorConstructor),
+
+    % And is on a different class.
+    find(DerivedConstructor, DerivedClass),
+    iso_dif(DerivedClass, AncestorClass).
+
+% find Method, Class could be DerivedConstructor, DerivedClass
+% DerivedConstructor -> DerivedVFTable -> Entry
+reasonClassHasUnknownBase_C3(DerivedClass, DerivedConstructor, DerivedVFTable) :-
+    find(DerivedConstructor, DerivedClass),
+
+    % And the other constructor is different from the base constructor.
+    factVFTableWrite(_Insn1, DerivedConstructor, _ObjectOffset, DerivedVFTable),
+    factConstructor(DerivedConstructor),
+
+    % And there's a method that appears in two different VFTables...  During the thunk
+    % conversion Cory chose to make the VFTable entries match exactly, but it's possible that
+    % we really mean any two entries that dethunk to the same actual method.
+    factVFTableEntry(DerivedVFTable, _DerivedVFTableOffset, Entry),
+    factVFTableEntry(AncestorVFTable, _AncestorVFTableOffset, Entry),
+    iso_dif(DerivedVFTable, AncestorVFTable),
+
+    % The method must be assigned to the ancestor class because ancestor classes can't call
+    % methods on the derived class.
+    dethunk(Entry, Method),
+    find(Method, AncestorClass),
+
+    % Ensure the ancestor constructor is in the base class.
+    find(AncestorConstructor, AncestorClass),
+    factConstructor(AncestorConstructor),
+
+    % Both constructors wrote confirmed vtables into offsets in the object.  In the derived
+    % class, the offset is the location of the object, but in the base class it will always be
+    % the table written to offset zero.
+    factVFTableWrite(_Insn2, AncestorConstructor, 0, AncestorVFTable),
+
+    % We don't need to check this because we check that both are on different classes below.
+    %iso_dif(DerivedConstructor, AncestorConstructor),
+
+    % And is on a different class.
+    iso_dif(DerivedClass, AncestorClass).
+
+
 % Because RTTI tells us so.
 reasonClassHasUnknownBase_D(Class) :-
     % Normally we'd conclude that there was a specific derived relationship, but because of
@@ -1570,8 +1673,7 @@ reasonClassHasUnknownBase_D(Class) :-
 reasonClassHasUnknownBase_E(Class, Method, MethodClass) :-
     factClassCallsMethod(Class, Method),
     find(Method, MethodClass),
-    (factNOTMergeClasses(Class, MethodClass);
-     factNOTMergeClasses(MethodClass, Class)),
+    dynFactNOTMergeClasses(Class, MethodClass),
     % Debugging
     %logtrace('reasonClassHasUnknownBase_E('), logtrace(Class), logtraceln(').'),
     true.
@@ -1697,7 +1799,9 @@ reasonClassCallsMethod_D(InnerClass, InnerMethod) :-
 reasonClassCallsMethod_E(Class, Method) :-
     factMethod(Proven),
     find(Proven, Class),
-    thisCallMethod(Proven, ThisPtr, _Convention),
+    % We already now that Proven is a this call method...
+    callingConvention(Proven, '__thiscall'),
+    funcParameter(Proven, ecx, ThisPtr),
     callParameter(Insn, Proven, 0, ThisPtr),
     callTarget(Insn, Proven, Method),
     callingConvention(Method, '__cdecl'),
@@ -2060,7 +2164,9 @@ reasonMergeClasses_H(DerivedClass, MethodClass) :-
 %:- table reasonNOTMergeClasses_B/2 as incremental.
 :- table reasonNOTMergeClasses_C/2 as incremental.
 %:- table reasonNOTMergeClasses_D/2 as incremental.
-:- table reasonNOTMergeClasses_E/6 as incremental.
+
+% trigger
+%:- table reasonNOTMergeClasses_E/6 as incremental.
 :- table reasonNOTMergeClasses_F/2 as incremental.
 :- table reasonNOTMergeClasses_G/2 as incremental.
 %:- table reasonNOTMergeClasses_H/2 as incremental.
@@ -2068,8 +2174,12 @@ reasonMergeClasses_H(DerivedClass, MethodClass) :-
 :- table reasonNOTMergeClasses_J/2 as incremental.
 :- table reasonNOTMergeClasses_K/2 as incremental.
 :- table reasonNOTMergeClasses_L/2 as incremental.
-:- table reasonNOTMergeClasses_M/4 as incremental.
-:- table reasonNOTMergeClasses_N/4 as incremental.
+
+% trigger
+%:- table reasonNOTMergeClasses_M/4 as incremental.
+% trigger
+%:- table reasonNOTMergeClasses_N/4 as incremental.
+
 :- table reasonNOTMergeClasses_O/2 as incremental.
 :- table reasonNOTMergeClasses_P/2 as incremental.
 
@@ -2102,8 +2212,7 @@ reasonNOTMergeClasses_new(M1,M2) :-
 
 % Because it's already true.
 reasonNOTMergeClasses_A(Class1, Class2) :-
-    (factNOTMergeClasses(Class1, Class2);
-     factNOTMergeClasses(Class2, Class1)).
+    dynFactNOTMergeClasses(Class1, Class2).
 
 % Classes can't be their own bases.
 % PAPER: Merging-5
@@ -2112,8 +2221,7 @@ reasonNOTMergeClasses_A(Class1, Class2) :-
 %% reasonNOTMergeClasses_B(DerivedClass, BaseClass) :-
 %%     factDerivedClass(DerivedClass, BaseClass, _ObjectOffset),
 %%     % Debugging
-%%     not(factNOTMergeClasses(DerivedClass, BaseClass)),
-%%     not(factNOTMergeClasses(BaseClass, DerivedClass)),
+%%     not(dynFactNOTMergeClasses(DerivedClass, BaseClass)),
 %%     logtrace('reasonNOTMergeClasses_B('),
 %%     logtrace(DerivedClass), logtrace(', '),
 %%     logtrace(BaseClass), logtraceln(').'),
@@ -2123,11 +2231,12 @@ reasonNOTMergeClasses_A(Class1, Class2) :-
 % virtual methods.
 % PAPER: Merging-6
 % ED_PAPER_INTERESTING
-reasonNOTMergeClasses_C(DerivedClass, MethodClass) :-
+reasonNOTMergeClasses_C_asymmetric(DerivedClass, MethodClass) :-
     factDerivedClass(DerivedClass, BaseClass, _ObjectOffset),
     factClassCallsMethod(DerivedClass, Method),
     factClassCallsMethod(BaseClass, Method),
     find(Method, MethodClass),
+    iso_dif(DerivedClass, MethodClass),
 
     % Turns out that deleting destructors is a common case where multiple implementations are
     % at the same address, and without the guard, the rule results in methods be forced into
@@ -2137,39 +2246,57 @@ reasonNOTMergeClasses_C(DerivedClass, MethodClass) :-
     % not(factDeletingDestructor(Method)),
 
     % Debugging
-    %not(factNOTMergeClasses(DerivedClass, MethodClass)),
-    %not(factNOTMergeClasses(MethodClass, DerivedClass)),
-    %logtrace('reasonNOTMergeClasses_C('),
+    %not(dynFactNOTMergeClasses(DerivedClass, MethodClass)),
+    %logtrace('reasonNOTMergeClasses_C_asymmetric('),
     %logtrace(Method), logtrace(', '),
     %logtrace(BaseClass), logtrace(', '),
     %logtrace(DerivedClass), logtrace(', '),
     %logtrace(MethodClass), logtraceln(').'),
     true.
 
+% Handle the complicated asymmetry of reasonNOTMergeClasses_C_asymmetric, so that we always
+% return Class1 < Class2.
+reasonNOTMergeClasses_C(Class1, Class2) :-
+    ((reasonNOTMergeClasses_C_asymmetric(Class1, Class2), Class1 < Class2);
+     (reasonNOTMergeClasses_C_asymmetric(Class2, Class1), Class1 < Class2)),
+
+    % Debugging
+    %not(dynFactNOTMergeClasses(Class1, Class2)),
+    %logtrace('reasonNOTMergeClasses_C('),
+    %logtrace(Class1), logtrace(', '),
+    %logtrace(Class2), logtraceln(').'),
+    true.
+
 % Any two constructors that write _different_ vftables into the same offets in their objects
 % cannot be the same class.
 % PAPER: Merging-7
 % ED_PAPER_INTERESTING
-reasonNOTMergeClasses_E(Class1, Class2, Insn1, Method1, ObjectOffset, VFTable1) :-
-    % Two VFTables are written into the same object offsets in two different methods.  The
+reasonNOTMergeClasses_E(Class1, Class2, Insn1, Method1, 0, VFTable1) :-
+    % Two VFTables are written into the zero object offset in two different methods.  The
     % sterotypical case is of course two compeltely unrelated classes.  This rule applies
-    % equally to constructors and destructors.
-    factVFTableWrite(Insn1, Method1, ObjectOffset, VFTable1),
-    factVFTableWrite(_Insn2, Method2, ObjectOffset, VFTable2),
+    % equally to constructors and destructors.  There were problems in Lite/oo with 0x402766 (a
+    % deleting destructor) and 0x40247e (a vbase destructor) when this rule was applied to
+    % arbitrary offsets.  It's a little unclear whether the better fix would be to permit
+    % arbitrary offsets and then filter the destructor specific case as an exception.  The case
+    % is related to the counter example blocked by checking for the opposite VFTableWrites.
+    factVFTableWrite(Insn1, Method1, 0, VFTable1),
+    factVFTableWrite(_Insn2, Method2, 0, VFTable2),
+    iso_dif(VFTable1, VFTable2),
     find(Method1, Class1),
     find(Method2, Class2),
     % Those methods cannot be on the same class.
     iso_dif(Class1, Class2),
+    % This rule handles symmetry correctly, so adding this constraint causes the rule to fire
+    % twice, but reduces the number of NOTMergeClass facts created by this rule.
+    Class1 < Class2,
     % iso_dif(Method1, Method2),
-    iso_dif(VFTable1, VFTable2),
     % But one counter example that we need to protect against is the inlining of base class
     % VFTable writes.  The intention here is very similar to factVFTableOverwrite, but without
-    % the complications of caring which value overwrote which otehr value.
-    not(factVFTableWrite(_Insn3, Method1, ObjectOffset, VFTable2)),
-    not(factVFTableWrite(_Insn4, Method2, ObjectOffset, VFTable1)),
+    % the complications of caring which value overwrote which other value.
+    not((factVFTableWrite(_Insn3, Method1, 0, VFTable2))),
+    not((factVFTableWrite(_Insn4, Method2, 0, VFTable1))),
     % Debugging
-    %not(factNOTMergeClasses(Class1, Class2)),
-    %not(factNOTMergeClasses(Class2, Class1)),
+    %not(dynFactNOTMergeClasses(Class1, Class2)),
     %logtrace('reasonNOTMergeClasses_E('),
     %logtrace(Class1), logtrace(', '),
     %logtrace(Class2), logtraceln(').'),
@@ -2184,10 +2311,12 @@ reasonNOTMergeClasses_F(Class1, Class2) :-
     factDerivedClass(DerivedClass, Class1, ObjectOffset1),
     factDerivedClass(DerivedClass, Class2, ObjectOffset2),
     iso_dif(Class1, Class2),
+    % This rule handles symmetry correctly, so adding this constraint causes the rule to fire
+    % twice, but reduces the number of NOTMergeClass facts created by this rule.
+    Class1 < Class2,
     iso_dif(ObjectOffset1, ObjectOffset2),
     % Debugging
-    %not(factNOTMergeClasses(Class1, Class2)),
-    %not(factNOTMergeClasses(Class2, Class1)),
+    %not(dynFactNOTMergeClasses(Class1, Class2)),
     %logtrace('reasonNOTMergeClasses_F('),
     %logtrace(DerivedClass), logtrace(', '),
     %logtrace(ObjectOffset1), logtrace(', '),
@@ -2204,12 +2333,11 @@ reasonNOTMergeClasses_F(Class1, Class2) :-
 % inside the other.  Hopefully we'll backtrack to a better solution.
 % PAPER: Merging-9
 reasonNOTMergeClasses_G(Class1, Class2) :-
-    %% find(_Constructor1, Class1),
-    %% find(_Constructor2, Class2),
-    factObjectInObject(Class1, Class2, _Offset),
+    factObjectInObject(A, B, _Offset),
+    % Handle the asymmetry of ObjectinObject so that this rule always returns Class1 < Class2.
+    sort_tuple((A, B), (Class1, Class2)),
     % Debugging
-    %not(factNOTMergeClasses(Class1, Class2)),
-    %not(factNOTMergeClasses(Class2, Class1)),
+    %not(dynFactNOTMergeClasses(Class1, Class2)),
     %logtrace('reasonNOTMergeClasses_G('),
     %logtrace(Class1), logtrace(', '),
     %logtrace(Class2), logtraceln(').'),
@@ -2221,8 +2349,7 @@ reasonNOTMergeClasses_G(Class1, Class2) :-
 %%     find(_Constructor2, Class2),
 %%     factObjectInObject(Class2, Class1, _Offset),
 %%     % Debugging
-%%     not(factNOTMergeClasses(Class1, Class2)),
-%%     not(factNOTMergeClasses(Class2, Class1)),
+%%     not(dynFactNOTMergeClasses(Class1, Class2)),
 %%     logtrace('reasonNOTMergeClasses_H('),
 %%     logtrace(Class1), logtrace(', '),
 %%     logtrace(Class2), logtraceln(').'),
@@ -2238,9 +2365,11 @@ reasonNOTMergeClasses_I(Class1, Class2) :-
     iso_dif(TDA1, TDA2),
     % This shouldn't be needed unless rTTITDA2Class() is misbehaving!
     iso_dif(Class1, Class2),
+    % This rule handles symmetry correctly, so adding this constraint causes the rule to fire
+    % twice, but reduces the number of NOTMergeClass facts created by this rule.
+    Class1 < Class2,
     % Debugging
-    %not(factNOTMergeClasses(Class1, Class2)),
-    %not(factNOTMergeClasses(Class2, Class1)),
+    %not(dynFactNOTMergeClasses(Class1, Class2)),
     %logtrace('reasonNOTMergeClasses_I('),
     %logtrace(TDA1), logtrace(', '),
     %logtrace(TDA2), logtrace(', '),
@@ -2251,10 +2380,11 @@ reasonNOTMergeClasses_I(Class1, Class2) :-
 % PAPER: Merging-13
 % ED_PAPER_INTERESTING
 reasonNOTMergeClasses_J(Class1, Class2) :-
-    reasonDerivedClassRelationship(Class1, Class2),
+    reasonDerivedClassRelationship(A, B),
+    % Handle asymmtery in reasonDerivedClassRelationship, so we always return Class1 < Class2.
+    sort_tuple((A, B), (Class1, Class2)),
     % Debugging
-    %not(factNOTMergeClasses(Class1, Class2)),
-    %not(factNOTMergeClasses(Class2, Class1)),
+    %not(dynFactNOTMergeClasses(Class1, Class2)),
     %logtrace('reasonNOTMergeClasses_J('),
     %logtrace(Class1), logtrace(', '),
     %logtrace(Class2), logtraceln(').'),
@@ -2270,9 +2400,11 @@ reasonNOTMergeClasses_K(Class1, Class2) :-
     find(Method1, Class1),
     find(Method2, Class2),
     iso_dif(Class1, Class2),
+    % This rule handles symmetry correctly, so adding this constraint causes the rule to fire
+    % twice, but reduces the number of NOTMergeClass facts created by this rule.
+    Class1 < Class2,
     % Debugging
-    %not(factNOTMergeClasses(Class1, Class2)),
-    %not(factNOTMergeClasses(Class2, Class1)),
+    %not(dynFactNOTMergeClasses(Class1, Class2)),
     %logtrace('reasonNOTMergeClasses_K('),
     %logtrace(Class1), logtrace(', '),
     %logtrace(Class2), logtraceln(').'),
@@ -2288,9 +2420,11 @@ reasonNOTMergeClasses_L(Class1, Class2) :-
     find(RealDestructor1, Class1),
     find(RealDestructor2, Class2),
     iso_dif(Class1, Class2),
+    % This rule handles symmetry correctly, so adding this constraint causes the rule to fire
+    % twice, but reduces the number of NOTMergeClass facts created by this rule.
+    Class1 < Class2,
     % Debugging
-    %not(factNOTMergeClasses(Class1, Class2)),
-    %not(factNOTMergeClasses(Class2, Class1)),
+    %not(dynFactNOTMergeClasses(Class1, Class2)),
     %logtrace('reasonNOTMergeClasses_L('),
     %logtrace(Class1), logtrace(', '),
     %logtrace(Class2), logtraceln(').'),
@@ -2303,57 +2437,67 @@ reasonNOTMergeClasses_M(Class1, Class2, GTESize, LTESize) :-
     factClassSizeGTE(Class1, GTESize),
     factClassSizeLTE(Class2, LTESize),
     iso_dif(Class1, Class2),
+    % This rule handles symmetry correctly, so adding this constraint causes the rule to fire
+    % twice, but reduces the number of NOTMergeClass facts created by this rule.
+    Class1 < Class2,
     LTESize < GTESize,
     % Debugging
-    %not(factNOTMergeClasses(Class1, Class2)),
-    %not(factNOTMergeClasses(Class2, Class1)),
+    %not(dynFactNOTMergeClasses(Class1, Class2)),
     %logtrace('reasonNOTMergeClasses_M('),
-    %logtrace(Size1), logtrace(', '),
-    %logtrace(Size2), logtrace(', '),
     %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtraceln(').'),
+    %logtrace(Class2), logtrace(', '),
+    %logtrace(GTESize), logtrace(', '),
+    %logtrace(LTESize), logtraceln(').'),
     true.
 
-% Because the sizes are incomaptible.
+% Because the sizes are incompatible.
 % PAPER: Class size constraints
 % Called by trigger.P
+% Cory notes: To reduce the number of number of these that are generated needlessly, we might
+% want to add a contraint requiring that there be a reason to think that the classes were
+% candidates for a merge in the first place.  The current rule simply looks at sizes and
+% nothing else.  As a result this is the largest source of factNOTMergeClass facts.
 reasonNOTMergeClasses_N(Class1, Class2, GTESize, LTESize) :-
     factClassSizeLTE(Class1, LTESize),
     factClassSizeGTE(Class2, GTESize),
     iso_dif(Class1, Class2),
+    % This rule handles symmetry correctly, so adding this constraint causes the rule to fire
+    % twice, but reduces the number of NOTMergeClass facts created by this rule.
+    Class1 < Class2,
     GTESize > LTESize,
     % Debugging
-    %not(factNOTMergeClasses(Class1, Class2)),
-    %not(factNOTMergeClasses(Class2, Class1)),
+    %not(dynFactNOTMergeClasses(Class1, Class2)),
     %logtrace('reasonNOTMergeClasses_N('),
-    %logtrace(Size1), logtrace(', '),
-    %logtrace(Size2), logtrace(', '),
     %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtraceln(').'),
+    %logtrace(Class2), logtrace(', '),
+    %logtrace(GTESize), logtrace(', '),
+    %logtrace(LTESize), logtraceln(').'),
     true.
 
 % Because the method accesses members that aren't there.
 % PAPER: Merging-15
 % ED_PAPER_INTERESTING
-reasonNOTMergeClasses_O(Class1, Class2) :-
+% Cory notes that this doesn't fire in the ooex test suite.   Is it implied by _N?
+reasonNOTMergeClasses_O(Class1Sorted, Class2Sorted) :-
     % There's a class where we know the maximum size.
     factClassSizeLTE(Class1, Size1),
     % That calls a method (not really needed but avoids worthless conclusions?)
     factClassCallsMethod(Class1, Method),
     find(Method, Class2),
     iso_dif(Class1, Class2),
+    % Handle symmetry
+    sort_tuple((Class1, Class2), (Class1Sorted, Class2Sorted)),
     % The method accesses a member too large for the class.
     validMethodMemberAccess(_Insn, Method, MemberOffset, MemberSize),
     Size2 is MemberSize + MemberOffset,
     Size2 > Size1,
     % Debugging
-    %not(factNOTMergeClasses(Class1, Class2)),
-    %not(factNOTMergeClasses(Class2, Class1)),
+    %not(dynFactNOTMergeClasses(Class1Sorted, Class2Sorted)),
     %logtrace('reasonNOTMergeClasses_N('),
     %logtrace(Size1), logtrace(', '),
     %logtrace(Size2), logtrace(', '),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtraceln(').'),
+    %logtrace(Class1Sorted), logtrace(', '),
+    %logtrace(Class2Sorted), logtraceln(').'),
     true.
 
 % Because we call a constructor or destructor on part of our object.
@@ -2361,7 +2505,7 @@ reasonNOTMergeClasses_O(Class1, Class2) :-
 % The reasoning is here is basically that we can't contain ourselves, but passing an offset to
 % ourself would imply exactly that.  It's not obvious that the merger is blocked by any other
 % rule at present.
-reasonNOTMergeClasses_P(Class1, Class2) :-
+reasonNOTMergeClasses_P(Class1Sorted, Class2Sorted) :-
     validFuncOffset(_Insn, Caller, Method, Offset),
     find(Method, Class1),
     find(Caller, Class2),
@@ -2369,16 +2513,19 @@ reasonNOTMergeClasses_P(Class1, Class2) :-
     factMethod(Caller),
     factMethod(Method),
     iso_dif(Method, Caller),
-    iso_dif(Offset, 0),
-    (factConstructor(Method); factDeletingDestructor(Method); factRealDestructor(Method)),
+    Offset > 0,
+    (factConstructor(Method);
+     (factDeletingDestructor(Method), not(factRealDestructor(Caller)));
+     factRealDestructor(Method)),
+    % Handle symmetry
+    sort_tuple((Class1, Class2), (Class1Sorted, Class2Sorted)),
     % Debugging
-    %not(factNOTMergeClasses(Class1, Class2)),
-    %not(factNOTMergeClasses(Class2, Class1)),
+    %not(dynFactNOTMergeClasses(Class1Sorted, Class2Sorted)),
     %logtrace('reasonNOTMergeClasses_P('),
     %logtrace(Caller), logtrace(', '),
     %logtrace(Method), logtrace(', '),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtraceln(').'),
+    %logtrace(Class1Sorted), logtrace(', '),
+    %logtrace(Class2Sorted), logtraceln(').'),
     true.
 
 reasonNOTMergeClassesSet(Constructor, Set) :-
@@ -2414,7 +2561,7 @@ reasonSharedImplementation(Method, Class1) :-
     find(Constructor1, Class1),
     find(Constructor2, Class2),
     iso_dif(Class1, Class2),
-    factNOTMergeClasses(Class1, Class2).
+    dynFactNOTMergeClasses(Class1, Class2).
 
 % ============================================================================================
 % Member assignment
@@ -2427,8 +2574,8 @@ reasonSharedImplementation(Method, Class1) :-
 :- table certainMemberOnClass/3 as incremental.
 
 certainMemberOnClass(Class, Offset, Size) :-
-    factMethod(Method),
     find(Method, Class),
+    factMethod(Method),
     validMethodMemberAccess(_Insn, Method, Offset, Size).
 
 certainMemberOnClassSet(Class, Set) :-
@@ -2574,6 +2721,10 @@ reasonClassSizeGTE_E(Class, Size) :-
 reasonClassSizeGTE_F(Class, Size) :-
     %% find(_Method, Class),
     factObjectInObject(Class, InnerClass, Offset),
+    % Even though Class and InnerClass shouldn't be the same, if they were permitting that in
+    % this rule will introduce an endless loop preventing us from reaching sanity checks that
+    % would detect the condition, so we need to prtect against it here as well.
+    iso_dif(Class, InnerClass),
     factClassSizeGTE(InnerClass, InnerClassSize),
     Size is Offset + InnerClassSize,
     % Debugging

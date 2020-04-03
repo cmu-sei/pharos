@@ -9,11 +9,9 @@
 #include "semantics.hpp"
 #include "delta.hpp"
 #include "threads.hpp"
+#include "misc.hpp"
 
 namespace pharos {
-
-// duplicative...
-using InsnSet = std::set<SgAsmInstruction*>;
 
 // A procedural method that's defined here and used in several places.  This hack is not
 // related to initializing ESP to zero, but rather sorting out which constants are likely to be
@@ -159,7 +157,7 @@ public:
   void short_print(std::ostream &o) const;
   void print(std::ostream &o) const;
   friend std::ostream& operator<<(std::ostream &o, const GlobalMemoryDescriptor &gd) {
-    gd.print(o);
+    gd.short_print(o);
     return o;
   }
 };

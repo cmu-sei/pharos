@@ -11,7 +11,7 @@
 
 namespace pharos {
 
-using Insn2InsnSetMap = std::map<SgAsmX86Instruction*, InsnSet>;
+using Addr2InsnSetMap = std::map<rose_addr_t, InsnSet>;
 using ControlFlowGraph = Rose::BinaryAnalysis::ControlFlow::Graph;
 using CFGVertex = boost::graph_traits<ControlFlowGraph>::vertex_descriptor;
 using CFGEdge = boost::graph_traits<ControlFlowGraph>::edge_descriptor;
@@ -20,9 +20,10 @@ using CFGVertexSet = std::set<CFGVertex>;
 class FunctionDescriptor;
 
 class CDG {
+  const DescriptorSet& ds;
   std::vector<CFGVertex> forward_list;
   ControlFlowGraph cfg;
-  std::map<SgAsmBlock *, CFGVertex> block_to_vertex;
+  std::map<rose_addr_t, CFGVertex> block_to_vertex;
 
   FunctionDescriptor* fd;
 
@@ -42,7 +43,7 @@ class CDG {
   // This mapping is essentially unused at the present time.  Purpose unclear.
   std::map<CFGVertex, CFGVertexSet> dependents_of;
 
-  CDG(FunctionDescriptor & f);
+  CDG(const DescriptorSet& ds_, FunctionDescriptor & f);
 
   // Ed's thesis made this clear in a way that I never understood from Wes.  A block D
   // dominates block B if and only if every path from the program entry point to the block B
@@ -69,7 +70,7 @@ class CDG {
   void get_dependents_between(const CFGVertex& a, const CFGVertex& b, CFGVertexSet &dependents) const;
   SgAsmX86Instruction* getControllingInstruction(const CFGVertex& vertex) const;
   X86InsnSet getControlDependencies(const SgAsmX86Instruction *insn) const;
-  Insn2InsnSetMap getControlDependencies() const;
+  Addr2InsnSetMap getControlDependencies() const;
   void dumpBlock(const CFGVertex& vertex) const;
   void dumpControlDependencies() const;
   void dumpInsnDependencies() const;

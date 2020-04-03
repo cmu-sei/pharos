@@ -350,7 +350,7 @@ public:
 };
 
 using AbstractAccessVector = std::vector<AbstractAccess>;
-using AccessMap = std::map<SgAsmX86Instruction *, AbstractAccessVector>;
+using AccessMap = std::map<rose_addr_t, AbstractAccessVector>;
 
 namespace access_filters {
 
@@ -416,11 +416,11 @@ using aa_range = boost::any_range<const AbstractAccess, boost::forward_traversal
 
 namespace {
 template <typename F>
-aa_range mapped(const F & filt, const AccessMap & map, SgAsmX86Instruction *insn) {
+aa_range mapped(const F & filt, const AccessMap & map, rose_addr_t addr) {
   using erased = boost::adaptors::type_erased<
     const AbstractAccess, boost::forward_traversal_tag,
     const AbstractAccess &, std::ptrdiff_t>;
-  auto i = map.find(insn);
+  auto i = map.find(addr);
   if (i == map.end()) {
     return boost::iterator_range<AbstractAccess *>(nullptr, nullptr) | erased();
   }
@@ -428,36 +428,36 @@ aa_range mapped(const F & filt, const AccessMap & map, SgAsmX86Instruction *insn
 }
 } // unnamed namespace
 
-inline aa_range read(const AccessMap & map, SgAsmX86Instruction *insn) {
-  return mapped([](const AbstractAccessVector &a) {return read(a);}, map, insn);
+inline aa_range read(const AccessMap & map, rose_addr_t addr) {
+  return mapped([](const AbstractAccessVector &a) {return read(a);}, map, addr);
 }
 
-inline aa_range write(const AccessMap & map, SgAsmX86Instruction *insn) {
-  return mapped([](const AbstractAccessVector &a) {return write(a);}, map, insn);
+inline aa_range write(const AccessMap & map, rose_addr_t addr) {
+  return mapped([](const AbstractAccessVector &a) {return write(a);}, map, addr);
 }
 
-inline aa_range reg(const AccessMap & map, SgAsmX86Instruction *insn) {
-  return mapped([](const AbstractAccessVector &a) {return reg(a);}, map, insn);
+inline aa_range reg(const AccessMap & map, rose_addr_t addr) {
+  return mapped([](const AbstractAccessVector &a) {return reg(a);}, map, addr);
 }
 
-inline aa_range mem(const AccessMap & map, SgAsmX86Instruction *insn) {
-  return mapped([](const AbstractAccessVector &a) {return mem(a);}, map, insn);
+inline aa_range mem(const AccessMap & map, rose_addr_t addr) {
+  return mapped([](const AbstractAccessVector &a) {return mem(a);}, map, addr);
 }
 
-inline aa_range read_reg(const AccessMap & map, SgAsmX86Instruction *insn) {
-  return mapped([](const AbstractAccessVector &a) {return read_reg(a);}, map, insn);
+inline aa_range read_reg(const AccessMap & map, rose_addr_t addr) {
+  return mapped([](const AbstractAccessVector &a) {return read_reg(a);}, map, addr);
 }
 
-inline aa_range read_mem(const AccessMap & map, SgAsmX86Instruction *insn) {
-  return mapped([](const AbstractAccessVector &a) {return read_mem(a);}, map, insn);
+inline aa_range read_mem(const AccessMap & map, rose_addr_t addr) {
+  return mapped([](const AbstractAccessVector &a) {return read_mem(a);}, map, addr);
 }
 
-inline aa_range write_reg(const AccessMap & map, SgAsmX86Instruction *insn) {
-  return mapped([](const AbstractAccessVector &a) {return write_reg(a);}, map, insn);
+inline aa_range write_reg(const AccessMap & map, rose_addr_t addr) {
+  return mapped([](const AbstractAccessVector &a) {return write_reg(a);}, map, addr);
 }
 
-inline aa_range write_mem(const AccessMap & map, SgAsmX86Instruction *insn) {
-  return mapped([](const AbstractAccessVector &a) {return write_mem(a);}, map, insn);
+inline aa_range write_mem(const AccessMap & map, rose_addr_t addr) {
+  return mapped([](const AbstractAccessVector &a) {return write_mem(a);}, map, addr);
 }
 
 

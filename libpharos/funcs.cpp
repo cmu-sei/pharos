@@ -234,6 +234,15 @@ void FunctionDescriptor::set_api(const APIDefinition& fdata) {
   const CallingConventionMatcher& matcher = ds.get_calling_conventions();
   size_t arch_bits = ds.get_arch_bits();
   const CallingConvention* cc = matcher.find(arch_bits, convention);
+
+  // Clear the existing calling conventions, since if we've called SET_api(), we presumably
+  // want just this API.  This defect as identifed by having the calling convention on delete()
+  // methods twice in OOAnalyzer, which is probably the only place where we currently call
+  // set_api outside of imports and the APIDB.  This change will fix that specific problem, but
+  // if we want a more comprehensively correct set_api() call, this method will have to change
+  // more extensively.
+  calling_conventions.clear();
+
   // If we found one, add it to the calling conventions.
   if (cc != NULL) {
     calling_conventions.push_back(cc);
@@ -646,7 +655,7 @@ void FunctionDescriptor::update_stack_parameters() {
     // code, and Cory has cleaned it up some, but it's still a bit hackish.
     if (insn->get_kind() == x86_lea) {
       // Get the writes for this LEA instruction.
-      auto writes = du.get_writes(insn);
+      auto writes = du.get_writes(insn->get_address());
       // Shouldn't happen, but continuing prevents crashes.
       if (std::begin(writes) == std::end(writes)) continue;
       // Look for writes (to some register, but where the value is from a stack memory address.
@@ -669,7 +678,7 @@ void FunctionDescriptor::update_stack_parameters() {
 
     // Get the dependencies for this instruction.  If there are none, then we're done.  The
     // primary cause of this appears to be instructions without semantics.
-    const DUChain* deps = du.get_dependencies(insn);
+    const DUChain* deps = du.get_dependencies(insn->get_address());
     if (deps == NULL) {
       SDEBUG << "No depends_on entry for instruction: " << debug_instruction(insn) << LEND;
       continue;
@@ -891,7 +900,7 @@ void FunctionDescriptor::update_return_values() {
   }
   else if (! output_state)
   {
-    GERROR << "update_return_values, no output state for " << _address_string() << LEND;
+    GWARN << "update_return_values, no output state for " << _address_string() << LEND;
     return;
   }
   else {
@@ -984,48 +993,26 @@ const PDG * FunctionDescriptor::_get_pdg() {
     _propagate_thunk_info();
   }
   else {
-    // This is a pretty horrible hack, but the alternative is to go fix tail call optimization
-    // (where calls at the end of the function are replaced by a jump).  And that's a _much_
-    // bigger change than I want to tackle right now.  And, I need delete to work properly in
-    // the mean time.  This code can probably be remove once we've properly grafted the basic
-    // blocks from the jump into the function during analysis.  This is the one of two cases
-    // where is_delete_method() is still needed on the function descriptor.
-    if (delete_method) {
-      // First force the convention to cdecl...
-      const CallingConventionMatcher& matcher = ds.get_calling_conventions();
-      size_t arch_bits = ds.get_arch_bits();
-      const CallingConvention* cdecl = matcher.find(arch_bits, "__cdecl");
-      parameters.set_calling_convention(cdecl);
-      // Then force a single stack parameter.
-      size_t arch_bytes = ds.get_arch_bytes();
-      stack_parameters = StackDelta(arch_bytes, ConfidenceUser);
-      ParameterDefinition* pd = parameters.create_stack_parameter(arch_bytes);
-      assert(pd);
-      pd->set_name("p");
-      pd->set_type("void *");
-    }
-    else {
-      // Analyze our calling convention.  Must be AFTER we've marked the PDG as cached, because
-      // analyzing the calling convention will attempt to recurse into get_pdg().
-      register_usage.analyze(this);
+    // Analyze our calling convention.  Must be AFTER we've marked the PDG as cached, because
+    // analyzing the calling convention will attempt to recurse into get_pdg().
+    register_usage.analyze(this);
 
-      // Now that we know what our register usage was, determine our calling conventions.
-      const CallingConventionMatcher& matcher = ds.get_calling_conventions();
-      calling_conventions = matcher.match(this);
+    // Now that we know what our register usage was, determine our calling conventions.
+    const CallingConventionMatcher& matcher = ds.get_calling_conventions();
+    calling_conventions = matcher.match(this);
 
-      // Pick the most appropriate calling convention (the first one), and set it in the
-      // ParameterList object.  If we didn't match any calling conventions, leave the convention
-      // field set to NULL, which means that the calling convention is unrecognized, and that
-      // the parameters and return values will contain all inputs and output of the function.
-      if (calling_conventions.size() != 0) {
-        // Get the first matching calling convention.  They should all be valid interpretations for
-        // this function, and we've ordered the calling conventions such that the more useful or
-        // interesting ones preceed the less useful ones.
-        const CallingConvention* cc = *(calling_conventions.begin());
+    // Pick the most appropriate calling convention (the first one), and set it in the
+    // ParameterList object.  If we didn't match any calling conventions, leave the convention
+    // field set to NULL, which means that the calling convention is unrecognized, and that
+    // the parameters and return values will contain all inputs and output of the function.
+    if (calling_conventions.size() != 0) {
+      // Get the first matching calling convention.  They should all be valid interpretations for
+      // this function, and we've ordered the calling conventions such that the more useful or
+      // interesting ones preceed the less useful ones.
+      const CallingConvention* cc = *(calling_conventions.begin());
 
-        // This is the only place we should be calling set_calling_convention().
-        parameters.set_calling_convention(cc);
-      }
+      // This is the only place we should be calling set_calling_convention().
+      parameters.set_calling_convention(cc);
 
       // Assume that registers always preceed all parameters (always true on Intel platforms?), and
       // create the register parameters.

@@ -370,24 +370,25 @@ StackVariableAnalyzer::analyze() {
   for (SgAsmX86Instruction* insn : fd_->get_insns_addr_order()) {
 
     if (insn == NULL) continue;
+    rose_addr_t iaddr = insn->get_address();
 
     // control flow instructions can't access local variables
     if (insn_is_control_flow(insn) == true) {
-      GDEBUG << "   Insn " << addr_str(insn->get_address())
+      GDEBUG << "   Insn " << addr_str(iaddr)
              << " is a control flow instruction" << LEND;
 
       continue;
     }
 
     else if (uses_allocation_instruction(insn)) {
-      GDEBUG << "   Insn " << addr_str(insn->get_address())
+      GDEBUG << "   Insn " << addr_str(iaddr)
              << " is a stack allocation instruction" << LEND;
       continue;
     }
 
     // Skip saved register instructions
     else if (uses_saved_register(insn)) {
-      GDEBUG << "   Insn " << addr_str(insn->get_address())
+      GDEBUG << "   Insn " << addr_str(iaddr)
              << " uses a saved register" << LEND;
       continue;
     }
@@ -405,7 +406,7 @@ StackVariableAnalyzer::analyze() {
     // evidence
     const DUAnalysis& du = fd_->get_pdg()->get_usedef();
 
-    access_filters::aa_range reg_reads = du.get_reg_reads(insn);
+    access_filters::aa_range reg_reads = du.get_reg_reads(iaddr);
     if (std::begin(reg_reads) != std::end(reg_reads)) {
       GDEBUG << "Checking reg reads for stack variables" << LEND;
       for (const AbstractAccess &rraa : reg_reads) {
@@ -414,7 +415,7 @@ StackVariableAnalyzer::analyze() {
         accumulate_stkvar_evidence(insn, rraa);
       }
     }
-    access_filters::aa_range mem_reads = du.get_mem_reads(insn);
+    access_filters::aa_range mem_reads = du.get_mem_reads(iaddr);
     if (std::begin(mem_reads) != std::end(mem_reads)) {
       GDEBUG << "Checking mem reads for stack variables" << LEND;
       for (const AbstractAccess &mraa : mem_reads) {
@@ -427,14 +428,14 @@ StackVariableAnalyzer::analyze() {
     // the same logic applies for writes. If the offset to the original stack
     // pointer is not used, then add them as stack variables
 
-    access_filters::aa_range reg_writes = du.get_reg_writes(insn);
+    access_filters::aa_range reg_writes = du.get_reg_writes(iaddr);
     if (std::begin(reg_writes) != std::end(reg_writes)) {
       GDEBUG << "Checking reg writes for stack variables" << LEND;
       for (const AbstractAccess &rwaa : reg_writes) {
         accumulate_stkvar_evidence(insn, rwaa);
       }
     }
-    access_filters::aa_range mem_writes = du.get_mem_writes(insn);
+    access_filters::aa_range mem_writes = du.get_mem_writes(iaddr);
     if (std::begin(mem_writes) != std::end(mem_writes)) {
       GDEBUG << "Checking writes for stack variables" << LEND;
       for (const AbstractAccess &mwaa : mem_writes) {

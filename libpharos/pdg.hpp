@@ -52,11 +52,11 @@ protected:
   DUAnalysis du;
   CDG cdg;
 
-  Insn2InsnSetMap control_deps;
+  Addr2InsnSetMap control_deps;
 
   std::string getInstructionString(SgAsmX86Instruction *insn, AddrVector &constants) const;
   StringVector getInstructionString(SgAsmX86Instruction *insn) const;
-  std::string makeVariableStr(SgAsmX86Instruction *cur_insn) const;
+  std::string makeVariableStr(rose_addr_t addr) const;
   void buildDotNode(SgAsmX86Instruction *cur_insn, std::stringstream &sout, X86InsnSet& processed) const;
   void toDot(std::string dotOutputFile) const;
   void hashSubPaths(SgAsmX86Instruction *cur_insn, std::string path, X86InsnSet processed,
@@ -76,7 +76,7 @@ protected:
   AccessMap chop_full(SgAsmX86Instruction *insn) const;
 
   // A convenient way to get a single read (with some error checking).
-  AbstractAccess get_single_mem_read(SgAsmX86Instruction* insn) const;
+  AbstractAccess get_single_mem_read(rose_addr_t addr) const;
 
 public:
 
@@ -89,7 +89,7 @@ public:
   const CDG& get_cdg() const { return cdg; }
 
   // Must be public for buildKeys() in indexer.cpp.
-  Insn2InsnSetMap getControlDeps() const { return control_deps; }
+  Addr2InsnSetMap getControlDeps() const { return control_deps; }
 
   // Get a slice for specified instruction.
   // This has a peculiar API -- returning a string and updating the passed reference.

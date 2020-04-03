@@ -15,8 +15,8 @@ if_(If_0, Then_0, Else_0) :-
    once(if_counter(Id)),
    Idx is Id+1,
    (  Idx > Id -> true
-   ;  throw(error(representation_error(max_integer),
-               'XSB misses ISO conforming integers'))
+   ;  throw_with_backtrace(error(representation_error(max_integer),
+                                 'XSB misses ISO conforming integers'))
    ),
    retractall(if_counter(_)),
    asserta(if_counter(Idx)),

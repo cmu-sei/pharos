@@ -220,8 +220,7 @@ insanityTwoRealDestructorsOnClass :-
 :- table insanityContradictoryMerges/0 as incremental.
 insanityContradictoryMerges :-
     reasonMergeClasses(Method1, Method2),
-    (factNOTMergeClasses(Method1, Method2);
-     factNOTMergeClasses(Method2, Method1)),
+    dynFactNOTMergeClasses(Method1, Method2),
     logwarnln('failed.'),
     logwarnln('Consistency checks failed.'),
     logwarn('Contradictory information about merging classes:'),

@@ -1,4 +1,4 @@
-// Copyright 2017-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2017-2020 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_OOVFTable_H
 #define Pharos_OOVFTable_H
@@ -28,6 +28,16 @@ namespace pharos {
 using TypeRTTICompleteObjectLocatorPtr = std::shared_ptr<TypeRTTICompleteObjectLocator>;
 
 class OOVirtualFunctionTable {
+  struct CallDescriptorOrder {
+    bool operator()(const CallDescriptor *a, const CallDescriptor *b) const {
+      return a->get_address() < b->get_address();
+    }
+  };
+
+ public:
+  using CallDescriptorAddressMap =
+    std::map<const CallDescriptor*, AddrSet, CallDescriptorOrder>;
+
  private:
 
   rose_addr_t address_;
@@ -47,7 +57,7 @@ class OOVirtualFunctionTable {
   // virtual function calls made through this virtual function table
   std::vector<const CallDescriptor*> vcalls_;
   // A map of virtual calls and the targets that they resolve to.
-  std::map<const CallDescriptor*, AddrSet> vcall_targets_;
+  CallDescriptorAddressMap vcall_targets_;
 
   // virtual functions in this table and their offsets within the table
   OOVirtualMethodMap vfuncs_;
@@ -83,7 +93,7 @@ class OOVirtualFunctionTable {
 
   const std::vector<const CallDescriptor*>& get_virtual_calls() const;
 
-  const std::map<const CallDescriptor*, AddrSet> get_virtual_call_targets() const;
+  const CallDescriptorAddressMap get_virtual_call_targets() const;
 
   void add_virtual_function(OOVirtualFunctionTableEntry entry);
 

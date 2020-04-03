@@ -62,13 +62,13 @@ possibleVBTableEntry(VBTable, NewOffset, Value) :-
 % separating plausible methods from arbitrary addresses during guessing.
 possibleMethod(Address) :-
     callingConvention(Address, _CallingConvention);
-    thisCallMethod(Address, _, _);
     thunk(Address, _Target1);
     noCallsAfter(Address);
     noCallsBefore(Address);
     returnsSelf(Address);
     purecall(Address);
     callTarget(_Insn, Address, _Target2).
+
 
 % --------------------------------------------------------------------------------------------
 :- table possibleVFTable/1 as opaque.
@@ -222,8 +222,7 @@ dethunk(Thunk, Result) :-
 dethunk_nontabled(Thunk, Result) :-
     var(Thunk),
     ground(Result),
-    backtrace(100),
-    throw(error('dethunk/2 called in a bizarre manner.')).
+    throw_with_backtrace(error(uninstantiation_error(Result), dethunk/2)).
 
 dethunk_nontabled(Thunk, Result) :-
     eventualThunk(Thunk, Target) -> Result = Target; Result = Thunk.
@@ -257,7 +256,18 @@ possiblyVirtual(Method) :-
     % allow calls to dethunk to be properly handled when only the second argument is bound.
     dethunk_nontabled(Entry, Method).
 
+% ============================================================================================
+% Intentionally dynamic rules.
+% ============================================================================================
 
+% Make factNOTMergeClasses symmetric, without storing it as such.  The goal here is to reduce
+% memory consumption, potentially at a small expense of run time.  This is also useful just for
+% ensuring that the symmetry is applied consistently when writing rules.
+dynFactNOTMergeClasses(Class1, Class2) :-
+    % If the first one is true, don't try the second ordering.
+    (factNOTMergeClasses(Class1, Class2) -> true;
+     % If the first one isn't true, try the second one.
+     factNOTMergeClasses(Class2, Class1)).
 
 % ============================================================================================
 % Rules for setting up preconditions for good guesses...

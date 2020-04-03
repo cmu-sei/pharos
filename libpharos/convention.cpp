@@ -65,8 +65,9 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, RegisterDesc
   if (p == NULL) return false;
   const DUAnalysis& du = p->get_usedef();
 
+  rose_addr_t iaddr = insn->get_address();
   // Which stack address did the instruction write to?
-  const AbstractAccess* wa = du.get_first_mem_write(insn);
+  const AbstractAccess* wa = du.get_first_mem_write(iaddr);
   // If there's no memory write, we can't be a saved and restored register.
   if (wa == NULL) return false;
 
@@ -85,7 +86,7 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, RegisterDesc
   SDEBUG << "Checking for save/restore: " << debug_instruction(insn)
          << " for: " << reg << " writes to: " << *stack_node << " (" << stack_foo << ")" << LEND;
 
-  const DUChain* deps = du.get_dependents(insn);
+  const DUChain* deps = du.get_dependents(iaddr);
   if (deps == NULL) {
     SDEBUG << "Instruction unexpectedly had no dependents!" << LEND;
     return false;
@@ -149,7 +150,8 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, RegisterDesc
     // Now confirm that the restore instruction writes the value back into the passed register
     // descriptor.
     bool restored_correctly = false;
-    auto rwrites = du.get_writes(restore_insn);
+    rose_addr_t raddr = restore_insn->get_address();
+    auto rwrites = du.get_writes(raddr);
     if (std::begin(rwrites) == std::end(rwrites)) return false;
     for (const AbstractAccess& rw : rwrites) {
       if (rw.is_reg(reg)) {
@@ -169,7 +171,7 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, RegisterDesc
 
     // Finally, confirm that no one else reads the restored value.
     bool restore_used = false;
-    const DUChain* user_deps = du.get_dependents(restore_insn);
+    const DUChain* user_deps = du.get_dependents(raddr);
     if (user_deps != NULL) {
       for (const Definition& udef : *user_deps) {
         STRACE << "Considering possible user: " << debug_instruction(udef.definer) << LEND;
@@ -244,7 +246,7 @@ void RegisterUsage::analyze_parameters() {
 
   // If we're an excluded function, we don't know what the calling convention is.
   if (p == NULL) return;
-  const Insn2DUChainMap& dd = p->get_usedef().get_dependencies();
+  const Addr2DUChainMap& dd = p->get_usedef().get_dependencies();
 
   // Get a handle to the stack pointer register, because it's special.
   const RegisterDictionary regdict = fd->ds.get_regdict();
@@ -264,7 +266,7 @@ void RegisterUsage::analyze_parameters() {
       if (!insn) continue;
 
       // If there's no use-def chain for the instruction, give up.
-      if (dd.find(insn) == dd.end()) {
+      if (dd.find(insn->get_address()) == dd.end()) {
         // Cory used to have this at WARN, but it turns out that instructions which have no
         // semantics have no use-def chain, so let's not double report that right now.
         SDEBUG << "No use-def chain for instruction: " << debug_instruction(insn) << LEND;
@@ -295,7 +297,7 @@ void RegisterUsage::analyze_parameters() {
         }
       }
 
-      for (const Definition& def : dd.at(insn)) {
+      for (const Definition& def : dd.at(insn->get_address())) {
         // This is the access that had the NULL definer.
         const AbstractAccess& aa = def.access;
         SDEBUG << "Evaluating " << debug_instruction(insn) << " which uses value "

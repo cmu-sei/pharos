@@ -121,11 +121,6 @@ private:
       write_guard<decltype(mutex)> guard{mutex};
       delete_addrs.insert(addr);
     }
-    // This update only works if the function descriptor is a "normal" one.  It's needed
-    // because there are still two places that require access from the function descriptor
-    // using the old API. :-(
-    FunctionDescriptor *fd = ds.get_rw_func(addr); // set_delete_method()
-    if (fd) fd->set_delete_method(true);
   }
   void set_purecall_method(rose_addr_t addr) { purecall_addrs.insert(addr); }
 

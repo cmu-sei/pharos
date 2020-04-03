@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Calls_H
 #define Pharos_Calls_H
@@ -70,7 +70,7 @@ class CallDescriptor : private Immobile {
   // descriptor that merges the results from all of the targets.  If the call target is a
   // single import, this pointer will point to the function descriptor associated with the
   // import.
-  FunctionDescriptor* function_descriptor;
+  FunctionDescriptor* function_descriptor = nullptr;
 
   // If the FunctionDescriptor pointed to by function_descriptor is owned (allocated) by this
   // object, it is managed here.
@@ -130,6 +130,15 @@ class CallDescriptor : private Immobile {
   void analyze();
 
   void _update_connections();
+
+  void _print(std::ostream &o) const;
+
+  struct self { CallDescriptor & self; };
+
+  friend std::ostream& operator<<(std::ostream &o, const self &cd) {
+    cd.self._print(o);
+    return o;
+  }
 
 public:
 
@@ -191,6 +200,11 @@ public:
 
   void update_call_type(CallType ct, GenericConfidence conf);
 
+  // Are we a tail-call optimized JMP instruction?
+  bool is_tail_call() const {
+    return insn_is_jmp(insn);
+  }
+
   // Add virtual call resolutions
   void add_virtual_resolution(VirtualFunctionCallInformation& vci, GenericConfidence conf);
   // Available only if object oriented analysis has been performed, empty otherwise.
@@ -214,7 +228,10 @@ public:
   // Return the function that contains this call.
   FunctionDescriptor* get_containing_function() const { return containing_function; }
 
-  void print(std::ostream &o) const;
+  void print(std::ostream &o) const {
+    read_guard<decltype(mutex)> guard{mutex};
+    _print(o);
+  }
   // Return the "real" call targets, e.g. with thunks removed.
   // CallTargetSet get_real_targets();
 

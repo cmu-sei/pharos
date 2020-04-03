@@ -114,6 +114,14 @@ bool insn_is_call(const SgAsmX86Instruction* insn) {
   else return false;
 }
 
+// Unconditional jumps (near and far).
+bool insn_is_jmp(const SgAsmX86Instruction* insn) {
+  if (insn == NULL) return false;
+  else if (insn->get_kind() == x86_jmp) return true;
+  else if (insn->get_kind() == x86_farjmp) return true;
+  else return false;
+}
+
 // For detecting call and call-like unconditional jumps.
 bool insn_is_call_or_jmp(const SgAsmX86Instruction* insn) {
   if (insn == NULL) return false;
@@ -834,17 +842,6 @@ rose_addr_t block_get_jmp_target(SgAsmBlock* bb) {
   bool ignored = false;
   AddrSet successors = last->getSuccessors(&ignored);
   return *(successors.begin());
-}
-
-SgAsmBlock* insn_get_block(const SgAsmInstruction* insn) {
-  if (insn == NULL) return NULL;
-  return isSgAsmBlock(insn->get_parent());
-}
-
-SgAsmFunction* insn_get_func(const SgAsmInstruction* insn) {
-  SgAsmBlock* block = insn_get_block(insn);
-  if (block == NULL) return NULL;
-  return isSgAsmFunction(block->get_parent());
 }
 
 // For situations where the DescriptorSet isn't available.

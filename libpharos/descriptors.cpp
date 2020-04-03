@@ -178,24 +178,11 @@ void DescriptorSet::init()
     }
   }
 
-  // Partitioner being non-null here is short hand for we've in "Pharos" mode and not
-  // "tracesem" mode.
-
-  static SgAsmBlock *gblock = P2::Modules::buildAst(partitioner, interp);
-  if (gblock != NULL and interp != NULL) {
-    GTRACE << "done calling partitioner2" << LEND;
-    GTRACE << "calling set_global_block" << LEND;
-    interp->set_global_block(gblock);
-    GTRACE << "done calling set_global_block, calling set_parent" << LEND;
-    gblock->set_parent(interp);
-    GTRACE << "done calling set_parent" << LEND;
-  }
-
   GDEBUG << "building FCG" << LEND;
-  Rose::BinaryAnalysis::FunctionCall().build_cg_from_ast(interp, function_call_graph);
+  function_call_graph = partitioner.functionCallGraph(P2::AllowParallelEdges::NO);
 
-  // Traverse the AST looking for calls and functions.
-  traverse(interp);
+  // Create function descriptors, call descriptors, and global memory descriptors...
+  create();
 
   // Since we need the call descriptors to create the new PDG graph, this seems like the right
   // place to do that for now.  In the future, this might be better someplace else.
@@ -203,6 +190,7 @@ void DescriptorSet::init()
 
   // Now make any connections that couldn't be made easily until we had complete data.
   update_connections();
+  //dump(std::cout);
 }
 
 // When passed a NULL interpretation, we'll analyze the file specified in the program options.
@@ -311,106 +299,108 @@ DescriptorSet::~DescriptorSet() {
   if (engine != NULL) delete engine;
 }
 
-// TODO - Cory says the proper way to do this is to call get_partitioner() and then call
-// instructionProvider[address]
-SgAsmInstruction* DescriptorSet::get_insn(rose_addr_t addr) const {
-  AddrInsnMap::const_iterator finder = insn_map.find(addr);
-  if (finder == insn_map.end()) return NULL;
-  return (*finder).second;
-}
-
 const RegisterDictionary DescriptorSet::get_regdict() const {
   return RegisterDictionary(partitioner.instructionProvider().registerDictionary());
 }
 
-void DescriptorSet::add_insn(rose_addr_t addr, SgAsmInstruction* insn) {
-  insn_map[addr] = insn;
-}
-
-// This is the traversal part of the class.
-void DescriptorSet::preOrderVisit(SgNode* n) {
-  SgAsmInstruction* ainsn = isSgAsmInstruction(n);
-  if (ainsn != NULL) add_insn(ainsn->get_address(), ainsn);
-
-  if (isSgAsmX86Instruction(n) != NULL) {
-    SgAsmX86Instruction *insn = isSgAsmX86Instruction(n);
-    GTRACE << "INSN: " << debug_instruction(insn, 5, NULL) << LEND;
-
-    // Look for references to absolute addresses, in order to create global memory descriptors.
-    // This code is very similar to what we do to detect calls as well, but it's not clear that
-    // we can do much better than to just duplicate it here.
-    SgAsmOperandList *oplist = insn->get_operandList();
-    SgAsmExpressionPtrList& elist = oplist->get_operands();
-    for (SgAsmExpression * expr : elist) {
-      // The value of the constant expression.
-      uint64_t v = 0;
-      //bool known_memory = false;
-      if (isSgAsmValueExpression (expr)) {
-        // Don't create global memory descriptors for calls and jumps to immediate addresses.
-        // We know that these are code references, not data references.
-        if (!insn_is_control_flow(insn)) {
-          v = SageInterface::getAsmConstant(isSgAsmValueExpression(expr));
-        }
-      }
-      else if (isSgAsmMemoryReferenceExpression(expr)) {
-        //known_memory = true;
-        SgAsmMemoryReferenceExpression* mr = isSgAsmMemoryReferenceExpression(expr);
-        SgAsmExpression *addr_expr = mr->get_address();
-        // This case handles expressions like [403123]
-        if (isSgAsmValueExpression(addr_expr)) {
-          v = SageInterface::getAsmConstant(isSgAsmValueExpression(addr_expr));
-        }
-        // This is the case for expressions like [eax+403123] and [ecx*4+403123]
-        else if (isSgAsmBinaryExpression(addr_expr)) {
-          // Is the constant always the right hand side?
-          SgAsmExpression *const_expr =
-            isSgAsmBinaryExpression(addr_expr)->get_rhs();
-          if (isSgAsmValueExpression(const_expr)) {
-            v = SageInterface::getAsmConstant(isSgAsmValueExpression(const_expr));
-          }
-          else {
-            // In all of the cases that I looked at, these expressions were of the form [ecx+edx*2]
-            GTRACE << "Right hand side of add expression is not constant!"
-                   << " insn=" << debug_instruction(insn, 0)
-                   << " expr=" << unparseExpression(const_expr, NULL, NULL) << LEND;}
-        }
-        // The remaning cases appear to be register dereferences e.g. "[eax]".  It appears
-        // that V_SgAsmBinarySubtract is not actually used (at least on X86).
-      }
-
-      // The determination of which addresses to include is a total hack, and it probably needs
-      // to be replaced with something more intelligent.  On the other hand, it would be nice
-      // if something this general caused no significant downstream problems, because it would
-      // be nice for this criteria to be sufficiently broad to catch all possible memory refs.
-      rose_addr_t addr = (rose_addr_t) v;
-      if (possible_global_address(addr)) {
-        // But don't create global memory descriptors for the imports.  We should probably be
-        // checking that no-one writes to the import table as well, perhaps the rigth place to
-        // do that is during emulation?
-        ImportDescriptor *id = import_descriptors.get_import(v);
-        if (id == NULL) {
-          // Do we already have a global memory descriptor for this address?
-          GlobalMemoryDescriptor* gmd = get_rw_global(addr); // add_ref()
-          // If not, then create one.
-          if (gmd == NULL) {
-            map_emplace_or_replace(global_descriptors, addr, addr, get_arch_bits());
-            gmd = get_rw_global(addr); // add_ref(), just created
-          }
-          // Either way, this instruction references the address...
-          gmd->add_ref(insn);
-          // We don't actually know if the reference was a read or a write, so this is WRONG!
-          // But it'll do for my current testing needs.
-          // if (known_memory) gmd->add_read(insn);
-        }
-      }
+void DescriptorSet::create() {
+  // Create function descriptors first, because we need them to determine whether some jump
+  // instructions are really tail-optimized calls or not.
+  const P2::AstConstructionSettings &settings = P2::AstConstructionSettings::strict();
+  for (const P2::Function::Ptr &function : partitioner.functions()) {
+    SgAsmFunction* func = P2::Modules::buildFunctionAst(partitioner, function, settings);
+    if (func) {
+      add_function_descriptor(func);
     }
+  }
 
-    if (insn->get_kind() != x86_call && insn->get_kind() != x86_farcall) return;
-    //OINFO << "Creating call descriptor for insn:" << debug_instruction(insn) << LEND;
-    map_emplace_or_replace(call_descriptors, insn->get_address(), *this, insn);
-  } else if (isSgAsmFunction(n) != NULL) {
-    SgAsmFunction *func = isSgAsmFunction(n);
-    add_function_descriptor(func);
+  // Now create the other descriptors (by looking at individual instructions).
+  for (P2::BasicBlock::Ptr b : partitioner.basicBlocks()) {
+    for (SgAsmInstruction* insn : b->instructions()) {
+      GTRACE << "INSN: " << debug_instruction(insn, 5, NULL) << LEND;
+
+      SgAsmX86Instruction *xinsn = isSgAsmX86Instruction(insn);
+      if (isSgAsmX86Instruction(insn) == NULL) continue;
+
+      // Look for references to absolute addresses, in order to create global memory
+      // descriptors.  This code is very similar to what we do to detect calls as well, but
+      // it's not clear that we can do much better than to just duplicate it here.
+      SgAsmOperandList *oplist = xinsn->get_operandList();
+      SgAsmExpressionPtrList& elist = oplist->get_operands();
+      for (SgAsmExpression * expr : elist) {
+        // The value of the constant expression.
+        uint64_t v = 0;
+        //bool known_memory = false;
+        if (isSgAsmValueExpression (expr)) {
+          // Don't create global memory descriptors for calls and jumps to immediate addresses.
+          // We know that these are code references, not data references.
+          if (!insn_is_control_flow(xinsn)) {
+            v = SageInterface::getAsmConstant(isSgAsmValueExpression(expr));
+          }
+        }
+        else if (isSgAsmMemoryReferenceExpression(expr)) {
+          //known_memory = true;
+          SgAsmMemoryReferenceExpression* mr = isSgAsmMemoryReferenceExpression(expr);
+          SgAsmExpression *addr_expr = mr->get_address();
+          // This case handles expressions like [403123]
+          if (isSgAsmValueExpression(addr_expr)) {
+            v = SageInterface::getAsmConstant(isSgAsmValueExpression(addr_expr));
+          }
+          // This is the case for expressions like [eax+403123] and [ecx*4+403123]
+          else if (isSgAsmBinaryExpression(addr_expr)) {
+            // Is the constant always the right hand side?
+            SgAsmExpression *const_expr = isSgAsmBinaryExpression(addr_expr)->get_rhs();
+            if (isSgAsmValueExpression(const_expr)) {
+              v = SageInterface::getAsmConstant(isSgAsmValueExpression(const_expr));
+            }
+            else {
+              // In all of the cases that I looked at, these expressions were of the form [ecx+edx*2]
+              GTRACE << "Right hand side of add expression is not constant!"
+                     << " insn=" << debug_instruction(xinsn, 0)
+                     << " expr=" << unparseExpression(const_expr, NULL, NULL) << LEND;}
+            }
+          // The remaning cases appear to be register dereferences e.g. "[eax]".  It appears
+          // that V_SgAsmBinarySubtract is not actually used (at least on X86).
+        }
+
+        // The determination of which addresses to include is a total hack, and it probably
+        // needs to be replaced with something more intelligent.  On the other hand, it would
+        // be nice if something this general caused no significant downstream problems, because
+        // it would be nice for this criteria to be sufficiently broad to catch all possible
+        // memory refs.
+        rose_addr_t addr = (rose_addr_t) v;
+        if (possible_global_address(addr)) {
+          // But don't create global memory descriptors for the imports.  We should probably be
+          // checking that no-one writes to the import table as well, perhaps the rigth place to
+          // do that is during emulation?
+          ImportDescriptor *id = import_descriptors.get_import(v);
+          if (id == NULL) {
+            // Do we already have a global memory descriptor for this address?
+            GlobalMemoryDescriptor* gmd = get_rw_global(addr); // add_ref()
+            // If not, then create one.
+            if (gmd == NULL) {
+              map_emplace_or_replace(global_descriptors, addr, addr, get_arch_bits());
+              gmd = get_rw_global(addr); // add_ref(), just created
+            }
+            // Either way, this instruction references the address...
+            gmd->add_ref(xinsn);
+            // We don't actually know if the reference was a read or a write, so this is WRONG!
+            // But it'll do for my current testing needs.
+            // if (known_memory) gmd->add_read(xinsn);
+          }
+        }
+      }
+
+      // We're only interested in call and jmp instructions for creating call descriptors.
+      if (!insn_is_call_or_jmp(xinsn)) continue;
+      // If the instruction was a jump, it also needs to be a jump to a function entry.
+      if (insn_is_jmp(xinsn)) {
+        rose_addr_t taddr = insn_get_branch_target(insn);
+        if (!get_func(taddr)) continue;
+      }
+      // Create a call descriptor for the call, or the tail-call optimized jump instruction.
+      map_emplace_or_replace(call_descriptors, insn->get_address(), *this, xinsn);
+    }
   }
 }
 
@@ -541,133 +531,59 @@ void DescriptorSet::update_import_target(SymbolicValuePtr& v, SgAsmX86Instructio
   }
 }
 
-//
-// Support for topo sorting the function list.
-//
-
-using FCGVertex = boost::graph_traits<FCG>::vertex_descriptor;
-
-template<typename OutputIterator>
-struct ptopo_sort_visitor: public boost::dfs_visitor<> {
-  ptopo_sort_visitor(OutputIterator _iter):
-    m_iter(_iter) {
-  }
-
-  template<typename Edge, typename Graph>
-  void back_edge(const Edge& e, Graph& g) {
-    /* BOOST_THROW_EXCEPTION(not_a_dag()); */
-
-    FCGVertex src = source(e, g);
-    FCGVertex dst = target(e, g);
-    SgAsmFunction *sf = get(boost::vertex_name, g, src);
-    SgAsmFunction *df = get(boost::vertex_name, g, dst);
-
-    GWARN << "Function call graph has a cycle: src=" << addr_str(sf->get_entry_va())
-          << " dst=" << addr_str(df->get_entry_va()) << " stack analysis may be incorrect." << LEND;
-  }
-
-  template <typename Vertex, typename Graph>
-  void finish_vertex(const Vertex& u, Graph&) {
-    *m_iter++ = u;
-  }
-
-  OutputIterator m_iter;
-};
-
-template<typename VertexListGraph, typename OutputIterator, typename P,
-         typename T, typename R>
-void ptopological_sort(VertexListGraph& g, OutputIterator result,
-                       const boost::bgl_named_params<P, T, R>& params) {
-  using PtopoVisitor = ptopo_sort_visitor<OutputIterator>;
-  depth_first_search(g, params.visitor(PtopoVisitor(result)));
-}
-
-template<typename VertexListGraph, typename OutputIterator>
-void ptopological_sort(VertexListGraph& g, OutputIterator result) {
-  ptopological_sort(g, result,
-                    boost::bgl_named_params<int, boost::buffer_param_t>(0)); // bogus
-}
-
-std::vector<const FunctionDescriptor *>
-DescriptorSet::const_funcs_in_bottom_up_order() const {
-  // We should probably be caching the program fcg and and possibly even the sorted list.
-
-  GDEBUG << "pseudo topo sort" << LEND;
-  std::list<FCGVertex> funcvs;
-  ptopological_sort(function_call_graph, std::back_inserter(funcvs));
-
-  std::vector<const FunctionDescriptor *> funcs;
-  GTRACE << "new order:" << LEND;
-
-  // there has got to be a better way to do this...
-  for (const FCGVertex & fv : funcvs) {
-    SgNode *node = get(boost::vertex_name, function_call_graph, fv);
-    SgAsmFunction* func = isSgAsmFunction(node);
-    if (func == NULL) {
-      GERROR << "Unexpected non-function node in topo sort" << LEND;
-      continue;
-    }
-    const FunctionDescriptor* fd = get_func(func->get_entry_va());
-    funcs.push_back(fd);
-    GTRACE << " " << fd->address_string() << LEND;
-  }
-
-  return funcs;
-}
-
-std::vector<FunctionDescriptor *>
-DescriptorSet::rw_funcs_in_bottom_up_order() {
-  // We should probably be caching the program fcg and and possibly even the sorted list.
-
-  GDEBUG << "pseudo topo sort" << LEND;
-  std::list<FCGVertex> funcvs;
-  ptopological_sort(function_call_graph, std::back_inserter(funcvs));
-
-  std::vector<FunctionDescriptor *> funcs;
-  GTRACE << "new order:" << LEND;
-
-  // there has got to be a better way to do this...
-  for (const FCGVertex & fv : funcvs) {
-    SgNode *node = get(boost::vertex_name, function_call_graph, fv);
-    SgAsmFunction* func = isSgAsmFunction(node);
-    if (func == NULL) {
-      GERROR << "Unexpected non-function node in topo sort" << LEND;
-      continue;
-    }
-    FunctionDescriptor* fd = get_rw_func(func->get_entry_va()); // in rw_funcs_bottom_up_order()
-    funcs.push_back(fd);
-    GTRACE << " " << fd->address_string() << LEND;
-  }
-
-  return funcs;
-}
-
 const FunctionDescriptor*
 DescriptorSet::get_func_containing_address(rose_addr_t addr) const {
-  // This must be the entry VA or bad things happen
-  // ... it's a guess at best
-  SgAsmFunction* func = insn_get_func(get_insn(addr));
-  if (func)
-    return get_func(func->get_entry_va());
-  else
+  std::vector<const FunctionDescriptor*> fds = get_funcs_containing_address(addr);
+  if (fds.size() == 0) {
     return NULL;
+  }
+  // This is not intended to be a permanent warning because there's nothing the end user can
+  // act on!  while it might be appropriate to keep this function as a "helper", it would
+  // probably be better to eliminate it entirely in favor of newer get_funcs_containg_address()
+  // API.
+  else if (fds.size() > 1) {
+    OWARN << "Address " << addr_str(addr) << " was used by more than one function!" << LEND;
+  }
+
+  return fds[0];
 }
 
-// For a while still we can just return the interpretation, but longer term, we're going to
-// want to actually return a generated AST here for the few (just dumpmasm?) tools that still
-// need it.
-SgAsmInterpretation*
-DescriptorSet::get_ast()
-{
-  return interp;
+std::vector<const FunctionDescriptor*>
+DescriptorSet::get_funcs_containing_address(rose_addr_t addr) const {
+  std::vector<const FunctionDescriptor*> funcs;
+  const AddressInterval ai(addr);
+  for (const P2::Function::Ptr func : partitioner.functionsOverlapping(ai)) {
+    const FunctionDescriptor* fd = get_func(func->address());
+    if (fd) {
+      funcs.push_back(fd);
+    }
+    // If there was a P2::Function::Ptr, but not a FunctionDescriptor that's an assertion
+    // worthy level programming error, but let's not exit needlessly.
+    else {
+      OERROR << "No function found at address " << addr_str(addr) << LEND;
+    }
+  }
+  // This list might be empty, and that's not an unexpected condition.
+  return funcs;
 }
 
-const FunctionDescriptor*
-DescriptorSet::get_fd_from_insn(const SgAsmInstruction *insn) const
-{
-  SgAsmFunction* func = insn_get_func(insn);
-  if (func == NULL) return NULL;
-  return get_func(func->get_entry_va());
+std::vector<FunctionDescriptor*>
+DescriptorSet::get_rw_funcs_containing_address(rose_addr_t addr) {
+  std::vector<FunctionDescriptor*> funcs;
+  const AddressInterval ai(addr);
+  for (const P2::Function::Ptr func : partitioner.functionsOverlapping(ai)) {
+    FunctionDescriptor* fd = get_rw_func(func->address());
+    if (fd) {
+      funcs.push_back(fd);
+    }
+    // If there was a P2::Function::Ptr, but not a FunctionDescriptor that's an assertion
+    // worthy level programming error, but let's not exit needlessly.
+    else {
+      OERROR << "No function found at address " << addr_str(addr) << LEND;
+    }
+  }
+  // This list might be empty, and that's not an unexpected condition.
+  return funcs;
 }
 
 // Find a general purpose register in an semi-architecture independent way.

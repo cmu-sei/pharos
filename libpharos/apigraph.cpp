@@ -498,8 +498,14 @@ void ApiSearchExecutor::UpdateSearchTree(PredecessorMap pred_map) {
       part_of_sig = true;
     }
 
+    // This is code to obtain the function address is less than perfect, because in the
+    // latest Partitioner2 API, the block might belong to more than one function, but it's
+    // not the end of the world, because the value is only used for additional detail in
+    // the JSON reporting right now.
+    const FunctionDescriptor *fd = ds.get_func_containing_address(vi.block->get_address());
+    rose_addr_t func_addr = fd->get_address();
     state_.search_tree.push_back(
-        ApiWaypointDescriptor(vi.block,current_component,*ri,vi.api_name,part_of_sig));
+      ApiWaypointDescriptor(vi.block,current_component,*ri,func_addr,vi.api_name,part_of_sig));
   }
 }
 
@@ -1310,9 +1316,12 @@ void ApiSearchExecutor::InitializeSearch(ApiCfgComponentPtr comp,
   GDEBUG << "Starting search at " << addr_str(vi.block->get_address())
         << ", which calls " << vi.api_name << LEND;
 
+  // See earlier comment about func_addr and block being in multiple functions.
+  const FunctionDescriptor *fd = ds.get_func_containing_address(vi.block->get_address());
+  rose_addr_t func_addr = fd->get_address();
   // the start is the first element of the API signature
   state_.search_tree.push_back(
-      ApiWaypointDescriptor(vi.block,caddr,startv,vi.api_name,true));
+    ApiWaypointDescriptor(vi.block,caddr,startv,func_addr,vi.api_name,true));
 
   // This is the special case where the signature is 1-element and found the start
   // the signature has been matched
@@ -1522,7 +1531,6 @@ void ApiResultJsonFormatter::Format(ApiSearchResultVector &results, ApiOutputMan
 
         SgAsmX86Instruction* insn = GetLastBlkInsn(wpi->block);
         rose_addr_t address = insn->get_address();
-        SgAsmFunction *function = insn_get_func(insn);
 
         if (path_level == ApiOutputManager::PathLevel::FULL_PATH) {
           if (wpi->name != "") {
@@ -1530,14 +1538,14 @@ void ApiResultJsonFormatter::Format(ApiSearchResultVector &results, ApiOutputMan
           }
           // include the address and function even if the API name isn't found
           path_entry.push_back(make_ptree("Address",addr_str(address)));
-          path_entry.push_back(make_ptree("Function",addr_str(function->get_address())));
+          path_entry.push_back(make_ptree("Function",addr_str(wpi->func)));
         }
         else if (path_level == ApiOutputManager::PathLevel::SIG_PATH) {
           if (wpi->is_part_of_sig && wpi->name != "") {
             // if part of sig, then must include API. Only include if the API name is found
             path_entry.push_back(make_ptree("API", wpi->name));
             path_entry.push_back(make_ptree("Address",addr_str(address)));
-            path_entry.push_back(make_ptree("Function",addr_str(function->get_address())));
+            path_entry.push_back(make_ptree("Function",addr_str(wpi->func)));
           }
         }
 

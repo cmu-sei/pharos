@@ -130,7 +130,7 @@ public:
 };
 
 using DUChain = std::set<Definition>;
-using Insn2DUChainMap = std::map<SgAsmX86Instruction *, DUChain>;
+using Addr2DUChainMap = std::map<rose_addr_t, DUChain>;
 
 using BlockAnalysisMap = std::map<rose_addr_t, BlockAnalysis>;
 using IterationCounterMap = std::map<rose_addr_t, unsigned int>;
@@ -171,10 +171,10 @@ protected:
 
   // Mapping of an instruction, I, to the set of instructions responsible for defining
   // registers/memory used by I.
-  Insn2DUChainMap depends_on;
+  Addr2DUChainMap depends_on;
   // Mapping of an instruction, I, to the set of instructions that use abstract locations set
   // by I.
-  Insn2DUChainMap dependents_of;
+  Addr2DUChainMap dependents_of;
 
   // A history of GPRs, flags and memory read
   AccessMap accesses;
@@ -328,50 +328,50 @@ public:
   // Was the read a fake read?  (A read that wasn't really used)?
   bool fake_read(SgAsmX86Instruction* insn, const AbstractAccess& aa) const;
 
-  access_filters::aa_range get_reads(SgAsmX86Instruction* insn) const {
-    return access_filters::read(accesses, insn);
+  access_filters::aa_range get_reads(rose_addr_t addr) const {
+    return access_filters::read(accesses, addr);
   }
-  access_filters::aa_range get_writes(SgAsmX86Instruction* insn) const {
-    return access_filters::write(accesses, insn);
+  access_filters::aa_range get_writes(rose_addr_t addr) const {
+    return access_filters::write(accesses, addr);
   }
-  access_filters::aa_range get_mems(SgAsmX86Instruction* insn) const {
-    return access_filters::mem(accesses, insn);
+  access_filters::aa_range get_mems(rose_addr_t addr) const {
+    return access_filters::mem(accesses, addr);
   }
-  access_filters::aa_range get_regs(SgAsmX86Instruction* insn) const {
-    return access_filters::reg(accesses, insn);
+  access_filters::aa_range get_regs(rose_addr_t addr) const {
+    return access_filters::reg(accesses, addr);
   }
-  access_filters::aa_range get_mem_reads(SgAsmX86Instruction* insn) const {
-    return access_filters::read_mem(accesses, insn);
+  access_filters::aa_range get_mem_reads(rose_addr_t addr) const {
+    return access_filters::read_mem(accesses, addr);
   }
-  access_filters::aa_range get_mem_writes(SgAsmX86Instruction* insn) const {
-    return access_filters::write_mem(accesses, insn);
+  access_filters::aa_range get_mem_writes(rose_addr_t addr) const {
+    return access_filters::write_mem(accesses, addr);
   }
-  access_filters::aa_range get_reg_reads(SgAsmX86Instruction* insn) const {
-    return access_filters::read_reg(accesses, insn);
+  access_filters::aa_range get_reg_reads(rose_addr_t addr) const {
+    return access_filters::read_reg(accesses, addr);
   }
-  access_filters::aa_range get_reg_writes(SgAsmX86Instruction* insn) const {
-    return access_filters::write_reg(accesses, insn);
+  access_filters::aa_range get_reg_writes(rose_addr_t addr) const {
+    return access_filters::write_reg(accesses, addr);
   }
 
   // Return the single (expected) write for a given instruction.  If there's more than one,
   // return the first write.
-  const AbstractAccess* get_the_write(SgAsmX86Instruction* insn) const;
+  const AbstractAccess* get_the_write(rose_addr_t addr) const;
   // Return the first memory write for a given instruction.
-  const AbstractAccess* get_first_mem_write(SgAsmX86Instruction* insn) const;
+  const AbstractAccess* get_first_mem_write(rose_addr_t addr) const;
 
-  const Insn2DUChainMap& get_dependencies() const { return depends_on; }
-  const Insn2DUChainMap& get_dependents() const { return dependents_of; }
-  const DUChain* get_dependencies(SgAsmX86Instruction* insn) const {
-    Insn2DUChainMap::const_iterator finder = depends_on.find(insn);
-    if (finder == depends_on.end()) return NULL; else return &(depends_on.at(insn));
+  const Addr2DUChainMap& get_dependencies() const { return depends_on; }
+  const Addr2DUChainMap& get_dependents() const { return dependents_of; }
+  const DUChain* get_dependencies(rose_addr_t addr) const {
+    Addr2DUChainMap::const_iterator finder = depends_on.find(addr);
+    if (finder == depends_on.end()) return NULL; else return &(depends_on.at(addr));
   }
-  const DUChain* get_dependents(SgAsmX86Instruction* insn) const {
-    Insn2DUChainMap::const_iterator finder = dependents_of.find(insn);
-    if (finder == dependents_of.end()) return NULL; else return &(dependents_of.at(insn));
+  const DUChain* get_dependents(rose_addr_t addr) const {
+    Addr2DUChainMap::const_iterator finder = dependents_of.find(addr);
+    if (finder == dependents_of.end()) return NULL; else return &(dependents_of.at(addr));
   }
 
   // For debugging
-  void print_accesses(SgAsmX86Instruction* insn) const;
+  void print_accesses(rose_addr_t addr) const;
   void print_dependencies() const;
   void print_dependents() const;
 };

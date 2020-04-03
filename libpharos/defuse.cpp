@@ -105,9 +105,10 @@ DUAnalysis::update_accesses(
   SgAsmX86Instruction *insn,
   SymbolicRiscOperatorsPtr& rops)
 {
-  auto it = accesses.find(insn);
+  rose_addr_t iaddr = insn->get_address();
+  auto it = accesses.find(iaddr);
   if (it == accesses.end()) {
-    accesses[insn] = std::move(rops->insn_accesses);
+    accesses[iaddr] = std::move(rops->insn_accesses);
     // Clear vector to avoid accessing moved elements.
   }
   else {
@@ -174,14 +175,15 @@ BlockAnalysis::record_dependencies(
   du.update_accesses(insn, rops);
   //du.print_accesses(insn); // Debugging
 
+  rose_addr_t iaddr = insn->get_address();
   // Ensure that there's always an entry in the depends_on map for this instruction.
-  if (du.depends_on.find(insn) == du.depends_on.end()) {
-    du.depends_on[insn] = DUChain();
+  if (du.depends_on.find(iaddr) == du.depends_on.end()) {
+    du.depends_on[iaddr] = DUChain();
   }
 
   AbstractAccessVector all_regs;
-  SDEBUG << "insn accesses size=" << du.accesses[insn].size() << LEND;
-  for (const AbstractAccess & aa : du.accesses[insn]) {
+  SDEBUG << "insn accesses size=" << du.accesses[iaddr].size() << LEND;
+  for (const AbstractAccess & aa : du.accesses[iaddr]) {
     // Reads
     if (aa.isRead) {
       // ----------------------------------------------------------------------------------
@@ -203,7 +205,7 @@ BlockAnalysis::record_dependencies(
           SDEBUG << "Warning: Use of uninitialized register "
                  << regname << " by " << debug_instruction(insn) << LEND;
           Definition reg_def(NULL, aa);
-          du.depends_on[insn].insert(reg_def);
+          du.depends_on[iaddr].insert(reg_def);
           // Should probably be add_dependency_pair(insn, NULL, aa);
         }
         else {
@@ -717,14 +719,23 @@ DUAnalysis::DUAnalysis(DescriptorSet& ds_, FunctionDescriptor & f)
   else {
     status = solve_flow_equation_iteratively();
   }
+  
+  GDEBUG << "Analysis of function " << current_function->address_string() << " took "
+         << func_limit.get_relative_clock().count() << " seconds." << LEND;
+
+  if (status != LimitSuccess) {
+    SERROR << "Analysis of function " << current_function->address_string () << " failed: " << func_limit.get_message() << LEND;
+  }
+
 }
 
 // For debugging accessess
-void DUAnalysis::print_accesses(SgAsmX86Instruction* insn) const {
+void DUAnalysis::print_accesses(rose_addr_t addr) const {
+  SgAsmInstruction* insn = ds.get_insn(addr);
   OINFO << "Instruction accesses for: " << debug_instruction(insn) << LEND;
-  auto iter = accesses.find(insn);
+  auto iter = accesses.find(addr);
   if (iter == accesses.end()) {
-    OERROR << "Instruction " << addr_str(insn->get_address()) << " has no accesses!" << LEND;
+    OERROR << "Instruction " << addr_str(addr) << " has no accesses!" << LEND;
   }
   else {
     for (const AbstractAccess & aa : iter->second) {
@@ -736,8 +747,9 @@ void DUAnalysis::print_accesses(SgAsmX86Instruction* insn) const {
 // For debugging dependencies
 void DUAnalysis::print_dependencies() const {
   OINFO << "Dependencies (Inst I, value read by I <=== instruction that defined value):" << LEND;
-  for (const Insn2DUChainMap::value_type &p : depends_on) {
-    OINFO << debug_instruction(p.first) << LEND;
+  for (const Addr2DUChainMap::value_type &p : depends_on) {
+    SgAsmInstruction* insn = ds.get_insn(p.first);
+    OINFO << debug_instruction(insn) << LEND;
     print_definitions(p.second);
   }
 }
@@ -745,26 +757,28 @@ void DUAnalysis::print_dependencies() const {
 // For debugging dependents
 void DUAnalysis::print_dependents() const {
   OINFO << "Dependents (Inst I, value defined by I <=== instruction that read value):" << LEND;
-  for (const Insn2DUChainMap::value_type &p : dependents_of) {
-    OINFO << debug_instruction(p.first) << LEND;
+  for (const Addr2DUChainMap::value_type &p : dependents_of) {
+    SgAsmInstruction* insn = ds.get_insn(p.first);
+    OINFO << debug_instruction(insn) << LEND;
     print_definitions(p.second);
   }
 }
 
-const AbstractAccess* DUAnalysis::get_the_write(SgAsmX86Instruction* insn) const {
-  auto writes = get_writes(insn);
+const AbstractAccess* DUAnalysis::get_the_write(rose_addr_t addr) const {
+  auto writes = get_writes(addr);
   auto i = std::begin(writes);
   if (i == std::end(writes)) return NULL;
   const AbstractAccess *aa = &*i;
   if (++i != std::end(writes)) {
+    SgAsmInstruction* insn = ds.get_insn(addr);
     SERROR << "Instruction: " << debug_instruction(insn)
            << " had more than the expected single write." << LEND;
   }
   return aa;
 }
 
-const AbstractAccess* DUAnalysis::get_first_mem_write(SgAsmX86Instruction* insn) const {
-  auto mem_writes = get_mem_writes(insn);
+const AbstractAccess* DUAnalysis::get_first_mem_write(rose_addr_t addr) const {
+  auto mem_writes = get_mem_writes(addr);
   auto i = std::begin(mem_writes);
   if (i == std::end(mem_writes)) return NULL;
   return &*i;
@@ -813,7 +827,7 @@ DUAnalysis::fake_read(SgAsmX86Instruction* insn, const AbstractAccess& aa) const
     }
   };
 
-  for (const AbstractAccess& waa : get_writes(insn)) {
+  for (const AbstractAccess& waa : get_writes(insn->get_address())) {
     TreeNodePtr write_tn = waa.value->get_expression();
     SubxVisitor read_subx(read_tn);
 
@@ -836,13 +850,20 @@ DUAnalysis::fake_read(SgAsmX86Instruction* insn, const AbstractAccess& aa) const
 // If it does, there are probably some optimizations that can be made using iterators that
 // would help.
 void DUAnalysis::add_dependency_pair(SgAsmX86Instruction *i1, SgAsmX86Instruction *i2, AbstractAccess access) {
-  // Make new DUChains if needed.
-  if (i1 != NULL && depends_on.find(i1) == depends_on.end()) depends_on[i1] = DUChain();
-  if (i2 != NULL && dependents_of.find(i2) == dependents_of.end()) dependents_of[i2] = DUChain();
-  // Add the matching entries.
-  // i1 reads the aloc defined by i2.  i2 defines the aloc read by i1.
-  if (i1 != NULL) depends_on[i1].insert(Definition(i2, access));
-  if (i2 != NULL) dependents_of[i2].insert(Definition(i1, access));
+  rose_addr_t a1 = 0;
+  if (i1 != NULL) {
+    a1 = i1->get_address();
+    if (depends_on.find(a1) == depends_on.end()) depends_on[a1] = DUChain();
+    depends_on[a1].insert(Definition(i2, access));
+  }
+  rose_addr_t a2 = 0;
+  if (i2 != NULL) {
+    a2 = i2->get_address();
+    if (dependents_of.find(a2) == dependents_of.end()) dependents_of[a2] = DUChain();
+    dependents_of[a2].insert(Definition(i1, access));
+  }
+
+  //OTRACE << "Creating instruction dependency pair: " << addr_str(a1) << " " << addr_str(a2) << LEND;
 }
 
 // Has our emulation of the instructions leading up to this call revealed where it calls to?
@@ -1070,21 +1091,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
 
     for (RegisterDescriptor rd : ru.changed_registers) {
       if (rd != eaxrd) {
-        // It turns out that we can't enable this code properly because our system is just too
-        // fragile.  If we're incorrect in any low-level function, this propogates that failure
-        // throughout the entire call-chain leading to that function.  Specifically, claiming
-        // that a function overwrites a register when it fact it does not, leads to the loss of
-        // important local state that results in incorrect analysis.  In most of the cases that
-        // Cory has found so far, this is caused by functions with two possible execution
-        // paths, one: returns and does not modify the register, and two: does not return and
-        // does modify the register.  Thus this might be fixed with better does not return analysis.
-
-        // I re-enabled register overwritin, and we were passing tests, but I noticed that it
-        // was doing some very bad things with tail-call optimized delete() methods, and
-        // thought this would be a good defensive measure until we investigated more.  This is
-        // the other place where is_delete_method() is still required on a function descriptor.
-        if (cfd->is_delete_method()) continue;
-
+        // Mark the register as overwritten.
         SymbolicValuePtr rv = create_return_value(insn, rd.get_nbits(), false);
         create_overwritten_register(rops, ds, rd, false, rv, cd, fparams);
         GDEBUG << "Setting changed register " << unparseX86Register(rd, NULL)
@@ -1527,7 +1534,9 @@ bool DUAnalysis::saved_register(SgAsmX86Instruction* insn, const Definition& def
 
   const AbstractAccess* saveloc = NULL;
 
-  for (const AbstractAccess& aa : get_writes(insn)) {
+  assert(insn);
+  rose_addr_t iaddr = insn->get_address();
+  for (const AbstractAccess& aa : get_writes(iaddr)) {
     // Of course the push updated ESP.  We're not intersted in that.
     if (aa.is_reg(resp)) continue;
     if (saveloc == NULL && aa.is_mem()) {
@@ -1542,7 +1551,7 @@ bool DUAnalysis::saved_register(SgAsmX86Instruction* insn, const Definition& def
   if (saveloc == NULL) return false;
   SDEBUG << " --- Looking for write to" << saveloc->str() << LEND;
 
-  const DUChain* deps = get_dependents(insn);
+  const DUChain* deps = get_dependents(iaddr);
   if (deps == NULL) {
     SDEBUG << "No dependents_of entry for instruction: " << debug_instruction(insn) << LEND;
     return false;
@@ -2174,8 +2183,6 @@ DUAnalysis::loop_over_cfg()
       rstatus = func_limit.check();
       // The intention is that rstatus and changed would be the only clauses on the while condition.
       if (rstatus != LimitSuccess) {
-        SERROR << "Function " << fd->address_string()
-               << " " << func_limit.get_message() << LEND;
         // Break out of the loop of basic blocks.
         break;
       }
@@ -2185,13 +2192,6 @@ DUAnalysis::loop_over_cfg()
     SDEBUG << "Flow equation loop #" << func_limit.get_counter() << " for " << fd->address_string()
            << " took " << func_limit.get_relative_clock().count() << " seconds." << LEND;
   }
-
-  if (rstatus != LimitSuccess) {
-    SERROR << "Function analysis convergence failed for: " << fd->address_string() << LEND;
-  }
-
-  GDEBUG << "Analysis of function " << fd->address_string() << " took "
-         << func_limit.get_relative_clock().count() << " seconds." << LEND;
 
   if (GDEBUG) {
     for (auto& bpair : blocks) {

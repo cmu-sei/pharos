@@ -145,17 +145,19 @@ extern template void debug_print_expression(
 extern template void debug_print_expression(SymbolicSemantics::SValuePtr const & e);
 
 
-// Import InsnSet from ROSE.
-using InsnSet = Semantics2::SymbolicSemantics::InsnSet;
-
-// A set of X86 instructions.
-class X86InsnCompare {
+// ROSE's InsnSet isn't sorted, so we're using our own...
+class InsnCompare {
   public:
-  bool operator()(const SgAsmX86Instruction* x, const SgAsmX86Instruction* y)
+  bool operator()(const SgAsmInstruction* x, const SgAsmInstruction* y)
     const { return (x->get_address() < y->get_address()); }
 };
 
-using X86InsnSet = std::set<SgAsmX86Instruction*, X86InsnCompare>;
+// A set of architecture independent instructions.
+using InsnSet = std::set<SgAsmInstruction*, InsnCompare>;
+using RoseInsnSet = Semantics2::SymbolicSemantics::InsnSet;
+
+// A set of X86 instructions.
+using X86InsnSet = std::set<SgAsmX86Instruction*, InsnCompare>;
 
 // Introduce RegiserDescriptor into the pharos namespace
 using Rose::BinaryAnalysis::RegisterDescriptor;
@@ -262,6 +264,9 @@ void customize_message_facility(Sawyer::Message::Facility facility, std::string 
 // This should be a method on SgAsmX86Instruction and possibly on SgAsmInstruction as well.
 bool insn_is_call(const SgAsmX86Instruction* insn);
 
+// Unconditional jumps (near and far).
+bool insn_is_jmp(const SgAsmX86Instruction* insn);
+
 // For detecting call and call-like unconditional jumps.
 bool insn_is_call_or_jmp(const SgAsmX86Instruction* insn);
 
@@ -308,11 +313,6 @@ const SgAsmX86Instruction* last_x86insn_in_block(const SgAsmBlock* bb);
 std::string insn_get_generic_category(SgAsmInstruction *insn);
 // and here's a func to get the full list of generic categories (it's sorted):
 const std::vector< std::string > get_all_insn_generic_categories();
-
-// Get the block containing the instruction.
-SgAsmBlock* insn_get_block(const SgAsmInstruction* insn);
-// Get the function containing the instruction.
-SgAsmFunction* insn_get_func(const SgAsmInstruction* insn);
 
 // A hackish approch to 64-bit support...
 // If you have a descriptor set, it's easier to call the similar method on it.

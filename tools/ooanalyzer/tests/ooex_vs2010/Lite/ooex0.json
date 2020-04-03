@@ -1,6 +1,54 @@
 {
     "Structures": [
         {
+            "Name": "cls_401000",
+            "DemangledName": "",
+            "Size": "16",
+            "Members": [
+                {
+                    "name": "mbr_0",
+                    "type": "dword",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_4",
+                    "type": "dword",
+                    "offset": "4",
+                    "count": "1"
+                },
+                {
+                    "name": "mbr_8",
+                    "type": "word",
+                    "offset": "8",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "401000",
+                    "name": "ctor_401000",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                },
+                {
+                    "ea": "401040",
+                    "name": "meth_401040",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                },
+                {
+                    "ea": "401050",
+                    "name": "meth_401050",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                }
+            ]
+        },
+        {
             "Name": "cls_4016b1",
             "DemangledName": "",
             "Size": "13",
@@ -37,44 +85,6 @@
                     "demangled_name": "",
                     "import": "no",
                     "type": "ctor"
-                }
-            ]
-        },
-        {
-            "Name": ".?AVtype_info@@",
-            "DemangledName": "type_info",
-            "Size": "4",
-            "Members": [
-                {
-                    "name": "vfptr_0",
-                    "type": "vfptr",
-                    "offset": "0",
-                    "count": "1"
-                }
-            ],
-            "Methods": [
-                {
-                    "ea": "402d41",
-                    "name": "dtor_402d41",
-                    "demangled_name": "",
-                    "import": "no",
-                    "type": "dtor"
-                }
-            ],
-            "Vftables": [
-                {
-                    "ea": "408268",
-                    "vfptr": "0",
-                    "entries": [
-                        {
-                            "ea": "402d51",
-                            "offset": "0",
-                            "name": "virt_deldtor_402d51",
-                            "demangled_name": "",
-                            "import": "no",
-                            "type": "dtor"
-                        }
-                    ]
                 }
             ]
         },
@@ -225,50 +235,40 @@
             ]
         },
         {
-            "Name": "cls_401000",
-            "DemangledName": "",
-            "Size": "16",
+            "Name": ".?AVtype_info@@",
+            "DemangledName": "type_info",
+            "Size": "4",
             "Members": [
                 {
-                    "name": "mbr_0",
-                    "type": "dword",
+                    "name": "vfptr_0",
+                    "type": "vfptr",
                     "offset": "0",
-                    "count": "1"
-                },
-                {
-                    "name": "mbr_4",
-                    "type": "dword",
-                    "offset": "4",
-                    "count": "1"
-                },
-                {
-                    "name": "mbr_8",
-                    "type": "word",
-                    "offset": "8",
                     "count": "1"
                 }
             ],
             "Methods": [
                 {
-                    "ea": "401000",
-                    "name": "ctor_401000",
+                    "ea": "402d41",
+                    "name": "dtor_402d41",
                     "demangled_name": "",
                     "import": "no",
-                    "type": "ctor"
-                },
+                    "type": "dtor"
+                }
+            ],
+            "Vftables": [
                 {
-                    "ea": "401040",
-                    "name": "meth_401040",
-                    "demangled_name": "",
-                    "import": "no",
-                    "type": "meth"
-                },
-                {
-                    "ea": "401050",
-                    "name": "meth_401050",
-                    "demangled_name": "",
-                    "import": "no",
-                    "type": "meth"
+                    "ea": "408268",
+                    "vfptr": "0",
+                    "entries": [
+                        {
+                            "ea": "402d51",
+                            "offset": "0",
+                            "name": "virt_deldtor_402d51",
+                            "demangled_name": "",
+                            "import": "no",
+                            "type": "dtor"
+                        }
+                    ]
                 }
             ]
         }
@@ -276,6 +276,26 @@
     "Usages": [
         {
             "Members": [
+                {
+                    "class": "cls_401000",
+                    "ea": "40100e"
+                },
+                {
+                    "class": "cls_401000",
+                    "ea": "401043"
+                },
+                {
+                    "class": "cls_401000",
+                    "ea": "401007"
+                },
+                {
+                    "class": "cls_401000",
+                    "ea": "401040"
+                },
+                {
+                    "class": "cls_401000",
+                    "ea": "401014"
+                },
                 {
                     "class": "cls_4016b1",
                     "ea": "4016cf"
@@ -327,10 +347,6 @@
                 {
                     "class": "cls_4016b1",
                     "ea": "401721"
-                },
-                {
-                    "class": ".?AVtype_info@@",
-                    "ea": "402d44"
                 },
                 {
                     "class": ".?AVbad_alloc@std@@",
@@ -409,24 +425,8 @@
                     "ea": "402d31"
                 },
                 {
-                    "class": "cls_401000",
-                    "ea": "40100e"
-                },
-                {
-                    "class": "cls_401000",
-                    "ea": "401043"
-                },
-                {
-                    "class": "cls_401000",
-                    "ea": "401007"
-                },
-                {
-                    "class": "cls_401000",
-                    "ea": "401040"
-                },
-                {
-                    "class": "cls_401000",
-                    "ea": "401014"
+                    "class": ".?AVtype_info@@",
+                    "ea": "402d44"
                 }
             ]
         }

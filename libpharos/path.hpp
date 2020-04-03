@@ -70,9 +70,6 @@ using CfgEdge = boost::graph_traits<CFG>::edge_descriptor;
 using CfgEdgeValueMap = std::map<CfgEdge, SymbolicValuePtr>;
 using CfgEdgeExprMap = std::map<CfgEdge, z3::expr>;
 
-using FcgVertex = boost::graph_traits<FCG>::vertex_descriptor;
-using FcgEdge = boost::graph_traits<FCG>::edge_descriptor;
-
 // Custom graph type for a call trace
 using CallTraceGraph =
   boost::adjacency_list< boost::setS,

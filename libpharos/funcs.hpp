@@ -346,16 +346,6 @@ public:
   }
   void update_stack_delta(StackDelta sd);
 
-  // We still need this on the function descriptor a little longer. :-(
-  bool is_delete_method() const {
-    read_guard<decltype(mutex)> guard{mutex};
-    return delete_method;
-  }
-  void set_delete_method(bool d) {
-    write_guard<decltype(mutex)> guard{mutex};
-    delete_method = d;
-  }
-
   // A boolean convenience function for when we only want to test if we're a thunk.
   bool is_thunk() const {
     read_guard<decltype(mutex)> guard{mutex};

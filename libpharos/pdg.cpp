@@ -7,7 +7,7 @@
 namespace pharos {
 
 PDG::PDG(DescriptorSet& ds_, FunctionDescriptor& f) :
-  ds(ds_), du(ds_, f), cdg(f)
+  ds(ds_), du(ds_, f), cdg(ds_, f)
 {
   // We always have a function descriptor, and it always has a real function, or we won't
   // (shouldn't) have been called.
@@ -30,8 +30,8 @@ PDG::PDG(DescriptorSet& ds_, FunctionDescriptor& f) :
 // access and returns it.  When there are no reads of any kind for the instruction, there are
 // no memory reads for the instruction, or there are multiple memory reads for teh instruction,
 // this function returns an invalid abstract access.  Not currently called from anywhere.
-AbstractAccess PDG::get_single_mem_read(SgAsmX86Instruction* insn) const {
-  auto mem_reads = du.get_mem_reads(insn);
+AbstractAccess PDG::get_single_mem_read(rose_addr_t addr) const {
+  auto mem_reads = du.get_mem_reads(addr);
   auto i = std::begin(mem_reads);
   if (i == std::end(mem_reads)) {
     // More memory reads, return an invalid abstract access.
@@ -53,8 +53,12 @@ X86InsnSet PDG::chop_insns(SgAsmX86Instruction *insn) const {
   X86InsnSet insns;
   AccessMap tainted = chop_full(insn);
   for (const AccessMap::value_type &p : tainted) {
-    insns.insert(p.first);
-    STRACE << "  Chopped: " << debug_instruction(p.first) << LEND;
+    SgAsmInstruction* ginsn = ds.get_insn(p.first);
+    SgAsmX86Instruction* xinsn = isSgAsmX86Instruction(ginsn);
+    // Certainly only tested on X86 instructions.
+    assert(xinsn);
+    insns.insert(xinsn);
+    STRACE << "  Chopped: " << debug_instruction(ginsn) << LEND;
   }
   return insns;
 }
@@ -88,10 +92,11 @@ AccessMap PDG::chop_full(SgAsmX86Instruction *insn) const {
     // instruction being chopped
     AbstractAccessVector accesses;
 
+    rose_addr_t caddr = cur->get_address();
     if (cur == insn) {
       // if (insn_is_call(cur)) SDEBUG << "We're chopping a call " << debug_instruction(cur) << LEND;
       // SDEBUG << "Starting chop from " << debug_instruction(insn) << LEND;
-      for (const AbstractAccess& aa : du.get_writes(cur)) {
+      for (const AbstractAccess& aa : du.get_writes(caddr)) {
         if (aa.is_reg() && insn_is_callNF(cur) &&
             unparseX86Register(aa.register_descriptor, NULL) == "esp") continue;
 
@@ -101,7 +106,7 @@ AccessMap PDG::chop_full(SgAsmX86Instruction *insn) const {
     }
     else {
       // SDEBUG << "**" << debug_instruction(cur) << " ";
-      for (const AbstractAccess& aa : du.get_reads(cur)) {
+      for (const AbstractAccess& aa : du.get_reads(caddr)) {
         LeafNodePtrSet vars = aa.value->get_expression()->getVariables();
 
         for (LeafNodePtrSet::iterator it = vars.begin(); it != vars.end(); it++) {
@@ -117,11 +122,11 @@ AccessMap PDG::chop_full(SgAsmX86Instruction *insn) const {
       }
 
       if (accesses.size() > 0) {
-        taintedInsns[cur] = accesses;
+        taintedInsns[caddr] = accesses;
       } else continue;
     }
 
-    const DUChain* curdeps = du.get_dependents(cur);
+    const DUChain* curdeps = du.get_dependents(caddr);
     if (curdeps != NULL) {
       for (const Definition& def : *curdeps) {
         if (def.definer != cur) {
@@ -176,10 +181,10 @@ StringVector PDG::getInstructionString(SgAsmX86Instruction *insn) const {
 }
 
 // Only called from buildDotNode, which is only used from toDot().
-std::string PDG::makeVariableStr(SgAsmX86Instruction *cur_insn) const {
+std::string PDG::makeVariableStr(rose_addr_t addr) const {
   std::stringstream variable;
   // The variable representing this node in the graph
-  variable << "N" << cur_insn->get_address();
+  variable << "N" << addr;
   return variable.str();
 }
 
@@ -190,7 +195,8 @@ void PDG::buildDotNode(
   if (cur_insn == NULL || processed.find(cur_insn) != processed.end()) return;
   processed.insert(cur_insn);
 
-  std::string curvar = makeVariableStr(cur_insn);
+  rose_addr_t caddr = cur_insn->get_address();
+  std::string curvar = makeVariableStr(caddr);
   AddrVector constants;
 
   // Create the label for the node
@@ -198,24 +204,24 @@ void PDG::buildDotNode(
        << debug_instruction(cur_insn) + "\\n" + getInstructionString(cur_insn,constants) + "\"];\n";
 
   // du.cleanupDependencies();
-  const Insn2DUChainMap& data_deps = du.get_dependencies();
+  const Addr2DUChainMap& data_deps = du.get_dependencies();
 
   // Create the data flow edges
-  if (data_deps.find(cur_insn) != data_deps.end()) {
-    for (const Definition& def : data_deps.at(cur_insn)) {
+  if (data_deps.find(caddr) != data_deps.end()) {
+    for (const Definition& def : data_deps.at(caddr)) {
       SgAsmX86Instruction* definer = def.definer;
       if (definer == NULL) continue;
-      sout << curvar << " -> " << makeVariableStr(definer) << " [label=\"d\"];\n";
+      sout << curvar << " -> " << makeVariableStr(definer->get_address()) << " [label=\"d\"];\n";
       buildDotNode(definer, sout, processed);
     }
   }
 
   // Create the control flow edges
-  if (control_deps.find(cur_insn) != control_deps.end()) {
-    for (SgAsmInstruction* ginsn : control_deps.at(cur_insn)) {
+  if (control_deps.find(caddr) != control_deps.end()) {
+    for (SgAsmInstruction* ginsn : control_deps.at(caddr)) {
       SgAsmX86Instruction *cinsn = isSgAsmX86Instruction(ginsn);
       assert(cinsn);
-      sout << curvar << " -> " << makeVariableStr(cinsn) << " [label=\"c\"];\n";
+      sout << curvar << " -> " << makeVariableStr(cinsn->get_address()) << " [label=\"c\"];\n";
       buildDotNode(cinsn, sout, processed);
     }
   }
@@ -256,15 +262,17 @@ void PDG::hashSubPaths(SgAsmX86Instruction *cur_insn, std::string path, X86InsnS
   if (cur_insn == NULL || processed.find(cur_insn) != processed.end())
     return;
 
+  rose_addr_t caddr = cur_insn->get_address();
+
   processed.insert(cur_insn);
   if (ss_dump && includeSubPath) {
-    if (filter_addresses.size() > 0 && filter_addresses.find(cur_insn->get_address()) == filter_addresses.end())
+    if (filter_addresses.size() > 0 && filter_addresses.find(caddr) == filter_addresses.end())
       includeSubPath = false;
     //else
     //  (*ss_dump).push_back("# Subpath hashes for: " + debug_instruction(cur_insn));
   }
 
-  const Insn2DUChainMap& data_deps = du.get_dependencies();
+  const Addr2DUChainMap& data_deps = du.get_dependencies();
 
   // Add the current node to the path and hash
   StringVector ins_str = getInstructionString(cur_insn);
@@ -274,10 +282,10 @@ void PDG::hashSubPaths(SgAsmX86Instruction *cur_insn, std::string path, X86InsnS
 
     // Iterate through the constants specified by the user
     if (includeSubPath && filter_constants.size() > 0 &&
-        filter_constants.find(cur_insn->get_address()) != filter_constants.end()) {
+        filter_constants.find(caddr) != filter_constants.end()) {
       bool found = false;
-      for (StringSet::iterator cit = filter_constants[cur_insn->get_address()].begin();
-           cit != filter_constants[cur_insn->get_address()].end(); cit++) {
+      for (StringSet::iterator cit = filter_constants[caddr].begin();
+           cit != filter_constants[caddr].end(); cit++) {
         std::string term = *cit;
         assert(term.length() > 0);
 
@@ -310,8 +318,8 @@ void PDG::hashSubPaths(SgAsmX86Instruction *cur_insn, std::string path, X86InsnS
 
     // Hash the data flow edges
     // getSlice uses uppercase C and D, while here uses lowercase, why?
-    if (curLen < maxSubPathLen && data_deps.find(cur_insn) != data_deps.end()) {
-      for (const Definition& def : data_deps.at(cur_insn)) {
+    if (curLen < maxSubPathLen && data_deps.find(caddr) != data_deps.end()) {
+      for (const Definition& def : data_deps.at(caddr)) {
         SgAsmX86Instruction* definer = def.definer;
         if (definer == NULL) continue;
         hashSubPaths(definer, new_path + "-d->", processed, hashedPaths, maxSubPathLen,
@@ -320,9 +328,9 @@ void PDG::hashSubPaths(SgAsmX86Instruction *cur_insn, std::string path, X86InsnS
     }
 
     // Create the control flow edges
-    if (curLen < maxSubPathLen && control_deps.find(cur_insn) != control_deps.end()) {
-      for (InsnSet::iterator it = control_deps.at(cur_insn).begin();
-           it != control_deps.at(cur_insn).end(); it++)
+    if (curLen < maxSubPathLen && control_deps.find(caddr) != control_deps.end()) {
+      for (InsnSet::iterator it = control_deps.at(caddr).begin();
+           it != control_deps.at(caddr).end(); it++)
       {
         SgAsmX86Instruction *cinsn = isSgAsmX86Instruction(*it);
         assert(cinsn);
@@ -372,14 +380,15 @@ std::string PDG::getSlice(SgAsmX86Instruction *insn, Slice &s) const {
   PDGNode pn;
   pn.insn = insn;
 
-  const Insn2DUChainMap& data_deps = du.get_dependencies();
+  const Addr2DUChainMap& data_deps = du.get_dependencies();
 
+  rose_addr_t iaddr = insn->get_address();
   // Add the data and control dependencies for this node
-  if (data_deps.find(insn) != data_deps.end()) {
-    pn.ddeps = data_deps.at(insn);
+  if (data_deps.find(iaddr) != data_deps.end()) {
+    pn.ddeps = data_deps.at(iaddr);
   }
-  if (control_deps.find(insn) != control_deps.end()) {
-    pn.cdeps = control_deps.at(insn);
+  if (control_deps.find(iaddr) != control_deps.end()) {
+    pn.cdeps = control_deps.at(iaddr);
   }
   s.insert(pn);
 
@@ -388,15 +397,15 @@ std::string PDG::getSlice(SgAsmX86Instruction *insn, Slice &s) const {
   InsnBoolPairSet dependencies;
 
   // Insert the data-dependencies of this instruction
-  if (data_deps.find(insn) != data_deps.end()) {
-    for (const Definition& def : data_deps.at(insn)) {
+  if (data_deps.find(iaddr) != data_deps.end()) {
+    for (const Definition& def : data_deps.at(iaddr)) {
       if (def.definer) dependencies.insert(InsnBoolPair(def.definer, true));
     }
   }
 
   // Insert the control dependencies of this block
-  if (control_deps.find(insn) != control_deps.end()) {
-    for (SgAsmInstruction* i : control_deps.at(insn)) {
+  if (control_deps.find(iaddr) != control_deps.end()) {
+    for (SgAsmInstruction* i : control_deps.at(iaddr)) {
       if (isSgAsmX86Instruction(i))
         dependencies.insert(InsnBoolPair(isSgAsmX86Instruction(i), false));
     }

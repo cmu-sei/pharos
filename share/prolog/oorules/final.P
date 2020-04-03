@@ -17,19 +17,6 @@
 
 % ejs: It sure would be nice if there was a consistent prolog library...
 
-include(Goal, List, Included) :-
-    include_(List, Goal, Included).
-
-include_([], _, []).
-include_([X1|Xs1], P, Included) :-
-    (   call(P, X1)
-        ->  Included = [X1|Included1]
-        ;   Included = Included1
-    ),
-    include_(Xs1, P, Included1).
-
-findallMethods(C, O) :- findall(C, L), include(factMethod, L, O).
-
 % ============================================================================================
 % Class Identification...
 % ============================================================================================
@@ -37,6 +24,11 @@ findallMethods(C, O) :- findall(C, L), include(factMethod, L, O).
 % Once we've finished assigning methods to constructors, we can assign class identifiers.  This
 % version of the rule is a bit nasty because we can't rely on multiple implementations of the
 % rule and tabling to give us just one answer...   I think.
+
+classIdentifier(Method, ID) :-
+    var(Method),
+    nonvar(ID),
+    throw_with_backtrace(error(instantiation_error, classIdentifier/2)).
 
 classIdentifier(Method, ID) :-
     (
@@ -85,56 +77,72 @@ classIdentifier(Method, ID) :-
 
 % --------------------------------------------------------------------------------------------
 % A helper for identifying "worthless" classes to reduce noise in the output.
-:- table worthlessClass/1 as incremental.
+%:- table worthlessClass/1 as opaque.
+
+% A class is useful if it appears in a relationship.
+usefulClass(Class) :-
+    factEmbeddedObject(_, Class, _);
+    factEmbeddedObject(Class, _, _);
+    factDerivedClass(_, Class, _);
+    factDerivedClass(Class, _, _).
+
+% A class is useful if it has a VFTable.
+usefulClass(Class) :-
+    find(XMethod, Class),
+    factVFTableWrite(_Insn, XMethod, 0, VFTable),
+    not(factVFTableOverwrite(VFTable, _PrimaryVFTable, 0)).
+
+% A class is useful if it is not size zero.
+usefulClass(Class) :-
+    reasonMinimumPossibleClassSize(Class, Size), Size > 0.
+
+% A class containing a constructor is useful.
+usefulClass(Class) :-
+    find(Method, Class),
+    factConstructor(Method).
+
+% A class containing a real destructor is useful.
+usefulClass(Class) :-
+    find(Method, Class),
+    factRealDestructor(Method).
+
+% A class with more than one method is useful.
+usefulClass(Class) :-
+    findallMethods(Class, List),
+    length(List, Len),
+    Len > 1.
 
 % We want to reject classes with no useful information.  In practice this means having a single
 % method, and no other "useful" data like a real destructor, a vftable, etc.  Sadly the final
 % class rule is pretty complicated, this rule is largely a copy of that rule.  Maybe in the
 % future we can find some witty way to structure this that results in better code reuse.
-worthlessClass(ClassID) :-
-    find(Method, Class),
-    % Keep classes appearing in inhertiance relationships.
-    not(factEmbeddedObject(_EClass1, Class, _EOffset1)),
-    not(factEmbeddedObject(Class, _EClass2, _EOffset2)),
-    not(factDerivedClass(_IClass1, Class, _IOffset1)),
-    not(factDerivedClass(Class, _IClass2, _OOffset2)),
+worthlessClass(Class) :-
+    var(Class),
+    throw_with_backtrace(error(instantiation_error, worthlessClass/1)).
 
-    reasonMethod(Method),
-    not(purecall(Method)),
-    not((eventualThunk(P, Method), purecall(P))),
+% A class is worthless if (1) it's not useful, or (2) contains purecall.
+worthlessClass(Class) :-
+    not(usefulClass(Class)),
+    !,
+
     classIdentifier(Class, ClassID),
+    logdebug('Rejecting worthless finalClass '), logdebugln(ClassID).
 
-    % A VFTable definitely counts as "useful".
-    not((
-               find(XMethod, Class),
-               factVFTableWrite(_Insn, XMethod, 0, VFTable),
-               not(factVFTableOverwrite(VFTable, _PrimaryVFTable, 0))
-       )),
+worthlessClass(Class) :-
+    purecall(PurecallMethod),
+    find(PurecallMethod, Class),
+    !,
 
-    % Get the certain and likely class sizes.
-    reasonMinimumPossibleClassSize(Class, 0),
-
-    % A real destructor counts as "useful"?  Perhaps this should excluded becuse it's guessed.
-    % We've already excluded constructor.
-    not((
-               factRealDestructor(RealDestructor),
-               find(RealDestructor, Class)
-       )),
-
-    findallMethods(Class, UnsortedMethodList),
-    length(UnsortedMethodList, 1),
-    logtrace('Rejecting worthless finalClass '), logtraceln(ClassID).
+    classIdentifier(Class, ClassID),
+    logdebug('Rejecting worthless finalClass '), logdebugln(ClassID).
 
 % --------------------------------------------------------------------------------------------
 % This final result defines the existance of a class.   More details in results.txt.
-:- table finalClass/6 as incremental.
+%:- finalClass/6 as incremental.
 finalClass(ClassID, VFTableOrNull, CSize, LSize, RealDestructorOrNull, MethodList) :-
-    find(Method, Class),
-    reasonMethod(Method),
-    not(purecall(Method)),
-    not((eventualThunk(P, Method), purecall(P))),
+    class(Class),
     classIdentifier(Class, ClassID),
-    not(worthlessClass(ClassID)),
+    not(worthlessClass(Class)),
     % If there's a certain VFTableWrite, use the VFTable value from it -- if not use zero.
     % Always pick the VFTable at offset zero, because that's the "master" one.
     ((find(XMethod, Class),
@@ -153,7 +161,7 @@ finalClass(ClassID, VFTableOrNull, CSize, LSize, RealDestructorOrNull, MethodLis
 
 % --------------------------------------------------------------------------------------------
 % This final result defines the properties of a VFTable.   More details in results.txt.
-:- table finalVFTable/5 as incremental.
+%:- finalVFTable/5 as incremental.
 finalVFTable(VFTable, CertainSize, LikelySize, RTTIAddressOrNull, RTTINameOrNull) :-
     factVFTable(VFTable),
     (reasonRTTIInformation(VFTable, RTTIAddress, RTTIName) ->
@@ -169,19 +177,19 @@ finalVFTableEntry(VFTable, Offset, Method) :-
     factVFTableEntry(VFTable, Offset, Method).
 
 % --------------------------------------------------------------------------------------------
-:- table finalVBTable/4 as incremental.
+%:- finalVBTable/4 as incremental.
 finalVBTable(VBTable, Class, Size, Offset) :-
     factVBTable(VBTable),
     factVBTableWrite(_Insn, Method, Offset, VBTable),
     findall(CertainOffset, factVBTableEntry(VBTable, CertainOffset, _Value), CertainOffsets),
     list_max(CertainOffsets, Size),
-    find(Method, Class).
+    classIdentifier(Method, Class).
 
 finalVBTableEntry(VBTable, Offset, Value) :-
     factVBTableEntry(VBTable, Offset, Value).
 
 % --------------------------------------------------------------------------------------------
-:- table finalEmbeddedObject/4 as incremental.
+%:- finalEmbeddedObject/4 as incremental.
 
 % In the Outer class identifier at the specified offset is an object instance of the type
 % specified by EmbeddedClass indeitifier.  The embedded object is not believed to be a base
@@ -193,7 +201,7 @@ finalEmbeddedObject(OuterClass, Offset, EmbeddedClass, likely) :-
     iso_dif(OuterClass, EmbeddedClass).
 
 % --------------------------------------------------------------------------------------------
-:- table finalInheritance/5 as incremental.
+%:- finalInheritance/5 as incremental.
 
 % In the Derived class at the specified offset is an object instance of the type specified by
 % Base.  If the base class is not the first base class (non-zero offset) and the base class has
@@ -205,18 +213,18 @@ finalInheritance(DerivedClassID, BaseClassID, ObjectOffset, VFTableOrNull, false
     % The following line stops us from reporting inheritances from A to C if there is also a
     % relation from A to B and B to C.  We have this because virtual inheritance is known to
     % introduce "false" A to C relationships depending on the order that guessing occurs in.
-    not((factDerivedClass(DerivedClass, OtherClass, _Off1), factDerivedClass(OtherClass, BaseClass, _Off2))),
+    once((not((factDerivedClass(DerivedClass, OtherClass, _Off1), factDerivedClass(OtherClass, BaseClass, _Off2))),
 
-    classIdentifier(DerivedClass, DerivedClassID),
-    classIdentifier(BaseClass, BaseClassID),
-    % I think this clause incorrectly requires the class to have a constructor just so that we
-    % can detect the constructor.  It should probably be grouped with that part of the rule.
-    factConstructor(DerivedConstructor),
-    find(DerivedConstructor, DerivedClass),
-    % Unify with the derived constructor to unify with the VFTable value.  In the new world of
-    % proper guessing, it's possible that we don't have a VFTable.
-    (factVFTableWrite(_Insn, DerivedConstructor, ObjectOffset, VFTable) ->
-         VFTableOrNull = VFTable ; VFTableOrNull is 0).
+          classIdentifier(DerivedClass, DerivedClassID),
+          classIdentifier(BaseClass, BaseClassID),
+          % I think this clause incorrectly requires the class to have a constructor just so that we
+          % can detect the constructor.  It should probably be grouped with that part of the rule.
+          factConstructor(DerivedConstructor),
+          find(DerivedConstructor, DerivedClass),
+          % Unify with the derived constructor to unify with the VFTable value.  In the new world of
+          % proper guessing, it's possible that we don't have a VFTable.
+          (factVFTableWrite(_Insn, DerivedConstructor, ObjectOffset, VFTable) ->
+               VFTableOrNull = VFTable ; VFTableOrNull is 0))).
 
 % Cory's a little uncertain about this rule because it's unclear if we'll ever assert a certain
 % inheritance relationship without the virtual table fact that would trigger the rule above.
@@ -233,7 +241,7 @@ finalInheritance(DerivedClassID, BaseClassID, ObjectOffset, VFTableOrNull, false
 %    not_exists(factVFTableWrite(_Insn, DerivedConstructor, ObjectOffset, _VFTable)).
 
 % --------------------------------------------------------------------------------------------
-:- table certainMemberAccessEvidence/4 as incremental.
+%%:- certainMemberAccessEvidence/4 as incremental.
 
 % Find all methods that access offsets in the class.
 certainMemberAccessEvidence(Class, Offset, Size, Insn) :-
@@ -243,7 +251,7 @@ certainMemberAccessEvidence(Class, Offset, Size, Insn) :-
     validMethodMemberAccess(Insn, Method, Offset, Size).
 
 % --------------------------------------------------------------------------------------------
-:- table finalMemberAccess/4 as incremental.
+%:- finalMemberAccess/4 as incremental.
 
 % The member at Offset in Class was accessed using the given Size by the list of evidence
 % instructions provided. The list of evidence instructions only contains instructions from the
@@ -256,12 +264,12 @@ certainMemberAccessEvidence(Class, Offset, Size, Insn) :-
 finalMemberAccess(ClassID, Offset, Size, EvidenceList) :-
     certainMemberOnClass(Class, Offset, Size),
     classIdentifier(Class, ClassID),
-    not(worthlessClass(ClassID)),
+    not(worthlessClass(Class)),
     setof(I, certainMemberAccessEvidence(Class, Offset, Size, I), UnsortedEvidenceList),
     sort(UnsortedEvidenceList, EvidenceList).
 
 % --------------------------------------------------------------------------------------------
-:- table finalMember/4 as incremental.
+%:- finalMember/4 as incremental.
 
 % The finalMember() result documents the existence of the definition of a member on a specific
 % class.  The intention (possibly with a currently incorrect implementation) is that we will
@@ -274,20 +282,24 @@ finalMemberAccess(ClassID, Offset, Size, EvidenceList) :-
 % are not listed again as finalMembers.  Instead they are list in the finalEmbeddedObject and
 % finalInheritance results.
 finalMember(ClassID, Offset, Sizes, certain) :-
-    certainMemberOnExactClass(Class, Offset, _Size),
+    certainMemberOnExactClass(Class, Offset, EarlySize),
     classIdentifier(Class, ClassID),
-    not(worthlessClass(ClassID)),
+    not(worthlessClass(Class)),
     setof(Size, certainMemberOnExactClass(Class, Offset, Size), UnsortedSizes),
     %subtract(UnsortedSizes, [0], FilteredSizes),
     %sort(FilteredSizes, Sizes).
-    sort(UnsortedSizes, Sizes).
+    sort(UnsortedSizes, Sizes),
+    % As a hack to prevent us from outputting a Class, Offset multiple times, only proceed if
+    % EarlySize == Sizes[0]
+    UnsortedSizes = [EarlySize|_].
+
 
 % ============================================================================================
 % Final Method Properties
 % ============================================================================================
 
 % --------------------------------------------------------------------------------------------
-:- table finalMethodProperty/3 as incremental.
+%:- finalMethodProperty/3 as incremental.
 % In many cases, no qualifiers of any kind are required for specific methods.  However, there
 % are multiple properties of a method that can all be determined at different confidence levels
 % independently.
@@ -297,7 +309,8 @@ finalMember(ClassID, Offset, Sizes, certain) :-
 % currently scheduled for elimination.
 finalMethodProperty(Method, constructor, certain) :-
     factConstructor(Method),
-    not(worthlessClass(Method)).
+    find(Method, Class),
+    not(worthlessClass(Class)).
 
 % --------------------------------------------------------------------------------------------
 % This result marks that a method is certain to be a deleting destructor.  The certain field is
@@ -305,7 +318,8 @@ finalMethodProperty(Method, constructor, certain) :-
 % given class is determined from the finalClass result.
 finalMethodProperty(Method, deletingDestructor, certain) :-
     factDeletingDestructor(Method),
-    not(worthlessClass(Method)).
+    find(Method, Class),
+    not(worthlessClass(Class)).
 
 % --------------------------------------------------------------------------------------------
 % At one point I had though that this was duplicative, and therefore should not be included in
@@ -313,7 +327,8 @@ finalMethodProperty(Method, deletingDestructor, certain) :-
 % try it with it on for a while.
 finalMethodProperty(Method, realDestructor, certain) :-
     factRealDestructor(Method),
-    not(worthlessClass(Method)).
+    find(Method, Class),
+    not(worthlessClass(Class)).
 
 % --------------------------------------------------------------------------------------------
 % This result marks whether a method is believed to be virtual, and what our confidence in that
@@ -324,19 +339,21 @@ finalMethodProperty(Method, realDestructor, certain) :-
 
 % The obvious rule is that if we're certain that the method is virtual, we should report so.
 finalMethodProperty(Method, virtual, certain) :-
-    (factVFTableEntry(_VFTable, _Offset, Entry), dethunk(Entry, Method);
-     symbolProperty(Method, virtual)),
+    find(Method, Class),
+    factMethod(Method),
+    once((factVFTableEntry(_VFTable, _Offset, Entry), dethunk(Entry, Method);
+          symbolProperty(Method, virtual))),
     % But don't report purecall as virtual, because official symbols do not.
     not(purecall(Entry)),
     not(purecall(Method)),
-    not(worthlessClass(Method)).
+    not(worthlessClass(Class)).
 
 % Unimplemented rule: There might be a reasoning rule about transferring knowledge from one
 % virtual function to another.  Specifically that the virtual function table of a Derived class
 % must be as large (or larger than it's base class?)
 
 % --------------------------------------------------------------------------------------------
-:- table finalResolvedVirtualCall/3 as incremental.
+%:- finalResolvedVirtualCall/3 as incremental.
 
 % The call at Insn can be resolved to the Target through the virtual function table at VFTable.
 % Most of the information describing a virtual function call is already avilable in C++ once

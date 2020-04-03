@@ -371,7 +371,7 @@ SymbolicValuePtr SymbolicRiscOperators::read_memory(const SymbolicMemoryMapState
     } else {
       retval = SymbolicValue::promote(concat(retval, byte_value));
     }
-    const InsnSet &definers = byte_value->get_defining_instructions();
+    const RoseInsnSet &definers = byte_value->get_defining_instructions();
     defs.insert(definers.begin(), definers.end());
     //const InsnSet &modifiers = byte_value->get_modifiers(); // copying modifiers in read_memory()
     //for (const SgAsmInstruction* i : modifiers) {

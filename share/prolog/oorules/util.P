@@ -22,6 +22,9 @@
 % to backtrack until we fix the upstream problem.
 :- dynamic backtrackForUpstream/0.
 
+sort_tuple((A,B), (C,D)) :-
+    (A < B -> (C=A, D=B); (C=B, D=A)).
+
 list_to_set(List, Set) :-
     number_list(List, 1, Numbered),
     keysort(Numbered, ONum),
@@ -65,6 +68,18 @@ minof(A, B) :-
 
 %% end list_to_set
 
+% ejs: This is basically List.filter
+include(Goal, List, Included) :-
+    include_(List, Goal, Included).
+
+include_([], _, []).
+include_([X1|Xs1], P, Included) :-
+    (   call(P, X1)
+        ->  Included = [X1|Included1]
+        ;   Included = Included1
+    ),
+    include_(Xs1, P, Included1).
+
 tuple_to_list((A,B), L) :-
     !,
     tuple_to_list(A, L0),
@@ -105,10 +120,8 @@ iso_dif(X, Y) :-
    X \== Y,
    ( X \= Y -> true
    ;
-   machine:xsb_backtrace(B),
-   error_handler:print_backtrace(B),
    write('X='), write(X), write(' Y='), writeln(Y),
-   throw(error(instantiation_error,iso_dif/2))
+   throw_with_backtrace(error(instantiation_error,iso_dif/2))
    ).
 
 % list_min([5,2,8,1,4], Min). unifies Min with 1.
@@ -272,6 +285,13 @@ show_progress_idg :-
 show_progress_idg.
 :- endif.
 
+:- if(current_prolog_flag(version_data, xsb(_,_,_,_))).
+recommend_swi :-
+    logerrorln('OOAnalyzer has been running for over an hour in Prolog mode.  We have found that for, complex executables, SWI Prolog often outperforms XSB Prolog.  You may wish to dump the .facts file for your executable using the -F option of ooanalyzer, and then run the oodebugrun-swipl script in share/pharos/oorules of your build directory.  You will need to install swipl and ensure it is on your PATH.').
+:- else.
+recommend_swi.
+:- endif.
+
 show_progress :-
     logdebugln('-------------------------------------------'),
     cputime(T),
@@ -283,6 +303,18 @@ show_progress :-
     logdebugln('total number of reasoningForward steps is'(RFN,T)),
     statistics,
     show_progress_idg.
+
+:- if(current_prolog_flag(version_data, xsb(_,_,_,_))).
+throw_with_backtrace(Throw) :-
+   machine:xsb_backtrace(B),
+   error_handler:print_backtrace(B),
+   throw(Throw).
+:- else.
+throw_with_backtrace(Throw) :-
+    backtrace(100),
+    throw(Throw).
+:- endif.
+
 
 shut_down :-
     show_progress, halt.

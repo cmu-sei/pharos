@@ -30,9 +30,20 @@ makeIfNecessary(M) :-
 find(M, R) :-
     findint(M, R).
 
+% Find all objects on M's class
 findall(M, S) :-
     find(M, R),
     setof(X, find(X, R), S).
+
+% Filter out non-methods...
+findallMethods(C, O) :- findall(C, L), include(factMethod, L, O).
+
+findAllClasses(S) :-
+    setof(C, M^find(M, C), S).
+
+class(C) :-
+    findAllClasses(S),
+    member(C, S).
 
 /* Local Variables:   */
 /* mode: prolog       */

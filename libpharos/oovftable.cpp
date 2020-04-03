@@ -1,4 +1,4 @@
-// Copyright 2017-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2017-2020 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "oovftable.hpp"
 #include "oomethod.hpp"
@@ -81,7 +81,7 @@ OOVirtualFunctionTable::get_virtual_calls() const {
   return vcalls_;
 }
 
-const std::map<const CallDescriptor*, AddrSet>
+const OOVirtualFunctionTable::CallDescriptorAddressMap
 OOVirtualFunctionTable::get_virtual_call_targets() const {
   return vcall_targets_;
 }

@@ -1,8 +1,4 @@
-// Copyright 2018-2019 Carnegie Mellon University.  See LICENSE file for terms.
-
-#include "path.hpp"
-#include "misc.hpp"
-#include "stkvar.hpp"
+// Copyright 2018-2020 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graph_utility.hpp>
@@ -13,6 +9,12 @@
 #include <boost/graph/topological_sort.hpp>
 #include <boost/graph/breadth_first_search.hpp>
 #include <boost/graph/depth_first_search.hpp>
+
+#include <Sawyer/GraphTraversal.h>
+
+#include "path.hpp"
+#include "misc.hpp"
+#include "stkvar.hpp"
 
 namespace pharos {
 
@@ -130,8 +132,8 @@ PathFinder::generate_cfg_constraints(CallTraceDescriptorPtr call_trace_desc) {
 
     if (prev_call_trace_desc && ei.edge_src_addr == fd.get_address()) {
       rose_addr_t call_addr = call_trace_desc->get_call()->get_address();
-      SgAsmBlock* caller_bb = ds_.get_block_containing_address(call_addr);
-      rose_addr_t caller_bb_addr = caller_bb->get_address();
+      P2::BasicBlockPtr caller_bb = ds_.get_block(call_addr);
+      rose_addr_t caller_bb_addr = caller_bb->address();
 
       boost::optional<CfgEdgeInfo> prev_ei = prev_call_trace_desc->get_edge_info(caller_bb_addr);
       if (prev_ei) {
@@ -399,11 +401,11 @@ PathFinder::generate_path_constraints(z3::expr& start_constraint,
 
   bool goal_set=true, start_set = true;
 
-  SgAsmBlock* start_bb = insn_get_block(ds_.get_insn(start_address_));
-  rose_addr_t start_bb_addr = start_bb->get_address();
+  P2::BasicBlockPtr start_bb = ds_.get_block(start_address_);
+  rose_addr_t start_bb_addr = start_bb->address();
 
-  SgAsmBlock* goal_bb = insn_get_block(ds_.get_insn(goal_address_));
-  rose_addr_t goal_bb_addr = goal_bb->get_address();
+  P2::BasicBlockPtr goal_bb = ds_.get_block(goal_address_);
+  rose_addr_t goal_bb_addr = goal_bb->address();
 
   z3::context* ctx = z3_.z3Context();
   z3::expr_vector goal_edge_constraints(*ctx);
@@ -621,7 +623,7 @@ PathFinder::evaluate_path() {
             << "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-" << LEND;
     }
   }
-  catch (z3::exception z3x) {
+  catch (z3::exception &z3x) {
     OERROR << "evaluate: Z3 Exception caught: " << z3x << LEND;
     path_found_ = false;
   }
@@ -716,7 +718,7 @@ PathFinder::analyze_path_solution() {
       }
     }
   }
-  catch (z3::exception z3x) {
+  catch (z3::exception &z3x) {
     OERROR << "analyze_path_solution: Z3 Exception caught: " << z3x << LEND;
     return false;
   }
@@ -855,16 +857,16 @@ PathFinder::generate_value_constraints() {
       }
 
       const CallDescriptor* called_from = called_info->get_call();
-      SgAsmBlock* caller_bb = insn_get_block(called_from->ds.get_insn(called_from->get_address()));
+      P2::BasicBlockPtr caller_bb = called_from->ds.get_block(called_from->get_address());
 
-      GDEBUG << "Looking for edge: " << addr_str(caller_bb->get_address())
+      GDEBUG << "Looking for edge: " << addr_str(caller_bb->address())
              << " index " <<  caller_info->get_index() << LEND;
 
-      boost::optional<CfgEdgeInfo> caller_edge_info = caller_info->get_edge_info(caller_bb->get_address());
+      boost::optional<CfgEdgeInfo> caller_edge_info = caller_info->get_edge_info(caller_bb->address());
 
       if (!caller_edge_info) {
         OWARN << "Could not find edge information for call at BB: "
-              << addr_str(caller_bb->get_address()) << LEND;
+              << addr_str(caller_bb->address()) << LEND;
         return;
       }
 
@@ -895,7 +897,7 @@ PathFinder::generate_value_constraints() {
 
                 if (caller_tnp->nBits() != callee_tnp->nBits()) {
 
-                  OWARN << addr_str(caller_bb->get_address()) << ": Caller/Callee parmater sizes differ: caller_tnp: '"
+                  OWARN << addr_str(caller_bb->address()) << ": Caller/Callee parmater sizes differ: caller_tnp: '"
                         << *caller_tnp << "', callee_tnp: " << *callee_tnp << "' - skipping constraint" << LEND;
                 }
                 else {
@@ -1305,8 +1307,6 @@ PathFinder::get_z3_output() {
 bool
 PathFinder::detect_recursion() {
 
-  const FcgVertex NULL_FCG_VERTEX = boost::graph_traits <FCG>::null_vertex();
-
   if (goal_address_ == INVALID_ADDRESS || start_address_ == INVALID_ADDRESS) {
     OERROR << "Invalid start/goal address!" << LEND;
     return false;
@@ -1325,52 +1325,42 @@ PathFinder::detect_recursion() {
   // Both start and goal addresses are in functions within this
   // program. Now we need to figure out if there is a path from start
   // to goal functions. If there is then this is feasible.
-
   const FCG& fcg = ds_.get_function_call_graph();
 
-  // Find the starting vertex, which is the function containing the start.
-  // The FCG does not work on function descriptors :(
+  auto& g = fcg.graph();
+  auto rootId = fcg.findFunction(start_fd->get_address())->id();
 
-  FcgVertex start_vertex = NULL_FCG_VERTEX;
-  BGL_FORALL_VERTICES(v, fcg, FCG) {
-    SgAsmFunction *f = get(boost::vertex_name, fcg, v);
-    // entry point enough to match functions?
-    if (f->get_entry_va() == start_fd->get_func()->get_entry_va()) {
-      start_vertex = v;
-      break;
+  namespace GA = Sawyer::Container::Algorithm;
+  using Traversal = GA::DepthFirstForwardGraphTraversal<const FCG::Graph>;
+
+  // Have we seen this vertex already?
+  std::vector<bool> visited(g.nVertices(), false);
+  // Is this vertex on the path we're currently evaluating?
+  std::vector<bool> onPath(g.nVertices(), false);
+  visited[rootId] = true;
+  //  ASSERT_require(!onPath[rootId]);
+  onPath[rootId] = true;
+  auto flags = GA::TraversalEvent::ENTER_EDGE|GA::TraversalEvent::LEAVE_EDGE;
+  for (Traversal t(g, g.findVertex(rootId), flags); t; ++t) {
+    size_t targetId = t.edge()->target()->id();
+    if (t.event() == GA::TraversalEvent::ENTER_EDGE) {
+      // If the vertex is already on the path it must be a back edge
+      // representing recursion.
+      if (onPath[targetId]) return true;
+      onPath[targetId] = true;
+      if (visited[targetId]) {
+        t.skipChildren();
+      } else {
+        visited[targetId] = true;
+      }
+    } else {
+      //ASSERT_require(t.event() == LEAVE_EDGE);
+      //ASSERT_require(onPath[targetId]);
+      onPath[targetId] = false;
     }
   }
-  if (start_vertex == NULL_FCG_VERTEX) {
-    OERROR << "Cannot find start vertex" << LEND;
-    return false;
-  }
 
-  GDEBUG << "Running DFS for path from "
-         << addr_str(start_fd->get_func()->get_entry_va())
-         << " looking for "
-         << addr_str(goal_fd->get_func()->get_entry_va()) << LEND;
-
-  std::vector<boost::default_color_type> colors(boost::num_vertices(fcg));
-
-  struct RecursionDetectorVis : public boost::default_dfs_visitor {
-    RecursionDetectorVis() : has_cycle_(false) { }
-    bool has_cycle_;
-    void back_edge(FcgEdge, const FCG&) {
-      has_cycle_ = true;
-    }
-  };
-
-  RecursionDetectorVis recursion_detector;
-  boost::depth_first_visit(
-    fcg,
-    start_vertex,
-    recursion_detector,
-    boost::make_iterator_property_map(
-      colors.begin(),
-      boost::get(boost::vertex_index, fcg)));
-
-  return recursion_detector.has_cycle_;
-
+  return false;
 }
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+

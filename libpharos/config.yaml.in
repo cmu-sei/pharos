@@ -6,9 +6,9 @@ pharos:
   prolog_dir: @XSB_INSTALL_DIR@
   prolog_rules_dir:
   apidb: [ apidb/pharos-api-additions.json, apidb/pharos-apidb.sqlite ]
-  timeout: 900.0
-  per_function_timeout: 20.0
-  partitioner_timeout: 300.0
+  timeout: 0.0
+  per_function_timeout: 60.0
+  partitioner_timeout: 0.0
   maximum_memory: 8000.0
   per_function_maximum_memory: 100.0
   maximum_instructions_per_block: 3000

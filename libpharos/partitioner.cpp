@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <stdarg.h>
 #include <stdexcept>
@@ -1582,7 +1582,6 @@ Monitor::operator()(bool chain, const DetachedBasicBlock& /* args */) {
 }
 
 } // namespace pharos
-
 
 /* Local Variables:   */
 /* mode: c++          */

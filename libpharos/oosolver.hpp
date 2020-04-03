@@ -141,6 +141,18 @@ class SolveResolvedVirtualCallFromProlog : public OOSolverAnalysisPass {
 // Forward declaration of OOAnalyzer
 class OOAnalyzer;
 
+struct TreeNodePtrHashCompare {
+  bool operator()(const TreeNodePtr & a, const TreeNodePtr & b) const {
+    if (!b) {
+      return false;
+    }
+    if (!a) {
+      return true;
+    }
+    return a->hash() < b->hash();
+  }
+};
+
 // Object Oriented class detection Prolog solver.
 class OOSolver {
 
@@ -157,9 +169,9 @@ private:
   std::string facts_filename;
   std::string results_filename;
 
-  // A set of unique tree nodes representing this-pointers that
-  // we should report relationships for.
-  TreeNodePtrSet thisptrs;
+  // A set of unique tree nodes representing this-pointers that we should report relationships
+  // for.  This set has a custom comparator to prevent duplicate facts from being exported.
+  std::set<TreeNodePtr, TreeNodePtrHashCompare> thisptrs;
 
   // list of created classes
   std::vector<OOClassDescriptorPtr> classes;

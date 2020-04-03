@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/optional.hpp>
 #include <boost/property_map/property_map.hpp>
@@ -288,18 +288,18 @@ void CallDescriptor::add_import_target(ImportDescriptor* id) {
 // multiple times.  It has gradually become the "consistency enforcing" function that ensures
 // that a call descriptor is kept in a rational state relative to the other descriptors.
 void CallDescriptor::_update_connections() {
-  rose_addr_t addr = get_address();
   // We can't update anything if we're not a real descriptor yet.
-  if (addr == 0) return;
+  if (address == 0) {
+    OERROR << "Updating connections for NULL call descriptor!" << LEND;
+    return;
+  }
 
   // Update our containing function field, by finding the function that this instruction is in.
   assert(insn != NULL);
-  const SgAsmFunction *func = insn_get_func(insn);
-  assert(func != NULL);
-  containing_function = ds.get_rw_func(func->get_entry_va()); // in update_connections()
-  assert(containing_function != NULL);
-
-  containing_function->add_outgoing_call(this);
+  for (FunctionDescriptor *cfd : ds.get_rw_funcs_containing_address(address)) {
+    cfd->add_outgoing_call(this);
+    containing_function = cfd;
+  }
 
   // Deallocate the call's function descriptor if one was allocated, since we're about to
   // recompute the value (and possibly allocate a new one).
@@ -308,7 +308,7 @@ void CallDescriptor::_update_connections() {
 
   // If we have an import descriptor, make sure it knows about us.
   if (import_descriptor != NULL) {
-    import_descriptor->add_caller(addr);
+    import_descriptor->add_caller(address);
     // A tiny bit of const nastiness here.  We need the declaration of function_descriptor to
     // be non-const for the cases wehere we allocate it to merge multiple functions together.
     // But the import descriptor API reasonably considers the function descriptor on it to be
@@ -342,15 +342,15 @@ void CallDescriptor::_update_connections() {
       // This code is duplicated from just above in part because there's still confusion about
       // how to handle call to multiple targets, one or more of which are to imports.
       if (import_descriptor != NULL) {
-        import_descriptor->add_caller(addr);
+        import_descriptor->add_caller(address);
         function_descriptor = import_descriptor->get_rw_function_descriptor(); // in update_connections()
-        GDEBUG << "Resolved thunked call descriptor " << *this
+        GDEBUG << "Resolved thunked call descriptor " << self{*this}
                << " to import " << *import_descriptor << LEND;
       }
       // Of course the more likely scenario is that we just call to a normal function.
       else {
         function_descriptor = fd;
-        function_descriptor->add_caller(addr);
+        function_descriptor->add_caller(address);
       }
     }
   }
@@ -371,7 +371,7 @@ void CallDescriptor::_update_connections() {
       FunctionDescriptor* fd = ds.get_rw_func(t); // in update_connections()
       if (fd != NULL) {
         fd->propagate(function_descriptor);
-        fd->add_caller(addr);
+        fd->add_caller(address);
       }
     }
   }
@@ -396,8 +396,7 @@ CallDescriptor::add_virtual_resolution(
   virtual_calls.push_back(vci);
 }
 
-void CallDescriptor::print(std::ostream &o) const {
-  read_guard<decltype(mutex)> guard{mutex};
+void CallDescriptor::_print(std::ostream &o) const {
 
   if (insn != NULL) {
     o << "Call: insn=" << debug_instruction(insn, 7);
@@ -412,10 +411,12 @@ void CallDescriptor::print(std::ostream &o) const {
     o << " import=" << import_descriptor->get_long_name();
   }
   if (function_override != NULL) {
-    o << " override=[" << function_override->debug_deltas() << " ]";
+    o << " override=[" << function_override->address_string()
+      << " " << function_override->debug_deltas() << " ]";
   }
   if (function_descriptor != NULL) {
-    o << " func=[" << function_descriptor->debug_deltas() << " ]";
+    o << " func=[" << function_descriptor->address_string()
+      << " " << function_descriptor->debug_deltas() << " ]";
   }
   o << " targets=[" << std::hex;
   for (CallTargetSet::iterator it = targets.begin(); it != targets.end(); it++) {
@@ -425,7 +426,7 @@ void CallDescriptor::print(std::ostream &o) const {
 }
 
 void CallDescriptor::analyze() {
-  if (!insn) return;
+  assert(insn != NULL);
   address = insn->get_address();
   bool complete;
   CallTargetSet successors;

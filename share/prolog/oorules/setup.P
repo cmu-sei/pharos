@@ -9,69 +9,41 @@
 
 :- dynamic guessingDisabled/0 as opaque.
 :- dynamic method/1 as incremental.
-:- index(funcOffset/4, [2,3,4]).
 :- dynamic funcOffset/4.
-:- index(thisCallMethod/3, [1,3]).
 :- dynamic thisCallMethod/3.
-:- index(methodMemberAccess/4, [2+3,2]).
 :- dynamic methodMemberAccess/4.
 :- dynamic returnsSelf/1.
 :- dynamic noCallsBefore/1.
 :- dynamic noCallsAfter/1.
 :- dynamic uninitializedReads/1.
-:- index(possibleVFTableWrite/4, [2,4]).
 :- dynamic possibleVFTableWrite/4.
-%:- index(possibleVFTableEntry/3, [1,2,3]).
 %:- dynamic possibleVFTableEntry/3.
-:- index(possibleVBTableWrite/4, [1,2,3,4]).
 :- dynamic possibleVBTableWrite/4.
-%:- index(possibleVBTableEntry/3, [1,2,3]).
 %:- dynamic possibleVBTableEntry/3.
-:- index(possibleVirtualFunctionCall/5, [1,2,3,4,5]).
 :- dynamic possibleVirtualFunctionCall/5.
-:- index(rTTICompleteObjectLocator/6, [3,1]).
 :- dynamic rTTICompleteObjectLocator/6.
-:- index(rTTITypeDescriptor/3, [1]).
 :- dynamic rTTITypeDescriptor/3.
-:- index(rTTIClassHierarchyDescriptor/3, [1]).
 :- dynamic rTTIClassHierarchyDescriptor/3.
-:- index(rTTIBaseClassDescriptor/7, [1,2]).
 :- dynamic rTTIBaseClassDescriptor/7.
-:- index(thisPtrAllocation/5, [3]).
 :- dynamic thisPtrAllocation/5.
-:- index(thisPtrUsage/4, [2+3,3,4]).
 :- dynamic thisPtrUsage/4.
-:- index(thisPtrOffset/3, [3,1]).
 :- dynamic thisPtrOffset/3.
 :- dynamic purecall/1.
-:- index(insnCallsDelete/3, [2]).
 :- dynamic insnCallsDelete/3.
-:- index(symbolGlobalObject/3, [1,2,3]).
 :- dynamic symbolGlobalObject/3.
-:- index(symbolClass/3, [1,2,3]).
 :- dynamic symbolClass/3.
-:- index(symbolProperty/2, [2]).
 :- dynamic symbolProperty/2.
-:- index(thunk/2, [1,2]).
 :- dynamic thunk/2.
-:- index(intialMemory/2, [1]).
 :- dynamic initialMemory/2.
 
-:- index(funcParameter/3, [1+2]).
 :- dynamic funcParameter/3.
-:- index(funcReturn/3, [1,2,3]).
 :- dynamic funcReturn/3.
-:- index(callingConvention/2, [1,2]).
 :- dynamic callingConvention/2.
-:- index(callTarget/3, [2]).
 :- dynamic callTarget/3.
-:- index(callParameter/4, [1,2,3,4]).
 :- dynamic callParameter/4.
-:- index(callReturn/4, [1,2,3,4]).
 :- dynamic callReturn/4.
 
 % For Debugging, not for rules!
-%:- index(termDebug/2, [1,2]).
 %:- dynamic termDebug/2 as incremental.
 
 % ============================================================================================
@@ -89,54 +61,39 @@
 :- dynamic factDeletingDestructor/1 as incremental.
 :- dynamic factNOTDeletingDestructor/1 as incremental.
 
-:- index(factVirtualFunctionCall/5, [1]).
 :- dynamic factVirtualFunctionCall/5 as incremental.
-:- index(factNOTVirtualFunctionCall/5, [1,2,3,4,5]).
 :- dynamic factNOTVirtualFunctionCall/5 as incremental.
 :- dynamic factVFTable/1 as incremental.
 :- dynamic factNOTVFTable/1 as incremental.
-:- index(factVFTableWrite/4, [1,2,4,3]).
 :- dynamic factVFTableWrite/4 as incremental,abstract(0).
-:- index(factVFTableOverwrite/3, [2,1]).
 :- dynamic factVFTableOverwrite/3 as incremental.
-:- index(factVFTableEntry/3, [1+2,3,1]).
 :- dynamic factVFTableEntry/3 as incremental.
-:- index(factNOTVFTableEntry/3, [1]).
 :- dynamic factNOTVFTableEntry/3 as incremental.
-:- index(factVFTableSizeGTE/2, [1]).
 :- dynamic factVFTableSizeGTE/2 as incremental.
-:- index(factVFTableSizeLTE/2, [1]).
 :- dynamic factVFTableSizeLTE/2 as incremental.
 
 :- dynamic factVBTable/1 as incremental.
 :- dynamic factNOTVBTable/1 as incremental.
-:- index(factVBTableWrite/4, [1,2,3,4]).
 :- dynamic factVBTableWrite/4 as incremental.
-:- index(factVBTableEntry/3, [1,2,3]).
 :- dynamic factVBTableEntry/3 as incremental.
-:- index(factNOTVBTableEntry/3, [1,2,3]).
 :- dynamic factNOTVBTableEntry/3 as incremental.
 
-:- index(factObjectInObject/3, [1+2,1]).
 :- dynamic factObjectInObject/3 as incremental.
-:- index(factDerivedClass/3, [1+2,1,2]).
 :- dynamic factDerivedClass/3 as incremental.
-:- index(factNOTDerivedClass/3, [1]).
 :- dynamic factNOTDerivedClass/3 as incremental.
-:- index(factEmbeddedObject/3, [1,2]).
 :- dynamic factEmbeddedObject/3 as incremental.
-:- index(factNOTEmbeddedObject/3, [1+2]).
 :- dynamic factNOTEmbeddedObject/3 as incremental.
-:- index(factClassSizeGTE/2, [1+2,1]).
 :- dynamic factClassSizeGTE/2 as incremental.
-:- index(factClassSizeLTE/2, [1]).
 :- dynamic factClassSizeLTE/2 as incremental.
 :- dynamic factClassHasNoBase/1 as incremental.
 :- dynamic factClassHasUnknownBase/1 as incremental.
-:- index(factNOTMergeClasses/2, [1+2]).
 :- dynamic factNOTMergeClasses/2 as incremental.
-:- index(factClassCallsMethod/2, [1+2,1]).
 :- dynamic factClassCallsMethod/2 as incremental.
+
+% This fact was a sub-computation of guessMergeClassesB that added a lot of overhead.  By
+% putting it in a separate fact, we can make it a trigger-based fact that is maintained with
+% low overhead.
+:- dynamic factMethodInVFTable/3 as incremental.
 
 % ============================================================================================
 % Dynamically rewritten facts involving classes.
@@ -201,13 +158,13 @@ classArgs(factClassSizeLTE/2, 1).
 :- dynamic guessedVBTableWrite/4 as incremental.
 %:- dynamic guessedVBTableEntry/3 as incremental. % Only concluded!
 %:- dynamic guessedNOTVBTableEntry/3 as incremental. % Only concluded!
-%:- dynamic guesssedObjectInObject/3. % Only concluded!
+%:- dynamic guessedObjectInObject/3. % Only concluded!
 :- dynamic guessedDerivedClass/3 as incremental.
 :- dynamic guessedNOTDerivedClass/3 as incremental.
 :- dynamic guessedEmbeddedObject/3 as incremental.
 :- dynamic guessedNOTEmbeddedObject/3 as incremental.
 %:- dynamic guessedClassSizeGTE/2. % Only concluded.
-%:- dynamic guessedlassSizeLTE/2. % Only concluded.
+%:- dynamic guessedClassSizeLTE/2. % Only concluded.
 :- dynamic guessedClassHasNoBase/1 as incremental.
 :- dynamic guessedClassHasUnknownBase/1 as incremental.
 :- dynamic guessedMergeClasses/2 as incremental.
@@ -236,7 +193,6 @@ classArgs(factClassSizeLTE/2, 1).
 %    error_writeln(['Aborting due to error: ', X]),halt(1).
 
 % Can I put this somewhere else?
-:- index(findint/2, [1, 2, 1+2]).
 :- dynamic findint/2 as incremental.
 
 % ============================================================================================
@@ -260,6 +216,10 @@ classArgs(factClassSizeLTE/2, 1).
 :- include(softcut).
 :- include(class).
 :- include(trigger).
+
+:- if(current_prolog_flag(version_data, xsb(_,_,_,_))).
+:- include(index).
+:- endif.
 
 :- debug_ctl(profile, on).
 :- debug_ctl(prompt, off).
@@ -295,7 +255,8 @@ retract_helper(trigger_fact(X)) :-
     % point which messes up backtracking.  Thus we need another cut here.
     !.
 retract_helper(X) :-
-    incr_retract(X).
+    % In SWI Prolog, retract can have open choice points as a result of index/hash collisions.
+    once(incr_retract(X)).
 
 try_assert(X) :- X, !.
 try_assert(X) :- try_assert_real(X).
@@ -454,8 +415,8 @@ reasonForward :-
           concludeDeletingDestructor(Out);
           concludeRealDestructor(Out);
           concludeNOTRealDestructor(Out);
-	  concludeClassSizeGTE(Out);
-	  concludeClassSizeLTE(Out);
+          concludeClassSizeGTE(Out);
+          concludeClassSizeLTE(Out);
           concludeClassHasNoBase(Out);
           concludeClassHasUnknownBase(Out);
           concludeMergeClasses(Out);
@@ -492,36 +453,35 @@ tryAGuess :-
     countFacts(N),
     progress(N).
 
-restOfLoop :-
-    logtraceln('reasoningLoop: pre-reason sanityChecks'),
-    (sanityChecks
-    -> loginfoln('Constraint checks succeeded, proceeding to reason forward!')
-    ; (logwarnln('Constraint checks failed, retracting guess!'), fail)),
-    logtraceln('reasoningLoop: reasonForardAsManyTimesAsPossible'),
-    reasonForwardAsManyTimesAsPossible,
-    logdebugln('reasoningLoop: post-reason sanityChecks'),
-    (sanityChecks
-    -> loginfoln('Constraint checks succeeded, guess accepted!')
-    ; (logwarnln('Constraint checks failed, retracting guess!'), fail)),
-    (backtrackForUpstream ->
-         (reasoningLoop;
-          % If we have reached this point, sanity checks have initially passed but we have
-          % backtracked here, which means an upstream problem caused us to backtrack.  This is
-          % controlled by the backtrackForUpstream/0 option.
-          (loginfoln('Backtracking into reasoningLoop/0 to fix an upstream problem.'),
-           fail));
-          % If we are not backtracking, we eagerly cut here to avoid wasting a lot of memory.
-          (!,
-           (reasoningLoop;
-            (logerrorln('Refusing to backtrack into reasoningLoop to fix an upstream problem.  The results returned by this run will be inaccurate.'),
-             % Don't recurse to force exit.
-             true)))).
 
 % When reasoning, if we ever run out of guesses, we are done!  Otherwise, we execute the rest
 % of the loop, but we must preserve choice points so that we can backtrack to the latest guess
 % even if that is in another loop iteration.
 reasoningLoop :-
-    if_(tryAGuess, restOfLoop, true).
+    if_(tryAGuess,
+        (logtraceln('reasoningLoop: pre-reason sanityChecks'),
+         (sanityChecks
+         -> loginfoln('Constraint checks succeeded, proceeding to reason forward!')
+         ; (logwarnln('Constraint checks failed, retracting guess!'), fail)),
+         logtraceln('reasoningLoop: reasonForardAsManyTimesAsPossible'),
+         reasonForwardAsManyTimesAsPossible,
+         logdebugln('reasoningLoop: post-reason sanityChecks'),
+         (sanityChecks
+         -> loginfoln('Constraint checks succeeded, guess accepted!')
+         ; (logwarnln('Constraint checks failed, retracting guess!'), fail)),
+         (backtrackForUpstream ->
+              (reasoningLoop;
+               % If we have reached this point, sanity checks have initially passed but we have
+               % backtracked here, which means an upstream problem caused us to backtrack.  This is
+               % controlled by the backtrackForUpstream/0 option.
+               (loginfoln('Backtracking into reasoningLoop/0 to fix an upstream problem.'),
+                fail));
+          % If we are not backtracking, we eagerly cut here to avoid wasting a lot of memory.
+          (!,
+           reasoningLoop;
+           logerrorln('Refusing to backtrack into reasoningLoop to fix an upstream problem because backtrackForUpstream/0 is not set.  The results will be inaccurate.')))),
+         % If we can't guess, exit with true.
+         true).
 
 % --------------------------------------------------------------------------------------------
 % The performance of our code is highly dependent on the ordering of these guesses.  Making bad
@@ -595,7 +555,9 @@ guess :-
 
         (
             call(Out);
-            (logdebug('guess: We have back-tracked to the call of '), logdebugln(Out), fail)
+            (logdebug('guess: We have back-tracked to the call of '),
+             logdebugln(Out),
+             fail)
         ).
 
 % Actually check to see if the solution is complete.
@@ -614,23 +576,32 @@ setDefaultLogLevel :-
      loginfo('Setting default log level to '), loginfoln(N)
     ).
 
-% Solve when guessing is disabled
+initialSanityChecks :-
+    sanityChecks -> true ;
+    logfatalln('Initial sanity check failed, indicating the OO rules are incorrect.'),
+    logfatalln('Please report this failures to the Pharos developers!'),
+    false.
+
 solve :-
+    timed_call(solve_internal, [max(3600000, recommend_swi)]).
+
+% Solve when guessing is disabled
+solve_internal :-
     setDefaultLogLevel,
     guessingDisabled,
     (!,
     loginfoln('Reasoning about object oriented constructs based on known facts ...'),
     reasonForwardAsManyTimesAsPossible,
-    sanityChecks,
+    initialSanityChecks,
     loginfoln('No plausible guesses remain, finalizing answer.');
     logfatalln('No complete solution was found!')).
 
 % Solve when guessing is enabled
-solve :-
+solve_internal :-
     !,
-    (
-    loginfoln('Reasoning about object oriented constructs based on known facts ...'),
+    (loginfoln('Reasoning about object oriented constructs based on known facts ...'),
     reasonForwardAsManyTimesAsPossible,
+    initialSanityChecks,
     loginfoln('Making new hypothetical guesses ...'),
     reasoningLoop,
     loginfoln('No plausible guesses remain, finalizing answer.');

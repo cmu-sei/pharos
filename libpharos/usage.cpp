@@ -125,7 +125,7 @@ void ThisPtrUsage::analyze_alloc() {
     // Since definers isn't the "latest" definer just yet, filter our subsequent analysis to
     // the one that wrote the this-ptr value.  This is hackish and wrong because we shouldn't
     // have to filter.  But maybe once we can upgrade , this code can go away...
-    auto writes = du.get_writes(insn);
+    auto writes = du.get_writes(insn->get_address());
     bool found_write = false;
     for (const AbstractAccess& aa : writes) {
       if (aa.value->get_expression()->isEquivalentTo(this_ptr->get_expression())) {

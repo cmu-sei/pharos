@@ -155,14 +155,14 @@ TEST_P(PATestFixture, TestWP) {
     try {
       goal_result = method_func(test, test.goal, smt_stream);
     }
-    catch (const std::exception &e) {
-      OERROR << "Exception thrown: " << e.what () << LEND;
-      throw;
-    }
     catch (const z3::exception &e) {
       OERROR << "Z3 exception thrown: " << e.msg () << LEND;
       // Re-throw as std exception so google test can print it
       throw std::runtime_error (std::string ("Z3: ") + e.msg ());
+    }
+    catch (const std::exception &e) {
+      OERROR << "Exception thrown: " << e.what () << LEND;
+      throw;
     }
     timer.stop();
     if (goal_result) {

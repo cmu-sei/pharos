@@ -83,13 +83,12 @@ find_accesses(SgAsmX86Instruction* insn,
   SymbolicValuePtr sv = SymbolicValue::treenode_instance(value);
 
   // Go through each memory read looking for ones that match the value.
-  for (const AbstractAccess& aa : du.get_reads(insn)) {
+  for (const AbstractAccess& aa : du.get_reads(insn->get_address())) {
     //GDEBUG << "Considering AA=" << aa << LEND;
     // If the value in the access can be equal to the value supplied, add it to the set.
     if (sv->can_be_equal(aa.value)) {
       result.insert(&aa);
-      //GDEBUG << "Found AA: " << debug_instruction(insn)
-      //       << " for value=" << *value << LEND;
+      GDEBUG << "Found AA: " << debug_instruction(insn) << " for value=" << *value << LEND;
     }
   }
 
@@ -121,7 +120,7 @@ bool VirtualFunctionCallAnalyzer::analyze() {
   const DUAnalysis& du = pdg->get_usedef();
 
   // We're looking for the register or address that was read in the call insn
-  auto reads = du.get_reads(call_insn);
+  auto reads = du.get_reads(call_insn->get_address());
   // If there were no reads in the call, something's really wrong.
   if (std::begin(reads) == std::end(reads)) {
     GDEBUG << "Non virtual: " << debug_instruction(call_insn) << " - no read of target." << LEND;
@@ -145,7 +144,7 @@ bool VirtualFunctionCallAnalyzer::analyze() {
 
   // If the virtual function pointer is still NULL, we're not a virtual call.
   if (vfunc_aa == NULL) {
-    GDEBUG << "Non virtual: " << debug_instruction(call_insn) << " - no read of target." << LEND;
+    GDEBUG << "Non virtual: " << debug_instruction(call_insn) << " - no virtual func access." << LEND;
     return false;
   }
 

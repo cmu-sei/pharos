@@ -105,97 +105,6 @@
             ]
         },
         {
-            "Name": ".?AVbad_alloc@std@@",
-            "DemangledName": "std::bad_alloc",
-            "Size": "9",
-            "Members": [
-                {
-                    "name": "vfptr_0",
-                    "type": "vfptr",
-                    "offset": "0",
-                    "count": "1"
-                },
-                {
-                    "name": ".?AVexception@std@@_0",
-                    "type": "struc",
-                    "struc": ".?AVexception@std@@",
-                    "parent": "yes",
-                    "offset": "0",
-                    "count": "1"
-                }
-            ],
-            "Methods": [
-                {
-                    "ea": "4011ad",
-                    "name": "meth_4011ad",
-                    "demangled_name": "",
-                    "import": "no",
-                    "type": "meth"
-                },
-                {
-                    "ea": "4011df",
-                    "name": "ctor_4011df",
-                    "demangled_name": "",
-                    "import": "no",
-                    "type": "ctor"
-                }
-            ],
-            "Vftables": [
-                {
-                    "ea": "40616c",
-                    "vfptr": "0",
-                    "entries": [
-                        {
-                            "ea": "4011b8",
-                            "offset": "0",
-                            "name": "virt_deldtor_4011b8",
-                            "demangled_name": "",
-                            "import": "no",
-                            "type": "dtor"
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "Name": ".?AVtype_info@@",
-            "DemangledName": "type_info",
-            "Size": "4",
-            "Members": [
-                {
-                    "name": "vfptr_0",
-                    "type": "vfptr",
-                    "offset": "0",
-                    "count": "1"
-                }
-            ],
-            "Methods": [
-                {
-                    "ea": "401126",
-                    "name": "dtor_401126",
-                    "demangled_name": "",
-                    "import": "no",
-                    "type": "dtor"
-                }
-            ],
-            "Vftables": [
-                {
-                    "ea": "406164",
-                    "vfptr": "0",
-                    "entries": [
-                        {
-                            "ea": "401136",
-                            "offset": "0",
-                            "name": "virt_deldtor_401136",
-                            "demangled_name": "",
-                            "import": "no",
-                            "type": "dtor"
-                        }
-                    ]
-                }
-            ]
-        },
-        {
             "Name": ".?AVDerived@@",
             "DemangledName": "Derived",
             "Size": "20",
@@ -254,6 +163,97 @@
                             "ea": "4010c0",
                             "offset": "3",
                             "name": "virt_deldtor_4010c0",
+                            "demangled_name": "",
+                            "import": "no",
+                            "type": "dtor"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "Name": ".?AVtype_info@@",
+            "DemangledName": "type_info",
+            "Size": "4",
+            "Members": [
+                {
+                    "name": "vfptr_0",
+                    "type": "vfptr",
+                    "offset": "0",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "401126",
+                    "name": "dtor_401126",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "dtor"
+                }
+            ],
+            "Vftables": [
+                {
+                    "ea": "406164",
+                    "vfptr": "0",
+                    "entries": [
+                        {
+                            "ea": "401136",
+                            "offset": "0",
+                            "name": "virt_deldtor_401136",
+                            "demangled_name": "",
+                            "import": "no",
+                            "type": "dtor"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "Name": ".?AVbad_alloc@std@@",
+            "DemangledName": "std::bad_alloc",
+            "Size": "9",
+            "Members": [
+                {
+                    "name": "vfptr_0",
+                    "type": "vfptr",
+                    "offset": "0",
+                    "count": "1"
+                },
+                {
+                    "name": ".?AVexception@std@@_0",
+                    "type": "struc",
+                    "struc": ".?AVexception@std@@",
+                    "parent": "yes",
+                    "offset": "0",
+                    "count": "1"
+                }
+            ],
+            "Methods": [
+                {
+                    "ea": "4011ad",
+                    "name": "meth_4011ad",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "meth"
+                },
+                {
+                    "ea": "4011df",
+                    "name": "ctor_4011df",
+                    "demangled_name": "",
+                    "import": "no",
+                    "type": "ctor"
+                }
+            ],
+            "Vftables": [
+                {
+                    "ea": "40616c",
+                    "vfptr": "0",
+                    "entries": [
+                        {
+                            "ea": "4011b8",
+                            "offset": "0",
+                            "name": "virt_deldtor_4011b8",
                             "demangled_name": "",
                             "import": "no",
                             "type": "dtor"
@@ -462,22 +462,6 @@
                     "ea": "40104c"
                 },
                 {
-                    "class": ".?AVbad_alloc@std@@",
-                    "ea": "4011ad"
-                },
-                {
-                    "class": ".?AVbad_alloc@std@@",
-                    "ea": "4011c0"
-                },
-                {
-                    "class": ".?AVbad_alloc@std@@",
-                    "ea": "4011ef"
-                },
-                {
-                    "class": ".?AVtype_info@@",
-                    "ea": "401129"
-                },
-                {
                     "class": ".?AVDerived@@",
                     "ea": "401068"
                 },
@@ -500,6 +484,22 @@
                 {
                     "class": ".?AVDerived@@",
                     "ea": "4010b0"
+                },
+                {
+                    "class": ".?AVtype_info@@",
+                    "ea": "401129"
+                },
+                {
+                    "class": ".?AVbad_alloc@std@@",
+                    "ea": "4011ad"
+                },
+                {
+                    "class": ".?AVbad_alloc@std@@",
+                    "ea": "4011c0"
+                },
+                {
+                    "class": ".?AVbad_alloc@std@@",
+                    "ea": "4011ef"
                 },
                 {
                     "class": ".?AVexception@std@@",

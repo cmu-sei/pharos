@@ -105,7 +105,7 @@ void BottomUpAnalyzer::analyze() {
       fd->get_pdg();
       timer.stop();
       MDEBUG << "Finished PDG generation for function " << fd->address_string()
-             << " in " << timer << 's' << LEND;
+             << " in " << timer << " seconds." << LEND;
     }
   };
 
@@ -120,7 +120,7 @@ void BottomUpAnalyzer::analyze() {
       timer.stop();
       ++processed_funcs;
       GDEBUG << "Finished visiting function " << fd->address_string() << " in "
-             << timer << 's' << std::endl;
+             << timer << " seconds." << std::endl;
     }
   };
 

@@ -186,11 +186,11 @@ ROSE.  Z3 is used primarily in the binary analysis component to answer
 questions about symbolic expression equivalence.  Some of the pharos
 tools require Z3 to work.  Z3 is under active development, and some
 commits have broken compatibility with our code from time to time.
-The latest release version of Z3 (4.8.6) has passed our testing.
+The latest release version of Z3 (4.8.7) has passed our testing.
 
 We build Z3 using commands like these:
 ```
-$ git clone -b Z3-4.8.6 https://github.com/Z3Prover/z3.git
+$ git clone -b Z3-4.8.7 https://github.com/Z3Prover/z3.git
 $ cd z3
 $ mkdir build
 $ cd build
@@ -217,10 +217,10 @@ $ cd rose
 This version has a reasonable chance of working or only having minor
 issues.  If you want to be conservative and use the version of ROSE
 that was known to compile with the latest major commit to the Pharos
-repository, you can checkout this commit (ROSE version 0.9.12.13):
+repository, you can checkout this commit (ROSE version 0.10.0.27):
 
 ```
-$ git checkout 68630678c53d8a95c6ed5f37caf837acfba5ae92
+$ git checkout -b v0.10.0.27
 ```
 
 ROSE can be configured in a multitude of ways, and some attention to

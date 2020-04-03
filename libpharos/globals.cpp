@@ -99,7 +99,8 @@ void GlobalMemoryDescriptor::add_value(SymbolicValuePtr new_val) {
 void GlobalMemoryDescriptor::short_print(std::ostream &o) const {
   read_guard<decltype(mutex)> guard{mutex};
 
-  o << "Global: addr=" << address_string();
+  o << "Global: addr=" << address_string()
+    << " asize=" << access_size << " tsize=" << size;
 
   o << " refs=[";
   for (const SgAsmInstruction* insn : refs) {

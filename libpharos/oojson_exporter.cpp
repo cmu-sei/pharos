@@ -186,8 +186,14 @@ void OOJsonExporter::generate_json(const std::vector<OOClassDescriptorPtr> &clas
    usages_found = 0;
    methods_associated.clear();
 
-   for (OOClassDescriptorPtr cls : classes) {
-      // property trees for the current class
+   std::vector<OOClassDescriptorPtr> sorted_classes(classes);
+   std::sort(sorted_classes.begin(), sorted_classes.end(),
+             [](OOClassDescriptorPtr & a, OOClassDescriptorPtr & b) {
+               return a->get_id() < b->get_id();
+             });
+
+   for (OOClassDescriptorPtr cls : sorted_classes) {
+     // property trees for the current class
      boost::property_tree::ptree json_cls, json_members, json_methods, json_vftables, json_parents;
 
       // the current class naming scheme is ClsN where N is an integer starting at 0

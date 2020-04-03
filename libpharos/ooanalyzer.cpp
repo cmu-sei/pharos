@@ -85,9 +85,14 @@ bool OOAnalyzer::identify_delete_method(FunctionDescriptor const & fd) {
 
     // Some of the delete hashes are actually short stubs that jump to other implementations of
     // delete.  An example of this was the statically linked implementation of ??3@YAXPAXI@Z in
-    // our prtscrpp example at 0x406F9B.  It appears that we should except hashes that call to
-    // known delete methods as well.
+    // our prtscrpp example at 0x406F9B.  It appears that we should accept hashes that call to
+    // known delete methods as well.  There's an example in Lite ooex7 as well.  See the
+    // comment where we force the delete() API onto all functions with this property.
     for (const CallDescriptor* cd : fd.get_outgoing_calls()) {
+      // This heuristic/hack only applies to tail-caall optimized JMP instructions, and now
+      // that we can test for that we should.  In other words not every function that calls
+      // delete() is a form of delete(), only those that are tail-call optimized are.
+      if (!(cd->is_tail_call())) continue;
       for (rose_addr_t target : cd->get_targets()) {
         if (is_delete_method(target)) {
           GINFO << "Function at " << addr_str(target) << " matches hash "
@@ -169,6 +174,30 @@ void OOAnalyzer::visit(FunctionDescriptor* fd) {
   identify_nonreturn_method(*fd);
 
   const PDG *pdg = fd->get_pdg();
+
+
+  // For future me, the problem that this code corrects is that delete methods are sometimes
+  // tail-call optimized into thunklets (a few instructions plus an unconditional jump to
+  // another delete implementation).  Because we don't propagate parameters correctly through
+  // thunklets, we don't know that the thunklet takes any parameters, so we don't create
+  // parameters, and then we can't inspect them later when we want to know the symbolic value
+  // that was passed to delete().  The hack is to force the normal delete() API onto the
+  // thunklets, which is __cdecl with a single stack parameter.  An example can be found in
+  // Lite/ooeex7 at 401d07, 401d10, and 401d19 (in std::numpunct<char>::_Tidy(void)), all of
+  // which call to 406b10 (delete[](void*)) which jumps to 406276 (delete(void*)).  A better
+  // solution to this problems would be to propagate parameters through all tail-call optimized
+  // thunklets, but this requires a more complicated analysis of the instructions before the
+  // tail-call optimized JMP instruction.
+  if (is_delete_method(fd->get_address())) {
+    // This fetches the API database entry for delete().  This code isn't perfect because it
+    // presumes Windows 32-bit MS Visual Studio, but since most delete() implementations have
+    // the same prototype, it probably doesn't matter too much.  If we do the right thing wil
+    // tail-call optimized thunklets in the future, we won't need this code at all.
+    APIDefinitionList apis = ds.apidb->get_api_definition("MSVCRT", "??3@YAXPAX@Z");
+    if (apis.size() > 0) {
+      fd->set_api(*(apis.front()));
+    }
+  }
 
   // Decide which calls might be virtual function calls.
   for (CallDescriptor const * cd : fd->get_outgoing_calls()) {
@@ -519,7 +548,7 @@ void OOAnalyzer::handle_heap_allocs(const rose_addr_t saddr) {
   }
 
   SgAsmInstruction* insn = cd->get_insn();
-  const FunctionDescriptor* cfd = ds.get_fd_from_insn(insn);
+  const FunctionDescriptor* cfd = ds.get_func_containing_address(cd->get_address());
   if (cfd == NULL) {
     GINFO << "No function for call at " << addr_str(saddr) << LEND;
     return;
@@ -725,8 +754,13 @@ void OOAnalyzer::find_vtable_installations(FunctionDescriptor const & fd) {
       if (aa.memory_address->is_number()) continue;
 
       // This is the instruction we're talking about.
-      SgAsmInstruction* insn = access.first;
+      SgAsmInstruction* insn = fd.ds.get_insn(access.first);
+      if (!insn) {
+        GERROR << "Unable to find instruction at address " << addr_str(access.first) << LEND;
+      }
+      // This algorithm only works for X86 instructions.
       SgAsmX86Instruction* x86insn = isSgAsmX86Instruction(insn);
+      if (!x86insn) continue;
 
       // We're not interested in call instructions, which write constant return addresses to
       // the stack.  This is largely duplicative of the test above, but will be needed when the

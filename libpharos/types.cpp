@@ -624,9 +624,8 @@ TypeSolver::assert_objectness_facts(const CallDescriptor *cd) {
             << " at call " << addr_str(cd->get_address()) << LEND;
 
       // This is how we must get the return value for new() at the call point
-      SgAsmX86Instruction* call_insn = isSgAsmX86Instruction(cd->get_insn());
       SymbolicValuePtr new_retval;
-      access_filters::aa_range reg_writes = du_analysis_.get_reg_writes(call_insn);
+      access_filters::aa_range reg_writes = du_analysis_.get_reg_writes(cd->get_address());
       for (const AbstractAccess &rwaa : reg_writes) {
         std::string regname = unparseX86Register(rwaa.register_descriptor, NULL);
         if (regname == "eax") {
@@ -1133,8 +1132,8 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
               // If the two values are equal but not identical, check
               // their lineage to see if they are related (i.e. have
               // commong defining instructions).
-              const InsnSet& par_definers = param.get_value()->get_defining_instructions();
-              const InsnSet& var_definers = var_val->get_defining_instructions();
+              const RoseInsnSet& par_definers = param.get_value()->get_defining_instructions();
+              const RoseInsnSet& var_definers = var_val->get_defining_instructions();
               InsnSet intersect;
 
               // if the intersection of the parameter and stack definers is not the empty set

@@ -71,10 +71,7 @@ class_size_remove_redundant(factClassSizeLTE(Class, Size)) :-
     true).
 
 class_size_remove_redundant(X) :-
-    logerrorln(X),
-    throw('class_size_remove_redundant/1 called on unexpected argument'),
-    fail.
-
+    throw_with_backtrace(error(representation_error(X), class_size_remove_redundant/1)).
 ignore_one_arg(_X).
 
 % Helper that produces an action from the arguments
@@ -450,9 +447,7 @@ concludeNOTMergeClasses(Out) :-
     setof((Class1, Class2),
           (reasonNOTMergeClasses_new(Class1, Class2),
            iso_dif(Class1, Class2),
-           not(factNOTMergeClasses(Class1, Class2)),
-           % This is the spot that breaks ooex7.
-           not(factNOTMergeClasses(Class2, Class1)),
+           not(dynFactNOTMergeClasses(Class1, Class2)),
            loginfo('Concluding factNOTMergeClasses('), loginfo(Class1), loginfo(', '),
            loginfo(Class2), loginfoln(').')),
           ClassSets),
@@ -461,7 +456,7 @@ concludeNOTMergeClasses(Out) :-
 
 concludeMergeClasses(Out) :-
     reasonMergeClasses(Class1, Class2),
-    not(factNOTMergeClasses(Class1, Class2)),
+    not(dynFactNOTMergeClasses(Class1, Class2)),
     loginfo('Concluding mergeClasses('),
     loginfo(Class1), loginfo(', '),
     loginfo(Class2), loginfoln(').'),

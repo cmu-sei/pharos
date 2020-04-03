@@ -212,14 +212,18 @@ OOSolver::add_method_facts(const OOAnalyzer& ooa)
       thisptr_term = "sv_" + std::to_string(this_ptr->get_hash());
     }
 
-    std::string status = "certain";
-    {
-      auto conventions = tcm->fd->get_calling_conventions();
-      if (conventions.size() > 1) status = "uncertain";
-      if (conventions.size() == 0) status = "notthiscall";
+    // Hackish forced exporting of "thisptr" arguments as register "ECX".  There's a difference
+    // between how the thisptr symbolic values are being determined for thiscall methods, and
+    // how it's being determined for function calling conventions in general.  By exporting the
+    // facts related to this defect in a way that draws more attention to the real problem that
+    // then old thisCallMethod facts, we can narrow in on the real problem gradually.  It's
+    // also not accetpable to export a normal callingConvention fact and normal funcParameter
+    // fact, as this results in non-OO functions
+    auto conventions = tcm->fd->get_calling_conventions();
+    if (conventions.size() == 0) {
+      session->add_fact("callingConvention", tcm->get_address(), "invalid");
+      session->add_fact("funcParameter", tcm->get_address(), "ecx", thisptr_term);
     }
-
-    session->add_fact("thisCallMethod", tcm->get_address(), thisptr_term, status);
 
     // These facts are getting closer to correct, but should still be reviewed once more.
     if (tcm->returns_self) {
@@ -570,12 +574,11 @@ OOSolver::add_function_facts(const OOAnalyzer& ooa)
     if (fd.is_thunk()) {
       session->add_fact("thunk", fdaddr, fd.get_jmp_addr());
     }
-    else {
-      // Report all calling conventions for all functions (except thunks).
-      auto conventions = fd.get_calling_conventions();
-      for (const CallingConvention* cc: conventions) {
-        session->add_fact("callingConvention", fdaddr, cc->get_name());
-      }
+
+    // Report all calling conventions for all functions.
+    auto conventions = fd.get_calling_conventions();
+    for (const CallingConvention* cc: conventions) {
+      session->add_fact("callingConvention", fdaddr, cc->get_name());
     }
 
     // Report all parameters for every function (in the future we'll try using an OO subset)
@@ -729,7 +732,6 @@ OOSolver::dump_facts_private()
   exported += session->print_predicate(facts_file, "uninitializedReads", 1);
   exported += session->print_predicate(facts_file, "insnCallsDelete", 3);
   exported += session->print_predicate(facts_file, "purecall", 1);
-  exported += session->print_predicate(facts_file, "thisCallMethod", 3);
   exported += session->print_predicate(facts_file, "funcOffset", 4);
   exported += session->print_predicate(facts_file, "methodMemberAccess", 4);
   exported += session->print_predicate(facts_file, "possibleVFTableWrite", 4);

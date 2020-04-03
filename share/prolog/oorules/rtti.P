@@ -1,10 +1,7 @@
 :- import member/2 from lists.
 
-:- index(rTTICompleteObjectLocator/6, [1,2,3,4,5,6]).
 :- dynamic rTTICompleteObjectLocator/6.
-:- index(rTTITypeDescriptor/3, [1,2,3]).
 :- dynamic rTTITypeDescriptor/3.
-:- index(rTTIClassHierarchyDescriptor/3, [1,2,3]).
 :- dynamic rTTIClassHierarchyDescriptor/3.
 :- dynamic rTTIBaseClassDescriptor/8.
 
@@ -54,7 +51,9 @@ rTTITDA2Class(TDA, Class) :-
 :- table rTTISelfRef/6 as opaque.
 rTTISelfRef(TDA, COLA, CHDA, BCDA, VFTable, Name) :-
     rTTITypeDescriptor(TDA, _TIVTable, Name),
-    rTTICompleteObjectLocator(Pointer, COLA, TDA, CHDA, _O1, 0),
+    rTTICompleteObjectLocator(Pointer, COLA, TDA, CHDA, _O1, _CDOffset),
+    % CDOffset is usually zero, but we've found at least one case (mysqld) where it was 4.  It
+    % appears that this rule is too strict if it limits the CDOffset to zero.
     VFTable is Pointer + 4,
     rTTIClassHierarchyDescriptor(CHDA, _HierarchyAttributes, Bases),
     member(BCDA, Bases),
