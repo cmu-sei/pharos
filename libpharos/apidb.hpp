@@ -414,10 +414,7 @@ class DecoratedDictionary : public APIDictionary {
   }
 
   APIDefinitionList
-  get_api_definition(
-    const std::string &) const override {
-    return APIDefinitionList();
-  }
+  get_api_definition(const std::string &) const override;
 
   APIDefinitionList
   get_api_definition(const std::string &, size_t) const override {

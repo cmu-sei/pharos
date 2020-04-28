@@ -1695,6 +1695,14 @@ DecoratedDictionary::get_api_definition(
   return list;
 }
 
+APIDefinitionList
+DecoratedDictionary::get_api_definition(
+  const std::string & func_name) const
+{
+  return get_api_definition("<unknown>", func_name);
+}
+
+
 } // namespace pharos
 
 /* Local Variables:   */
