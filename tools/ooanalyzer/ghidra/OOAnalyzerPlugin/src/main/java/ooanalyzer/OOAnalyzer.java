@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+ * Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
  ******************************************************************************/
 
 package ooanalyzer;
@@ -38,6 +38,7 @@ import com.google.gson.stream.JsonReader;
 
 import ghidra.app.util.demangler.CharacterIterator;
 import ghidra.app.util.demangler.DemangledObject;
+import ghidra.app.util.demangler.DemangledType;
 import ghidra.app.util.demangler.Demangler;
 import ghidra.app.util.demangler.microsoft.MicrosoftDemangler;
 import ghidra.program.database.data.DataTypeUtilities;
@@ -1447,7 +1448,16 @@ public class OOAnalyzer {
 							demangledObj = demangler.demangle(name, true);
 							if (demangledObj != null) {
 								demangledName = demangledObj.toString().replace("\n", "\\n");
-								namespace = demangledObj.getNamespace().toNamespace();
+                                                                try {
+                                                                  java.lang.reflect.Method m = demangledObj.getClass ().getMethod("getNamespaceString");
+                                                                  namespace = (String) (m.invoke (demangledObj));
+                                                                }
+                                                                catch (NoSuchMethodException e) {
+                                                                  //java.lang.reflect.Method m = demangledObj.getClass ().getMethod("
+                                                                  var ns = demangledObj.getNamespace ();
+                                                                  java.lang.reflect.Method m = ns.getClass ().getMethod("toNamespace");
+                                                                  namespace = (String) (m.invoke (ns));
+                                                                }
 							} else {
 								JsonElement jElm = jsonObject.get(demangledNameJSONString);
 								if (jElm != null) {

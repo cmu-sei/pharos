@@ -5,6 +5,7 @@ set -ex
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 NCPU="${NCPU:-1}"
+PREFIX="${PREFIX:-/usr/local}"
 
 # Pharos
 cd $DIR
@@ -14,9 +15,9 @@ sudo ldconfig
 test -d build && rm -rf build
 mkdir build
 cd build
-cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DROSE_ROOT=/usr/local \
-      -DXSB_ROOT=/usr/local/xsb-3.8.0 -DBOOST_ROOT=/usr \
-      -DZ3_ROOT=/usr/local -DYAML_CPP_ROOT=/usr ../..
+cmake -GNinja -DCMAKE_INSTALL_PREFIX=$PREFIX -DROSE_ROOT=$PREFIX \
+      -DXSB_ROOT=$PREFIX/xsb-3.8.0 -DBOOST_ROOT=$PREFIX \
+      -DZ3_ROOT=$PREFIX -DYAML_CPP_ROOT=/usr ../..
 
 ninja -k $NCPU -j $NCPU || true
 ninja -j 1

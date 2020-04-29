@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+ * Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
  ******************************************************************************/
 /**
  * The unamed top-level object that contains a list of structures

@@ -3,13 +3,193 @@
 # Add steps that publish test results, save build artifacts, deploy, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/apps/c-cpp/gcc
 
+variables:
+  CCACHE_DIR: $(Pipeline.Workspace)/cache
+  PREFIX: /usr/local/pharos-build
+  CXXFLAGS: -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1
+
 jobs:
-- job: Build
+- job: Build_Prereqs
   timeoutInMinutes: 660
   pool:
     vmImage: 'Ubuntu-16.04'
   steps:
-  - script: sudo apt-get -y update
-  - script: sudo apt-get -y install sudo build-essential wget flex ghostscript bzip2 git subversion automake libtool bison python libncurses-dev vim-common sqlite3 libsqlite3-0 libsqlite3-dev zlib1g-dev cmake libyaml-cpp-dev libboost-all-dev libboost-dev libxml2-dev ninja-build
-  - script: NCPU=2 ./scripts/build_prereqs.bash -reclaim
-  - script: NCPU=2 ./scripts/build.bash -reclaim
+  - bash: |
+      set -e
+      sudo apt-get -y update
+      sudo apt-get install ccache -y
+      echo "##vso[task.prependpath]/usr/lib/ccache"
+    displayName: Install ccache and update PATH to use linked versions of gcc, cc, etc
+  - script: sudo apt-get -y install sudo build-essential wget flex ghostscript bzip2 git subversion automake libtool bison python libncurses-dev vim-common sqlite3 libsqlite3-0 libsqlite3-dev zlib1g-dev cmake libyaml-cpp-dev libxml2-dev ninja-build
+    displayName: Install prereqs
+  - task: Cache@2
+    inputs:
+      key: 'ccache | "$(Agent.OS)" | "$(PREFIX)" | "$(System.JobDisplayName)" | "$(CXXFLAGS)"'
+      path: $(CCACHE_DIR)
+    displayName: ccache
+  - bash: |
+      set -e
+      sudo mkdir $PREFIX
+      NCPU=2 COMPILE_BOOST=yes ./scripts/build_prereqs.bash -reclaim
+      # We have to make our own tar file here because Azure doesn't support symbolic links yet
+      sudo tar -cf local.tar -C $PREFIX .
+    displayName: Build prereqs
+    env:
+      PREFIX: $(PREFIX)
+      CXXFLAGS: $(CXXFLAGS)
+  - publish: local.tar
+    artifact: Prereqs
+
+- job: Build_Pharos
+  dependsOn: Build_Prereqs
+  timeoutInMinutes: 660
+  pool:
+    vmImage: 'Ubuntu-16.04'
+  steps:
+  - bash: |
+      set -e
+      sudo apt-get -y update
+      sudo apt-get install ccache -y
+      echo "##vso[task.prependpath]/usr/lib/ccache"
+    displayName: Install ccache and update PATH to use linked versions of gcc, cc, etc
+  - script: sudo apt-get -y install sudo build-essential wget flex ghostscript bzip2 git subversion automake libtool bison python libncurses-dev vim-common sqlite3 libsqlite3-0 libsqlite3-dev zlib1g-dev cmake libyaml-cpp-dev libxml2-dev ninja-build
+    displayName: Install prereqs
+
+  - task: Cache@2
+    inputs:
+      key: 'ccache | "$(Agent.OS)" | "$(System.Job.DisplayName)" | "$(CXXFLAGS)"'
+      path: $(CCACHE_DIR)
+    displayName: ccache
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: current
+      artifact: Prereqs
+  - bash: |
+      set -e
+      echo $PREFIX
+      sudo mkdir $PREFIX
+      sudo tar -xf ../local.tar -C $PREFIX
+      NCPU=2 ./scripts/build.bash -reclaim
+    env:
+      PREFIX: $(PREFIX)
+      CXXFLAGS: $(CXXFLAGS)
+    displayName: Build pharos
+
+- job: Build_OOAnalyzer_Ghidra_Plugin
+  variables:
+    GRADLE_USER_HOME: $(Pipeline.Workspace)/.gradle
+  strategy:
+    matrix:
+      ghidra-git:
+        ghidraVersion: "master"
+      ghidra912:
+        ghidraUrl: "https://ghidra-sre.org/ghidra_9.1.2_PUBLIC_20200212.zip"
+        ghidraVersion: "9.1.2"
+      ghidra911:
+        ghidraUrl: "https://ghidra-sre.org/ghidra_9.1.1_PUBLIC_20191218.zip"
+        ghidraVersion: "9.1.1"
+      ghidra91:
+        ghidraUrl: "https://ghidra-sre.org/ghidra_9.1_PUBLIC_20191023.zip"
+        ghidraVersion: "9.1"
+      ghidra904:
+        ghidraUrl: "https://ghidra-sre.org/ghidra_9.0.4_PUBLIC_20190516.zip"
+        ghidraVersion: "9.0.4"
+      ghidra902:
+        ghidraUrl: "https://ghidra-sre.org/ghidra_9.0.2_PUBLIC_20190403.zip"
+        ghidraVersion: "9.0.2"
+      ghidra901:
+        ghidraUrl: "https://ghidra-sre.org/ghidra_9.0.1_PUBLIC_20190325.zip"
+        ghidraVersion: "9.0.1"
+      ghidra90:
+        ghidraUrl: "https://ghidra-sre.org/ghidra_9.0_PUBLIC_20190228.zip"
+        ghidraVersion: "9.0"
+  pool:
+    vmImage: 'Ubuntu-18.04'
+  steps:
+  - script: sudo update-alternatives --set javac /usr/lib/jvm/zulu-11-azure-amd64/bin/javac && sudo update-alternatives --set java /usr/lib/jvm/zulu-11-azure-amd64/bin/java && export JAVA_HOME=/usr/lib/jvm/zulu-11-azure-amd64
+
+  - task: Cache@2
+    condition: ne(variables['ghidraUrl'], '')
+    inputs:
+      key: '"$(ghidraUrl)" | binary'
+      path: $(Pipeline.Workspace)/zip
+    displayName: Cache ghidra binary
+
+  - task: Cache@2
+    inputs:
+      key: 'gradle | "$(Agent.OS)" | "$(System.Job.DisplayName)"'
+      restoreKeys: gradle
+      path: $(GRADLE_USER_HOME)
+    displayName: Gradle build cache
+
+  - bash: |
+      set -e
+      test -d zip || (mkdir zip && cd zip && wget $URL)
+      unzip zip/*.zip
+    condition: ne(variables['ghidraUrl'], '')
+    workingDirectory: $(Pipeline.Workspace)
+    displayName: Download Ghidra binary from $(ghidraUrl)
+    env:
+      URL: $(ghidraUrl)
+  - bash: |
+      set -e
+      sudo apt-get -y install bison flex
+      git clone --depth 1 https://github.com/NationalSecurityAgency/ghidra
+    condition: eq(variables['ghidraUrl'], '')
+    workingDirectory: $(Pipeline.Workspace)
+    env:
+      JAVA_HOME: /usr/lib/jvm/zulu-11-azure-amd64
+      WS: $(Pipeline.Workspace)
+    displayName: Download and build Ghidra from git part 1
+
+  - task: Cache@2
+    inputs:
+      key: 'gradle deps'
+      path: $(Pipeline.Workspace)/ghidra/build/downloads
+    condition: eq(variables['ghidraUrl'], '')
+
+  - bash: |
+      set -e
+      cd ghidra
+      gradle --build-cache --init-script gradle/support/fetchDependencies.gradle init
+      gradle --build-cache buildGhidra
+      mkdir -p $WS/zip
+      cp build/dist/*.zip $WS/zip/
+      cd $WS
+      unzip zip/*.zip
+    condition: eq(variables['ghidraUrl'], '')
+    workingDirectory: $(Pipeline.Workspace)
+    env:
+      JAVA_HOME: /usr/lib/jvm/zulu-11-azure-amd64
+      WS: $(Pipeline.Workspace)
+    displayName: Download and build Ghidra from git part 2
+  - bash: |
+      set -e
+      GHIDRA_INSTALL_DIR=$(find $WS -maxdepth 1 -type d -name 'ghidra_*') gradle --build-cache
+    displayName: Build Ghidra plugin
+    workingDirectory: tools/ooanalyzer/ghidra/OOAnalyzerPlugin
+    env:
+      JAVA_HOME: /usr/lib/jvm/zulu-11-azure-amd64
+      WS: $(Pipeline.Workspace)
+  - script: gradle --stop
+  - publish: tools/ooanalyzer/ghidra/OOAnalyzerPlugin/dist/
+  - task: GitHubRelease@0
+    inputs:
+      gitHubConnection: gh
+      repositoryName: $(Build.Repository.Name)
+      action: delete
+      target: $(Build.SourceVersion)
+      tagSource: manual
+      tag: ghidra-$(ghidraVersion)
+    continueOnError: true
+  - task: GitHubRelease@0
+    inputs:
+      gitHubConnection: gh
+      repositoryName: $(Build.Repository.Name)
+      action: create
+      target: $(Build.SourceVersion)
+      tagSource: manual
+      tag: ghidra-$(ghidraVersion)
+      title: OOAnalyzer Ghidra Plugin for Ghidra $(ghidraVersion)
+      assets: tools/ooanalyzer/ghidra/OOAnalyzerPlugin/dist/*.zip
+      addChangeLog: false

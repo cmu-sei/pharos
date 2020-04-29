@@ -44,6 +44,7 @@ TAGS
 # to support (& ignore) build dirs in the repo dir:
 /build
 /build-*
+/dist
 
 # local build overrides:
 local.cmake
@@ -53,4 +54,4 @@ local.cmake
 **/.tramp_history
 **/.tramp_ignore
 **/.gdb_history
-
+**/.gradle

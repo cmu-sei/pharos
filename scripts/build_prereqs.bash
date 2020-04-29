@@ -5,6 +5,21 @@ set -ex
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 NCPU="${NCPU:-1}"
+PREFIX="${PREFIX:-/usr/local}"
+
+# BOOST
+if [ "$COMPILE_BOOST" != "" ]
+then
+   test -d boost && sudo rm -rf boost
+   mkdir boost
+   cd boost
+   wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.bz2
+   tar -xjf boost_1_64_0.tar.bz2
+   cd boost_1_64_0
+   ./bootstrap.sh --prefix=$PREFIX --with-libraries=system,serialization,chrono,timer,iostreams,thread,date_time,random,regex,program_options,filesystem,wave
+   sudo ./b2 cxxflags="$CXXFLAGS" -j $NCPU toolset=gcc install
+   test "$1" = "-reclaim" && sudo rm -rf $DIR/boost
+fi
 
 # XSB
 cd $DIR
@@ -25,11 +40,11 @@ done
 # Because the XSB build requires write access for configuration,
 # compile and install, the alternatives are to install someplace else
 # or to run each step with sudo.
-sudo mkdir -p /usr/local/xsb-3.8.0 /usr/local/site
-sudo chown $(whoami) /usr/local/xsb-3.8.0 /usr/local/site
+sudo mkdir -p $PREFIX/xsb-3.8.0 $PREFIX/site
+sudo chown $(whoami) $PREFIX/xsb-3.8.0 $PREFIX/site
 
 cd XSB/build
-./configure --prefix=/usr/local
+./configure --prefix=$PREFIX
 # makexsb -j does not appear to be reliable
 ./makexsb
 ./makexsb install
@@ -44,7 +59,7 @@ git clone --depth 1 -b z3-4.8.7 https://github.com/Z3Prover/z3.git z3
 cd z3
 mkdir build
 cd build
-cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_RULE_MESSAGES=off ..
+cmake -G Ninja -DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_RULE_MESSAGES=off ..
 ninja -j $NCPU
 sudo ninja -j $NCPU install
 test "$1" = "-reclaim" && rm -rf $DIR/z3
@@ -62,8 +77,8 @@ cd ../rose-build
 
 sudo ldconfig
 # The CXXFLAGS are to reduce the memory requirements.
-CXXFLAGS='--param ggc-min-expand=5 --param ggc-min-heapsize=32768' \
-cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local \
+CXXFLAGS="$CXXFLAGS --param ggc-min-expand=5 --param ggc-min-heapsize=32768" \
+cmake -GNinja -DCMAKE_INSTALL_PREFIX=$PREFIX -DBOOST_ROOT=$PREFIX -DZ3_ROOT=$PREFIX \
         -Denable-binary-analysis=yes -Denable-c=no -Denable-opencl=no -Denable-java=no -Denable-php=no \
         -Denable-fortran=no -Ddisable-tutorial-directory=yes \
         -Ddisable-tests-directory=yes ../rose

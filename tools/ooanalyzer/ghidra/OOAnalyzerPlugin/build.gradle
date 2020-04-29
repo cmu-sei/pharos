@@ -31,3 +31,53 @@ else {
     throw new GradleException("GHIDRA_INSTALL_DIR is not defined!")
 }
 //----------------------END "DO NOT MODIFY" SECTION-------------------------------
+
+repositories {
+  mavenCentral()
+}
+
+task copyToLib(type: Copy) {
+  outputs.file file("lib/gson-2.8.5.jar")
+  if (!file("lib/gson-2.8.5.jar").exists()) {
+    configurations {
+      gsonDependency
+    }
+
+    dependencies {
+      gsonDependency group: 'com.google.code.gson', name: 'gson', version: '2.8.5'
+    }
+
+    from configurations.gsonDependency
+    into "lib"
+  }
+}
+buildExtension.dependsOn(copyToLib)
+
+task copyZip(type: Copy) {
+    from "$buildExtension.destinationDir/$buildExtension.baseName.$buildExtension.extension"
+    into ghidraInstallDir + '/Extensions/Ghidra'
+}
+copyZip.dependsOn(buildExtension)
+
+task installZip(type: Exec) {
+    group = "Installation"
+    description = "Installs the zip package in installed Ghidra's default extension directory"
+    //title = "Install zip"
+
+    workingDir ghidraInstallDir + '/Ghidra/Extensions'
+    commandLine 'unzip', '-o', "$buildExtension.destinationDir/$buildExtension.baseName.$buildExtension.extension" 
+}
+installZip.dependsOn(copyZip)
+
+task install() {
+     dependsOn installZip
+
+     group = "Installation"
+     description = "Alternate name for installZip task"
+     //title = "Install zip"
+
+     doLast {
+       // Empty action list
+       logger.quiet("Installed zip!")
+     }
+}
