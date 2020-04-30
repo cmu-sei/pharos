@@ -2,7 +2,7 @@
  * Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
  ******************************************************************************/
 // This is commented out because it requires work but is really just test code
-package ooanalyzerplugin;
+/*package ooanalyzerplugin;
 
 import static org.junit.Assert.assertTrue;
 
@@ -101,3 +101,4 @@ public class OOAnalyzerTest extends AbstractProgramBasedTest {
 	}
 
 }
+*/
