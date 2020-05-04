@@ -1148,7 +1148,7 @@ public class OOAnalyzer {
 				ghidraType.replaceAtOffset(mbr.getOffset(), mbrType, mbrType.getLength(), typeName,
 						mbrType.getDescription());
 
-			} catch (IllegalArgumentException iae) {
+			} catch (IllegalArgumentException | NullPointerException x) {
 				Msg.error(this, "Could not add class member " + mbr + " to class " + ghidraType.getDisplayName());
 			}
 		}
