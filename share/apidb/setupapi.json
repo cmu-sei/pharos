@@ -1,0 +1,2801 @@
+{
+    "config": {
+        "exports": [
+            {
+                "convention": "stdcall",
+                "display_name": "AssertFail",
+                "dll": "setupapi.dll",
+                "export_name": "AssertFail",
+                "ordinal": 5,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "CMP_WaitNoPendingInstallEvents",
+                "dll": "setupapi.dll",
+                "export_name": "CMP_WaitNoPendingInstallEvents",
+                "ordinal": 10,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "CM_Connect_MachineW",
+                "dll": "setupapi.dll",
+                "export_name": "CM_Connect_MachineW",
+                "ordinal": 22,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "CM_Disconnect_Machine",
+                "dll": "setupapi.dll",
+                "export_name": "CM_Disconnect_Machine",
+                "ordinal": 37,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "CM_Get_Device_ID_ListA",
+                "dll": "setupapi.dll",
+                "export_name": "CM_Get_Device_ID_ListA",
+                "ordinal": 78,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "CaptureAndConvertAnsiArg",
+                "dll": "setupapi.dll",
+                "export_name": "CaptureAndConvertAnsiArg",
+                "ordinal": 193,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "CaptureStringArg",
+                "dll": "setupapi.dll",
+                "export_name": "CaptureStringArg",
+                "ordinal": 194,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DelayedMove",
+                "dll": "setupapi.dll",
+                "export_name": "DelayedMove",
+                "ordinal": 197,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DoesUserHavePrivilege",
+                "dll": "setupapi.dll",
+                "export_name": "DoesUserHavePrivilege",
+                "ordinal": 200,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DuplicateString",
+                "dll": "setupapi.dll",
+                "export_name": "DuplicateString",
+                "ordinal": 201,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnablePrivilege",
+                "dll": "setupapi.dll",
+                "export_name": "EnablePrivilege",
+                "ordinal": 202,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "FileExists",
+                "dll": "setupapi.dll",
+                "export_name": "FileExists",
+                "ordinal": 204,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "InstallCatalog",
+                "dll": "setupapi.dll",
+                "export_name": "InstallCatalog",
+                "ordinal": 211,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "InstallHinfSection",
+                "dll": "setupapi.dll",
+                "export_name": "InstallHinfSection",
+                "ordinal": 212,
+                "parameters": [
+                    {
+                        "delta": "16=InstallHinfSectionA@16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "InstallHinfSectionA",
+                "dll": "setupapi.dll",
+                "export_name": "InstallHinfSectionA",
+                "ordinal": 213,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "InstallHinfSectionW",
+                "dll": "setupapi.dll",
+                "export_name": "InstallHinfSectionW",
+                "ordinal": 214,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "IsUserAdmin",
+                "dll": "setupapi.dll",
+                "export_name": "IsUserAdmin",
+                "ordinal": 217,
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "MultiByteToUnicode",
+                "dll": "setupapi.dll",
+                "export_name": "MultiByteToUnicode",
+                "ordinal": 220,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "MyFree",
+                "dll": "setupapi.dll",
+                "export_name": "MyFree",
+                "ordinal": 222,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "MyMalloc",
+                "dll": "setupapi.dll",
+                "export_name": "MyMalloc",
+                "ordinal": 224,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "MyRealloc",
+                "dll": "setupapi.dll",
+                "export_name": "MyRealloc",
+                "ordinal": 225,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "OpenAndMapFileForRead",
+                "dll": "setupapi.dll",
+                "export_name": "OpenAndMapFileForRead",
+                "ordinal": 226,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "QueryRegistryValue",
+                "dll": "setupapi.dll",
+                "export_name": "QueryRegistryValue",
+                "ordinal": 229,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "RegistryDelnode",
+                "dll": "setupapi.dll",
+                "export_name": "RegistryDelnode",
+                "ordinal": 231,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "RetreiveFileSecurity",
+                "dll": "setupapi.dll",
+                "export_name": "RetreiveFileSecurity",
+                "ordinal": 232,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupAddInstallSectionToDiskSpaceListA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupAddInstallSectionToDiskSpaceListA",
+                "ordinal": 236,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupCloseFileQueue",
+                "dll": "setupapi.dll",
+                "export_name": "SetupCloseFileQueue",
+                "ordinal": 247,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupCloseInfFile",
+                "dll": "setupapi.dll",
+                "export_name": "SetupCloseInfFile",
+                "ordinal": 248,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupCloseLog",
+                "dll": "setupapi.dll",
+                "export_name": "SetupCloseLog",
+                "ordinal": 249,
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupCommitFileQueue",
+                "dll": "setupapi.dll",
+                "export_name": "SetupCommitFileQueue",
+                "ordinal": 250,
+                "parameters": [
+                    {
+                        "delta": "16=SetupCommitFileQueueW@16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupCommitFileQueueA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupCommitFileQueueA",
+                "ordinal": 251,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupCommitFileQueueW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupCommitFileQueueW",
+                "ordinal": 252,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupCopyErrorA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupCopyErrorA",
+                "ordinal": 253,
+                "parameters": [
+                    {
+                        "delta": "44"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupCopyErrorW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupCopyErrorW",
+                "ordinal": 254,
+                "parameters": [
+                    {
+                        "delta": "44"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupCopyOEMInfA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupCopyOEMInfA",
+                "ordinal": 255,
+                "parameters": [
+                    {
+                        "delta": "32"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupCopyOEMInfW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupCopyOEMInfW",
+                "ordinal": 256,
+                "parameters": [
+                    {
+                        "delta": "32"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupCreateDiskSpaceListA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupCreateDiskSpaceListA",
+                "ordinal": 257,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupCreateDiskSpaceListW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupCreateDiskSpaceListW",
+                "ordinal": 258,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDecompressOrCopyFileA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDecompressOrCopyFileA",
+                "ordinal": 259,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDecompressOrCopyFileW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDecompressOrCopyFileW",
+                "ordinal": 260,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDefaultQueueCallbackA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDefaultQueueCallbackA",
+                "ordinal": 262,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDefaultQueueCallbackW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDefaultQueueCallbackW",
+                "ordinal": 263,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDeleteErrorA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDeleteErrorA",
+                "ordinal": 264,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDeleteErrorW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDeleteErrorW",
+                "ordinal": 265,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDestroyDiskSpaceList",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDestroyDiskSpaceList",
+                "ordinal": 266,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiBuildClassInfoList",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiBuildClassInfoList",
+                "ordinal": 268,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiBuildClassInfoListExA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiBuildClassInfoListExA",
+                "ordinal": 269,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiBuildClassInfoListExW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiBuildClassInfoListExW",
+                "ordinal": 270,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiCallClassInstaller",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiCallClassInstaller",
+                "ordinal": 272,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiClassGuidsFromNameA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiClassGuidsFromNameA",
+                "ordinal": 275,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiClassGuidsFromNameExA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiClassGuidsFromNameExA",
+                "ordinal": 276,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiClassGuidsFromNameExW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiClassGuidsFromNameExW",
+                "ordinal": 277,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiClassGuidsFromNameW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiClassGuidsFromNameW",
+                "ordinal": 278,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiClassNameFromGuidA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiClassNameFromGuidA",
+                "ordinal": 279,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiClassNameFromGuidExA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiClassNameFromGuidExA",
+                "ordinal": 280,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiClassNameFromGuidExW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiClassNameFromGuidExW",
+                "ordinal": 281,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiClassNameFromGuidW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiClassNameFromGuidW",
+                "ordinal": 282,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiCreateDeviceInfoA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiCreateDeviceInfoA",
+                "ordinal": 285,
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiCreateDeviceInfoList",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiCreateDeviceInfoList",
+                "ordinal": 286,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiCreateDeviceInfoListExA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiCreateDeviceInfoListExA",
+                "ordinal": 287,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiCreateDeviceInfoListExW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiCreateDeviceInfoListExW",
+                "ordinal": 288,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiCreateDeviceInfoW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiCreateDeviceInfoW",
+                "ordinal": 289,
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiDestroyDeviceInfoList",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiDestroyDeviceInfoList",
+                "ordinal": 295,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiEnumDeviceInfo",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiEnumDeviceInfo",
+                "ordinal": 298,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiEnumDeviceInterfaces",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiEnumDeviceInterfaces",
+                "ordinal": 299,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetActualSectionToInstallA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetActualSectionToInstallA",
+                "ordinal": 302,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetActualSectionToInstallW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetActualSectionToInstallW",
+                "ordinal": 303,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetClassDescriptionA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetClassDescriptionA",
+                "ordinal": 305,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetClassDescriptionExA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetClassDescriptionExA",
+                "ordinal": 306,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetClassDescriptionExW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetClassDescriptionExW",
+                "ordinal": 307,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetClassDescriptionW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetClassDescriptionW",
+                "ordinal": 308,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetClassDevsA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetClassDevsA",
+                "ordinal": 311,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetClassDevsExA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetClassDevsExA",
+                "ordinal": 312,
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetClassDevsExW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetClassDevsExW",
+                "ordinal": 313,
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetClassDevsW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetClassDevsW",
+                "ordinal": 314,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetDeviceInfoListDetailA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetDeviceInfoListDetailA",
+                "ordinal": 322,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetDeviceInfoListDetailW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetDeviceInfoListDetailW",
+                "ordinal": 323,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetDeviceInstallParamsA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetDeviceInstallParamsA",
+                "ordinal": 324,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetDeviceInterfaceDetailA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetDeviceInterfaceDetailA",
+                "ordinal": 329,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetDeviceInterfaceDetailW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetDeviceInterfaceDetailW",
+                "ordinal": 330,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetDeviceRegistryPropertyA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetDeviceRegistryPropertyA",
+                "ordinal": 331,
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetINFClassA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetINFClassA",
+                "ordinal": 344,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiGetINFClassW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiGetINFClassW",
+                "ordinal": 345,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiInstallClassA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiInstallClassA",
+                "ordinal": 350,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiInstallClassW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiInstallClassW",
+                "ordinal": 353,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiOpenClassRegKey",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiOpenClassRegKey",
+                "ordinal": 358,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiOpenClassRegKeyExA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiOpenClassRegKeyExA",
+                "ordinal": 359,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiOpenClassRegKeyExW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiOpenClassRegKeyExW",
+                "ordinal": 360,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiOpenDevRegKey",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiOpenDevRegKey",
+                "ordinal": 361,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiOpenDeviceInterfaceA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiOpenDeviceInterfaceA",
+                "ordinal": 364,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiOpenDeviceInterfaceW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiOpenDeviceInterfaceW",
+                "ordinal": 366,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupDiSetClassInstallParamsA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupDiSetClassInstallParamsA",
+                "ordinal": 372,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupFindFirstLineA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupFindFirstLineA",
+                "ordinal": 386,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupFindFirstLineW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupFindFirstLineW",
+                "ordinal": 387,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupFindNextLine",
+                "dll": "setupapi.dll",
+                "export_name": "SetupFindNextLine",
+                "ordinal": 388,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupFindNextMatchLineA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupFindNextMatchLineA",
+                "ordinal": 389,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupFindNextMatchLineW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupFindNextMatchLineW",
+                "ordinal": 390,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetBinaryField",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetBinaryField",
+                "ordinal": 395,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetFieldCount",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetFieldCount",
+                "ordinal": 396,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetFileCompressionInfoA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetFileCompressionInfoA",
+                "ordinal": 397,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetFileCompressionInfoExA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetFileCompressionInfoExA",
+                "ordinal": 398,
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetFileCompressionInfoExW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetFileCompressionInfoExW",
+                "ordinal": 399,
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetFileCompressionInfoW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetFileCompressionInfoW",
+                "ordinal": 400,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetFileQueueCount",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetFileQueueCount",
+                "ordinal": 401,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetFileQueueFlags",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetFileQueueFlags",
+                "ordinal": 402,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetInfInformationA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetInfInformationA",
+                "ordinal": 405,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetInfInformationW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetInfInformationW",
+                "ordinal": 406,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetIntField",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetIntField",
+                "ordinal": 408,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetLineByIndexA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetLineByIndexA",
+                "ordinal": 409,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetLineByIndexW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetLineByIndexW",
+                "ordinal": 410,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetLineCountA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetLineCountA",
+                "ordinal": 411,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetLineCountW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetLineCountW",
+                "ordinal": 412,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetLineTextA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetLineTextA",
+                "ordinal": 413,
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetLineTextW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetLineTextW",
+                "ordinal": 414,
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetMultiSzFieldA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetMultiSzFieldA",
+                "ordinal": 415,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetMultiSzFieldW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetMultiSzFieldW",
+                "ordinal": 416,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetSourceFileLocationA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetSourceFileLocationA",
+                "ordinal": 417,
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetSourceFileLocationW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetSourceFileLocationW",
+                "ordinal": 418,
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetSourceInfoA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetSourceInfoA",
+                "ordinal": 421,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetSourceInfoW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetSourceInfoW",
+                "ordinal": 422,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetStringFieldA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetStringFieldA",
+                "ordinal": 423,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetStringFieldW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetStringFieldW",
+                "ordinal": 424,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetTargetPathA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetTargetPathA",
+                "ordinal": 425,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupGetTargetPathW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupGetTargetPathW",
+                "ordinal": 426,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupInitDefaultQueueCallback",
+                "dll": "setupapi.dll",
+                "export_name": "SetupInitDefaultQueueCallback",
+                "ordinal": 427,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupInitDefaultQueueCallbackEx",
+                "dll": "setupapi.dll",
+                "export_name": "SetupInitDefaultQueueCallbackEx",
+                "ordinal": 428,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupInitializeFileLogA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupInitializeFileLogA",
+                "ordinal": 429,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupInitializeFileLogW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupInitializeFileLogW",
+                "ordinal": 430,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupInstallFilesFromInfSectionA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupInstallFilesFromInfSectionA",
+                "ordinal": 435,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupInstallFilesFromInfSectionW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupInstallFilesFromInfSectionW",
+                "ordinal": 436,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupInstallFromInfSectionA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupInstallFromInfSectionA",
+                "ordinal": 437,
+                "parameters": [
+                    {
+                        "delta": "44"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupInstallFromInfSectionW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupInstallFromInfSectionW",
+                "ordinal": 438,
+                "parameters": [
+                    {
+                        "delta": "44"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupIterateCabinetA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupIterateCabinetA",
+                "ordinal": 443,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupIterateCabinetW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupIterateCabinetW",
+                "ordinal": 444,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupLogErrorW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupLogErrorW",
+                "ordinal": 446,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupOpenAppendInfFileA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupOpenAppendInfFileA",
+                "ordinal": 449,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupOpenAppendInfFileW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupOpenAppendInfFileW",
+                "ordinal": 450,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupOpenFileQueue",
+                "dll": "setupapi.dll",
+                "export_name": "SetupOpenFileQueue",
+                "ordinal": 451,
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupOpenInfFileA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupOpenInfFileA",
+                "ordinal": 452,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupOpenInfFileW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupOpenInfFileW",
+                "ordinal": 453,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupOpenLog",
+                "dll": "setupapi.dll",
+                "export_name": "SetupOpenLog",
+                "ordinal": 454,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupOpenMasterInf",
+                "dll": "setupapi.dll",
+                "export_name": "SetupOpenMasterInf",
+                "ordinal": 455,
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupPromptReboot",
+                "dll": "setupapi.dll",
+                "export_name": "SetupPromptReboot",
+                "ordinal": 458,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueryInfFileInformationA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueryInfFileInformationA",
+                "ordinal": 463,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueryInfFileInformationW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueryInfFileInformationW",
+                "ordinal": 464,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQuerySpaceRequiredOnDriveA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQuerySpaceRequiredOnDriveA",
+                "ordinal": 471,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueueCopyA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueueCopyA",
+                "ordinal": 473,
+                "parameters": [
+                    {
+                        "delta": "36"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueueCopyIndirectA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueueCopyIndirectA",
+                "ordinal": 474,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueueCopyIndirectW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueueCopyIndirectW",
+                "ordinal": 475,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueueCopySectionA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueueCopySectionA",
+                "ordinal": 476,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueueCopySectionW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueueCopySectionW",
+                "ordinal": 477,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueueCopyW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueueCopyW",
+                "ordinal": 478,
+                "parameters": [
+                    {
+                        "delta": "36"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueueDefaultCopyA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueueDefaultCopyA",
+                "ordinal": 479,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueueDefaultCopyW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueueDefaultCopyW",
+                "ordinal": 480,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueueDeleteA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueueDeleteA",
+                "ordinal": 481,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueueDeleteSectionA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueueDeleteSectionA",
+                "ordinal": 482,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueueDeleteSectionW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueueDeleteSectionW",
+                "ordinal": 483,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueueDeleteW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueueDeleteW",
+                "ordinal": 484,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueueRenameA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueueRenameA",
+                "ordinal": 485,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueueRenameSectionA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueueRenameSectionA",
+                "ordinal": 486,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueueRenameSectionW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueueRenameSectionW",
+                "ordinal": 487,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupQueueRenameW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupQueueRenameW",
+                "ordinal": 488,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupRenameErrorA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupRenameErrorA",
+                "ordinal": 499,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupRenameErrorW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupRenameErrorW",
+                "ordinal": 500,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupScanFileQueueA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupScanFileQueueA",
+                "ordinal": 502,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupScanFileQueueW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupScanFileQueueW",
+                "ordinal": 503,
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupSetDirectoryIdA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupSetDirectoryIdA",
+                "ordinal": 504,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupSetDirectoryIdW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupSetDirectoryIdW",
+                "ordinal": 507,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupSetFileQueueAlternatePlatformA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupSetFileQueueAlternatePlatformA",
+                "ordinal": 508,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupSetFileQueueAlternatePlatformW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupSetFileQueueAlternatePlatformW",
+                "ordinal": 509,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupSetFileQueueFlags",
+                "dll": "setupapi.dll",
+                "export_name": "SetupSetFileQueueFlags",
+                "ordinal": 510,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupSetSourceListA",
+                "dll": "setupapi.dll",
+                "export_name": "SetupSetSourceListA",
+                "ordinal": 513,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupSetSourceListW",
+                "dll": "setupapi.dll",
+                "export_name": "SetupSetSourceListW",
+                "ordinal": 514,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupTermDefaultQueueCallback",
+                "dll": "setupapi.dll",
+                "export_name": "SetupTermDefaultQueueCallback",
+                "ordinal": 515,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetupTerminateFileLog",
+                "dll": "setupapi.dll",
+                "export_name": "SetupTerminateFileLog",
+                "ordinal": 516,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StampFileSecurity",
+                "dll": "setupapi.dll",
+                "export_name": "StampFileSecurity",
+                "ordinal": 518,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableAddString",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableAddString",
+                "ordinal": 519,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableAddStringEx",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableAddStringEx",
+                "ordinal": 520,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableDestroy",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableDestroy",
+                "ordinal": 521,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableDuplicate",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableDuplicate",
+                "ordinal": 522,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableGetExtraData",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableGetExtraData",
+                "ordinal": 524,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableInitialize",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableInitialize",
+                "ordinal": 525,
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableInitializeEx",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableInitializeEx",
+                "ordinal": 526,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableLookUpString",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableLookUpString",
+                "ordinal": 527,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableLookUpStringEx",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableLookUpStringEx",
+                "ordinal": 528,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableSetExtraData",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableSetExtraData",
+                "ordinal": 529,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableStringFromId",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableStringFromId",
+                "ordinal": 530,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableStringFromIdEx",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableStringFromIdEx",
+                "ordinal": 531,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableTrim",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableTrim",
+                "ordinal": 532,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "TakeOwnershipOfFile",
+                "dll": "setupapi.dll",
+                "export_name": "TakeOwnershipOfFile",
+                "ordinal": 533,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "UnicodeToMultiByte",
+                "dll": "setupapi.dll",
+                "export_name": "UnicodeToMultiByte",
+                "ordinal": 534,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "UnmapAndCloseFile",
+                "dll": "setupapi.dll",
+                "export_name": "UnmapAndCloseFile",
+                "ordinal": 535,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "pSetupGetField",
+                "dll": "setupapi.dll",
+                "export_name": "pSetupGetField",
+                "ordinal": 544,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "pSetupGetGlobalFlags",
+                "dll": "setupapi.dll",
+                "export_name": "pSetupGetGlobalFlags",
+                "ordinal": 545,
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "pSetupSetGlobalFlags",
+                "dll": "setupapi.dll",
+                "export_name": "pSetupSetGlobalFlags",
+                "ordinal": 552,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableAddString",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableAddString",
+                "ordinal": 556,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableAddStringEx",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableAddStringEx",
+                "ordinal": 557,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableDestroy",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableDestroy",
+                "ordinal": 558,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableDuplicate",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableDuplicate",
+                "ordinal": 559,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableGetExtraData",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableGetExtraData",
+                "ordinal": 561,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableInitialize",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableInitialize",
+                "ordinal": 562,
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableInitializeEx",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableInitializeEx",
+                "ordinal": 563,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableLookUpString",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableLookUpString",
+                "ordinal": 564,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableLookUpStringEx",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableLookUpStringEx",
+                "ordinal": 565,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StringTableSetExtraData",
+                "dll": "setupapi.dll",
+                "export_name": "StringTableSetExtraData",
+                "ordinal": 566,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "pSetupStringTableAddString",
+                "dll": "setupapi.dll",
+                "export_name": "pSetupStringTableAddString",
+                "ordinal": 556,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "pSetupStringTableAddStringEx",
+                "dll": "setupapi.dll",
+                "export_name": "pSetupStringTableAddStringEx",
+                "ordinal": 557,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "pSetupStringTableDestroy",
+                "dll": "setupapi.dll",
+                "export_name": "pSetupStringTableDestroy",
+                "ordinal": 558,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "pSetupStringTableDuplicate",
+                "dll": "setupapi.dll",
+                "export_name": "pSetupStringTableDuplicate",
+                "ordinal": 559,
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "pSetupStringTableGetExtraData",
+                "dll": "setupapi.dll",
+                "export_name": "pSetupStringTableGetExtraData",
+                "ordinal": 561,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "pSetupStringTableInitialize",
+                "dll": "setupapi.dll",
+                "export_name": "pSetupStringTableInitialize",
+                "ordinal": 562,
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "pSetupStringTableInitializeEx",
+                "dll": "setupapi.dll",
+                "export_name": "pSetupStringTableInitializeEx",
+                "ordinal": 563,
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "pSetupStringTableLookUpString",
+                "dll": "setupapi.dll",
+                "export_name": "pSetupStringTableLookUpString",
+                "ordinal": 564,
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "pSetupStringTableLookUpStringEx",
+                "dll": "setupapi.dll",
+                "export_name": "pSetupStringTableLookUpStringEx",
+                "ordinal": 565,
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "pSetupStringTableSetExtraData",
+                "dll": "setupapi.dll",
+                "export_name": "pSetupStringTableSetExtraData",
+                "ordinal": 566,
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            }
+        ]
+    }
+}
