@@ -1,0 +1,2202 @@
+{
+    "config": {
+        "exports": [
+            {
+                "convention": "stdcall",
+                "display_name": "AbortPrinter",
+                "dll": "winspool.dll",
+                "export_name": "AbortPrinter",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddFormA",
+                "dll": "winspool.dll",
+                "export_name": "AddFormA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddFormW",
+                "dll": "winspool.dll",
+                "export_name": "AddFormW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddJobA",
+                "dll": "winspool.dll",
+                "export_name": "AddJobA",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddJobW",
+                "dll": "winspool.dll",
+                "export_name": "AddJobW",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddMonitorA",
+                "dll": "winspool.dll",
+                "export_name": "AddMonitorA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddMonitorW",
+                "dll": "winspool.dll",
+                "export_name": "AddMonitorW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPerMachineConnectionA",
+                "dll": "winspool.dll",
+                "export_name": "AddPerMachineConnectionA",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPerMachineConnectionW",
+                "dll": "winspool.dll",
+                "export_name": "AddPerMachineConnectionW",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPortA",
+                "dll": "winspool.dll",
+                "export_name": "AddPortA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPortExA",
+                "dll": "winspool.dll",
+                "export_name": "AddPortExA",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPortExW",
+                "dll": "winspool.dll",
+                "export_name": "AddPortExW",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPortW",
+                "dll": "winspool.dll",
+                "export_name": "AddPortW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPrintProcessorA",
+                "dll": "winspool.dll",
+                "export_name": "AddPrintProcessorA",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPrintProcessorW",
+                "dll": "winspool.dll",
+                "export_name": "AddPrintProcessorW",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPrintProvidorA",
+                "dll": "winspool.dll",
+                "export_name": "AddPrintProvidorA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPrintProvidorW",
+                "dll": "winspool.dll",
+                "export_name": "AddPrintProvidorW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPrinterA",
+                "dll": "winspool.dll",
+                "export_name": "AddPrinterA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPrinterConnectionA",
+                "dll": "winspool.dll",
+                "export_name": "AddPrinterConnectionA",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPrinterConnectionUI",
+                "dll": "winspool.dll",
+                "export_name": "AddPrinterConnectionUI",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPrinterConnectionW",
+                "dll": "winspool.dll",
+                "export_name": "AddPrinterConnectionW",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPrinterDriverA",
+                "dll": "winspool.dll",
+                "export_name": "AddPrinterDriverA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPrinterDriverExA",
+                "dll": "winspool.dll",
+                "export_name": "AddPrinterDriverExA",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPrinterDriverExW",
+                "dll": "winspool.dll",
+                "export_name": "AddPrinterDriverExW",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPrinterDriverW",
+                "dll": "winspool.dll",
+                "export_name": "AddPrinterDriverW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AddPrinterW",
+                "dll": "winspool.dll",
+                "export_name": "AddPrinterW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AdvancedDocumentPropertiesA",
+                "dll": "winspool.dll",
+                "export_name": "AdvancedDocumentPropertiesA",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AdvancedDocumentPropertiesW",
+                "dll": "winspool.dll",
+                "export_name": "AdvancedDocumentPropertiesW",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "AdvancedSetupDialog",
+                "dll": "winspool.dll",
+                "export_name": "AdvancedSetupDialog",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "ClosePrinter",
+                "dll": "winspool.dll",
+                "export_name": "ClosePrinter",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "CloseSpoolFileHandle",
+                "dll": "winspool.dll",
+                "export_name": "CloseSpoolFileHandle",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "ClusterSplClose",
+                "dll": "winspool.dll",
+                "export_name": "ClusterSplClose",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "ClusterSplIsAlive",
+                "dll": "winspool.dll",
+                "export_name": "ClusterSplIsAlive",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "ClusterSplOpen",
+                "dll": "winspool.dll",
+                "export_name": "ClusterSplOpen",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "CommitSpoolData",
+                "dll": "winspool.dll",
+                "export_name": "CommitSpoolData",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "ConfigurePortA",
+                "dll": "winspool.dll",
+                "export_name": "ConfigurePortA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "ConfigurePortW",
+                "dll": "winspool.dll",
+                "export_name": "ConfigurePortW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "ConnectToPrinterDlg",
+                "dll": "winspool.dll",
+                "export_name": "ConnectToPrinterDlg",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "ConvertAnsiDevModeToUnicodeDevmode",
+                "dll": "winspool.dll",
+                "export_name": "ConvertAnsiDevModeToUnicodeDevmode",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "ConvertUnicodeDevModeToAnsiDevmode",
+                "dll": "winspool.dll",
+                "export_name": "ConvertUnicodeDevModeToAnsiDevmode",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "CreatePrinterIC",
+                "dll": "winspool.dll",
+                "export_name": "CreatePrinterIC",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeleteFormA",
+                "dll": "winspool.dll",
+                "export_name": "DeleteFormA",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeleteFormW",
+                "dll": "winspool.dll",
+                "export_name": "DeleteFormW",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeleteMonitorA",
+                "dll": "winspool.dll",
+                "export_name": "DeleteMonitorA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeleteMonitorW",
+                "dll": "winspool.dll",
+                "export_name": "DeleteMonitorW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePerMachineConnectionA",
+                "dll": "winspool.dll",
+                "export_name": "DeletePerMachineConnectionA",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePerMachineConnectionW",
+                "dll": "winspool.dll",
+                "export_name": "DeletePerMachineConnectionW",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePortA",
+                "dll": "winspool.dll",
+                "export_name": "DeletePortA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePortW",
+                "dll": "winspool.dll",
+                "export_name": "DeletePortW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrintProcessorA",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrintProcessorA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrintProcessorW",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrintProcessorW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrintProvidorA",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrintProvidorA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrintProvidorW",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrintProvidorW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrinter",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrinter",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrinterConnectionA",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrinterConnectionA",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrinterConnectionW",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrinterConnectionW",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrinterDataA",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrinterDataA",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrinterDataExA",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrinterDataExA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrinterDataExW",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrinterDataExW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrinterDataW",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrinterDataW",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrinterDriverA",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrinterDriverA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrinterDriverExA",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrinterDriverExA",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrinterDriverExW",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrinterDriverExW",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrinterDriverW",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrinterDriverW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrinterIC",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrinterIC",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrinterKeyA",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrinterKeyA",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeletePrinterKeyW",
+                "dll": "winspool.dll",
+                "export_name": "DeletePrinterKeyW",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DevQueryPrint",
+                "dll": "winspool.dll",
+                "export_name": "DevQueryPrint",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DevQueryPrintEx",
+                "dll": "winspool.dll",
+                "export_name": "DevQueryPrintEx",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeviceCapabilities",
+                "dll": "winspool.dll",
+                "export_name": "DeviceCapabilities",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeviceCapabilitiesA",
+                "dll": "winspool.dll",
+                "export_name": "DeviceCapabilitiesA",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeviceCapabilitiesW",
+                "dll": "winspool.dll",
+                "export_name": "DeviceCapabilitiesW",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DeviceMode",
+                "dll": "winspool.dll",
+                "export_name": "DeviceMode",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DevicePropertySheets",
+                "dll": "winspool.dll",
+                "export_name": "DevicePropertySheets",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DocumentEvent",
+                "dll": "winspool.dll",
+                "export_name": "DocumentEvent",
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DocumentPropertiesA",
+                "dll": "winspool.dll",
+                "export_name": "DocumentPropertiesA",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DocumentPropertiesW",
+                "dll": "winspool.dll",
+                "export_name": "DocumentPropertiesW",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DocumentPropertySheets",
+                "dll": "winspool.dll",
+                "export_name": "DocumentPropertySheets",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EndDocPrinter",
+                "dll": "winspool.dll",
+                "export_name": "EndDocPrinter",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EndPagePrinter",
+                "dll": "winspool.dll",
+                "export_name": "EndPagePrinter",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumFormsA",
+                "dll": "winspool.dll",
+                "export_name": "EnumFormsA",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumFormsW",
+                "dll": "winspool.dll",
+                "export_name": "EnumFormsW",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumJobsA",
+                "dll": "winspool.dll",
+                "export_name": "EnumJobsA",
+                "parameters": [
+                    {
+                        "delta": "32"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumJobsW",
+                "dll": "winspool.dll",
+                "export_name": "EnumJobsW",
+                "parameters": [
+                    {
+                        "delta": "32"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumMonitorsA",
+                "dll": "winspool.dll",
+                "export_name": "EnumMonitorsA",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumMonitorsW",
+                "dll": "winspool.dll",
+                "export_name": "EnumMonitorsW",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPerMachineConnectionsA",
+                "dll": "winspool.dll",
+                "export_name": "EnumPerMachineConnectionsA",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPerMachineConnectionsW",
+                "dll": "winspool.dll",
+                "export_name": "EnumPerMachineConnectionsW",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPortsA",
+                "dll": "winspool.dll",
+                "export_name": "EnumPortsA",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPortsW",
+                "dll": "winspool.dll",
+                "export_name": "EnumPortsW",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPrintProcessorDatatypesA",
+                "dll": "winspool.dll",
+                "export_name": "EnumPrintProcessorDatatypesA",
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPrintProcessorDatatypesW",
+                "dll": "winspool.dll",
+                "export_name": "EnumPrintProcessorDatatypesW",
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPrintProcessorsA",
+                "dll": "winspool.dll",
+                "export_name": "EnumPrintProcessorsA",
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPrintProcessorsW",
+                "dll": "winspool.dll",
+                "export_name": "EnumPrintProcessorsW",
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPrinterDataA",
+                "dll": "winspool.dll",
+                "export_name": "EnumPrinterDataA",
+                "parameters": [
+                    {
+                        "delta": "36"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPrinterDataExA",
+                "dll": "winspool.dll",
+                "export_name": "EnumPrinterDataExA",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPrinterDataExW",
+                "dll": "winspool.dll",
+                "export_name": "EnumPrinterDataExW",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPrinterDataW",
+                "dll": "winspool.dll",
+                "export_name": "EnumPrinterDataW",
+                "parameters": [
+                    {
+                        "delta": "36"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPrinterDriversA",
+                "dll": "winspool.dll",
+                "export_name": "EnumPrinterDriversA",
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPrinterDriversW",
+                "dll": "winspool.dll",
+                "export_name": "EnumPrinterDriversW",
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPrinterKeyA",
+                "dll": "winspool.dll",
+                "export_name": "EnumPrinterKeyA",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPrinterKeyW",
+                "dll": "winspool.dll",
+                "export_name": "EnumPrinterKeyW",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPrinterPropertySheets",
+                "dll": "winspool.dll",
+                "export_name": "EnumPrinterPropertySheets",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPrintersA",
+                "dll": "winspool.dll",
+                "export_name": "EnumPrintersA",
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "EnumPrintersW",
+                "dll": "winspool.dll",
+                "export_name": "EnumPrintersW",
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "ExtDeviceMode",
+                "dll": "winspool.dll",
+                "export_name": "ExtDeviceMode",
+                "parameters": [
+                    {
+                        "delta": "32"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "FindClosePrinterChangeNotification",
+                "dll": "winspool.dll",
+                "export_name": "FindClosePrinterChangeNotification",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "FindFirstPrinterChangeNotification",
+                "dll": "winspool.dll",
+                "export_name": "FindFirstPrinterChangeNotification",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "FindNextPrinterChangeNotification",
+                "dll": "winspool.dll",
+                "export_name": "FindNextPrinterChangeNotification",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "ForceUnloadDriver",
+                "dll": "winspool.dll",
+                "export_name": "ForceUnloadDriver",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "FreePrinterNotifyInfo",
+                "dll": "winspool.dll",
+                "export_name": "FreePrinterNotifyInfo",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetDefaultPrinterA",
+                "dll": "winspool.dll",
+                "export_name": "GetDefaultPrinterA",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetDefaultPrinterW",
+                "dll": "winspool.dll",
+                "export_name": "GetDefaultPrinterW",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetFormA",
+                "dll": "winspool.dll",
+                "export_name": "GetFormA",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetFormW",
+                "dll": "winspool.dll",
+                "export_name": "GetFormW",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetJobA",
+                "dll": "winspool.dll",
+                "export_name": "GetJobA",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetJobW",
+                "dll": "winspool.dll",
+                "export_name": "GetJobW",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetPrintProcessorDirectoryA",
+                "dll": "winspool.dll",
+                "export_name": "GetPrintProcessorDirectoryA",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetPrintProcessorDirectoryW",
+                "dll": "winspool.dll",
+                "export_name": "GetPrintProcessorDirectoryW",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetPrinterA",
+                "dll": "winspool.dll",
+                "export_name": "GetPrinterA",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetPrinterDataA",
+                "dll": "winspool.dll",
+                "export_name": "GetPrinterDataA",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetPrinterDataExA",
+                "dll": "winspool.dll",
+                "export_name": "GetPrinterDataExA",
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetPrinterDataExW",
+                "dll": "winspool.dll",
+                "export_name": "GetPrinterDataExW",
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetPrinterDataW",
+                "dll": "winspool.dll",
+                "export_name": "GetPrinterDataW",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetPrinterDriverA",
+                "dll": "winspool.dll",
+                "export_name": "GetPrinterDriverA",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetPrinterDriverDirectoryA",
+                "dll": "winspool.dll",
+                "export_name": "GetPrinterDriverDirectoryA",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetPrinterDriverDirectoryW",
+                "dll": "winspool.dll",
+                "export_name": "GetPrinterDriverDirectoryW",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetPrinterDriverW",
+                "dll": "winspool.dll",
+                "export_name": "GetPrinterDriverW",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetPrinterHTMLViewA",
+                "dll": "winspool.dll",
+                "export_name": "GetPrinterHTMLViewA",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetPrinterHTMLViewW",
+                "dll": "winspool.dll",
+                "export_name": "GetPrinterHTMLViewW",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetPrinterW",
+                "dll": "winspool.dll",
+                "export_name": "GetPrinterW",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetPrinterWebInformation",
+                "dll": "winspool.dll",
+                "export_name": "GetPrinterWebInformation",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetSpoolFileHandle",
+                "dll": "winspool.dll",
+                "export_name": "GetSpoolFileHandle",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "InitializeDll",
+                "dll": "winspool.dll",
+                "export_name": "InitializeDll",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "LoadPrinterDriver",
+                "dll": "winspool.dll",
+                "export_name": "LoadPrinterDriver",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "OpenPrinterA",
+                "dll": "winspool.dll",
+                "export_name": "OpenPrinterA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "OpenPrinterW",
+                "dll": "winspool.dll",
+                "export_name": "OpenPrinterW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "PlayGdiScriptOnPrinterIC",
+                "dll": "winspool.dll",
+                "export_name": "PlayGdiScriptOnPrinterIC",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "PrinterMessageBoxA",
+                "dll": "winspool.dll",
+                "export_name": "PrinterMessageBoxA",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "PrinterMessageBoxW",
+                "dll": "winspool.dll",
+                "export_name": "PrinterMessageBoxW",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "PrinterProperties",
+                "dll": "winspool.dll",
+                "export_name": "PrinterProperties",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "PublishPrinterA",
+                "dll": "winspool.dll",
+                "export_name": "PublishPrinterA",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "PublishPrinterW",
+                "dll": "winspool.dll",
+                "export_name": "PublishPrinterW",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "QueryColorProfile",
+                "dll": "winspool.dll",
+                "export_name": "QueryColorProfile",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "QueryRemoteFonts",
+                "dll": "winspool.dll",
+                "export_name": "QueryRemoteFonts",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "QuerySpoolMode",
+                "dll": "winspool.dll",
+                "export_name": "QuerySpoolMode",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "ReadPrinter",
+                "dll": "winspool.dll",
+                "export_name": "ReadPrinter",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "RefCntLoadDriver",
+                "dll": "winspool.dll",
+                "export_name": "RefCntLoadDriver",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "RefCntUnloadDriver",
+                "dll": "winspool.dll",
+                "export_name": "RefCntUnloadDriver",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "ResetPrinterA",
+                "dll": "winspool.dll",
+                "export_name": "ResetPrinterA",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "ResetPrinterW",
+                "dll": "winspool.dll",
+                "export_name": "ResetPrinterW",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "ScheduleJob",
+                "dll": "winspool.dll",
+                "export_name": "ScheduleJob",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SeekPrinter",
+                "dll": "winspool.dll",
+                "export_name": "SeekPrinter",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetAllocFailCount",
+                "dll": "winspool.dll",
+                "export_name": "SetAllocFailCount",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetDefaultPrinterA",
+                "dll": "winspool.dll",
+                "export_name": "SetDefaultPrinterA",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetDefaultPrinterW",
+                "dll": "winspool.dll",
+                "export_name": "SetDefaultPrinterW",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetFormA",
+                "dll": "winspool.dll",
+                "export_name": "SetFormA",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetFormW",
+                "dll": "winspool.dll",
+                "export_name": "SetFormW",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetJobA",
+                "dll": "winspool.dll",
+                "export_name": "SetJobA",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetJobW",
+                "dll": "winspool.dll",
+                "export_name": "SetJobW",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetPortA",
+                "dll": "winspool.dll",
+                "export_name": "SetPortA",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetPortW",
+                "dll": "winspool.dll",
+                "export_name": "SetPortW",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetPrinterA",
+                "dll": "winspool.dll",
+                "export_name": "SetPrinterA",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetPrinterDataA",
+                "dll": "winspool.dll",
+                "export_name": "SetPrinterDataA",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetPrinterDataExA",
+                "dll": "winspool.dll",
+                "export_name": "SetPrinterDataExA",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetPrinterDataExW",
+                "dll": "winspool.dll",
+                "export_name": "SetPrinterDataExW",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetPrinterDataW",
+                "dll": "winspool.dll",
+                "export_name": "SetPrinterDataW",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetPrinterHTMLViewA",
+                "dll": "winspool.dll",
+                "export_name": "SetPrinterHTMLViewA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetPrinterHTMLViewW",
+                "dll": "winspool.dll",
+                "export_name": "SetPrinterHTMLViewW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SetPrinterW",
+                "dll": "winspool.dll",
+                "export_name": "SetPrinterW",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SplDriverUnloadComplete",
+                "dll": "winspool.dll",
+                "export_name": "SplDriverUnloadComplete",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SplReadPrinter",
+                "dll": "winspool.dll",
+                "export_name": "SplReadPrinter",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SpoolerDevQueryPrintW",
+                "dll": "winspool.dll",
+                "export_name": "SpoolerDevQueryPrintW",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SpoolerInit",
+                "dll": "winspool.dll",
+                "export_name": "SpoolerInit",
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SpoolerPrinterEvent",
+                "dll": "winspool.dll",
+                "export_name": "SpoolerPrinterEvent",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StartDocDlgA",
+                "dll": "winspool.dll",
+                "export_name": "StartDocDlgA",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StartDocDlgW",
+                "dll": "winspool.dll",
+                "export_name": "StartDocDlgW",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StartDocPrinterA",
+                "dll": "winspool.dll",
+                "export_name": "StartDocPrinterA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StartDocPrinterW",
+                "dll": "winspool.dll",
+                "export_name": "StartDocPrinterW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "StartPagePrinter",
+                "dll": "winspool.dll",
+                "export_name": "StartPagePrinter",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "WaitForPrinterChange",
+                "dll": "winspool.dll",
+                "export_name": "WaitForPrinterChange",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "WritePrinter",
+                "dll": "winspool.dll",
+                "export_name": "WritePrinter",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "XcvDataW",
+                "dll": "winspool.dll",
+                "export_name": "XcvDataW",
+                "parameters": [
+                    {
+                        "delta": "32"
+                    }
+                ],
+                "type": "UnknownReturn"
+            }
+        ]
+    }
+}
