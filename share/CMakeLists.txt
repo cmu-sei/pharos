@@ -1,4 +1,5 @@
 add_subdirectory(prolog)
 add_subdirectory(apidb)
+add_subdirectory(contrib)
 add_subdirectory(typedb)
 add_subdirectory(apianalyzer)
