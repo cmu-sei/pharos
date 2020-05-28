@@ -1,0 +1,2334 @@
+{
+    "config": {
+        "exports": [
+            {
+                "convention": "stdcall",
+                "display_name": "CloseDriver",
+                "dll": "winmm.dll",
+                "export_name": "CloseDriver",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DefDriverProc",
+                "dll": "winmm.dll",
+                "export_name": "DefDriverProc",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DriverCallback",
+                "dll": "winmm.dll",
+                "export_name": "DriverCallback",
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "DrvGetModuleHandle",
+                "dll": "winmm.dll",
+                "export_name": "DrvGetModuleHandle",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "GetDriverModuleHandle",
+                "dll": "winmm.dll",
+                "export_name": "GetDriverModuleHandle",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "NotifyCallbackData",
+                "dll": "winmm.dll",
+                "export_name": "NotifyCallbackData",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "OpenDriver",
+                "dll": "winmm.dll",
+                "export_name": "OpenDriver",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "PlaySound",
+                "dll": "winmm.dll",
+                "export_name": "PlaySound",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "PlaySoundA",
+                "dll": "winmm.dll",
+                "export_name": "PlaySoundA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "PlaySoundW",
+                "dll": "winmm.dll",
+                "export_name": "PlaySoundW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "SendDriverMessage",
+                "dll": "winmm.dll",
+                "export_name": "SendDriverMessage",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "WOW32DriverCallback",
+                "dll": "winmm.dll",
+                "export_name": "WOW32DriverCallback",
+                "parameters": [
+                    {
+                        "delta": "28"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "WOW32ResolveMultiMediaHandle",
+                "dll": "winmm.dll",
+                "export_name": "WOW32ResolveMultiMediaHandle",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "WOWAppExit",
+                "dll": "winmm.dll",
+                "export_name": "WOWAppExit",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "aux32Message",
+                "dll": "winmm.dll",
+                "export_name": "aux32Message",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "auxGetDevCapsA",
+                "dll": "winmm.dll",
+                "export_name": "auxGetDevCapsA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "auxGetDevCapsW",
+                "dll": "winmm.dll",
+                "export_name": "auxGetDevCapsW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "auxGetNumDevs",
+                "dll": "winmm.dll",
+                "export_name": "auxGetNumDevs",
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "auxGetVolume",
+                "dll": "winmm.dll",
+                "export_name": "auxGetVolume",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "auxOutMessage",
+                "dll": "winmm.dll",
+                "export_name": "auxOutMessage",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "auxSetVolume",
+                "dll": "winmm.dll",
+                "export_name": "auxSetVolume",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "joy32Message",
+                "dll": "winmm.dll",
+                "export_name": "joy32Message",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "joyConfigChanged",
+                "dll": "winmm.dll",
+                "export_name": "joyConfigChanged",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "joyGetDevCapsA",
+                "dll": "winmm.dll",
+                "export_name": "joyGetDevCapsA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "joyGetDevCapsW",
+                "dll": "winmm.dll",
+                "export_name": "joyGetDevCapsW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "joyGetNumDevs",
+                "dll": "winmm.dll",
+                "export_name": "joyGetNumDevs",
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "joyGetPos",
+                "dll": "winmm.dll",
+                "export_name": "joyGetPos",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "joyGetPosEx",
+                "dll": "winmm.dll",
+                "export_name": "joyGetPosEx",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "joyGetThreshold",
+                "dll": "winmm.dll",
+                "export_name": "joyGetThreshold",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "joyReleaseCapture",
+                "dll": "winmm.dll",
+                "export_name": "joyReleaseCapture",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "joySetCapture",
+                "dll": "winmm.dll",
+                "export_name": "joySetCapture",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "joySetThreshold",
+                "dll": "winmm.dll",
+                "export_name": "joySetThreshold",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mci32Message",
+                "dll": "winmm.dll",
+                "export_name": "mci32Message",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciDriverNotify",
+                "dll": "winmm.dll",
+                "export_name": "mciDriverNotify",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciDriverYield",
+                "dll": "winmm.dll",
+                "export_name": "mciDriverYield",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciExecute",
+                "dll": "winmm.dll",
+                "export_name": "mciExecute",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciFreeCommandResource",
+                "dll": "winmm.dll",
+                "export_name": "mciFreeCommandResource",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciGetCreatorTask",
+                "dll": "winmm.dll",
+                "export_name": "mciGetCreatorTask",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciGetDeviceIDA",
+                "dll": "winmm.dll",
+                "export_name": "mciGetDeviceIDA",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciGetDeviceIDFromElementIDA",
+                "dll": "winmm.dll",
+                "export_name": "mciGetDeviceIDFromElementIDA",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciGetDeviceIDFromElementIDW",
+                "dll": "winmm.dll",
+                "export_name": "mciGetDeviceIDFromElementIDW",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciGetDeviceIDW",
+                "dll": "winmm.dll",
+                "export_name": "mciGetDeviceIDW",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciGetDriverData",
+                "dll": "winmm.dll",
+                "export_name": "mciGetDriverData",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciGetErrorStringA",
+                "dll": "winmm.dll",
+                "export_name": "mciGetErrorStringA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciGetErrorStringW",
+                "dll": "winmm.dll",
+                "export_name": "mciGetErrorStringW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciGetYieldProc",
+                "dll": "winmm.dll",
+                "export_name": "mciGetYieldProc",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciLoadCommandResource",
+                "dll": "winmm.dll",
+                "export_name": "mciLoadCommandResource",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciSendCommandA",
+                "dll": "winmm.dll",
+                "export_name": "mciSendCommandA",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciSendCommandW",
+                "dll": "winmm.dll",
+                "export_name": "mciSendCommandW",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciSendStringA",
+                "dll": "winmm.dll",
+                "export_name": "mciSendStringA",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciSendStringW",
+                "dll": "winmm.dll",
+                "export_name": "mciSendStringW",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciSetDriverData",
+                "dll": "winmm.dll",
+                "export_name": "mciSetDriverData",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mciSetYieldProc",
+                "dll": "winmm.dll",
+                "export_name": "mciSetYieldProc",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mid32Message",
+                "dll": "winmm.dll",
+                "export_name": "mid32Message",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiConnect",
+                "dll": "winmm.dll",
+                "export_name": "midiConnect",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiDisconnect",
+                "dll": "winmm.dll",
+                "export_name": "midiDisconnect",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiInAddBuffer",
+                "dll": "winmm.dll",
+                "export_name": "midiInAddBuffer",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiInClose",
+                "dll": "winmm.dll",
+                "export_name": "midiInClose",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiInGetDevCapsA",
+                "dll": "winmm.dll",
+                "export_name": "midiInGetDevCapsA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiInGetDevCapsW",
+                "dll": "winmm.dll",
+                "export_name": "midiInGetDevCapsW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiInGetErrorTextA",
+                "dll": "winmm.dll",
+                "export_name": "midiInGetErrorTextA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiInGetErrorTextW",
+                "dll": "winmm.dll",
+                "export_name": "midiInGetErrorTextW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiInGetID",
+                "dll": "winmm.dll",
+                "export_name": "midiInGetID",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiInGetNumDevs",
+                "dll": "winmm.dll",
+                "export_name": "midiInGetNumDevs",
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiInMessage",
+                "dll": "winmm.dll",
+                "export_name": "midiInMessage",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiInOpen",
+                "dll": "winmm.dll",
+                "export_name": "midiInOpen",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiInPrepareHeader",
+                "dll": "winmm.dll",
+                "export_name": "midiInPrepareHeader",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiInReset",
+                "dll": "winmm.dll",
+                "export_name": "midiInReset",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiInStart",
+                "dll": "winmm.dll",
+                "export_name": "midiInStart",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiInStop",
+                "dll": "winmm.dll",
+                "export_name": "midiInStop",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiInUnprepareHeader",
+                "dll": "winmm.dll",
+                "export_name": "midiInUnprepareHeader",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutCacheDrumPatches",
+                "dll": "winmm.dll",
+                "export_name": "midiOutCacheDrumPatches",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutCachePatches",
+                "dll": "winmm.dll",
+                "export_name": "midiOutCachePatches",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutClose",
+                "dll": "winmm.dll",
+                "export_name": "midiOutClose",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutGetDevCapsA",
+                "dll": "winmm.dll",
+                "export_name": "midiOutGetDevCapsA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutGetDevCapsW",
+                "dll": "winmm.dll",
+                "export_name": "midiOutGetDevCapsW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutGetErrorTextA",
+                "dll": "winmm.dll",
+                "export_name": "midiOutGetErrorTextA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutGetErrorTextW",
+                "dll": "winmm.dll",
+                "export_name": "midiOutGetErrorTextW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutGetID",
+                "dll": "winmm.dll",
+                "export_name": "midiOutGetID",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutGetNumDevs",
+                "dll": "winmm.dll",
+                "export_name": "midiOutGetNumDevs",
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutGetVolume",
+                "dll": "winmm.dll",
+                "export_name": "midiOutGetVolume",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutLongMsg",
+                "dll": "winmm.dll",
+                "export_name": "midiOutLongMsg",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutMessage",
+                "dll": "winmm.dll",
+                "export_name": "midiOutMessage",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutOpen",
+                "dll": "winmm.dll",
+                "export_name": "midiOutOpen",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutPrepareHeader",
+                "dll": "winmm.dll",
+                "export_name": "midiOutPrepareHeader",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutReset",
+                "dll": "winmm.dll",
+                "export_name": "midiOutReset",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutSetVolume",
+                "dll": "winmm.dll",
+                "export_name": "midiOutSetVolume",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutShortMsg",
+                "dll": "winmm.dll",
+                "export_name": "midiOutShortMsg",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiOutUnprepareHeader",
+                "dll": "winmm.dll",
+                "export_name": "midiOutUnprepareHeader",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiStreamClose",
+                "dll": "winmm.dll",
+                "export_name": "midiStreamClose",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiStreamOpen",
+                "dll": "winmm.dll",
+                "export_name": "midiStreamOpen",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiStreamOut",
+                "dll": "winmm.dll",
+                "export_name": "midiStreamOut",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiStreamPause",
+                "dll": "winmm.dll",
+                "export_name": "midiStreamPause",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiStreamPosition",
+                "dll": "winmm.dll",
+                "export_name": "midiStreamPosition",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiStreamProperty",
+                "dll": "winmm.dll",
+                "export_name": "midiStreamProperty",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiStreamRestart",
+                "dll": "winmm.dll",
+                "export_name": "midiStreamRestart",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "midiStreamStop",
+                "dll": "winmm.dll",
+                "export_name": "midiStreamStop",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mixerClose",
+                "dll": "winmm.dll",
+                "export_name": "mixerClose",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mixerGetControlDetailsA",
+                "dll": "winmm.dll",
+                "export_name": "mixerGetControlDetailsA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mixerGetControlDetailsW",
+                "dll": "winmm.dll",
+                "export_name": "mixerGetControlDetailsW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mixerGetDevCapsA",
+                "dll": "winmm.dll",
+                "export_name": "mixerGetDevCapsA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mixerGetDevCapsW",
+                "dll": "winmm.dll",
+                "export_name": "mixerGetDevCapsW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mixerGetID",
+                "dll": "winmm.dll",
+                "export_name": "mixerGetID",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mixerGetLineControlsA",
+                "dll": "winmm.dll",
+                "export_name": "mixerGetLineControlsA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mixerGetLineControlsW",
+                "dll": "winmm.dll",
+                "export_name": "mixerGetLineControlsW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mixerGetLineInfoA",
+                "dll": "winmm.dll",
+                "export_name": "mixerGetLineInfoA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mixerGetLineInfoW",
+                "dll": "winmm.dll",
+                "export_name": "mixerGetLineInfoW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mixerGetNumDevs",
+                "dll": "winmm.dll",
+                "export_name": "mixerGetNumDevs",
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mixerMessage",
+                "dll": "winmm.dll",
+                "export_name": "mixerMessage",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mixerOpen",
+                "dll": "winmm.dll",
+                "export_name": "mixerOpen",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mixerSetControlDetails",
+                "dll": "winmm.dll",
+                "export_name": "mixerSetControlDetails",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmDrvInstall",
+                "dll": "winmm.dll",
+                "export_name": "mmDrvInstall",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmGetCurrentTask",
+                "dll": "winmm.dll",
+                "export_name": "mmGetCurrentTask",
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmTaskBlock",
+                "dll": "winmm.dll",
+                "export_name": "mmTaskBlock",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmTaskCreate",
+                "dll": "winmm.dll",
+                "export_name": "mmTaskCreate",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmTaskSignal",
+                "dll": "winmm.dll",
+                "export_name": "mmTaskSignal",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmTaskYield",
+                "dll": "winmm.dll",
+                "export_name": "mmTaskYield",
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioAdvance",
+                "dll": "winmm.dll",
+                "export_name": "mmioAdvance",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioAscend",
+                "dll": "winmm.dll",
+                "export_name": "mmioAscend",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioClose",
+                "dll": "winmm.dll",
+                "export_name": "mmioClose",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioCreateChunk",
+                "dll": "winmm.dll",
+                "export_name": "mmioCreateChunk",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioDescend",
+                "dll": "winmm.dll",
+                "export_name": "mmioDescend",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioFlush",
+                "dll": "winmm.dll",
+                "export_name": "mmioFlush",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioGetInfo",
+                "dll": "winmm.dll",
+                "export_name": "mmioGetInfo",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioInstallIOProcA",
+                "dll": "winmm.dll",
+                "export_name": "mmioInstallIOProcA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioInstallIOProcW",
+                "dll": "winmm.dll",
+                "export_name": "mmioInstallIOProcW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioOpenA",
+                "dll": "winmm.dll",
+                "export_name": "mmioOpenA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioOpenW",
+                "dll": "winmm.dll",
+                "export_name": "mmioOpenW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioRead",
+                "dll": "winmm.dll",
+                "export_name": "mmioRead",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioRenameA",
+                "dll": "winmm.dll",
+                "export_name": "mmioRenameA",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioRenameW",
+                "dll": "winmm.dll",
+                "export_name": "mmioRenameW",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioSeek",
+                "dll": "winmm.dll",
+                "export_name": "mmioSeek",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioSendMessage",
+                "dll": "winmm.dll",
+                "export_name": "mmioSendMessage",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioSetBuffer",
+                "dll": "winmm.dll",
+                "export_name": "mmioSetBuffer",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioSetInfo",
+                "dll": "winmm.dll",
+                "export_name": "mmioSetInfo",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioStringToFOURCCA",
+                "dll": "winmm.dll",
+                "export_name": "mmioStringToFOURCCA",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioStringToFOURCCW",
+                "dll": "winmm.dll",
+                "export_name": "mmioStringToFOURCCW",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmioWrite",
+                "dll": "winmm.dll",
+                "export_name": "mmioWrite",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mmsystemGetVersion",
+                "dll": "winmm.dll",
+                "export_name": "mmsystemGetVersion",
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mod32Message",
+                "dll": "winmm.dll",
+                "export_name": "mod32Message",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "mxd32Message",
+                "dll": "winmm.dll",
+                "export_name": "mxd32Message",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "sndPlaySoundA",
+                "dll": "winmm.dll",
+                "export_name": "sndPlaySoundA",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "sndPlaySoundW",
+                "dll": "winmm.dll",
+                "export_name": "sndPlaySoundW",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "tid32Message",
+                "dll": "winmm.dll",
+                "export_name": "tid32Message",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "timeBeginPeriod",
+                "dll": "winmm.dll",
+                "export_name": "timeBeginPeriod",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "timeEndPeriod",
+                "dll": "winmm.dll",
+                "export_name": "timeEndPeriod",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "timeGetDevCaps",
+                "dll": "winmm.dll",
+                "export_name": "timeGetDevCaps",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "timeGetSystemTime",
+                "dll": "winmm.dll",
+                "export_name": "timeGetSystemTime",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "timeGetTime",
+                "dll": "winmm.dll",
+                "export_name": "timeGetTime",
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "timeKillEvent",
+                "dll": "winmm.dll",
+                "export_name": "timeKillEvent",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "timeSetEvent",
+                "dll": "winmm.dll",
+                "export_name": "timeSetEvent",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveInAddBuffer",
+                "dll": "winmm.dll",
+                "export_name": "waveInAddBuffer",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveInClose",
+                "dll": "winmm.dll",
+                "export_name": "waveInClose",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveInGetDevCapsA",
+                "dll": "winmm.dll",
+                "export_name": "waveInGetDevCapsA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveInGetDevCapsW",
+                "dll": "winmm.dll",
+                "export_name": "waveInGetDevCapsW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveInGetErrorTextA",
+                "dll": "winmm.dll",
+                "export_name": "waveInGetErrorTextA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveInGetErrorTextW",
+                "dll": "winmm.dll",
+                "export_name": "waveInGetErrorTextW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveInGetID",
+                "dll": "winmm.dll",
+                "export_name": "waveInGetID",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveInGetNumDevs",
+                "dll": "winmm.dll",
+                "export_name": "waveInGetNumDevs",
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveInGetPosition",
+                "dll": "winmm.dll",
+                "export_name": "waveInGetPosition",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveInMessage",
+                "dll": "winmm.dll",
+                "export_name": "waveInMessage",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveInOpen",
+                "dll": "winmm.dll",
+                "export_name": "waveInOpen",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveInPrepareHeader",
+                "dll": "winmm.dll",
+                "export_name": "waveInPrepareHeader",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveInReset",
+                "dll": "winmm.dll",
+                "export_name": "waveInReset",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveInStart",
+                "dll": "winmm.dll",
+                "export_name": "waveInStart",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveInStop",
+                "dll": "winmm.dll",
+                "export_name": "waveInStop",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveInUnprepareHeader",
+                "dll": "winmm.dll",
+                "export_name": "waveInUnprepareHeader",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutBreakLoop",
+                "dll": "winmm.dll",
+                "export_name": "waveOutBreakLoop",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutClose",
+                "dll": "winmm.dll",
+                "export_name": "waveOutClose",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutGetDevCapsA",
+                "dll": "winmm.dll",
+                "export_name": "waveOutGetDevCapsA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutGetDevCapsW",
+                "dll": "winmm.dll",
+                "export_name": "waveOutGetDevCapsW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutGetErrorTextA",
+                "dll": "winmm.dll",
+                "export_name": "waveOutGetErrorTextA",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutGetErrorTextW",
+                "dll": "winmm.dll",
+                "export_name": "waveOutGetErrorTextW",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutGetID",
+                "dll": "winmm.dll",
+                "export_name": "waveOutGetID",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutGetNumDevs",
+                "dll": "winmm.dll",
+                "export_name": "waveOutGetNumDevs",
+                "parameters": [
+                    {
+                        "delta": "0"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutGetPitch",
+                "dll": "winmm.dll",
+                "export_name": "waveOutGetPitch",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutGetPlaybackRate",
+                "dll": "winmm.dll",
+                "export_name": "waveOutGetPlaybackRate",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutGetPosition",
+                "dll": "winmm.dll",
+                "export_name": "waveOutGetPosition",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutGetVolume",
+                "dll": "winmm.dll",
+                "export_name": "waveOutGetVolume",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutMessage",
+                "dll": "winmm.dll",
+                "export_name": "waveOutMessage",
+                "parameters": [
+                    {
+                        "delta": "16"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutOpen",
+                "dll": "winmm.dll",
+                "export_name": "waveOutOpen",
+                "parameters": [
+                    {
+                        "delta": "24"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutPause",
+                "dll": "winmm.dll",
+                "export_name": "waveOutPause",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutPrepareHeader",
+                "dll": "winmm.dll",
+                "export_name": "waveOutPrepareHeader",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutReset",
+                "dll": "winmm.dll",
+                "export_name": "waveOutReset",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutRestart",
+                "dll": "winmm.dll",
+                "export_name": "waveOutRestart",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutSetPitch",
+                "dll": "winmm.dll",
+                "export_name": "waveOutSetPitch",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutSetPlaybackRate",
+                "dll": "winmm.dll",
+                "export_name": "waveOutSetPlaybackRate",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutSetVolume",
+                "dll": "winmm.dll",
+                "export_name": "waveOutSetVolume",
+                "parameters": [
+                    {
+                        "delta": "8"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutUnprepareHeader",
+                "dll": "winmm.dll",
+                "export_name": "waveOutUnprepareHeader",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "waveOutWrite",
+                "dll": "winmm.dll",
+                "export_name": "waveOutWrite",
+                "parameters": [
+                    {
+                        "delta": "12"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "wid32Message",
+                "dll": "winmm.dll",
+                "export_name": "wid32Message",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "winmmDbgOut",
+                "dll": "winmm.dll",
+                "export_name": "winmmDbgOut",
+                "parameters": [
+                    {
+                        "delta": "winmmDbgOut"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "winmmSetDebugLevel",
+                "dll": "winmm.dll",
+                "export_name": "winmmSetDebugLevel",
+                "parameters": [
+                    {
+                        "delta": "4"
+                    }
+                ],
+                "type": "UnknownReturn"
+            },
+            {
+                "convention": "stdcall",
+                "display_name": "wod32Message",
+                "dll": "winmm.dll",
+                "export_name": "wod32Message",
+                "parameters": [
+                    {
+                        "delta": "20"
+                    }
+                ],
+                "type": "UnknownReturn"
+            }
+        ]
+    }
+}
