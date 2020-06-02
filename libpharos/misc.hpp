@@ -173,29 +173,7 @@ using RegisterVector = std::vector<RegisterDescriptor>;
 #define ARBITRARY_PARAM_LIMIT 60
 
 using RegisterSet = std::set<RegisterDescriptor>;
-
-// Wrapper for ROSE's RegisterDictionary that returns RegisterDescriptors instead of
-// RegisterDescriptor pointers
-class RegisterDictionary {
- private:
-  Rose::BinaryAnalysis::RegisterDictionary const * dict;
- public:
-  RegisterDictionary(Rose::BinaryAnalysis::RegisterDictionary const * d) : dict(d) {}
-
-  RegisterDictionary & operator=(Rose::BinaryAnalysis::RegisterDictionary const * d) {
-    dict = d;
-    return *this;
-  }
-
-  RegisterDescriptor lookup(std::string const & name) const {
-    auto reg = dict->lookup(name);
-    return reg ? *reg : RegisterDescriptor();
-  }
-
-  operator Rose::BinaryAnalysis::RegisterDictionary const *() const {
-    return dict;
-  }
-};
+using Rose::BinaryAnalysis::RegisterDictionary;
 
 void set_glog_name(std::string const & name);
 
@@ -316,7 +294,8 @@ const std::vector< std::string > get_all_insn_generic_categories();
 
 // A hackish approch to 64-bit support...
 // If you have a descriptor set, it's easier to call the similar method on it.
-RegisterDescriptor get_arch_reg(RegisterDictionary &regdict, const std::string & name, size_t arch_bytes);
+RegisterDescriptor get_arch_reg(RegisterDictionary const & regdict,
+                                const std::string & name, size_t arch_bytes);
 
 // Determine whether an expression contains an additive offset
 class AddConstantExtractor {

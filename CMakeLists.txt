@@ -13,6 +13,11 @@ if(POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW)
 endif()
 
+# Handle option without warnings in newer cmake
+if(POLICY CMP0077)
+  cmake_policy(SET CMP0077 NEW)
+endif()
+
 project(pharos CXX C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -21,7 +26,7 @@ set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
   "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 
 include(AddCXXCompilerFlags)
-add_cxx_compiler_flags(-Wall -Wextra -Wshadow -Wstrict-aliasing -Wno-misleading-indentation "-ftemplate-depth=1024")
+add_cxx_compiler_flags(-pedantic -pedantic-errors -Wall -Wextra -Wshadow -Wstrict-aliasing -Wno-misleading-indentation "-ftemplate-depth=1024")
 option(PHAROS_FAIL_ON_WARNING "Cause compilation to fail if a warning is generated" OFF)
 if(PHAROS_FAIL_ON_WARNING)
   add_cxx_compiler_flags(-Werror)
@@ -76,6 +81,7 @@ set(CTEST_TEST_TIMEOUT 300)     # 5 minutes
 include(BuildPharosPod)
 
 # Individual tests (or groups of tests should add themselves as dependencies).
+option(PHAROS_BUILD_TESTS "Builds optional test files" OFF)
 if (PHAROS_BUILD_TESTS)
   add_custom_target(tests ALL)
 else()

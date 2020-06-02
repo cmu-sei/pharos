@@ -135,14 +135,16 @@ void csv_output_flow(const ProgramDependencyGraph& pdg_graph)
     const PD::PDGEdge& pedge = edge.value();
     PD::PDGEdgeType etype = pedge.get_type();
     std::string type_str;
-    if (etype == PD::E_CALL)               type_str = "CALL";
-    else if (etype == PD::E_FALLTHRU)      type_str = "FALLTHRU";
-    else if (etype == PD::E_BRANCH)        type_str = "BRANCH";
-    else if (etype == PD::E_REPEAT)        type_str = "REPEAT";
-    else if (etype == PD::E_RETURN)        type_str = "RETURN";
-    else if (etype == PD::E_NOT_TAKEN)     type_str = "NOT_TAKEN";
-    else if (etype == PD::E_CALL_FALLTHRU) type_str = "CALL_FALL";
-    else                                   type_str = "OTHER";
+    if (etype == PD::E_CALL)                 type_str = "CALL";
+    else if (etype == PD::E_INDIRECT_CALL)   type_str = "ICALL";
+    else if (etype == PD::E_FALLTHRU)        type_str = "FALLTHRU";
+    else if (etype == PD::E_BRANCH)          type_str = "BRANCH";
+    else if (etype == PD::E_INDIRECT_BRANCH) type_str = "IBRANCH";
+    else if (etype == PD::E_REPEAT)          type_str = "REPEAT";
+    else if (etype == PD::E_RETURN)          type_str = "RETURN";
+    else if (etype == PD::E_NOT_TAKEN)       type_str = "NOT_TAKEN";
+    else if (etype == PD::E_CALL_FALLTHRU)   type_str = "CALL_FALL";
+    else                                     type_str = "OTHER";
 
     std::cout << "\"FLOW\"," << addr_str(source.get_address()) << ","
               << target_str << ",\"" << type_str << "\"" << LEND;

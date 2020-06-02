@@ -4,7 +4,6 @@
 #define Pharos_Funcs_H
 
 #include <boost/format.hpp>
-#include <boost/property_tree/ptree.hpp>
 #include <boost/ptr_container/ptr_vector.hpp> // for ptr_vector
 #include <boost/iterator/filter_iterator.hpp> // for filter_iterator
 #include <boost/range/adaptor/transformed.hpp> // for boost::adaptors::transformed
@@ -254,8 +253,6 @@ private:
   void update_register_parameters();
 
   void update_stack_variables();
-
-  void analyze_type_information(const DUAnalysis& du);
 
   rose_addr_t _follow_thunks(bool* endless) const;
   void _propagate_thunk_info();

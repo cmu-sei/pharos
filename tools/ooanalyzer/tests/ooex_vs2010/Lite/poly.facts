@@ -7510,6 +7510,7 @@ callTarget(0x411582, 0x41157d, 0x40399c).
 callTarget(0x41158c, 0x411587, 0x403818).
 callTarget(0x411596, 0x411591, 0x403e1e).
 callTarget(0x4115aa, 0x41159b, 0x404049).
+fileInfo('66C439911D71C4323F6249C763CFFD47', 'poly.exe').
 funcOffset(0x401013, 0x401010, 0x401000, 0).
 funcOffset(0x40109a, 0x401090, 0x403fcf, 0).
 funcOffset(0x4012a6, 0x4012a0, 0x404049, 0).
@@ -9923,34 +9924,34 @@ rTTICompleteObjectLocator(0x412498, 0x4158ec, 0x417484, 0x415900, 0, 0).
 rTTICompleteObjectLocator(0x4124a0, 0x415934, 0x41704c, 0x415164, 0, 0).
 rTTICompleteObjectLocator(0x4124c0, 0x415948, 0x417300, 0x41595c, 0, 0).
 rTTICompleteObjectLocator(0x412544, 0x415994, 0x4174b0, 0x4159a8, 0, 0).
-rTTITypeDescriptor(0x417000, 0x41249c, '.?AVShape@@').
-rTTITypeDescriptor(0x417014, 0x41249c, '.?AVRectangle@@').
-rTTITypeDescriptor(0x41702c, 0x41249c, '.?AVruntime_error@std@@').
-rTTITypeDescriptor(0x41704c, 0x41249c, '.?AVexception@std@@').
-rTTITypeDescriptor(0x417068, 0x41249c, '.?AVsystem_error@std@@').
-rTTITypeDescriptor(0x417088, 0x41249c, '.?AVfailure@ios_base@std@@').
-rTTITypeDescriptor(0x4170ac, 0x41249c, '.?AVCircle@@').
-rTTITypeDescriptor(0x4170c4, 0x41249c, '.?AVTriangle@@').
-rTTITypeDescriptor(0x4170dc, 0x41249c, '.?AVerror_category@std@@').
-rTTITypeDescriptor(0x41712c, 0x41249c, '.?AVbad_alloc@std@@').
-rTTITypeDescriptor(0x4171bc, 0x41249c, '.?AVfacet@locale@std@@').
-rTTITypeDescriptor(0x4171dc, 0x41249c, '.?AUctype_base@std@@').
-rTTITypeDescriptor(0x4171fc, 0x41249c, '.?AVios_base@std@@').
-rTTITypeDescriptor(0x417218, 0x41249c, '.?AV?$_Iosb@H@std@@').
-rTTITypeDescriptor(0x417234, 0x41249c, '.?AV?$basic_ostream@DU?$char_traits@D@std@@@std@@').
-rTTITypeDescriptor(0x417270, 0x41249c, '.?AV?$basic_ios@DU?$char_traits@D@std@@@std@@').
-rTTITypeDescriptor(0x4172a8, 0x41249c, '.?AV?$ctype@D@std@@').
-rTTITypeDescriptor(0x4172c4, 0x41249c, '.?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@').
-rTTITypeDescriptor(0x417300, 0x41249c, '.?AVbad_cast@std@@').
-rTTITypeDescriptor(0x41731c, 0x41249c, '.?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@').
-rTTITypeDescriptor(0x417358, 0x41249c, '.?AVcodecvt_base@std@@').
-rTTITypeDescriptor(0x417378, 0x41249c, '.?AV?$codecvt@DDH@std@@').
-rTTITypeDescriptor(0x417398, 0x41249c, '.?AVlogic_error@std@@').
-rTTITypeDescriptor(0x4173b8, 0x41249c, '.?AVlength_error@std@@').
-rTTITypeDescriptor(0x4173d8, 0x41249c, '.?AVout_of_range@std@@').
-rTTITypeDescriptor(0x4173fc, 0x41249c, '.?AV_Locimp@locale@std@@').
-rTTITypeDescriptor(0x417484, 0x41249c, '.?AVtype_info@@').
-rTTITypeDescriptor(0x4174b0, 0x41249c, '.?AVbad_exception@std@@').
+rTTITypeDescriptor(0x417000, 0x41249c, '.?AVShape@@', 'Shape').
+rTTITypeDescriptor(0x417014, 0x41249c, '.?AVRectangle@@', 'Rectangle').
+rTTITypeDescriptor(0x41702c, 0x41249c, '.?AVruntime_error@std@@', 'std::runtime_error').
+rTTITypeDescriptor(0x41704c, 0x41249c, '.?AVexception@std@@', 'std::exception').
+rTTITypeDescriptor(0x417068, 0x41249c, '.?AVsystem_error@std@@', 'std::system_error').
+rTTITypeDescriptor(0x417088, 0x41249c, '.?AVfailure@ios_base@std@@', 'std::ios_base::failure').
+rTTITypeDescriptor(0x4170ac, 0x41249c, '.?AVCircle@@', 'Circle').
+rTTITypeDescriptor(0x4170c4, 0x41249c, '.?AVTriangle@@', 'Triangle').
+rTTITypeDescriptor(0x4170dc, 0x41249c, '.?AVerror_category@std@@', 'std::error_category').
+rTTITypeDescriptor(0x41712c, 0x41249c, '.?AVbad_alloc@std@@', 'std::bad_alloc').
+rTTITypeDescriptor(0x4171bc, 0x41249c, '.?AVfacet@locale@std@@', 'std::locale::facet').
+rTTITypeDescriptor(0x4171dc, 0x41249c, '.?AUctype_base@std@@', 'std::ctype_base').
+rTTITypeDescriptor(0x4171fc, 0x41249c, '.?AVios_base@std@@', 'std::ios_base').
+rTTITypeDescriptor(0x417218, 0x41249c, '.?AV?$_Iosb@H@std@@', 'std::_Iosb<int>').
+rTTITypeDescriptor(0x417234, 0x41249c, '.?AV?$basic_ostream@DU?$char_traits@D@std@@@std@@', 'std::basic_ostream<char, struct std::char_traits<char> >').
+rTTITypeDescriptor(0x417270, 0x41249c, '.?AV?$basic_ios@DU?$char_traits@D@std@@@std@@', 'std::basic_ios<char, struct std::char_traits<char> >').
+rTTITypeDescriptor(0x4172a8, 0x41249c, '.?AV?$ctype@D@std@@', 'std::ctype<char>').
+rTTITypeDescriptor(0x4172c4, 0x41249c, '.?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@', 'std::basic_streambuf<char, struct std::char_traits<char> >').
+rTTITypeDescriptor(0x417300, 0x41249c, '.?AVbad_cast@std@@', 'std::bad_cast').
+rTTITypeDescriptor(0x41731c, 0x41249c, '.?AV?$basic_filebuf@DU?$char_traits@D@std@@@std@@', 'std::basic_filebuf<char, struct std::char_traits<char> >').
+rTTITypeDescriptor(0x417358, 0x41249c, '.?AVcodecvt_base@std@@', 'std::codecvt_base').
+rTTITypeDescriptor(0x417378, 0x41249c, '.?AV?$codecvt@DDH@std@@', 'std::codecvt<char, char, int>').
+rTTITypeDescriptor(0x417398, 0x41249c, '.?AVlogic_error@std@@', 'std::logic_error').
+rTTITypeDescriptor(0x4173b8, 0x41249c, '.?AVlength_error@std@@', 'std::length_error').
+rTTITypeDescriptor(0x4173d8, 0x41249c, '.?AVout_of_range@std@@', 'std::out_of_range').
+rTTITypeDescriptor(0x4173fc, 0x41249c, '.?AV_Locimp@locale@std@@', 'std::locale::_Locimp').
+rTTITypeDescriptor(0x417484, 0x41249c, '.?AVtype_info@@', type_info).
+rTTITypeDescriptor(0x4174b0, 0x41249c, '.?AVbad_exception@std@@', 'std::bad_exception').
 thisPtrAllocation(0x401589, 0x401580, sv_686000024541490239, type_Heap, 0x4).
 thisPtrAllocation(0x4015a8, 0x401580, sv_902581129234846180, type_Heap, 0x4).
 thisPtrAllocation(0x4015c5, 0x401580, sv_3527918279973446632, type_Heap, 0x4).

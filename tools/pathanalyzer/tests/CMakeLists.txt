@@ -1,4 +1,5 @@
 set(ALL_TESTS
+  args_v1
   bound_loop_with_var
   call_trace_v1
   call_trace_v2
@@ -16,8 +17,10 @@ set(ALL_TESTS
   down_call_chain
   empty
   endless_loop
+  exception
   exclusive_ite
   exclusive_ite_goal_in_else
+  explosive_conditions_v1
   func_array
   global_var_v1
   global_var_v2
@@ -50,6 +53,8 @@ set(ALL_TESTS
   oo_simple
   oo_virtual_func
   pointer_write
+  recurse_v1
+  recurse_v2
   rv_cond
   rv_same_var
   rv_seq_v1
@@ -60,13 +65,19 @@ set(ALL_TESTS
   single_condition_v1
   single_condition_v2
   strcmp
+  stress_both
+  stress_deep
+  stress_wide
+  switch_v1
+  switch_v2
+  switch_v3
+  switch_v4
+  switch_v5
   unbound_loop_with_var
   up_and_down_v1
+  varargs
   var_values
   var_values_param
-  recurse_v1
-  recurse_v2
-  explosive_conditions_v1 
   # This makes it a little easier to manage the lists in CMake. Don't remove.
   fake_failed_test
   )
@@ -134,14 +145,18 @@ mark_as_advanced(PATHTEST_CXX_FLAGS)
 string(TOUPPER "${CMAKE_BUILD_TYPE}" _buildtype)
 set("CMAKE_CXX_FLAGS_${_buildtype}" "${PATHTEST_CXX_FLAGS}")
 
-if(NOT TIMEOUT_SECS)
-  set(TIMEOUT_SECS 120)
-endif()
+# Set PATHTEST_CROSS32BIT
+set(PATHTEST_CROSS32BIT FALSE CACHE BOOL "Compile 32-bit pathanalyzer test programs")
+mark_as_advanced(PATHTEST_CROSS32BIT)
+
+# Set PATHTEST_TIMEOUT_SECS
+set(PATHTEST_TIMEOUT_SECS 120 CACHE STRING "Timeout in seconds for pathanalyzer tests")
+mark_as_advanced(PATHTEST_TIMEOUT_SECS)
 
 foreach(test ${ALL_TESTS})
   add_executable(${test}_64 EXCLUDE_FROM_ALL ${test}.cpp)
     list(APPEND ALL_64BIT_TESTS ${test}_64)
-  if (CROSS32BIT)
+  if (PATHTEST_CROSS32BIT)
     add_executable(${test}_32 EXCLUDE_FROM_ALL ${test}.cpp)
     list(APPEND ALL_32BIT_TESTS ${test}_32)
     set_target_properties(${test}_32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
@@ -162,15 +177,15 @@ if (PHAROS_RUN_PATHANALYZER_TESTS)
               --nongoal-smt=${test}_nongoal_spacer_64.smt
               --seed=42 ${PHAROS_TEST_OPS} ${test}_64)
     set_tests_properties (pathanalyzer_spacer_${test}_64
-      PROPERTIES TIMEOUT ${TIMEOUT_SECS} LABELS pathanalyzer)
-    if (CROSS32BIT)
+      PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS pathanalyzer)
+    if (PATHTEST_CROSS32BIT)
       add_test(NAME pathanalyzer_spacer_${test}_32
         COMMAND pathanalyzer_test --method=spacer --no-semantics
                 --goal-smt=${test}_goal_spacer_32.smt
                 --nongoal-smt=${test}_nongoal_spacer_32.smt
                 --seed=42 ${PHAROS_TEST_OPS} ${test}_32)
       set_tests_properties (pathanalyzer_spacer_${test}_32
-        PROPERTIES TIMEOUT ${TIMEOUT_SECS} LABELS pathanalyzer)
+        PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS pathanalyzer)
     endif()
   endforeach()
 
@@ -181,15 +196,15 @@ if (PHAROS_RUN_PATHANALYZER_TESTS)
               --nongoal-smt=${test}_nongoal_wp_64.smt
               --seed=42 ${PHAROS_TEST_OPS} ${test}_64)
     set_tests_properties (pathanalyzer_wp_${test}_64
-      PROPERTIES TIMEOUT ${TIMEOUT_SECS} LABELS pathanalyzer)
-    if (CROSS32BIT)
+      PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS pathanalyzer)
+    if (PATHTEST_CROSS32BIT)
       add_test(NAME pathanalyzer_wp_${test}_32
         COMMAND pathanalyzer_test --method=wp --no-semantics
                 --goal-smt=${test}_goal_wp_32.smt
                 --nongoal-smt=${test}_nongoal_wp_32.smt
                 --seed=42 ${PHAROS_TEST_OPS} ${test}_32)
       set_tests_properties (pathanalyzer_wp_${test}_32
-        PROPERTIES TIMEOUT ${TIMEOUT_SECS} LABELS pathanalyzer)
+        PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS pathanalyzer)
     endif()
   endforeach()
 
@@ -201,8 +216,8 @@ if (PHAROS_RUN_PATHANALYZER_TESTS)
               --nongoal-smt=${test}_nongoal_fs_64.smt
               --seed=42 ${PHAROS_TEST_OPS} ${test}_64)
     set_tests_properties (pathanalyzer_fs_${test}_64
-      PROPERTIES TIMEOUT ${TIMEOUT_SECS} LABELS pathanalyzer)
-    if (CROSS32BIT)
+      PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS pathanalyzer)
+    if (PATHTEST_CROSS32BIT)
       add_test(NAME pathanalyzer_fs_${test}_32
         COMMAND pathanalyzer_test --method=fs --no-semantics
                 --propagate-conditions --maximum-nodes-per-condition=500000
@@ -210,7 +225,7 @@ if (PHAROS_RUN_PATHANALYZER_TESTS)
                 --nongoal-smt=${test}_nongoal_fs_32.smt
                 --seed=42 ${PHAROS_TEST_OPS} ${test}_32)
       set_tests_properties (pathanalyzer_fs_${test}_32
-        PROPERTIES TIMEOUT ${TIMEOUT_SECS} LABELS pathanalyzer)
+        PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS pathanalyzer)
     endif()
   endforeach()
 endif()

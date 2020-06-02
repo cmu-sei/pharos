@@ -23,7 +23,18 @@ OOMethod::OOMethod(const ImportDescriptor* id) {
   type_ = OOMethodType::UNKN;
   is_virtual_ = false;
   function_ = id->get_function_descriptor();
-  set_name(id->get_name());
+
+  // ejs: If the import is an ordinal, we do want to note that.  But all the naming functions
+  // (i.e., get_best_name) that handle ordinals also include the DLL name, which we do not
+  // normally want for non-ordinals.
+  if (id->is_name_valid())
+    set_name(id->get_name());
+  else if (id->get_ordinal() != 0)
+    set_name(id->get_best_name());
+  else {
+    GWARN << "Unsure how to name imported method " << address_ << " " << id->get_best_name() << LEND;
+    set_name(id->get_name());
+  }
 }
 
 void
@@ -47,7 +58,7 @@ OOMethod::generate_name() {
     }
   }
 
-  name_ss << std::hex << std::noshowbase << address_ << std::showbase << std::dec;
+  name_ss << "0x" << std::hex << address_ << std::dec;
   std::string s = name_ss.str();
   set_name(s);
 }

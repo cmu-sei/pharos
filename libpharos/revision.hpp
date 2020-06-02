@@ -5,6 +5,6 @@
 
 namespace pharos {
 extern const char * REVISION;
-};
+}
 
 #endif  // Pharos_REVISION_HPP_

@@ -614,7 +614,7 @@ using CallingConventionPtrVector = std::vector<const CallingConvention*>;
 class CallingConventionMatcher {
 private:
 
-  RegisterDictionary regdict;
+  RegisterDictionary const & regdict;
   CallingConventionVector conventions;
 
 public:

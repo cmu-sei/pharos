@@ -6,6 +6,14 @@ finalClass(0x406180, 0x406180, 0x24, 0x24, 0, [0x4010b0, 0x401110]).
 finalClass(0x40619c, 0x40619c, 0x4, 0x4, 0x40118b, [0x40118b, 0x40119b]).
 finalClass(0x4061a4, 0x4061a4, 0x9, 0x9, 0, [0x4011bc, 0x4011c7, 0x4011ee]).
 finalClass(0x4061c0, 0x4061c0, 0x9, 0x9, 0x4015e5, [0x401528, 0x401545, 0x401552, 0x401592, 0x4015b0, 0x4015e5, 0x4015f0, 0x401617]).
+finalDemangledName(0x406140, '.?AVA@@', 'A', '').
+finalDemangledName(0x406150, '.?AVB@@', 'B', '').
+finalDemangledName(0x406160, '.?AVC@@', 'C', '').
+finalDemangledName(0x406180, '.?AVD@@', 'D', '').
+finalDemangledName(0x40619c, '.?AVtype_info@@', type_info, '').
+finalDemangledName(0x4061a4, '.?AVbad_alloc@std@@', 'std::bad_alloc', '').
+finalDemangledName(0x4061c0, '.?AVexception@std@@', 'std::exception', '').
+finalFileInfo('21338951169551868966AD070B29FF71', 'ooex9.exe').
 finalInheritance(0x406150, 0x406140, 0xc, 0, false).
 finalInheritance(0x406160, 0x406140, 0xc, 0, false).
 finalInheritance(0x406180, 0x406150, 0, 0x406180, false).

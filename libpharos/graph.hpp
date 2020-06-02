@@ -129,6 +129,11 @@ enum PDGEdgeType {
   // that control flow will return to the E_FALLLTHRU edge if the branch edge is taken.
   E_BRANCH,
 
+  // A branch edge that was indirect, for example through a jump table created by a switch
+  // statement, and resolved through a more complex program analysis involving instruction
+  // semantics, and static memory.
+  E_INDIRECT_BRANCH,
+
   // A branch edge that always self references the current vertex, representing the semantics
   // of a repeat prefix.  This edge has it's own type because of the ambiguity about whether
   // the edge represents a true loop and thus a separate basic block, or whether it represents
@@ -139,6 +144,11 @@ enum PDGEdgeType {
   // execution will eventually return to the E_CALL_FALLTHRU edge.  In the X86 instruction set,
   // these are edges from the CALL instruction to the call target (and their inverse).
   E_CALL,
+
+  // A call edge that was indirect, for example through a virtual function table.  Such calls
+  // are typicall resolved through a more complex program analysis.  Like E_CALL,
+  // E_INDIRECT_CALL edges are expected to eventually returns to the E_CALL_FALLTHRU edge.
+  E_INDIRECT_CALL,
 
   // A return edge is an edge between the return instruction and all possible instructions that
   // the return might return to.
@@ -246,6 +256,11 @@ class Graph: public SawyerPDG {
 
   bool add_call_target(rose_addr_t from, rose_addr_t to);
   bool call_targets_complete(rose_addr_t call_addr) const;
+
+  // Is there an edge in the graph?
+  SawyerPDG::ConstEdgeIterator get_edge(
+    const SawyerPDG::ConstVertexIterator& from,
+    const SawyerPDG::ConstVertexIterator& to) const;
 
   Graph getFunctionCfgByReachability(const FunctionDescriptor *fd) const;
 

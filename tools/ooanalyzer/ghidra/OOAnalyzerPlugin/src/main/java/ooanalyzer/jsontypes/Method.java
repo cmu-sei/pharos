@@ -11,40 +11,48 @@ import com.google.gson.annotations.SerializedName;
  */
 public class Method {
 
-	@Expose
-	@SerializedName("ea")
-	private String ea;
-	
-	@Expose
-	@SerializedName("type")
-	private String type;
-	
-	@Expose
-	@SerializedName("name")
-	private String name;
+  @Expose
+  @SerializedName("ea")
+  private String ea;
 
-	@Expose
-	@SerializedName("demangled_name")
-	private String demangledName;
-	
-	@Expose
-	@SerializedName("import")
-	private String imported;
-	
-	public String getEa() {
-		return ea;
-	}
+  @Expose
+  @SerializedName("type")
+  private String type;
 
-	public String getType() {
-		return type;
-	}
+  @Expose
+  @SerializedName("name")
+  private String name;
 
-	public String getName() {
-		return name;
-	}
+  @Expose
+  @SerializedName("demangled_name")
+  private String demangledName;
 
-	@Override
-	public String toString() {
-		return "[ea=" + ea + ", type=" + type + ", name=" + name + "]";
-	}
+  @Expose
+  @SerializedName("import")
+  private Boolean imported;
+
+  public Integer getEa() {
+    return Integer.decode (ea);
+  }
+
+  public String getEaStr() {
+    return ea;
+  }
+
+  public String getType() {
+    return type;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public Boolean getImported() {
+    return imported;
+  }
+
+  @Override
+  public String toString() {
+    return "[ea=" + ea + ", type=" + type + ", name=" + name + "]";
+  }
 }

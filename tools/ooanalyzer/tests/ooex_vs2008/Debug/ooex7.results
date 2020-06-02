@@ -2,6 +2,11 @@ finalClass(0x4114a0, 0, 0x8, 0x8, 0, [0x4114a0]).
 finalClass(0x4116f0, 0, 0x8, 0x8, 0, [0x4116f0, 0x411740]).
 finalClass(0x4192a8, 0, 0, 0, 0, [0x4192a8, 0x4192bc]).
 finalClass(0x4192b8, 0, 0, 0, 0x4192b8, [0x4192b4, 0x4192b8]).
+finalDemangledName(0x4192a8, '??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@H@Z', 'std::basic_ostream<char, struct std::char_traits<char> >', 'operator<<').
+finalDemangledName(0x4192b4, '??0?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@PBD@Z', 'std::basic_string<char, struct std::char_traits<char>, class std::allocator<char> >', basic_string).
+finalDemangledName(0x4192b8, '??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ', 'std::basic_string<char, struct std::char_traits<char>, class std::allocator<char> >', '~basic_string').
+finalDemangledName(0x4192bc, '??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@P6AAAV01@AAV01@@Z@Z', 'std::basic_ostream<char, struct std::char_traits<char> >', 'operator<<').
+finalFileInfo('D002560FAFBBF7C961E1BD67F6D0A00A', 'ooex7.exe').
 finalMember(0x4114a0, 0, [0x4], certain).
 finalMember(0x4114a0, 0x4, [0x4], certain).
 finalMember(0x4116f0, 0, [0x4], certain).

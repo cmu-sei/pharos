@@ -1,176 +1,216 @@
 {
-    "Structures": [
-        {
-            "Name": "cls_411590",
-            "DemangledName": "",
-            "Size": "28",
-            "Members": [
-                {
-                    "name": "cls_4116a0_0",
+    "filemd5": "0F94BB87C561B21083F7646B2FB9B0B5",
+    "filename": "ooex8.exe",
+    "structures": {
+        "cls_0x411590": {
+            "demangled_name": "",
+            "members": {
+                "0x0": {
+                    "base": false,
+                    "count": "1",
+                    "name": "cls_0x4116a0_0x0",
+                    "offset": "0x0",
+                    "parent": true,
+                    "struc": "cls_0x4116a0",
                     "type": "struc",
-                    "struc": "cls_4116a0",
-                    "parent": "yes",
-                    "offset": "0",
-                    "count": "1"
+                    "usages": [
+                        "0x4115bc"
+                    ]
                 },
-                {
-                    "name": "cls_411720_8",
+                "0x10": {
+                    "base": true,
+                    "count": "1",
+                    "name": "mbr_0x10",
+                    "offset": "0x10",
+                    "parent": false,
+                    "struc": "",
+                    "type": "dword",
+                    "usages": [
+                        "0x4115f1"
+                    ]
+                },
+                "0x8": {
+                    "base": false,
+                    "count": "1",
+                    "name": "cls_0x411720_0x8",
+                    "offset": "0x8",
+                    "parent": true,
+                    "struc": "cls_0x411720",
                     "type": "struc",
-                    "struc": "cls_411720",
-                    "parent": "yes",
-                    "offset": "8",
-                    "count": "1"
+                    "usages": [
+                        "0x4115c5"
+                    ]
                 }
-            ],
-            "Methods": [
-                {
-                    "ea": "411590",
-                    "name": "ctor_411590",
+            },
+            "methods": {
+                "0x411590": {
                     "demangled_name": "",
-                    "import": "no",
+                    "ea": "0x411590",
+                    "import": false,
+                    "name": "ctor_0x411590",
                     "type": "ctor"
                 }
-            ]
+            },
+            "name": "cls_0x411590",
+            "size": 28,
+            "vftables": {}
         },
-        {
-            "Name": "cls_4116a0",
-            "DemangledName": "",
-            "Size": "15",
-            "Members": [
-                {
-                    "name": "mbr_0",
+        "cls_0x411640": {
+            "demangled_name": "",
+            "members": {
+                "0x0": {
+                    "base": false,
+                    "count": "1",
+                    "name": "mbr_0x0",
+                    "offset": "0x0",
+                    "parent": false,
+                    "struc": "",
                     "type": "dword",
-                    "offset": "0",
-                    "count": "1"
+                    "usages": [
+                        "0x411666"
+                    ]
                 },
-                {
-                    "name": "mbr_4",
-                    "type": "dword",
-                    "offset": "4",
-                    "count": "1"
-                },
-                {
-                    "name": "cls_411640_8",
-                    "type": "struc",
-                    "struc": "cls_411640",
-                    "parent": "yes",
-                    "offset": "8",
-                    "count": "1"
-                }
-            ],
-            "Methods": [
-                {
-                    "ea": "4116a0",
-                    "name": "ctor_4116a0",
-                    "demangled_name": "",
-                    "import": "no",
-                    "type": "ctor"
-                }
-            ]
-        },
-        {
-            "Name": "cls_411640",
-            "DemangledName": "",
-            "Size": "7",
-            "Members": [
-                {
-                    "name": "mbr_0",
-                    "type": "dword",
-                    "offset": "0",
-                    "count": "1"
-                },
-                {
-                    "name": "mbr_4",
+                "0x4": {
+                    "base": false,
+                    "count": "1",
+                    "name": "mbr_0x4",
+                    "offset": "0x4",
+                    "parent": false,
+                    "struc": "",
                     "type": "word",
-                    "offset": "4",
-                    "count": "1"
+                    "usages": [
+                        "0x411674"
+                    ]
                 },
-                {
-                    "name": "mbr_6",
+                "0x6": {
+                    "base": false,
+                    "count": "1",
+                    "name": "mbr_0x6",
+                    "offset": "0x6",
+                    "parent": false,
+                    "struc": "",
                     "type": "byte",
-                    "offset": "6",
-                    "count": "1"
+                    "usages": [
+                        "0x41167b"
+                    ]
                 }
-            ],
-            "Methods": [
-                {
-                    "ea": "411640",
-                    "name": "ctor_411640",
+            },
+            "methods": {
+                "0x411640": {
                     "demangled_name": "",
-                    "import": "no",
+                    "ea": "0x411640",
+                    "import": false,
+                    "name": "ctor_0x411640",
                     "type": "ctor"
                 }
-            ]
+            },
+            "name": "cls_0x411640",
+            "size": 7,
+            "vftables": {}
         },
-        {
-            "Name": "cls_411720",
-            "DemangledName": "",
-            "Size": "15",
-            "Members": [
-                {
-                    "name": "mbr_0",
+        "cls_0x4116a0": {
+            "demangled_name": "",
+            "members": {
+                "0x0": {
+                    "base": false,
+                    "count": "1",
+                    "name": "mbr_0x0",
+                    "offset": "0x0",
+                    "parent": false,
+                    "struc": "",
                     "type": "dword",
-                    "offset": "0",
-                    "count": "1"
+                    "usages": [
+                        "0x4116cc"
+                    ]
                 },
-                {
-                    "name": "mbr_4",
+                "0x4": {
+                    "base": false,
+                    "count": "1",
+                    "name": "mbr_0x4",
+                    "offset": "0x4",
+                    "parent": false,
+                    "struc": "",
                     "type": "dword",
-                    "offset": "4",
-                    "count": "1"
+                    "usages": [
+                        "0x4116e0"
+                    ]
                 },
-                {
-                    "name": "cls_411640_8",
+                "0x8": {
+                    "base": false,
+                    "count": "1",
+                    "name": "cls_0x411640_0x8",
+                    "offset": "0x8",
+                    "parent": true,
+                    "struc": "cls_0x411640",
                     "type": "struc",
-                    "struc": "cls_411640",
-                    "parent": "yes",
-                    "offset": "8",
-                    "count": "1"
+                    "usages": []
                 }
-            ],
-            "Methods": [
-                {
-                    "ea": "411720",
-                    "name": "ctor_411720",
+            },
+            "methods": {
+                "0x4116a0": {
                     "demangled_name": "",
-                    "import": "no",
+                    "ea": "0x4116a0",
+                    "import": false,
+                    "name": "ctor_0x4116a0",
                     "type": "ctor"
                 }
-            ]
-        }
-    ],
-    "Usages": [
-        {
-            "Members": [
-                {
-                    "class": "cls_4116a0",
-                    "ea": "4116cc"
+            },
+            "name": "cls_0x4116a0",
+            "size": 15,
+            "vftables": {}
+        },
+        "cls_0x411720": {
+            "demangled_name": "",
+            "members": {
+                "0x0": {
+                    "base": false,
+                    "count": "1",
+                    "name": "mbr_0x0",
+                    "offset": "0x0",
+                    "parent": false,
+                    "struc": "",
+                    "type": "dword",
+                    "usages": [
+                        "0x41174c"
+                    ]
                 },
-                {
-                    "class": "cls_4116a0",
-                    "ea": "4116e0"
+                "0x4": {
+                    "base": false,
+                    "count": "1",
+                    "name": "mbr_0x4",
+                    "offset": "0x4",
+                    "parent": false,
+                    "struc": "",
+                    "type": "dword",
+                    "usages": [
+                        "0x411760"
+                    ]
                 },
-                {
-                    "class": "cls_411640",
-                    "ea": "411666"
-                },
-                {
-                    "class": "cls_411640",
-                    "ea": "411674"
-                },
-                {
-                    "class": "cls_411640",
-                    "ea": "41167b"
-                },
-                {
-                    "class": "cls_411720",
-                    "ea": "41174c"
-                },
-                {
-                    "class": "cls_411720",
-                    "ea": "411760"
+                "0x8": {
+                    "base": false,
+                    "count": "1",
+                    "name": "cls_0x411640_0x8",
+                    "offset": "0x8",
+                    "parent": true,
+                    "struc": "cls_0x411640",
+                    "type": "struc",
+                    "usages": []
                 }
-            ]
+            },
+            "methods": {
+                "0x411720": {
+                    "demangled_name": "",
+                    "ea": "0x411720",
+                    "import": false,
+                    "name": "ctor_0x411720",
+                    "type": "ctor"
+                }
+            },
+            "name": "cls_0x411720",
+            "size": 15,
+            "vftables": {}
         }
-    ]
+    },
+    "vcalls": {},
+    "version": "2.0.1"
 }

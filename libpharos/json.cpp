@@ -10,6 +10,7 @@
 #include <iomanip>              // std::setw
 #include <iterator>             // std::ostreambuf_iterator
 #include <algorithm>            // std::fill_n
+#include <functional>           // std::function
 
 namespace pharos {
 namespace json {
@@ -269,7 +270,59 @@ class Writer : public Visitor {
   }
 };
 
+class Copier : public Visitor {
+  Builder const & builder;
+  NodeRef node;
+  std::function<void(NodeRef &&)> adder;
+  std::string key;
+  template <typename T>
+  bool simple(T v) { node = builder.simple(v); return true; }
+ public:
+  Copier(Builder const & b) : builder(b) {}
+  NodeRef operator()() { return std::move(node); }
+  bool data_number(double d) override { return simple(d); }
+  bool data_number(Simple::integer i) override { return simple(i); }
+  bool data_number(Simple::uinteger u) override { return simple(u); }
+  bool data_bool(bool b) override { return simple(b); }
+  bool data_null() override { return simple(nullptr); }
+  bool data_string(std::string const &s) override { return simple(s); }
+  bool begin_array() override {
+    auto array = builder.array();
+    auto a = array.get();
+    node = std::move(array);
+    adder = [a](NodeRef && r) { a->add(std::move(r)); };
+    return true;
+  }
+  bool begin_object() override {
+    auto obj = builder.object();
+    auto o = obj.get();
+    node = std::move(obj);
+    adder = [this, o](NodeRef && r) { o->add(std::move(key), std::move(r)); };
+    return true;
+  }
+  bool data_key(std::string const &k) override {
+    key = k;
+    return true;
+  }
+  bool data_value(Node const & n) override {
+    Copier c{builder};
+    n.visit(c);
+    adder(c());
+    return true;
+  }
+};
+
 } // unnamed namespace
+
+NodeRef Node::copy() const {
+  return builder().copy(*this);
+}
+
+NodeRef Builder::copy(Node const & n) const {
+  Copier c{*this};
+  n.visit(c);
+  return c();
+}
 
 namespace simple {
 
@@ -339,6 +392,10 @@ class Array : public Node, public json::Array
 
   void add(json::Simple && o) override;
 
+  std::size_t size() const override {
+    return vec.size();
+  }
+
   bool visit(Visitor & v) const override {
     if (!v.begin_array()) {
       return false;
@@ -350,6 +407,7 @@ class Array : public Node, public json::Array
     }
     return v.end_array();
   }
+
 };
 
 class Object : public Node, public json::Object {
@@ -366,6 +424,10 @@ class Object : public Node, public json::Object {
 
   void add(std::string const & str, json::Simple && v) override;
   void add(std::string && str, json::Simple && v) override;
+
+  std::size_t size() const override {
+    return map.size();
+  }
 
   bool visit(Visitor & v) const override {
     if (!v.begin_object()) {
@@ -442,12 +504,10 @@ std::ostream & operator<<(std::ostream & stream, Node const & n)
 {
   Writer w(stream, stream.iword(indent_idx), stream.iword(initial_indent_idx));
   n.visit(w);
+  if (stream.iword(indent_idx)) {
+    stream << '\n';
+  }
   return stream;
-}
-
-std::ostream & operator<<(std::ostream & stream, NodeRef const & n)
-{
-  return stream << *n;
 }
 
 std::ostream & operator<<(std::ostream & stream, pretty const & p)

@@ -217,7 +217,7 @@ bool operator==(const SymbolicValue& a, const SymbolicValue& b) {
 // implementation would presumably look something like this... (completely untested).
 #define ULT_OP Rose::BinaryAnalysis::SymbolicExpr::OP_ULT
 bool operator<(const SymbolicValue& a, const SymbolicValue& b) {
-  OERROR << "Using untested SymbolicValue::operator<() code!" << LEND;
+  GERROR << "Using untested SymbolicValue::operator<() code!" << LEND;
   TreeNodePtr aexpr = a.get_expression();
   TreeNodePtr bexpr = b.get_expression();
   STRACE << "SymbolicValue::operator< " << *aexpr << " < " << *bexpr << LEND;
@@ -233,7 +233,7 @@ bool operator<(const SymbolicValue& a, const SymbolicValue& b) {
     //if (solver.satisfiable(lt)) return true;
   }
   catch(...) {
-    OERROR << "Caught unhandled while comparing symbolic values!" << LEND;
+    GERROR << "Caught unhandled while comparing symbolic values!" << LEND;
   }
   return false;
 }

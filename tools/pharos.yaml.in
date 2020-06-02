@@ -1,0 +1,3 @@
+pharos:
+  library: @CMAKE_SOURCE_DIR@/share
+  prolog_rules_dir: @CMAKE_BINARY_DIR@/share/prolog

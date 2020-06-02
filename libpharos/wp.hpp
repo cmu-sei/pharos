@@ -23,7 +23,7 @@ namespace pharos {
   // This is a helper function that identifies calls to selected
   // external functions and replaces them with a write of EAX with a
   // fresh symbolic variable.
-  IR rewrite_imported_calls (const DescriptorSet& ds, IR& prog, const std::set<ImportCall> funcs);
-};
+  IR rewrite_imported_calls (const DescriptorSet& ds, IR& prog, const ImportRewriteSet& funcs);
+}
 
 #endif

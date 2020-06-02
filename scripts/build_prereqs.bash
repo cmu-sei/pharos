@@ -68,7 +68,7 @@ test "$1" = "-reclaim" && rm -rf $DIR/z3
 cd $DIR
 test -d rose && rm -rf rose
 
-git clone --depth 1 -b v0.10.0.27 https://github.com/rose-compiler/rose rose
+git clone --depth 1 -b v0.10.4.3 https://github.com/rose-compiler/rose rose
 cd rose
 
 # See rose issue #52

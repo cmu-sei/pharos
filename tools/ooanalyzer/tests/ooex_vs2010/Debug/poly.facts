@@ -1220,6 +1220,7 @@ callTarget(0x415801, 0x4157e8, 0x411203).
 callTarget(0x415813, 0x415810, 0x411181).
 callTarget(0x415827, 0x415818, 0x411023).
 callTarget(0x415831, 0x415818, 0x411203).
+fileInfo('26DC567F256C931EC7E4633D22671F63', 'poly.exe').
 funcOffset(0x411706, 0x4116e0, 0x411980, 0).
 funcOffset(0x411722, 0x4116e0, 0x412520, 0).
 funcOffset(0x4117e6, 0x4117c0, 0x411980, 0).
@@ -2207,25 +2208,25 @@ rTTICompleteObjectLocator(0x417854, 0x418730, 0x41a034, 0x418748, 0, 0).
 rTTICompleteObjectLocator(0x417874, 0x41878c, 0x41a050, 0x4187a4, 0, 0).
 rTTICompleteObjectLocator(0x417894, 0x4187e8, 0x41a01c, 0x418714, 0, 0).
 rTTICompleteObjectLocator(0x4178a0, 0x418800, 0x41a06c, 0x418818, 0, 0).
-rTTITypeDescriptor(0x41a000, 0x4178a4, '.?AVRectangle@@').
-rTTITypeDescriptor(0x41a01c, 0x4178a4, '.?AVShape@@').
-rTTITypeDescriptor(0x41a034, 0x4178a4, '.?AVCircle@@').
-rTTITypeDescriptor(0x41a050, 0x4178a4, '.?AVTriangle@@').
-rTTITypeDescriptor(0x41a06c, 0x4178a4, '.?AVtype_info@@').
-symbolClass(0x41b2f0, 'std::basic_ostream<char, struct std::char_traits<char> >', '_Osfx').
-symbolClass(0x41b2f4, 'std::ios_base', good).
-symbolClass(0x41b2f8, 'std::basic_ios<char, struct std::char_traits<char> >', tie).
-symbolClass(0x41b2fc, 'std::basic_ostream<char, struct std::char_traits<char> >', flush).
-symbolClass(0x41b300, 'std::ios_base', width).
-symbolClass(0x41b304, 'std::ios_base', flags).
-symbolClass(0x41b308, 'std::basic_ios<char, struct std::char_traits<char> >', fill).
-symbolClass(0x41b30c, 'std::basic_ios<char, struct std::char_traits<char> >', rdbuf).
-symbolClass(0x41b310, 'std::basic_streambuf<char, struct std::char_traits<char> >', sputc).
-symbolClass(0x41b314, 'std::basic_ostream<char, struct std::char_traits<char> >', 'operator<<').
-symbolClass(0x41b318, 'std::basic_streambuf<char, struct std::char_traits<char> >', sputn).
-symbolClass(0x41b31c, 'std::ios_base', width).
-symbolClass(0x41b320, 'std::basic_ios<char, struct std::char_traits<char> >', setstate).
-symbolClass(0x41b384, type_info, '_type_info_dtor_internal_method').
+rTTITypeDescriptor(0x41a000, 0x4178a4, '.?AVRectangle@@', 'Rectangle').
+rTTITypeDescriptor(0x41a01c, 0x4178a4, '.?AVShape@@', 'Shape').
+rTTITypeDescriptor(0x41a034, 0x4178a4, '.?AVCircle@@', 'Circle').
+rTTITypeDescriptor(0x41a050, 0x4178a4, '.?AVTriangle@@', 'Triangle').
+rTTITypeDescriptor(0x41a06c, 0x4178a4, '.?AVtype_info@@', type_info).
+symbolClass(0x41b2f0, '?_Osfx@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEXXZ', 'std::basic_ostream<char, struct std::char_traits<char> >', '_Osfx').
+symbolClass(0x41b2f4, '?good@ios_base@std@@QBE_NXZ', 'std::ios_base', good).
+symbolClass(0x41b2f8, '?tie@?$basic_ios@DU?$char_traits@D@std@@@std@@QBEPAV?$basic_ostream@DU?$char_traits@D@std@@@2@XZ', 'std::basic_ios<char, struct std::char_traits<char> >', tie).
+symbolClass(0x41b2fc, '?flush@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV12@XZ', 'std::basic_ostream<char, struct std::char_traits<char> >', flush).
+symbolClass(0x41b300, '?width@ios_base@std@@QBE_JXZ', 'std::ios_base', width).
+symbolClass(0x41b304, '?flags@ios_base@std@@QBEHXZ', 'std::ios_base', flags).
+symbolClass(0x41b308, '?fill@?$basic_ios@DU?$char_traits@D@std@@@std@@QBEDXZ', 'std::basic_ios<char, struct std::char_traits<char> >', fill).
+symbolClass(0x41b30c, '?rdbuf@?$basic_ios@DU?$char_traits@D@std@@@std@@QBEPAV?$basic_streambuf@DU?$char_traits@D@std@@@2@XZ', 'std::basic_ios<char, struct std::char_traits<char> >', rdbuf).
+symbolClass(0x41b310, '?sputc@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAEHD@Z', 'std::basic_streambuf<char, struct std::char_traits<char> >', sputc).
+symbolClass(0x41b314, '??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@P6AAAV01@AAV01@@Z@Z', 'std::basic_ostream<char, struct std::char_traits<char> >', 'operator<<').
+symbolClass(0x41b318, '?sputn@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAE_JPBD_J@Z', 'std::basic_streambuf<char, struct std::char_traits<char> >', sputn).
+symbolClass(0x41b31c, '?width@ios_base@std@@QAE_J_J@Z', 'std::ios_base', width).
+symbolClass(0x41b320, '?setstate@?$basic_ios@DU?$char_traits@D@std@@@std@@QAEXH_N@Z', 'std::basic_ios<char, struct std::char_traits<char> >', setstate).
+symbolClass(0x41b384, '?_type_info_dtor_internal_method@type_info@@QAEXXZ', type_info, '_type_info_dtor_internal_method').
 symbolGlobalObject(0x41b328, 'std::basic_ostream<char, struct std::char_traits<char> >', 'std::cout').
 thisPtrAllocation(0x411550, 0x411530, sv_16984764183753866494, type_Heap, 0x4).
 thisPtrAllocation(0x41158f, 0x411530, sv_11652799827444370957, type_Heap, 0x4).

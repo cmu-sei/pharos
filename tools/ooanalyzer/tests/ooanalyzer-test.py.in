@@ -7,8 +7,10 @@ import argparse
 import re
 import shutil
 import errno
+import json
 
 default_xsb_program = "@XSB_PROGRAM@"
+default_swi_program = "@SWIPL_COMMAND@"
 
 def test_input_path(args):
     return os.path.join(args.git_dir, "tests" , args.testcase[0])
@@ -32,119 +34,11 @@ def create_test_output_dir(args):
         else:
             raise
 
-def fixup_ugly_symbols(symbol):
-    for (b, a) in fixups:
-        symbol = symbol.replace(b, a, 99)
-    return symbol
-
 def report_error(args, context, msg):
     if args.interactive:
         print "%s" % msg
     else:
         print >>sys.stderr, "FAILED: %s %s %s" % (args.testcase[0], context, msg)
-
-# ===========================================================================
-# Build the symbol map.
-# ===========================================================================
-def build_symbol_map(symbols_file):
-    addr2symbol = {}
-    try:
-        symbolHnd = open(symbols_file, 'r')
-        lines = symbolHnd.readlines()
-    except:
-        print "Error opening " + symbols_file
-        sys.exit(2)
-
-    for l in lines:
-        l = l.rstrip()
-        if len(l) == 0: continue
-
-        try:
-            (addr, isthunk, idasymbol, symbol) = l.split(None, 3)
-        except ValueError:
-            print >>sys.stderr, "Bad line: %s" % l
-
-        addr = int(addr, 16)
-        if symbol != 'None':
-            addr2symbol[addr] = "0x%08X %s" % (addr, fixup_ugly_symbols(symbol))
-        else:
-            addr2symbol[addr] = "0x%08X %s" % (addr, idasymbol)
-        #print str(addr) + " : " + symbol + " => " + addr2symbol[addr]
-
-    symbolHnd.close()
-    return addr2symbol
-
-# ===========================================================================
-# Now do the substitutions.
-# ===========================================================================
-def postprocess_oo_output(output_file, named_file, addr2symbol):
-    out = open(named_file, 'w')
-    outputHnd = open(output_file, 'r')
-    #print "creating " + named_file + " from " + output_file
-    for l in outputHnd:
-
-        #print "Examining: " + l
-
-        # Hide variations in timing.
-        if l.endswith('seconds elapsed.\n'):
-            l = re.sub('complete, .* seconds elapsed.', 'complete.', l)
-        # Hide variations in timing.
-        if l.endswith('seconds.\n'):
-            l = re.sub('complete, analyzed .* functions in .* seconds.', 'took X seconds.', l)
-        # Hide version number changes.
-        if l.startswith('OPTI[INFO ]: Object Digger version'):
-            l = re.sub('version .*.$', 'version X.', l)
-        # Hide different progress reporting in partitioner 2
-        if l.startswith('PRT2[MARCH]: cfg'):
-            # Just skip these lines entirely since there might be different numbers of them
-            continue
-
-        # Don't be picky about exactly where the Prolog files were exported to.
-        pos = l.find('Prolog facts to ')
-        if pos != -1:
-            l = l[0:pos] + 'Prolog facts to ...\n'
-        pos = l.find('Prolog results to ')
-        if pos != -1:
-            l = l[0:pos] + 'Prolog results to ...\n'
-
-        # Apply regexp replacements
-        for rx, n, r in regexp_replace:
-            match = rx.search(l)
-            if match and match.group(n):
-                l = "".join((l[:match.start(n)], r, l[match.end(n):]))
-
-        # Do we have a any variables?
-        if l.find('=v') != -1 or l.find(' v') != -1:
-            # If so normalize them.
-            l = re.sub('v[0-9a-f]*\[', 'v?[', l)
-
-        for addr in addr2symbol:
-            sym = addr2symbol[addr]
-            # Removed the decimal address supprt since we don't do that anymore, right Wes?
-
-            if True:
-                xaddr = "0x%08X" % addr
-                if l.find(xaddr) != -1:
-                    l = l[0:l.find(xaddr)] + sym + l[l.find(xaddr)+len(xaddr):]
-            else:
-                xaddr = "%x" % addr
-                # Someone (Chuck?) wrote: That above works, but better w/ regexp to strip out
-                # extra leading zeroes and 0x prefixes?  Cory says: Yes, except for the part
-                # where it takes 16 seconds instead of 0.3 seconds. :-)
-                l = re.sub("(0x)?0*%s"% (xaddr), sym, l)
-
-        out.write(l)
-    outputHnd.close()
-
-    # Merge in the error output so that we see assertions, exceptions, etc.
-    #errorHnd = open(error_file, 'r')
-    #for l in errorHnd:
-    #    if l.startswith('Partitioner: starting GRAPH'): continue
-    #    if l.startswith('Disassembler[va 0x') and l.endswith('instructions\n'): continue
-    #    out.write(l)
-    #errorHnd.close()
-
-    out.close()
 
 def update_rules(args):
     #os.chdir(args.build_dir)
@@ -168,7 +62,8 @@ def run_ooanalyzer_test(args):
     options.append("--no-user-file")
     options.append("--config=%s" % os.path.join(args.build_dir, "tests", "testconfig.yaml"))
     options.append("--verbose=4")
-    json_output_path = test_output_path(args) + ".json"
+    # options.append("--log=\"PLOG(>=debug)\"")
+    json_output_path = test_output_path(args) + ".rawjson"
     options.append("--json=%s" % json_output_path)
     prolog_fact_path = test_output_path(args) + ".facts"
     options.append("--prolog-facts=%s" % prolog_fact_path)
@@ -199,17 +94,26 @@ def run_ooanalyzer_test(args):
                 report_error(args, "", "ooanalyzer execution rc=%d" % rc)
             sys.exit(1)
 
-    symbol_path = test_input_path(args) + ".symbols"
-    addr2symbol = build_symbol_map(symbol_path)
+    symbols_path = test_input_path(args) + ".symbols"
     named_path = test_output_path(args) + ".named"
-    postprocess_oo_output(output_path, named_path, addr2symbol)
+    dir = os.path.dirname(os.path.realpath(__file__))
+    cmd = "%s/ooanalyzer-symbolizer.py %s %s -o %s" % (dir, symbols_path, output_path, named_path)
+    if args.commands:
+        print cmd
+
+    rc = subprocess.call(cmd, shell=True)
+    if rc != 0:
+        if not args.quiet:
+            report_error(args, "", "ooanalyzer-symbolizer rc=%d" % rc)
+        sys.exit(1)
 
     gen_facts_path = test_output_path(args) + ".facts"
     sort_file(args, gen_facts_path)
     gen_results_path = test_output_path(args) + ".results"
     sort_file(args, gen_results_path)
     failed = compare_prolog_answers(args, gen_facts_path, gen_results_path)
-    failed += compare_json_answers(args, json_output_path)
+    json_pretty_path = test_output_path(args) + ".json"
+    failed += compare_json_answers(args, json_output_path, json_pretty_path)
     return failed
 
 def filter_file(args, filename, grep_args, new_filename):
@@ -239,22 +143,43 @@ def sort_file(args, filename):
 def run_prolog_test(args):
     create_test_output_dir(args)
     ground_facts_path = test_ground_path(args) + ".facts"
-    gen_results_path = test_output_path(args) + ".results"
-    xsb_output_path = test_output_path(args) + ".prolog_output"
-    xsb_spew_path = test_output_path(args) + ".prolog_error"
 
     testname = args.testcase[0]
 
     update_rules(args)
-    rules_path = os.path.join(args.build_dir, "share", "prolog", "oorules")
+    if args.swi:
+        tool = 'swi'
+        prog_path = args.swi_path
+        # SWI loads from the git_dir because it loads .P files...
+        inc_path = args.git_dir
+        # SWI uses -g for goals.
+        # The stack_limit and table_space options for large files are NOT set here!
+        prog_opts = " -g"
+    else:
+        tool = 'xsb'
+        prog_path = args.xsb_path
+        # SWI loads from the build_dir because it loads .xwam files...
+        inc_path = args.build_dir
+        # XSB uses -e for the goal.
+        prog_opts = ' --noprompt -e'
+
+    rules_path = os.path.join(inc_path, "share", "prolog", "oorules")
     os.chdir(rules_path)
 
-    xsb_path = args.xsb_path
-    xsb_libpath = "asserta(library_directory('%s/share/prolog/oorules'))" % (args.build_dir)
+    # Separate outputs for each command so we can run both simultaneously.
+    gen_results_path = test_output_path(args) + "." + tool + "results"
+    prolog_output_path = test_output_path(args) + "." + tool + "prolog_output"
+    prolog_spew_path = test_output_path(args) + "." + tool + "prolog_error"
+
+    # SWI doesn't use the value of library_directory(), so it seems to require full paths here.
+    # XSB doesn't require this, but it seems to be happy with full paths.
+    file_path = "['%s/report.P']" % rules_path
+
+    prolog_libpath = "asserta(library_directory('%s'))" % (rules_path)
     oo_options = "assert(rTTIEnabled),assert(logLevel(7))"
-    assertions = "%s,[setup],[report],%s,psolve('%s')." % (xsb_libpath, oo_options, ground_facts_path)
-    redirection = ">%s 2>%s" % (xsb_output_path, xsb_spew_path)
-    prolog_cmd = xsb_path + ' --noprompt -e "' + assertions + '" ' + redirection
+    assertions = "%s,%s,%s,psolve('%s')." % (prolog_libpath, file_path, oo_options, ground_facts_path)
+    redirection = ">%s 2>%s" % (prolog_output_path, prolog_spew_path)
+    prolog_cmd = prog_path + prog_opts + ' "' + assertions + '" ' + redirection
 
     if args.commands:
         print prolog_cmd
@@ -264,31 +189,62 @@ def run_prolog_test(args):
         rc = subprocess.call(prolog_cmd, shell=True)
         if rc != 0:
             if not args.quiet:
-                report_error(args, "", "xsb execution rc=%d" % rc)
+                report_error(args, "", "%s execution rc=%d" % (tool, rc))
             failed += 1
 
-    filter_file(args, xsb_output_path, "-e ^final -e 'detection reporting' -e 'autogenerated'", gen_results_path)
+    filter_file(args, prolog_output_path, "-e ^final -e 'detection reporting' -e 'autogenerated'", gen_results_path)
     sort_file(args, gen_results_path)
 
     if failed == 0:
         failed += compare_prolog_answers(args, ground_facts_path, gen_results_path)
 
+    if args.swi:
+        file_path = "['%s/oojson.P']" % rules_path
+        assertions = "%s,exportJSON('%s'),halt." % (file_path, gen_results_path)
+        prolog_json_path = test_output_path(args) + ".swirawjson"
+        prolog_spew_path = test_output_path(args) + "." + tool + "prolog_json_error"
+        redirection = ">%s 2>%s" % (prolog_json_path, prolog_spew_path)
+        prolog_cmd = prog_path + prog_opts + ' "' + assertions + '" ' + redirection
+
+        if args.commands:
+            print prolog_cmd
+
+        if not args.review:
+            rc = subprocess.call(prolog_cmd, shell=True)
+            if rc != 0:
+                if not args.quiet:
+                    report_error(args, "", "%s execution rc=%d" % (tool, rc))
+                failed += 1
+
+        pretty_path = test_output_path(args) + ".swijson"
+        failed += compare_json_answers(args, prolog_json_path, pretty_path)
+
     return failed
 
-def compare_json_answers(args, gen_json_path):
+def compare_json_answers(args, gen_json_path, pretty_json_path):
     testname = args.testcase[0]
 
     ground_json_path = test_ground_path(args) + ".json"
-    gen_json_lines = set(open(gen_json_path, 'U').readlines())
-    ground_json_lines = set(open(ground_json_path, 'U').readlines())
+    gen_json_lines = open(gen_json_path, 'U').readlines()
+    gen_json = json.loads('\n'.join(gen_json_lines))
+    gen_pp_json = json.dumps(gen_json, sort_keys=True, indent=4, separators=(',', ': '))
+    ground_json_lines = open(ground_json_path, 'U').readlines()
+    ground_json = json.loads('\n'.join(ground_json_lines))
+    ground_pp_json = json.dumps(ground_json, sort_keys=True, indent=4, separators=(',', ': '))
+
+    fh = open(pretty_json_path, "w")
+    json.dump(gen_json, fh, sort_keys=True, indent=4, separators=(',', ': '))
+    fh.write('\n')
+    fh.close()
 
     if args.commands:
         cmd = "diff %s %s" % (ground_json_path, gen_json_path)
         print cmd
 
-    if gen_json_lines != ground_json_lines:
+    if gen_pp_json != ground_pp_json:
         print "JSON files differ!"
         return 1
+
     return 0
 
 def compare_prolog_answers(args, gen_fact_path, gen_results_path):
@@ -384,10 +340,15 @@ def compare_prolog_answers(args, gen_fact_path, gen_results_path):
             return 1
     return 0
 
-def accept_prolog_test(args):
+def accept_test(args):
     gen_facts_path = test_output_path(args) + ".facts"
-    gen_results_path = test_output_path(args) + ".results"
-    gen_json_path = test_output_path(args) + ".json"
+    if args.swi:
+        gen_results_path = test_output_path(args) + ".swiresults"
+        gen_json_path = test_output_path(args) + ".swijson"
+    else:
+        gen_results_path = test_output_path(args) + ".results"
+        gen_json_path = test_output_path(args) + ".json"
+
     ground_facts_path = test_ground_path(args) + ".facts"
     ground_results_path = test_ground_path(args) + ".results"
     ground_json_path = test_ground_path(args) + ".json"
@@ -462,6 +423,9 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--prolog",
                         action="store_true", default=False,
                         help="only run the prolog part of the test")
+    parser.add_argument("-s", "--swi",
+                        action="store_true", default=False,
+                        help="run prolog test using SWI Prolog instead")
     parser.add_argument("-v", "--verbose",
                         action="store_true", default=False,
                         help="report verbose details of test")
@@ -489,6 +453,9 @@ if __name__ == "__main__":
     parser.add_argument("-g", "--git-dir",
                         type=str, default="",
                         help="set the git root checkout directory")
+    parser.add_argument("-w", "--swi-path",
+                        type=str, default=default_swi_program,
+                        help="The location of the swipl runtime")
     parser.add_argument("-x", "--xsb-path",
                         type=str, default=default_xsb_program,
                         help="The location of the xsb runtime")
@@ -505,7 +472,7 @@ if __name__ == "__main__":
 
     if args.accept:
         while len(args.testcase) > 0:
-            accept_prolog_test(args)
+            accept_test(args)
             args.testcase.pop(0)
         sys.exit(0)
 
@@ -520,3 +487,8 @@ if __name__ == "__main__":
 
     sys.exit(failures)
 
+# Local Variables:
+# mode: python
+# fill-column: 95
+# comment-column: 0
+# End:

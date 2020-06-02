@@ -63,6 +63,8 @@ class OOClassDescriptor : public OOElement {
 
   OOVirtualFunctionTablePtrList vftables_;
 
+  std::string demangled_name_;
+
   const DescriptorSet& ds;
 
  public:
@@ -97,11 +99,17 @@ class OOClassDescriptor : public OOElement {
 
   OOMethodPtrList get_methods();
 
+  void set_demangled_name(std::string n) {
+    demangled_name_ = n;
+  }
+
   void add_member(size_t off, OOElementPtr e);
 
   void add_method(OOMethodPtr m);
 
   void add_parent(size_t off, OOClassDescriptorPtr p);
+
+  std::string get_demangled_name() { return demangled_name_; }
 
   OOParentPtrMap& get_parents();
 

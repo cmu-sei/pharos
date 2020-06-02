@@ -47,11 +47,15 @@ class OOElement {
 
   std::string name_;
 
-  // JSG wonders if evidence should be in OOElement instead of
-  // OOMember - can all elements have evidence or just true class
-  // members? Cory says that embedded object members have evidence, so
-  // the answer is probaly yes
+  // This is a list of instructions that provide evidence of the existence of the member.
   InsnSet evidence_;
+
+  // Is this element "exactly" on this class?  Exactly means that it appears in the source code
+  // on the declaration for this class, and not on an embedded object or a base class.
+  // Normally we would wouldn't create members at all for such cases, but since the evidence is
+  // stored here, we have to.  Evidence can occur for base and embedded class members, because
+  // there might be dervied class methods that access base class members.
+  bool exactly_ = true;
 
  public:
 
@@ -77,6 +81,10 @@ class OOElement {
   virtual OOElementType get_type() const;
 
   virtual void set_type(OOElementType t);
+
+  void set_exactly(bool e) { exactly_ = e; }
+
+  bool get_exactly() const { return exactly_; }
 
   virtual void add_evidence(InsnSet new_evidence);
 
@@ -110,3 +118,9 @@ using OOParentPtrMap = std::map<size_t, OOClassDescriptorPtr>;
 } // end namespace pharos
 
 #endif
+
+/* Local Variables:   */
+/* mode: c++          */
+/* fill-column:    95 */
+/* comment-column: 0  */
+/* End:               */

@@ -24,6 +24,7 @@ namespace {
 
 using Path = boost::filesystem::path;
 using boost::filesystem::is_directory;
+using boost::filesystem::weakly_canonical;
 using boost::adaptors::values;
 using boost::adaptors::keys;
 
@@ -159,7 +160,7 @@ bool MultiApiDictionary::handles_dll(std::string const & dll_name) const
     }
   }
   return false;
-};
+}
 
 std::string MultiApiDictionary::describe() const
 {
@@ -339,7 +340,9 @@ std::unique_ptr<APIDictionary> APIDictionary::create_standard(
   if (vm.count("apidb")) {
     // If it's listed on the command line, use that.
     for (auto & filename : vm["apidb"].as<std::vector<std::string>>()) {
-      handle_node(*multidb, YAML::Node(filename), false, THROW);
+      // Try to resolve with respect to CWD
+      auto loc = weakly_canonical(filename).native();
+      handle_node(*multidb, YAML::Node(loc), false, THROW);
     }
   }
 

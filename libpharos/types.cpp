@@ -72,7 +72,7 @@ bool
 has_type_descriptor(TreeNodePtr tnp) {
 
    if (tnp == NULL) {
-    OWARN << "Cannot fetch/create type descriptor because treenode is NULL" << LEND;
+    GWARN << "Cannot fetch/create type descriptor because treenode is NULL" << LEND;
     return false;
   }
 
@@ -502,7 +502,7 @@ TypeSolver::assert_value_facts(TreeNodePtr tnp) {
 
   // we currently don't handle values larger than 64 bits, i.e. floats
   if (tnp->nBits() > 64) {
-    OWARN << "Detected possible floating point value: " << *tnp << ", Not asserting value" << LEND;
+    GWARN << "Detected possible floating point value: " << *tnp << ", Not asserting value" << LEND;
     return;
   }
   session_->add_fact(VAL_FACT, treenode_to_xsb(tnp), *tnp->toUnsigned());
@@ -917,11 +917,11 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
          << addr_str(cd->get_address()) << LEND;
 
   if (cd == NULL) {
-    OERROR << "Invalid call descriptor" << LEND;
+    GERROR << "Invalid call descriptor" << LEND;
   }
 
   if (!session_) {
-    OERROR << "Cannot assert function call facts - invalid prolog session" << LEND;
+    GERROR << "Cannot assert function call facts - invalid prolog session" << LEND;
     return;
   }
 
@@ -1278,7 +1278,7 @@ TypeSolver::assert_api_facts(const CallDescriptor *cd) {
   if (id == NULL) return;
 
   if (!session_) {
-    OERROR << "Cannot assert function call facts - invalid prolog session" << LEND;
+    GERROR << "Cannot assert function call facts - invalid prolog session" << LEND;
     return;
   }
 
@@ -1652,7 +1652,7 @@ TypeSolver::generate_type_information(const std::map<TreeNode*,TreeNodePtr> &tre
   using duration = std::chrono::duration<double>;
 
   if (!session_) {
-    OERROR << "Error cannot start prolog" << LEND;
+    GERROR << "Error cannot start prolog" << LEND;
     return false;
   }
 
@@ -1730,7 +1730,7 @@ TypeSolver::save_facts_to_file(std::string &facts) {
   std::ofstream facts_file(facts_filename_,std::ofstream::out | std::ofstream::app);
 
   if (!facts_file.is_open()) {
-    OERROR << "Unable to open prolog facts file '" << facts_filename_ << "'." << LEND;
+    GERROR << "Unable to open prolog facts file '" << facts_filename_ << "'." << LEND;
     return false;
   }
 
@@ -1749,7 +1749,7 @@ TypeSolver::save_facts_to_file(std::string &facts) {
 void TypeSolver::update_typename() {
 
   if (!session_) {
-    OERROR << "Invalid prolog session!" << LEND;
+    GERROR << "Invalid prolog session!" << LEND;
     return;
   }
 
@@ -1774,7 +1774,7 @@ TypeSolver::update_pointerness() {
   MDEBUG << "Updating pointerness" << LEND;
 
   if (!session_) {
-    OERROR << "Invalid prolog session!" << LEND;
+    GERROR << "Invalid prolog session!" << LEND;
     return;
   }
 
@@ -1815,7 +1815,7 @@ void
 TypeSolver::update_objectness() {
 
   if (!session_) {
-    OERROR << "Invalid prolog session!" << LEND;
+    GERROR << "Invalid prolog session!" << LEND;
     return;
   }
 
@@ -1856,7 +1856,7 @@ TypeSolver::update_objectness() {
 void TypeSolver::update_signedness() {
 
   if (!session_) {
-    OERROR << "Invalid prolog session!" << LEND;
+    GERROR << "Invalid prolog session!" << LEND;
     return;
   }
 

@@ -11,13 +11,13 @@
 #include <boost/graph/depth_first_search.hpp>
 #include <Sawyer/Message.h>
 #include <Sawyer/ProgressBar.h>
-#include <boost/property_tree/json_parser.hpp>
 #include <boost/property_map/property_map.hpp>
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <BinaryControlFlow.h>
 
 #include "descriptors.hpp"
 #include "apisig.hpp"
+#include "json.hpp"
 
 namespace pharos {
 
@@ -489,7 +489,7 @@ class ApiResultJsonFormatter : public ApiResultFormatter {
 
  private:
 
-  boost::property_tree::ptree out_json_;
+  json::ObjectRef out_json_;
 
  public:
 
@@ -503,7 +503,8 @@ class ApiResultJsonFormatter : public ApiResultFormatter {
 
   virtual ~ApiResultJsonFormatter() { /* Nothing to do*/ }
 
-  boost::property_tree::ptree get_json() { return out_json_; }
+  json::Object const & get_json() const { return *out_json_; }
+  json::ObjectRef get_json() { return std::move(out_json_); }
 };
 
 // State of the search. The state must be stored as an external because DFS searches

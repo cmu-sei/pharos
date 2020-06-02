@@ -4,7 +4,6 @@
 #define Pharos_Imports_H
 
 #include <boost/format.hpp>
-#include <boost/property_tree/ptree.hpp>
 
 #include <rose.h>
 

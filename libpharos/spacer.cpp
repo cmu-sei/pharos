@@ -5,6 +5,7 @@
 #include <boost/range/algorithm/for_each.hpp>
 #include <boost/range/algorithm/reverse.hpp>
 #include <boost/range/algorithm/set_algorithm.hpp>
+#include <boost/optional/optional_io.hpp>
 
 #include "znode.hpp"
 #include "znode_boost.hpp"
@@ -253,7 +254,7 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
       ss << std::hex << std::showbase << name << ": " << bb_name (v) << " body";
       fp_->add_rule (rule, ctx.str_symbol(ss.str ().c_str ()));
     }
-    
+
     // And (any) exit point
 
     // Note: This must come before the transition rules
@@ -388,6 +389,12 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
                      ir = change_entry (ir, srcaddr);
                      ir = init_stackpointer (ir);
                    }
+
+                   // Remove undefined expressions
+                   ir = rm_undefined (ir);
+
+                   // Add data blocks
+                   ir = add_datablocks (ir);
 
                    // Add reached variables
                    std::set<IRCFGVertex> vertices;
@@ -645,7 +652,7 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
                          auto is_import = boost::get<ImportCall> (&(std::get<1> (cs)));
                          if (is_import) {
                            auto it = import_to_relations.find (*is_import);
-                           
+
                            if (it != import_to_relations.end ()) {
                              r = import_to_relations.at (*is_import);
                            } else {
@@ -655,7 +662,7 @@ SpacerAnalyzer::find_path_hierarchical(rose_addr_t srcaddr, rose_addr_t tgtaddr,
                          }
                          else if (boost::optional<rose_addr_t> call_target = targetOfCallStmt (cs)) { // Non-import
                            const FunctionDescriptor *targetfd = ds_.get_func_containing_address (*call_target);
-                           
+
                            if (!targetfd) {
                              GWARN << "Found an unresolved direct call" << cs << " " << call_target << LEND;
                              return boost::none;
@@ -961,6 +968,9 @@ SpacerAnalyzer::subst_stmt(const Stmt& s, const Register& mem, TupleState &state
       // Return false? It's not clear what the best thing to do here is.
       return state;
     }
+    auto operator()(UNUSED const CommentStmt &cs) {
+      return state;
+    }
     auto operator()(UNUSED const CallStmt &cs) {
 
       // Now we need to connect the summary to the state.  Remember
@@ -1019,7 +1029,6 @@ SpacerAnalyzer::subst_stmt(const Stmt& s, const Register& mem, TupleState &state
       return std::make_tuple (fresh_output_vars, Z3RegMap (), fresh_vars, constraints && summary_fact);
     }
     auto operator()(UNUSED const InsnStmt &is) {
-      // Instruction statements do not effect weakest preconditions
       return state;
     }
   };

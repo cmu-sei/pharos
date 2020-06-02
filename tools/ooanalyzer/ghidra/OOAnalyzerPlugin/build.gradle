@@ -32,8 +32,16 @@ else {
 }
 //----------------------END "DO NOT MODIFY" SECTION-------------------------------
 
+import org.gradle.util.VersionNumber
+
 repositories {
   mavenCentral()
+}
+
+dependencies {
+    testImplementation('org.junit.jupiter:junit-jupiter-api:5.4.2')
+    testRuntime('org.junit.vintage:junit-vintage-engine:5.4.2')
+    testRuntime('org.junit.jupiter:junit-jupiter-engine:5.4.2')
 }
 
 task copyToLib(type: Copy) {
@@ -80,4 +88,13 @@ task install() {
        // Empty action list
        logger.quiet("Installed zip!")
      }
+}
+
+test {
+    if (VersionNumber.parse( gradle.gradleVersion ) >= VersionNumber.parse ("4.6.0")) {
+        useJUnitPlatform()
+        testLogging {
+            events "passed", "skipped", "failed"
+        }
+    }
 }

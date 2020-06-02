@@ -1,3 +1,12 @@
+% ============================================================================================
+% Triggers.
+% ============================================================================================
+
+:- if(current_prolog_flag(version_data, xsb(_,_,_,_))).
+:- use_module(lists, [member/2]).
+:- use_module(swi, [maplist/3]).
+:- endif.
+
 % New facts that may explicitly trigger some expensive rules.
 :- dynamic trigger_fact/1.
 
@@ -199,3 +208,9 @@ concludeTrigger(Out) :-
           Fact^OutTemp^(member(Fact, Facts), dispatchTrigger(Fact, OutTemp)),
           ActionList),
     Out = all(ActionList).
+
+/* Local Variables:   */
+/* mode: prolog       */
+/* fill-column:    95 */
+/* comment-column: 0  */
+/* End:               */

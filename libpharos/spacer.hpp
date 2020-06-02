@@ -33,7 +33,6 @@ auto z3_vector_back_inserter(C & container) {
 namespace pharos {
 
 using SpacerResult = std::tuple<z3::check_result, boost::optional<z3::expr> >;
-using ImportRewriteSet = std::set<ImportCall>;
 using Z3RegMap = std::map <Register, z3::expr>;
 
 // This information is obtained from find_path_hierarchical
@@ -48,7 +47,7 @@ using ConvertCallFun = std::function<boost::optional<z3::func_decl>(const CallSt
 using TupleState = std::tuple<Z3RegMap, Z3RegMap, std::vector<z3::expr>, z3::expr>;
 
 
-};
+}
 
 namespace {
 
@@ -66,7 +65,7 @@ namespace {
       throw std::logic_error("Internal logic error: called dummy_partial_convert_call()!");
     };
 
-};
+}
 
 namespace pharos {
 

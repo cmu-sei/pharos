@@ -1,7 +1,6 @@
 // Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/optional.hpp>
-#include <boost/property_tree/ptree.hpp>
 
 #include <rose.h>
 // For isNOP().
@@ -250,7 +249,7 @@ void RegisterUsage::analyze_parameters() {
 
   // Get a handle to the stack pointer register, because it's special.
   const RegisterDictionary regdict = fd->ds.get_regdict();
-  RegisterDescriptor esp = regdict.lookup("esp");
+  RegisterDescriptor esp = regdict.find("esp");
 
   // This is for keeping track of which stack parameter deltas we've actually used, and which
   // which haven't.  This might be duplicated work, and we've not saved this anywhere.  Here is
@@ -369,7 +368,7 @@ void RegisterUsage::analyze_parameters() {
           // Strictly speaking, I think this means that skipping memory reads earlier could be
           // incorrect as well... :-(
 
-          RegisterDescriptor initial_reg = regdict.lookup(cmt.substr(0, clen - 2));
+          RegisterDescriptor initial_reg = regdict.find(cmt.substr(0, clen - 2));
 
           parameter_registers[initial_reg] = insn;
           GDEBUG << "Function " << fd->address_string() << " uses register "
@@ -414,11 +413,11 @@ void RegisterUsage::analyze_changed() {
   RegisterSet all_changed_registers = routput->diff(rinput);
 
   const RegisterDictionary regdict = fd->ds.get_regdict();
-  RegisterDescriptor esp = regdict.lookup("esp");
-  RegisterDescriptor ebp = regdict.lookup("ebp");
-  RegisterDescriptor esi = regdict.lookup("esi");
-  RegisterDescriptor edi = regdict.lookup("edi");
-  RegisterDescriptor ebx = regdict.lookup("ebx");
+  RegisterDescriptor esp = regdict.find("esp");
+  RegisterDescriptor ebp = regdict.find("ebp");
+  RegisterDescriptor esi = regdict.find("esi");
+  RegisterDescriptor edi = regdict.find("edi");
+  RegisterDescriptor ebx = regdict.find("ebx");
 
   // It turns out that we can't enable this code properly because our system is just too
   // fragile.  If we're incorrect in any low-level function, this propogates that failure
@@ -503,7 +502,7 @@ CallingConvention::CallingConvention(size_t word_size_, const std::string &name_
 }
 
 void CallingConvention::add_nonvolatile(const RegisterDictionary & dict, std::string rname) {
-  RegisterDescriptor rd = dict.lookup(rname);
+  RegisterDescriptor rd = dict.find(rname);
   if (!rd.is_valid()) {
     GFATAL << "Unable to find non-volatile register '" << rname << "'." << LEND;
     assert(rd.is_valid());
@@ -1103,10 +1102,10 @@ CallingConventionMatcher::match(const FunctionDescriptor* fd,
     RegisterEvidenceMap temp_params = ru.parameter_registers;
 
     // All functions are allowed to use the stack.
-    RegisterDescriptor esp = regdict.lookup("esp");
+    RegisterDescriptor esp = regdict.find("esp");
     if (temp_params.find(esp) != temp_params.end()) temp_params.erase(esp);
     // All functions are allowed to use the direction flag.
-    RegisterDescriptor df = regdict.lookup("df");
+    RegisterDescriptor df = regdict.find("df");
     if (temp_params.find(df) != temp_params.end()) temp_params.erase(df);
 
     // The calling convention doesn't have register parameters, and the function does, then it
@@ -1174,17 +1173,19 @@ CallingConventionMatcher::match(const FunctionDescriptor* fd,
 
 // Create a set of calling conventions used in real compilers.
 CallingConventionMatcher::CallingConventionMatcher()
-  : regdict(Rose::BinaryAnalysis::RegisterDictionary::dictionary_pentium4())
+  // It is presumes that the amd64 register dictionary is a superset of the 32-bit and 16-bit
+  // dictionaries
+  : regdict(*Rose::BinaryAnalysis::RegisterDictionary::dictionary_amd64())
 {
   // ================================================================================
   // 16-bit calling conventions...
   // ================================================================================
   // Agner says 16-bit DOS and windows has SI, DI, BP and DS as nonvolatile.
 
-  RegisterDescriptor eax = regdict.lookup("eax");
-  RegisterDescriptor ecx = regdict.lookup("ecx");
-  RegisterDescriptor edx = regdict.lookup("edx");
-  //RegisterDescriptor st0 = regdict->lookup("st0");
+  RegisterDescriptor eax = regdict.find("eax");
+  RegisterDescriptor ecx = regdict.find("ecx");
+  RegisterDescriptor edx = regdict.find("edx");
+  //RegisterDescriptor st0 = regdict->find("st0");
 
   // Agner says this list is correct for Windows & Unix
   CallingConvention nonvol = CallingConvention(32, "__fake", "Fake");
@@ -1284,8 +1285,6 @@ CallingConventionMatcher::CallingConventionMatcher()
   // 64-bit calling conventions
   // ================================================================================
 
-  regdict = Rose::BinaryAnalysis::RegisterDictionary::dictionary_amd64();
-
   // Volatile versus non-volatile register usage:
   // http://msdn.microsoft.com/en-us/library/9z1stfyw.aspx
   nonvol = CallingConvention(64, "__fake", "Fake");
@@ -1298,18 +1297,18 @@ CallingConventionMatcher::CallingConventionMatcher()
   // See earlier comment on clearing df being allowed.
   nonvol.add_nonvolatile(regdict, "df");
 
-  RegisterDescriptor rax = regdict.lookup("rax");
-  RegisterDescriptor rdi = regdict.lookup("rdi");
-  RegisterDescriptor rsi = regdict.lookup("rsi");
-  RegisterDescriptor rcx = regdict.lookup("rcx");
-  RegisterDescriptor rdx = regdict.lookup("rdx");
-  RegisterDescriptor r8 = regdict.lookup("r8");
-  RegisterDescriptor r9 = regdict.lookup("r9");
+  RegisterDescriptor rax = regdict.find("rax");
+  RegisterDescriptor rdi = regdict.find("rdi");
+  RegisterDescriptor rsi = regdict.find("rsi");
+  RegisterDescriptor rcx = regdict.find("rcx");
+  RegisterDescriptor rdx = regdict.find("rdx");
+  RegisterDescriptor r8 = regdict.find("r8");
+  RegisterDescriptor r9 = regdict.find("r9");
 
-  RegisterDescriptor xmm0 = regdict.lookup("xmm0");
-  RegisterDescriptor xmm1 = regdict.lookup("xmm1");
-  RegisterDescriptor xmm2 = regdict.lookup("xmm2");
-  RegisterDescriptor xmm3 = regdict.lookup("xmm3");
+  RegisterDescriptor xmm0 = regdict.find("xmm0");
+  RegisterDescriptor xmm1 = regdict.find("xmm1");
+  RegisterDescriptor xmm2 = regdict.find("xmm2");
+  RegisterDescriptor xmm3 = regdict.find("xmm3");
 
   cc = CallingConvention(64, "__x64call", "GNU C Compiler");
   cc.set_stack_alignment(64);

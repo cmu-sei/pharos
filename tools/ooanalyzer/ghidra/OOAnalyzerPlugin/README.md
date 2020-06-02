@@ -1,14 +1,15 @@
 # OOAnalyzer Plugin for Ghidra
 
-The new OOAnalyzer Ghidra plugin is a standard Ghidra extension that
-can load, parse, and apply OOAnalyzer results to object oriented C++
-executables in a Ghidra project. When launched, the plugin will prompt
-the user for the JSON output file produced by OOAnalyzer that contains
-information about recovered C++ classes. Upon loading the JSON file,
-recovered C++ data types and symbols found by OOAnalyzer are updated
-in the Ghidra Code Browser. The plugin's design and implementation
-details are described in our SEI blog post titled [Using OOAnalyzer to
-Reverse Engineer Object Oriented Code with
+The OOAnalyzer Ghidra plugin is a standard Ghidra extension that can
+load, parse, and apply Pharos-generated OOAnalyzer results to object
+oriented C++ executables in a Ghidra project. When launched, the
+plugin will prompt the user for the JSON output file produced by
+OOAnalyzer that contains information about recovered C++
+classes. After loading the JSON file, recovered C++ data types and
+symbols found by OOAnalyzer are updated in the Ghidra Code
+Browser. The plugin's design and implementation details are described
+in our SEI blog post titled [Using OOAnalyzer to Reverse Engineer
+Object Oriented Code with
 Ghidra](https://insights.sei.cmu.edu/sei_blog/2019/07/using-ooanalyzer-to-reverse-engineer-object-oriented-code-with-ghidra.html).
 
 ## Building the Plugin
@@ -79,19 +80,22 @@ and place it in the
 
 ## Installing the plugin
 
-To install the plugin, [follow the standard procedure for adding extensions to Ghidra](https://ghidra-sre.org/InstallationGuide.html#GhidraExtensionNotes). 
-Alternatively, you can run the following command:
+To install the plugin, [follow the standard procedure for adding
+extensions to
+Ghidra](https://ghidra-sre.org/InstallationGuide.html#GhidraExtensionNotes).
+Alternatively, you can run the following command before starting
+Ghidra:
 
 ```
 GHIDRA_INSTALL_DIR=/path/to/ghidra gradle install
 ```
 
-to automatically unzip the archive in the correct location if you have
-the unzip command installed. Once installed, restart Ghidra and you
-should see a prompt you to configure the plugin. If all goes well,
+This automatically unzips the archive in the correct location if you
+have the *unzip* command installed. Once installed, start Ghidra and
+you should see a prompt you to configure the plugin. If all goes well,
 then a new menu item will be visible to the Ghidra toolbar labeled
 *CERT*. This menu will contain an entry named *OOAnalyzer* with a
-shortcut key of F12. If installation was successful you should also
+shortcut key of F12. If installation was successful, you should also
 see a new script named `OOAExampleScript.java` in the Ghidra Script
 Manager.
 
@@ -175,13 +179,13 @@ if a virtual function table is defined. Virtual function tables will
 be labeled `cls_XXXXXX::vftable_YYYYYY`. As with class names, the
 *Y*'s are an address-based identifier assigned by OOAnalyzer that
 correspond to the address where the table is defined.
- 
+
 ### Running the OOAnalyzer Plugin ###
 
 There are three ways to run the OOAnalyzer Plugin:
 
-1. Launching it directly through the *CERT* menu
-2. Pressing the F12 key, which is the shortcut for the plugin
+1. Launching it directly through the <kbd>CERT</kbd> menu
+2. Pressing the <kbd>F12</kbd> key, which is the shortcut for the plugin
 2. Running the `OOAExampleScript.java` script from the Ghidra Script Manager
 
 When the Plugin is run, the *OOAnalyzer Setting* window will be
@@ -189,7 +193,7 @@ displayed to configure and execute the plugin. To run the plugin, you
 must configure two settings: select the JSON file produced by
 OOAnalyzer and specify whether or not to organize new and updated
 classes into an OOAnalyzer namespace. Once these settings are
-configured press *OK* to run the plugin.
+configured, press <kbd>OK</kbd> to run the plugin.
 
 #### Loading the JSON File
 

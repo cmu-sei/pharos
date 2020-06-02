@@ -186,7 +186,13 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
     throw std::runtime_error("no specimen specified; see --help");
 
   // Load the specimen as raw data or an ELF or PE container.
-  MemoryMap::Ptr map = engine->loadSpecimens(specimen_names);
+  MemoryMap::Ptr map;
+  try {
+    map = engine->loadSpecimens(specimen_names);
+  } catch (SgAsmExecutableFileFormat::FormatError &e) {
+    GFATAL << "Error while loading specimen: " << e.what () << LEND;
+    std::exit (EXIT_FAILURE);
+  }
 
   // Get the interpretation.
   SgAsmInterpretation* interp = engine->interpretation();

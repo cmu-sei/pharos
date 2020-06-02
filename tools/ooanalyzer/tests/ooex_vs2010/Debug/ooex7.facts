@@ -1949,6 +1949,7 @@ callTarget(0x4174b1, 0x417498, 0x4112f8).
 callTarget(0x4174cb, 0x4174c0, 0x411208).
 callTarget(0x4174e3, 0x4174d4, 0x41102d).
 callTarget(0x4174ed, 0x4174d4, 0x4112f8).
+fileInfo('0040A51E006891D4525CC7E566153938', 'ooex7.exe').
 funcOffset(0x411bc3, 0x411b70, 0x411f00, 0).
 funcOffset(0x411bd6, 0x411b70, 0x411dd0, 0).
 funcOffset(0x411be2, 0x411b70, 0x411cf0, 0).
@@ -3554,31 +3555,31 @@ rTTIClassHierarchyDescriptor(0x41a7bc, 0, [0x41a798]).
 rTTIClassHierarchyDescriptor(0x41a7f0, 0, [0x41a80c]).
 rTTICompleteObjectLocator(0x41993c, 0x41a73c, 0x41c000, 0x41a754, 0, 0).
 rTTICompleteObjectLocator(0x41994c, 0x41a7d8, 0x41c050, 0x41a7f0, 0, 0).
-rTTITypeDescriptor(0x41c000, 0x419950, '.?AVbad_alloc@std@@').
-rTTITypeDescriptor(0x41c024, 0x419950, '.?AVexception@std@@').
-rTTITypeDescriptor(0x41c050, 0x419950, '.?AVtype_info@@').
-symbolClass(0x41d330, 'std::basic_ostream<char, struct std::char_traits<char> >', '_Osfx').
-symbolClass(0x41d334, 'std::ios_base', good).
-symbolClass(0x41d338, 'std::basic_ios<char, struct std::char_traits<char> >', tie).
-symbolClass(0x41d33c, 'std::basic_ostream<char, struct std::char_traits<char> >', flush).
-symbolClass(0x41d340, 'std::ios_base', width).
-symbolClass(0x41d344, 'std::ios_base', flags).
-symbolClass(0x41d348, 'std::basic_ios<char, struct std::char_traits<char> >', fill).
-symbolClass(0x41d34c, 'std::basic_ios<char, struct std::char_traits<char> >', rdbuf).
-symbolClass(0x41d350, 'std::basic_streambuf<char, struct std::char_traits<char> >', sputc).
-symbolClass(0x41d354, 'std::basic_streambuf<char, struct std::char_traits<char> >', sputn).
-symbolClass(0x41d358, 'std::ios_base', width).
-symbolClass(0x41d35c, 'std::basic_ios<char, struct std::char_traits<char> >', setstate).
-symbolClass(0x41d368, 'std::_Container_base12', '_Orphan_all').
-symbolClass(0x41d36c, 'std::basic_ostream<char, struct std::char_traits<char> >', 'operator<<').
-symbolClass(0x41d370, 'std::_Container_base12', '_Container_base12').
-symbolClass(0x41d374, 'std::_Container_base12', '~_Container_base12').
-symbolClass(0x41d378, 'std::basic_ostream<char, struct std::char_traits<char> >', 'operator<<').
-symbolClass(0x41d3c8, type_info, '_type_info_dtor_internal_method').
-symbolClass(0x41d428, 'std::exception', '~exception').
-symbolClass(0x41d42c, 'std::exception', what).
-symbolClass(0x41d430, 'std::exception', exception).
-symbolClass(0x41d434, 'std::exception', exception).
+rTTITypeDescriptor(0x41c000, 0x419950, '.?AVbad_alloc@std@@', 'std::bad_alloc').
+rTTITypeDescriptor(0x41c024, 0x419950, '.?AVexception@std@@', 'std::exception').
+rTTITypeDescriptor(0x41c050, 0x419950, '.?AVtype_info@@', type_info).
+symbolClass(0x41d330, '?_Osfx@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEXXZ', 'std::basic_ostream<char, struct std::char_traits<char> >', '_Osfx').
+symbolClass(0x41d334, '?good@ios_base@std@@QBE_NXZ', 'std::ios_base', good).
+symbolClass(0x41d338, '?tie@?$basic_ios@DU?$char_traits@D@std@@@std@@QBEPAV?$basic_ostream@DU?$char_traits@D@std@@@2@XZ', 'std::basic_ios<char, struct std::char_traits<char> >', tie).
+symbolClass(0x41d33c, '?flush@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV12@XZ', 'std::basic_ostream<char, struct std::char_traits<char> >', flush).
+symbolClass(0x41d340, '?width@ios_base@std@@QBE_JXZ', 'std::ios_base', width).
+symbolClass(0x41d344, '?flags@ios_base@std@@QBEHXZ', 'std::ios_base', flags).
+symbolClass(0x41d348, '?fill@?$basic_ios@DU?$char_traits@D@std@@@std@@QBEDXZ', 'std::basic_ios<char, struct std::char_traits<char> >', fill).
+symbolClass(0x41d34c, '?rdbuf@?$basic_ios@DU?$char_traits@D@std@@@std@@QBEPAV?$basic_streambuf@DU?$char_traits@D@std@@@2@XZ', 'std::basic_ios<char, struct std::char_traits<char> >', rdbuf).
+symbolClass(0x41d350, '?sputc@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAEHD@Z', 'std::basic_streambuf<char, struct std::char_traits<char> >', sputc).
+symbolClass(0x41d354, '?sputn@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAE_JPBD_J@Z', 'std::basic_streambuf<char, struct std::char_traits<char> >', sputn).
+symbolClass(0x41d358, '?width@ios_base@std@@QAE_J_J@Z', 'std::ios_base', width).
+symbolClass(0x41d35c, '?setstate@?$basic_ios@DU?$char_traits@D@std@@@std@@QAEXH_N@Z', 'std::basic_ios<char, struct std::char_traits<char> >', setstate).
+symbolClass(0x41d368, '?_Orphan_all@_Container_base12@std@@QAEXXZ', 'std::_Container_base12', '_Orphan_all').
+symbolClass(0x41d36c, '??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@P6AAAV01@AAV01@@Z@Z', 'std::basic_ostream<char, struct std::char_traits<char> >', 'operator<<').
+symbolClass(0x41d370, '??0_Container_base12@std@@QAE@XZ', 'std::_Container_base12', '_Container_base12').
+symbolClass(0x41d374, '??1_Container_base12@std@@QAE@XZ', 'std::_Container_base12', '~_Container_base12').
+symbolClass(0x41d378, '??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@H@Z', 'std::basic_ostream<char, struct std::char_traits<char> >', 'operator<<').
+symbolClass(0x41d3c8, '?_type_info_dtor_internal_method@type_info@@QAEXXZ', type_info, '_type_info_dtor_internal_method').
+symbolClass(0x41d428, '??1exception@std@@UAE@XZ', 'std::exception', '~exception').
+symbolClass(0x41d42c, '?what@exception@std@@UBEPBDXZ', 'std::exception', what).
+symbolClass(0x41d430, '??0exception@std@@QAE@ABQBD@Z', 'std::exception', exception).
+symbolClass(0x41d434, '??0exception@std@@QAE@ABV01@@Z', 'std::exception', exception).
 symbolGlobalObject(0x41d380, 'std::basic_ostream<char, struct std::char_traits<char> >', 'std::cout').
 symbolProperty(0x41d370, constructor).
 symbolProperty(0x41d374, realDestructor).

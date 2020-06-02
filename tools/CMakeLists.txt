@@ -7,3 +7,7 @@ add_subdirectory(ooanalyzer)
 add_subdirectory(pathanalyzer)
 add_subdirectory(apilookup)
 add_subdirectory(misc)
+
+# This file being in this directory allows binaries in subdirectories to find the proper
+# library files
+configure_file(pharos.yaml.in etc/pharos.yaml)

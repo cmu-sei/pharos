@@ -666,7 +666,7 @@ bool ApiSearchExecutor::RunSearch() {
   assert(comp != nullptr);
 
   if (!comp->ContainsAddress(start_address)) {
-    OERROR << "Starting block not found in component, terminating search" << LEND;
+    GERROR << "Starting block not found in component, terminating search" << LEND;
     return false;
   }
   ApiCfgPtr cfg = comp->GetCfg();
@@ -796,7 +796,7 @@ void ApiSearchExecutor::UpdateApiMatchTable(rose_addr_t caller, rose_addr_t call
   assert(fd);
 
   if (cd == NULL || fd == NULL) {
-    OWARN << "Cannot find call or function descriptor to update parameters" << LEND;
+    GWARN << "Cannot find call or function descriptor to update parameters" << LEND;
     return;
   }
 
@@ -870,7 +870,7 @@ bool ApiSearchExecutor::EvaluateApiMatchTable(const ApiSigFunc& sig_func,
   const CallDescriptor * cd = ds.get_call(call_addr);
 
   if (!cd) {
-    OWARN << "Could not find call descriptor for " << addr_str(call_addr) << LEND;
+    GWARN << "Could not find call descriptor for " << addr_str(call_addr) << LEND;
     return false;
   }
 
@@ -878,7 +878,7 @@ bool ApiSearchExecutor::EvaluateApiMatchTable(const ApiSigFunc& sig_func,
   ApiCfgComponentPtr comp = graph_->GetContainingComponent(call_addr);
   const FunctionDescriptor * fd = ds.get_func(comp->GetEntryAddr());
 
-  if (!fd) OWARN << "No FD found" << LEND;
+  if (!fd) GWARN << "No FD found" << LEND;
 
   // const ParamVector& fn_params = vertex_info.import_fd->get_parameters().get_params();
   if (sig_func.has_params) {
@@ -1033,14 +1033,14 @@ ApiParameterPtr
 ApiSearchExecutor::DereferenceParameter(const ParameterDefinition &pd) {
 
   if (!pd.get_value() || !pd.get_value_pointed_to()) {
-    OERROR << "Invalid parameter cannot dereference" << LEND;
+    GERROR << "Invalid parameter cannot dereference" << LEND;
     return nullptr;
   }
 
   ApiParameterPtr apip = std::make_shared<ApiParameter>(
     pd.get_num(), pd.get_value_pointed_to(), pd.get_name());
   if (!apip) {
-    OERROR << "Could not deference paramater: " << *(pd.get_value()) << LEND;
+    GERROR << "Could not deference paramater: " << *(pd.get_value()) << LEND;
     return nullptr;
   }
 
@@ -1103,7 +1103,7 @@ bool ApiSearchExecutor::Search(ApiSig sig, ApiSearchResultVector *result_list ) 
         }
         if (startv == NULL_VERTEX) {
 
-          OWARN << "Could not find starting vertex in "
+          GWARN << "Could not find starting vertex in "
                 << addr_str(start_comp->GetEntryAddr()) << LEND;
 
           worklist.erase(workitem);
@@ -1213,7 +1213,7 @@ bool ApiSearchExecutor::Search(ApiSig sig, ApiSearchResultVector *result_list ) 
             ApiCfgComponentPtr from_comp = graph_->GetContainingComponent(from);
 
             if (from_comp == NULL) {
-              OWARN << "Cannot find containing component for " << addr_str(from) << LEND;
+              GWARN << "Cannot find containing component for " << addr_str(from) << LEND;
               xref++;
               continue;
             }
@@ -1362,7 +1362,7 @@ ApiOutputManager::~ApiOutputManager() {
 bool ApiOutputManager::GenerateOutput(ApiSearchResultVector &res) {
 
   if (formatter_ == NULL) {
-    OWARN << "Output format not specified" << LEND;
+    GWARN << "Output format not specified" << LEND;
     return false;
   }
 
@@ -1393,7 +1393,7 @@ void ApiOutputManager::SetOutputFormat(ApiOutputManager::OutputFormat f) {
     formatter_ = new ApiResultJsonFormatter();
   }
   else {
-    OWARN << "Defaulting to TEXT output" << LEND;
+    GWARN << "Defaulting to TEXT output" << LEND;
     formatter_ = new ApiResultTextFormatter();
   }
 }
@@ -1501,75 +1501,70 @@ bool ApiResultTextFormatter::ToFile(std::string ofile_name) {
 // * Start of ApiResultJsonFormatter methods.
 // ********************************************************************************************
 
-// C++11 was picky about auto-converting const char[] to string and to boost::property_tree
-// simultaneously, so we had to make a helper function that was a little more explicit.
-std::pair<const std::string, boost::property_tree::ptree>
-make_ptree(const std::string s1, const std::string s2) {
-  return std::make_pair(s1, boost::property_tree::ptree(s2));
-}
-
 void ApiResultJsonFormatter::Format(ApiSearchResultVector &results, ApiOutputManager::PathLevel path_level) {
 
-  boost::property_tree::ptree matches;
+  auto builder = json::simple_builder();
+
+  auto matches = builder->array();
   for (const ApiSearchResult &res : results) {
 
-    boost::property_tree::ptree match;
+    auto match = builder->object();
 
-    match.put("Signature", res.match_name);
-    match.put("Category", res.match_category);
+    match->add("Signature", res.match_name);
+    match->add("Category", res.match_category);
 
     SgAsmX86Instruction *start_insn = GetLastBlkInsn(res.search_tree.front().block);
 
     if (path_level != ApiOutputManager::PathLevel::NONE) {
-      match.put("Start Address", addr_str(start_insn->get_address()));
+      match->add("Start Address", addr_str(start_insn->get_address()));
 
       // generate the search path, if specified
-      boost::property_tree::ptree path;
+      auto path = builder->array();
       for (auto wpi = res.search_tree.begin(); wpi != res.search_tree.end(); ++wpi) {
 
-        boost::property_tree::ptree path_entry;
+        auto path_entry = builder->object();
 
         SgAsmX86Instruction* insn = GetLastBlkInsn(wpi->block);
         rose_addr_t address = insn->get_address();
 
         if (path_level == ApiOutputManager::PathLevel::FULL_PATH) {
           if (wpi->name != "") {
-            path_entry.push_back(make_ptree("API", wpi->name));
+            path_entry->add("API", wpi->name);
           }
           // include the address and function even if the API name isn't found
-          path_entry.push_back(make_ptree("Address",addr_str(address)));
-          path_entry.push_back(make_ptree("Function",addr_str(wpi->func)));
+          path_entry->add("Address",addr_str(address));
+          path_entry->add("Function",addr_str(wpi->func));
         }
         else if (path_level == ApiOutputManager::PathLevel::SIG_PATH) {
           if (wpi->is_part_of_sig && wpi->name != "") {
             // if part of sig, then must include API. Only include if the API name is found
-            path_entry.push_back(make_ptree("API", wpi->name));
-            path_entry.push_back(make_ptree("Address",addr_str(address)));
-            path_entry.push_back(make_ptree("Function",addr_str(wpi->func)));
+            path_entry->add("API", wpi->name);
+            path_entry->add("Address",addr_str(address));
+            path_entry->add("Function",addr_str(wpi->func));
           }
         }
 
-        if (false == path_entry.empty()) {
-          path.push_back(std::make_pair("", path_entry));
+        if (!path_entry->empty()) {
+          path->add(std::move(path_entry));
         }
       }
-      match.put_child("Path",path);
+      match->add("Path",std::move(path));
     }
-    matches.push_back(std::make_pair("",match));
+    matches->add(std::move(match));
   }
-  out_json_.put_child("Matches", matches);
+  out_json_->add("Matches", std::move(matches));
 }
 
 std::string ApiResultJsonFormatter::ToString() {
 
  std::stringstream out;
- write_json(out, out_json_);
+ out << json::pretty() << out_json_;
  return out.str();
 }
 
 bool ApiResultJsonFormatter::ToFile(std::string ofile_name) {
-
-  write_json(ofile_name, out_json_);
+  std::ofstream out(ofile_name);
+  out << json::pretty() << out_json_;
 
   return true;
 }
@@ -1672,12 +1667,12 @@ void ApiCfgComponent::Initialize(const FunctionDescriptor &fd, AddrSet &api_call
 
         const CallDescriptor * cd = fd.ds.get_call(xi->first);
         if (cd == NULL) {
-          OWARN << "No call descriptor found" << LEND;
+          GWARN << "No call descriptor found" << LEND;
         }
 
         const ImportDescriptor * id = cd->get_import_descriptor();
         if (id == NULL) {
-          OWARN << "Could not find import descriptor for address " << addr_str(xi->second)
+          GWARN << "Could not find import descriptor for address " << addr_str(xi->second)
                 << LEND;
         }
 
@@ -2627,7 +2622,7 @@ void ApiGraph::ConsolidateThunks() {
               merge_list.insert(insert_to->GetEntryAddr());
             }
          } else {
-            OWARN << "Warning: Thunk consolidation failed. Some results may be incorrect." << LEND;
+            GWARN << "Warning: Thunk consolidation failed. Some results may be incorrect." << LEND;
          }
         }
       }
@@ -2681,7 +2676,7 @@ bool ApiGraph::MergeComponents(ApiMergeInfo &merge_info, bool preserve_entry) {
     }
   }
   if (!merge_result) {
-    OWARN << "Merge failed: " << merge_info.ToString() << LEND;
+    GWARN << "Merge failed: " << merge_info.ToString() << LEND;
   }
 
 
@@ -2762,7 +2757,7 @@ void ApiGraph::GenerateGraphViz(std::ostream & o) {
 bool ApiGraph::Search(ApiSig sig, ApiSearchResultVector * results) {
 
   if (graph_constructed_ == false || sig.api_calls.empty() == true) {
-    OWARN << "Invalid signature for " << sig.name << LEND;
+    GWARN << "Invalid signature for " << sig.name << LEND;
     return false;
   }
 

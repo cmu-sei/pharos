@@ -26,7 +26,7 @@ bool
 PathFinder::generate_cfg_constraints(CallTraceDescriptorPtr call_trace_desc) {
 
   if (!call_trace_desc) {
-    OERROR << "Invalid call trace information" << LEND;
+    GERROR << "Invalid call trace information" << LEND;
     return false;
   }
 
@@ -45,7 +45,7 @@ PathFinder::generate_cfg_constraints(CallTraceDescriptorPtr call_trace_desc) {
 
     // This function has no edges ... which is common for highly optimized code
 
-    OWARN << "CFG for function " << addr_str(fd.get_address()) << " has no edges" << LEND;
+    GWARN << "CFG for function " << addr_str(fd.get_address()) << " has no edges" << LEND;
 
      CfgEdgeInfo ei(ctx);
 
@@ -187,7 +187,7 @@ PathFinder::generate_edge_conditions(CallTraceDescriptorPtr call_trace_desc,
                                      CfgEdgeExprMap& edge_conditions) {
 
   if (!call_trace_desc) {
-    OERROR << "Invalid call trace information" << LEND;
+    GERROR << "Invalid call trace information" << LEND;
     return false;
   }
 
@@ -213,7 +213,7 @@ PathFinder::generate_edge_conditions(CallTraceDescriptorPtr call_trace_desc,
                                        });
 
     if (edge_cond_iter == eip_val_map.end()) {
-      OWARN << "Could not find symbolic condition for edge: " << edge_str(edge, cfg) << LEND;
+      GWARN << "Could not find symbolic condition for edge: " << edge_str(edge, cfg) << LEND;
       continue;
     }
 
@@ -256,7 +256,7 @@ PathFinder::generate_edge_conditions(CallTraceDescriptorPtr call_trace_desc,
         }
       }
       catch(z3::exception &z3x) {
-        OERROR << "generate_edge_conditions: Z3 Exception caught: " << z3x << LEND;
+        GERROR << "generate_edge_conditions: Z3 Exception caught: " << z3x << LEND;
         return false;
       }
     }
@@ -462,7 +462,7 @@ PathFinder::generate_path_constraints(z3::expr& start_constraint,
   }
   else {
     goal_set=false;
-    OWARN << "No goal edge constraints to assert!" << LEND;
+    GWARN << "No goal edge constraints to assert!" << LEND;
   }
 
   // because there can be TWO+ paths flowing into a goal, we need to
@@ -477,7 +477,7 @@ PathFinder::generate_path_constraints(z3::expr& start_constraint,
   }
   else {
     start_set=false;
-    OWARN << "No start edge constraints to assert!" << LEND;
+    GWARN << "No start edge constraints to assert!" << LEND;
   }
 
   return start_set && goal_set;
@@ -562,7 +562,7 @@ PathFinder::evaluate_path() {
     z3::expr goal_constraint(*ctx);
 
     if (!generate_path_constraints(start_constraint, goal_constraint)) {
-      OERROR << "Could not establish start/goal!" << LEND;
+      GERROR << "Could not establish start/goal!" << LEND;
       path_found_ = false;
       return false;
     }
@@ -624,7 +624,7 @@ PathFinder::evaluate_path() {
     }
   }
   catch (z3::exception &z3x) {
-    OERROR << "evaluate: Z3 Exception caught: " << z3x << LEND;
+    GERROR << "evaluate: Z3 Exception caught: " << z3x << LEND;
     path_found_ = false;
   }
 
@@ -719,7 +719,7 @@ PathFinder::analyze_path_solution() {
     }
   }
   catch (z3::exception &z3x) {
-    OERROR << "analyze_path_solution: Z3 Exception caught: " << z3x << LEND;
+    GERROR << "analyze_path_solution: Z3 Exception caught: " << z3x << LEND;
     return false;
   }
   return true;
@@ -762,14 +762,14 @@ PathFinder::create_call_trace_element(CallTraceGraphVertex caller_vtx,
   // Step 1 is to generate the structures that will encode the CFG as
   // a set of constraints
   if (false == generate_cfg_constraints(call_trace_desc)) {
-    OWARN << "Failed to generate CFG constraints for function: "
+    GWARN << "Failed to generate CFG constraints for function: "
           << addr_str(fd->get_address()) << LEND;
   }
 
   // Step 2 is to generate the conditions necessary to take each CFG
   // edge
   if (false == generate_edge_constraints(call_trace_desc)) {
-    OWARN << "Failed to generate edge constraints for function: "
+    GWARN << "Failed to generate edge constraints for function: "
           << addr_str(fd->get_address()) << LEND;
   }
   return call_trace_desc;
@@ -806,7 +806,7 @@ PathFinder::generate_call_trace(CallTraceGraphVertex src_vtx,
   // Create the new call trace element
   CallTraceDescriptorPtr new_trx = create_call_trace_element(src_vtx, fd, cd, valmgr);
   if (new_trx == nullptr) {
-    OERROR << "Could not create root call trace descriptor!" << LEND;
+    GERROR << "Could not create root call trace descriptor!" << LEND;
     return;
   }
 
@@ -852,7 +852,7 @@ PathFinder::generate_value_constraints() {
       CallTraceDescriptorPtr caller_info = boost::get(boost::vertex_calltrace, g, caller_vtx);
 
       if (!called_info || !caller_info) {
-        OERROR << "Could not find call trace descriptor for call" << LEND;
+        GERROR << "Could not find call trace descriptor for call" << LEND;
         return;
       }
 
@@ -865,7 +865,7 @@ PathFinder::generate_value_constraints() {
       boost::optional<CfgEdgeInfo> caller_edge_info = caller_info->get_edge_info(caller_bb->address());
 
       if (!caller_edge_info) {
-        OWARN << "Could not find edge information for call at BB: "
+        GWARN << "Could not find edge information for call at BB: "
               << addr_str(caller_bb->address()) << LEND;
         return;
       }
@@ -897,7 +897,7 @@ PathFinder::generate_value_constraints() {
 
                 if (caller_tnp->nBits() != callee_tnp->nBits()) {
 
-                  OWARN << addr_str(caller_bb->address()) << ": Caller/Callee parmater sizes differ: caller_tnp: '"
+                  GWARN << addr_str(caller_bb->address()) << ": Caller/Callee parmater sizes differ: caller_tnp: '"
                         << *caller_tnp << "', callee_tnp: " << *callee_tnp << "' - skipping constraint" << LEND;
                 }
                 else {
@@ -998,7 +998,7 @@ PathFinder::assign_traversal_values(PathPtr trv, ExprMap& modelz3vals) {
   using namespace Rose::BinaryAnalysis;
 
   if (!trv->call_trace_desc) {
-    OERROR << "Invalid call trace element" << LEND;
+    GERROR << "Invalid call trace element" << LEND;
     return;
   }
 
@@ -1165,12 +1165,12 @@ PathFinder::find_path(rose_addr_t start_addr, rose_addr_t goal_addr) {
   // are valid
 
   if (goal_addr == INVALID_ADDRESS) {
-    OERROR << "Invalid goal address!" << LEND;
+    GERROR << "Invalid goal address!" << LEND;
     return false;
   }
 
   if (start_addr == INVALID_ADDRESS) {
-    OERROR << "Invalid start address!" << LEND;
+    GERROR << "Invalid start address!" << LEND;
     return false;
   }
 
@@ -1187,7 +1187,7 @@ PathFinder::find_path(rose_addr_t start_addr, rose_addr_t goal_addr) {
     if (start_fd && goal_fd) {
 
     // if (detect_recursion()) {
-    //   OWARN << "Recursion not yet handled!" << LEND;
+    //   GWARN << "Recursion not yet handled!" << LEND;
     //   return false;
     // }
 
@@ -1202,7 +1202,7 @@ PathFinder::find_path(rose_addr_t start_addr, rose_addr_t goal_addr) {
 
   }
   else {
-    OERROR << "Could not find valid functions for start and/or goal" << LEND;
+    GERROR << "Could not find valid functions for start and/or goal" << LEND;
     return false;
   }
 
@@ -1308,7 +1308,7 @@ bool
 PathFinder::detect_recursion() {
 
   if (goal_address_ == INVALID_ADDRESS || start_address_ == INVALID_ADDRESS) {
-    OERROR << "Invalid start/goal address!" << LEND;
+    GERROR << "Invalid start/goal address!" << LEND;
     return false;
   }
 
@@ -1450,13 +1450,13 @@ CallTraceDescriptor::create_frame(CallFrameManager& valmgr) {
 
     BlockAnalysis src_analysis = blocks.at(src_bb->get_address());
     if (!src_analysis.output_state) {
-      OERROR << "Cannot fetch output state for " << addr_str(src_bb->get_address()) << LEND;
+      GERROR << "Cannot fetch output state for " << addr_str(src_bb->get_address()) << LEND;
       continue;
     }
     SymbolicRegisterStatePtr src_reg_state = src_analysis.output_state->get_register_state();
 
     if (!src_reg_state) {
-      OERROR << "Could not get vertex " << addr_str(src_bb->get_address())
+      GERROR << "Could not get vertex " << addr_str(src_bb->get_address())
              << " register state" << LEND;
       continue;
     }
@@ -1610,7 +1610,7 @@ CallFrameManager::create_frame_tnp(const TreeNodePtr old_tnp, unsigned id) {
   using namespace Rose::BinaryAnalysis;
 
   if (!old_tnp) {
-    OERROR << "invalid treenode" << LEND;
+    GERROR << "invalid treenode" << LEND;
     return  TreeNodePtr();
   }
 
@@ -1730,7 +1730,7 @@ CallFrameManager::create_frame_value(const SymbolicValuePtr value, unsigned id) 
       return SymbolicValue::treenode_instance(new_tnp);
     }
   }
-  OERROR << "Could not substitute frame symbolic value" << LEND;
+  GERROR << "Could not substitute frame symbolic value" << LEND;
   return SymbolicValuePtr();
 }
 

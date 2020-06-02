@@ -19,6 +19,16 @@ Graph::Graph() : SawyerPDG()
   indeterminate = insertVertex(PDGVertex(V_INDETERMINATE));
 }
 
+SawyerPDG::ConstEdgeIterator
+Graph::get_edge(const SawyerPDG::ConstVertexIterator& fromv,
+                const SawyerPDG::ConstVertexIterator& tov) const {
+
+  for (SawyerPDG::ConstEdgeIterator edge = fromv->outEdges().begin(); edge != fromv->outEdges().end(); ++edge) {
+    if (edge->target()->id() == tov->id()) return edge;
+  }
+  return fromv->outEdges().end();
+}
+
 void
 Graph::populate(const DescriptorSet& ds, const P2::Partitioner& p)
 {
@@ -27,7 +37,7 @@ Graph::populate(const DescriptorSet& ds, const P2::Partitioner& p)
   using duration = std::chrono::duration<double>;
 
   time_point start_ts = clock::now();
-  GINFO << "Creating whole-program instruction level control flow graph." << LEND;
+  GINFO << "Creating the whole-program instruction level control flow graph." << LEND;
   // ----------------------------------------------------------------------------------------
   // First create all the vertices...
   // ----------------------------------------------------------------------------------------
@@ -60,6 +70,7 @@ Graph::populate(const DescriptorSet& ds, const P2::Partitioner& p)
   // Create a vertex for every import.
   const ImportDescriptorMap& imports = ds.get_import_map();
   for (const ImportDescriptor& id : boost::adaptors::values(imports)) {
+    //OINFO << "Creating import vertex at " << id.address_string() << LEND;
     insertVertexMaybe(PDGVertex(id));
   }
 
@@ -69,7 +80,7 @@ Graph::populate(const DescriptorSet& ds, const P2::Partitioner& p)
     // There can be global memory descriptors for instructions, so we'll need to rethink this a
     // little.   There are also probably global memory references to imports in some cases too.
     insertVertexMaybe(PDGVertex(gmd));
-    // else { OWARN << "Duplicate vertex: " << gmd.address_string() << LEND; }
+    // else { GWARN << "Duplicate vertex: " << gmd.address_string() << LEND; }
   }
 
   // From a multi-threading perspective, I think all of the vertices that will ever exist have
@@ -177,13 +188,69 @@ Graph::populate(const DescriptorSet& ds, const P2::Partitioner& p)
         insertEdge(fromv, tov, PDGEdge(edge_type));
       }
 
+      // If we're the last instruction in the block we also need to check the basic block
+      // successors, because certain kinds of successors are stored there instead (for example
+      // targets computed from switch jump table detection).  If we find indirect branches,
+      // we're going to presume that we've resolved all edges for the branch/call
+      if (i == num_insns - 1) {
+        PDGEdgeType itype = E_INDIRECT_BRANCH;
+        if (xinsn && insn_is_call(xinsn)) {
+          itype = E_INDIRECT_CALL;
+        }
+        for (auto bsuccessor : b->successors().get()) {
+          const BaseSValuePtr& expr = bsuccessor.expr();
+          if (expr && expr->is_number()) {
+            rose_addr_t target = expr->get_number();
+            SawyerPDG::VertexIterator tov = findVertexKey(target);
+            //OINFO << "Insn: " << addr_str(insn->get_address()) << " has bblock successor value="
+            //      << expr << " addr=" << addr_str(target) << " type="
+            //      << bsuccessor.type() << " conf=" << bsuccessor.confidence() << LEND;
+            if (isValidVertex(tov)) {
+              SawyerPDG::ConstEdgeIterator existing = get_edge(fromv, tov);
+              if (existing != fromv->outEdges().end()) {
+                // If the edge already existed, it wasn't one of the indirect computed edges
+                // that we were really looking for, so just skip it.  These appear to be a
+                // variety of unusual cases that we've already handled in our graph through our
+                // own logic (call fallthru edges, etc).
+
+                //OINFO << "Edge from " << addr_str(insn->get_address()) << " to "
+                //      << addr_str(target) << " already existed type="
+                //      << existing->value().get_type() << LEND;
+              }
+              else {
+                // This is the case that we were really looking for.  New edges on the basic
+                // block succesors that we didn't already know about.  Typically this will be
+                // branch tragets caused by analysis on switch jump tables, but if ROSE adds
+                // more analysis in the future it might include other indirect branches and
+                // calls as well.
+
+                //OINFO << "Creating edge from " << addr_str(insn->get_address()) << " to "
+                //      << addr_str(target) << " type=" << itype << LEND;
+                insertEdge(fromv, tov, PDGEdge(itype));
+
+                // Since we found some new edges, let's not create the indeterminate edge.
+                complete = true;
+              }
+            }
+            else {
+              // These seem to all be branches/call into a data structure in Windows PE exes,
+              // so ignoring them is probably the right thing to do.  Perhaps the ROSE code was
+              // written with ELF executables in mind, where this is a valid address?
+
+              //OINFO << "Edge from " << addr_str(insn->get_address())
+              //      << " is to invalid vertex at " << addr_str(target) << LEND;
+            }
+          }
+        }
+      }
+
       // Now we need to handle creating an edge to the indeterminate vertex if the successor
       // list is not complete.
       if (!complete) {
         // Indeterminate successors should only occur on the last instruction in a block.
         // assert(i == (num_insns - 1));
         if (i != (num_insns - 1)) {
-          OWARN << "Instruction " << debug_instruction(insn) << " had incomplete successors." << LEND;
+          GWARN << "Instruction " << debug_instruction(insn) << " had incomplete successors." << LEND;
         }
 
         // If it's a RET instruction, and then the type should always be E_RETURN.  Otherwise
@@ -202,7 +269,7 @@ Graph::populate(const DescriptorSet& ds, const P2::Partitioner& p)
   create_return_edges(calls);
 
   duration secs = clock::now() - start_ts;
-  GINFO << "Creation of control flow graph took " << secs.count() << " seconds." << LEND;
+  GINFO << "Creation of the control flow graph took " << secs.count() << " seconds." << LEND;
 }
 
 void

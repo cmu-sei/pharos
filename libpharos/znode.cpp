@@ -353,14 +353,14 @@ PharosZ3Solver::z3_to_treenode(z3::expr const & e) {
 
      default:
       // There may be many of these
-      OWARN << "Unhandled application type: " << e << LEND;
+      GWARN << "Unhandled application type: " << e << LEND;
     }
   }
   else if (e.is_int()) {
     z3::func_decl F = e.decl();
   }
   else {
-    OWARN << "Unhandled expression type: " << e << LEND;
+    GWARN << "Unhandled expression type: " << e << LEND;
   }
 
   // returning a null tree node is indcative of an error/handled
@@ -398,7 +398,7 @@ PharosZ3Solver::simplify(const z3::expr& e) {
     z3::apply_result r = t(g);
     ret_expr = r[0].as_expr();
   } catch(z3::exception& z3x) {
-    OERROR << "ctx-solver-simplify: Z3 Exception caught: " << z3x
+    GERROR << "ctx-solver-simplify: Z3 Exception caught: " << z3x
            << LEND;
     ret_expr = e.simplify();
   }

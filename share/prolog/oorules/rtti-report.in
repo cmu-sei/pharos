@@ -1,0 +1,2 @@
+#!/bin/bash
+@XSB_PROGRAM@ --noprompt -e "asserta(library_directory('@CMAKE_CURRENT_BINARY_DIR@')),[report],assert(rTTIEnabled),rTTISolve('${1}'),halt."

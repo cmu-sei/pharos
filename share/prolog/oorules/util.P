@@ -3,24 +3,22 @@
 % Basic utilities for Prolog.
 % ============================================================================================
 
-:- import append/3 from lists.
-:- import member/2 from lists.
-:- import nth0/3 from lists.
+:- if(current_prolog_flag(version_data, xsb(_,_,_,_))).
+:- use_module(lists, [length/2, append/3, nth0/3]).
+:- use_module(setof, [keysort/2]).
+:- use_module(machine, [parsort/4]).
 
-%% list_to_set from SWI prolog
-%% Converts list to set but maintains order of left-most occurrences
+:- use_module(machine, [conset/2, conget/2]).
+set_flag(Name, Value) :-
+    conset(Name, Value).
 
-:- import keysort/2 from setof.
-:- import parsort/4 from machine.
+get_flag(Name, Value) :-
+    conget(Name, Value).
 
-:- dynamic profilingEnabled/0.
-:- dynamic debuggingStoreEnabled/0.
-:- dynamic deterministicEnabled/0.
-
-% When an "upstream problem" occurs, by default we will terminate the analysis because it can
-% take a very long time to find the problematic guess.  If this option is set, we will continue
-% to backtrack until we fix the upstream problem.
-:- dynamic backtrackForUpstream/0.
+:- else.
+:- use_module(library(dialect/xsb), [fmt_write/2]).
+:- use_module(library(dialect/xsb/machine), [parsort/4]).
+:- endif.
 
 sort_tuple((A,B), (C,D)) :-
     (A < B -> (C=A, D=B); (C=B, D=A)).
@@ -180,13 +178,13 @@ maplistm(Goal, List) :-
 
 maplistm2([], _).
 maplistm2([Elem|Tail], Goal) :-
-    basics:append([Goal], Elem, GoalWithParamsList),
+    append([Goal], Elem, GoalWithParamsList),
     GoalWithParams =.. GoalWithParamsList,
     call(GoalWithParams),
     maplistm2(Tail, Goal).
 
 % ============================================================================================
-% XWAM maximu integer sillyness.
+% XWAM maximum integer sillyness.
 % ============================================================================================
 
 % XWAM files can't store 0xffffffff, or apparently anything larger than 0x7fffffff, so we have
@@ -232,26 +230,26 @@ numericLogLevel('WHERE', 5).
 numericLogLevel('DEBUG', 6).
 numericLogLevel('TRACE', 7).
 
-writeHexList_([X|Rest]) :-
-    writeHex(X),
-    (Rest \= [] -> write(', '), writeHexList_(Rest) ; true).
+writeHexList_([X|Rest], Options) :-
+    writeHex(X, Options),
+    (Rest \= [] -> write(', '), writeHexList_(Rest, Options) ; true).
 
-writeHex(L) :-
+writeHex(L, Options) :-
     is_list(L), !,
     write('['),
-    writeHexList_(L),
+    writeHexList_(L, Options),
     write(']').
 
-writeHex(T) :-
+writeHex(T, Options) :-
     functor(T, _, Arity), Arity > 0,
     !,
     T =.. [Functor|Arguments],
-    write(Functor),
+    write_term(Functor, Options),
     write('('),
-    writeHexList_(Arguments),
+    writeHexList_(Arguments, Options),
     write(')').
 
-writeHex(X) :-
+writeHex(X, Options) :-
     (integer(X), X < 0, iso_dif(X, 0)) ->
         (Y is X * -1,
          fmt_write('-0x%x', Y))
@@ -259,11 +257,56 @@ writeHex(X) :-
     (integer(X), iso_dif(X, 0)) ->
         fmt_write('0x%x', X)
     ;
-    write(X).
+    write_term(X, Options).
+
+writeHexTerm(X) :-
+    writeHex(X, [quoted(true)]).
+
+writeHex(X) :-
+    writeHex(X, []).
 
 writelnHex(X) :-
     writeHex(X),
     writeln('').
+
+% These are equivalent to the XSB specific error_write/1 and error_writeln/1.
+errwrite(Term) :-
+    write(user_error, Term).
+errwriteln(Term) :-
+    writeln(user_error, Term).
+
+% ============================================================================================
+% Load dynamic predicates from a file (basis of validated loading in facts.P and results.P)
+% ============================================================================================
+
+true_(_) :- true.
+
+loadPredicates(File) :-
+    loadPredicates(File, true_).
+
+loadPredicates(File, Verifier) :-
+    open(File, read, Stream),
+    call_cleanup(readPredicates(Stream, Verifier), close(Stream)).
+
+readPredicates(Stream, Verifier) :-
+    read(Stream, Pred),
+    assertPredicate(Pred, Stream, Verifier).
+
+assertPredicate(end_of_file, _, _) :- !.
+assertPredicate(Pred, Stream, Verifier) :- !,
+    (call(Verifier, Pred) -> (assert(Pred), readPredicates(Stream, Verifier)) ;
+     (functor(Pred, Name, Arity),
+      errwrite('Invalid predicate: '), errwrite(Name), errwrite('/'),
+      errwrite(Arity), errwrite(' = '), errwriteln(Pred),
+      % We should really learn how to throw and format the exception properly.
+      %throw(error(bad_fact(Name/Arity))),
+      halt(1)
+     )
+    ).
+
+% ============================================================================================
+% Miscellaneous.
+% ============================================================================================
 
 debug_time(X) :-
     scrptutl:date(date(_Year, _Month, _Day, Hour, Min, Sec)),
@@ -295,9 +338,9 @@ recommend_swi.
 show_progress :-
     logdebugln('-------------------------------------------'),
     cputime(T),
-    conget(numfacts,FN),
-    conget(guesses,GN),
-    conget(reasonForwardSteps,RFN),
+    get_flag(numfacts,FN),
+    get_flag(guesses,GN),
+    get_flag(reasonForwardSteps,RFN),
     logdebugln('total number of facts is'(FN,T)),
     logdebugln('total number of guesses is'(GN,T)),
     logdebugln('total number of reasoningForward steps is'(RFN,T)),

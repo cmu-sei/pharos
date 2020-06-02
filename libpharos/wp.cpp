@@ -144,12 +144,19 @@ namespace {
         // Return false? It's not clear what the best thing to do here is.
         return SymbolicExpr::makeBooleanConstant (false);
       }
-      IRExprPtr operator()(UNUSED const CallStmt &cs) {
+      IRExprPtr operator()(const CallStmt &cs) {
         // Return false? It's not clear what the best thing to do here is.
+        GWARN << "Encountered a non-rewritten Call statement " << cs
+              << "to an import. This is treated as an unexecutable statement and is probably not what you want."
+              << LEND;
         return SymbolicExpr::makeBooleanConstant (false);
       }
       IRExprPtr operator()(UNUSED const InsnStmt &is) {
         // Instruction statements do not effect weakest preconditions
+        return post;
+      }
+      IRExprPtr operator()(UNUSED const CommentStmt &cs) {
+        // Comment statements do not effect weakest preconditions
         return post;
       }
     };
@@ -348,11 +355,12 @@ namespace pharos {
 namespace {
   struct HelperVisitor : public boost::static_visitor<boost::optional<Stmt>> {
     const DescriptorSet &ds;
-    const std::set<ImportCall> &funcs;
+    const ImportRewriteSet &funcs;
     const IR &ir;
     int &n;
     bool ignore = false;
-    HelperVisitor (const DescriptorSet &ds_, IR &ir_, const std::set<ImportCall> &funcs_, int &n_) : ds(ds_), funcs(funcs_), ir(ir_), n(n_) {}
+    HelperVisitor (const DescriptorSet &ds_, IR &ir_, const ImportRewriteSet &funcs_, int &n_)
+      : ds(ds_), funcs(funcs_), ir(ir_), n(n_) {}
     boost::optional<Stmt> operator () (const InsnStmt &is) {
       ignore = false;
       return (Stmt) is;
@@ -364,9 +372,9 @@ namespace {
         if (i != funcs.end ()) {
           int nbits = ds.get_arch_bits ();
           Register eax = ir.get_reg(ds.get_arch_reg("eax"));
-	  std::stringstream vname;
-	  vname << ec->first << "!" << ec->second << "@" << addr_str (std::get<2> (cs)->get_address ())
-		<< ":" << n;
+          std::stringstream vname;
+          vname << ec->first << "!" << ec->second << "@" << addr_str (std::get<2> (cs)->get_address ())
+                << ":" << n;
           IRExprPtr nv = SymbolicExpr::makeIntegerVariable (nbits, vname.str ());
           ignore = true;
           n++;
@@ -387,7 +395,7 @@ namespace {
 }
 
 namespace pharos {
-  IR rewrite_imported_calls (const DescriptorSet& ds, IR &ir, const std::set<ImportCall> funcs) {
+  IR rewrite_imported_calls (const DescriptorSet& ds, IR &ir, const ImportRewriteSet& funcs) {
     int n = 0;
 
     IRCFG cfg = ir.get_cfg ();

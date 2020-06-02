@@ -2,6 +2,11 @@
 % Rules for tracking which methods are assigned to which classes.
 % ============================================================================================
 
+:- if(current_prolog_flag(version_data, xsb(_,_,_,_))).
+:- use_module(lists, [member/2]).
+:- use_module(swi, [maplist/2]).
+:- endif.
+
 make(M) :-
     try_assert(findint(M, M)).
 
@@ -38,15 +43,12 @@ findall(M, S) :-
 % Filter out non-methods...
 findallMethods(C, O) :- findall(C, L), include(factMethod, L, O).
 
+numberOfMethods(C, O) :- findallMethods(C, L),
+			 length(L, O).
+
 findAllClasses(S) :-
     setof(C, M^find(M, C), S).
 
 class(C) :-
     findAllClasses(S),
     member(C, S).
-
-/* Local Variables:   */
-/* mode: prolog       */
-/* fill-column:    95 */
-/* comment-column: 0  */
-/* End:               */

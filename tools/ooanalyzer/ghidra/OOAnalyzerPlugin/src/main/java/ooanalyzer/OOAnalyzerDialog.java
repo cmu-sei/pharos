@@ -20,6 +20,7 @@ import javax.swing.JPanel;
 import docking.DialogComponentProvider;
 import docking.widgets.filechooser.GhidraFileChooser;
 import docking.widgets.filechooser.GhidraFileChooserMode;
+import ghidra.util.filechooser.ExtensionFileFilter;
 import ghidra.util.SystemUtilities;
 
 /**
@@ -28,123 +29,125 @@ import ghidra.util.SystemUtilities;
  */
 public class OOAnalyzerDialog extends DialogComponentProvider {
 
-	// The JSON file containing OO data
-	private File jsonFile = null;
+  // The JSON file containing OO data
+  private File jsonFile = null;
 
-	// Assume we will organize data types into 
-	private Boolean useOOAnalyzerNamespace = true;
-	
-	private Boolean isCancelled = false;
+  // Assume we will organize data types into
+  private Boolean useOOAnalyzerNamespace = true;
 
-	/**
-	 * Open the dialog.
-	 * 
-	 * @param c      the control manager
-	 * @param parent the parent window
-	 */
-	public OOAnalyzerDialog(String title) {
-		super(title);
+  private Boolean isCancelled = false;
 
-		JPanel workPanel = new JPanel(new GridBagLayout());
-		GridBagConstraints cs = new GridBagConstraints();
+  /**
+   * Open the dialog.
+   *
+   * @param c      the control manager
+   * @param parent the parent window
+   */
+  public OOAnalyzerDialog(String title) {
+    super(title);
 
-		cs.fill = GridBagConstraints.HORIZONTAL;
+    JPanel workPanel = new JPanel(new GridBagLayout());
+    GridBagConstraints cs = new GridBagConstraints();
 
-		JButton selectJsonFile = new JButton("JSON File");
-		selectJsonFile.setToolTipText("Select the OOAnalyzer JSON file.");
+    cs.fill = GridBagConstraints.HORIZONTAL;
 
-		selectJsonFile.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
+    JButton selectJsonFile = new JButton("Open JSON File");
+    selectJsonFile.setToolTipText("Select the OOAnalyzer JSON file.");
 
-				GhidraFileChooser chooser = new GhidraFileChooser(null);
-				AtomicReference<File> selectedFileRef = new AtomicReference<>();
+    selectJsonFile.addActionListener(new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
 
-				Runnable r = () -> {
-					chooser.setTitle("OOAnalyzer JSON File");
-					chooser.setSelectedFile(selectedFileRef.get());
-					chooser.setApproveButtonText("Select");
-					chooser.setFileSelectionMode(GhidraFileChooserMode.FILES_ONLY);
-					selectedFileRef.set(chooser.getSelectedFile());
-				};
+          GhidraFileChooser chooser = new GhidraFileChooser(null);
+          AtomicReference<File> selectedFileRef = new AtomicReference<>();
 
-				SystemUtilities.runSwingNow(r);
+          Runnable r = () -> {
+            ExtensionFileFilter filter = new ExtensionFileFilter ("json", "JSON files");
+            chooser.addFileFilter(filter);
+            chooser.setTitle("OOAnalyzer JSON File");
+            chooser.setSelectedFile(selectedFileRef.get());
+            chooser.setApproveButtonText("Select");
+            chooser.setFileSelectionMode(GhidraFileChooserMode.FILES_ONLY);
+            selectedFileRef.set(chooser.getSelectedFile());
+          };
 
-				jsonFile = selectedFileRef.get();
-				if (jsonFile != null) {
-					JButton button = ((JButton) e.getSource());
-					button.setText("Selected File: " + jsonFile.getName());
-				}
-			}
-		});
+          SystemUtilities.runSwingNow(r);
 
-		cs.gridx = 0;
-		cs.gridy = 0;
-		cs.gridwidth = 1;
-		workPanel.add(selectJsonFile, cs);
+          jsonFile = selectedFileRef.get();
+          if (jsonFile != null) {
+            JButton button = ((JButton) e.getSource());
+            button.setText("Selected File: " + jsonFile.getName());
+          }
+        }
+      });
 
-		JCheckBox cbNamespace = new JCheckBox("Use OOAnalyzer namespace");
+    cs.gridx = 0;
+    cs.gridy = 0;
+    cs.gridwidth = 1;
+    workPanel.add(selectJsonFile, cs);
 
-		cbNamespace.setToolTipText(
-				"Organize standard classes added or changed by OOAnalyzer in a namespace named 'OOAnalyzer'.");
-		cbNamespace.addItemListener(new ItemListener() {
-			@Override
-			public void itemStateChanged(ItemEvent e) {
-				useOOAnalyzerNamespace = (e.getStateChange() == ItemEvent.SELECTED);
-			}
-		});
+    JCheckBox cbNamespace = new JCheckBox("Use OOAnalyzer namespace");
 
-		cbNamespace.setSelected(useOOAnalyzerNamespace);
-		cs.gridx = 0;
-		cs.gridy = 1;
-		cs.gridwidth = 1;
-		workPanel.add(cbNamespace, cs);
+    cbNamespace.setToolTipText(
+      "Organize standard classes added or changed by OOAnalyzer in a namespace named 'OOAnalyzer'.");
+    cbNamespace.addItemListener(new ItemListener() {
+        @Override
+        public void itemStateChanged(ItemEvent e) {
+          useOOAnalyzerNamespace = (e.getStateChange() == ItemEvent.SELECTED);
+        }
+      });
 
-		addOKButton();
-		setOkEnabled(true);
+    cbNamespace.setSelected(useOOAnalyzerNamespace);
+    cs.gridx = 0;
+    cs.gridy = 1;
+    cs.gridwidth = 1;
+    workPanel.add(cbNamespace, cs);
 
-		addCancelButton();
-		setCancelEnabled(true);
+    addOKButton();
+    setOkEnabled(true);
 
-		addWorkPanel(workPanel);
-	}
+    addCancelButton();
+    setCancelEnabled(true);
 
-	@Override
-	protected void okCallback() {
-		close();
-	}
+    addWorkPanel(workPanel);
+  }
 
-	@Override
-	protected void cancelCallback() {
-		setCancelled(true);
-		close();
-	}
+  @Override
+  protected void okCallback() {
+    close();
+  }
 
-	@Override
-	protected void escapeCallback() {
-		setCancelled(true);
-		close();
-	}
+  @Override
+  protected void cancelCallback() {
+    setCancelled(true);
+    close();
+  }
 
-	public Boolean useOOAnalyzerNamespace() {
-		return this.useOOAnalyzerNamespace;
-	}
+  @Override
+  protected void escapeCallback() {
+    setCancelled(true);
+    close();
+  }
 
-	public File getJsonFile() {
-		return this.jsonFile;
-	}
+  public Boolean useOOAnalyzerNamespace() {
+    return this.useOOAnalyzerNamespace;
+  }
 
-	/**
-	 * @return the isCancelled
-	 */
-	public Boolean isCancelled() {
-		return isCancelled;
-	}
+  public File getJsonFile() {
+    return this.jsonFile;
+  }
 
-	/**
-	 * @param isCancelled the isCancelled to set
-	 */
-	public void setCancelled(Boolean isCancelled) {
-		this.isCancelled = isCancelled;
-	}
+  /**
+   * @return the isCancelled
+   */
+  public Boolean isCancelled() {
+    return isCancelled;
+  }
+
+  /**
+   * @param isCancelled the isCancelled to set
+   */
+  public void setCancelled(Boolean isCancelled) {
+    this.isCancelled = isCancelled;
+  }
 }

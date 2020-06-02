@@ -4,7 +4,6 @@
 
 #include <boost/format.hpp>
 #include <boost/optional.hpp>
-#include <boost/property_tree/ptree.hpp>
 
 #include <rose.h>
 #include <AstTraversal.h>
@@ -43,7 +42,7 @@ template<> char const* EnumStrings<GenericConfidence>::data[] = {
 template std::string Enum2Str<GenericConfidence>(GenericConfidence);
 
 // This class handles translating between rose_addr_t and std::string when reading and writing
-// boost::property_tree objects.
+// json objects.
 class RoseAddrTranslator
 {
 public:
@@ -61,15 +60,6 @@ public:
 };
 
 } // namespace pharos
-
-// This registers the translator class with the property tree class so that it knows how to do
-// the translation automatically.
-namespace boost{ namespace property_tree {
-    template<>
-    struct translator_between<std::string, rose_addr_t>
-    { using type = pharos::RoseAddrTranslator; };
-  }
-}
 
 namespace pharos {
 
@@ -924,27 +914,6 @@ void FunctionDescriptor::update_return_values() {
   }
 }
 
-
-void FunctionDescriptor::analyze_type_information(const DUAnalysis& du) {
-
-  const std::map<TreeNode*, TreeNodePtr>& tree_nodes = du.get_unique_treenodes();
-  const std::map<TreeNode*, TreeNodePtr>& mem_accesses = du.get_memaddr_treenodes();
-
-  // TypeSolver generates and analyzes prolog facts for type information. making this static
-  // preserves it across functions
-  TypeSolver type_solver(du, this);
-
-  // JSG wonders if passing command line arguments this deep in to Pharos is a good idea
-  const ProgOptVarMap& vm = ds.get_arguments();
-  if (vm.count("type-file")) {
-     std::string results_file = vm["type-file"].as<std::string>();
-     type_solver.set_output_file(results_file);
-  }
-
-  type_solver.generate_type_information(tree_nodes, mem_accesses);
-
-}
-
 const PDG * FunctionDescriptor::get_pdg() const {
   FunctionDescriptor * self = const_cast<FunctionDescriptor *>(this);
   return self->_get_pdg();
@@ -1029,13 +998,6 @@ const PDG * FunctionDescriptor::_get_pdg() {
     // (return values) and which were just scratch registers.  If no calling convention has been
     // set, add all changed registers as return values.
     update_return_values();
-
-    const ProgOptVarMap& vm = ds.get_arguments();
-    if (vm.count("analyze-types")) {
-      const DUAnalysis& du = pdg->get_usedef();
-     // Analyze the types of the treenodes used during function analysis (invokes Prolog).
-      analyze_type_information(du);
-    }
   }
 
   return &(*pdg); // &(*pdg) to convert from std::unique_ptr to raw pointer.
@@ -1179,8 +1141,7 @@ void FunctionDescriptor::_compute_function_hashes(ExtraFunctionHashData *extra) 
       // sadly the convenience unparser is not handling lea instructions correctly, but our
       // debug_instruction code does (will revisit using the paritioner's unparser at some
       // point):
-      //std::string insnDisasm = debug_instruction(insn,17);
-      std::string insnDisasm = "ARM Instruction!";
+      std::string insnDisasm = debug_instruction(insn,17);
       dbg_disasm
         //<< addr_str(insn->get_address()) << " "
         << insnDisasm
@@ -1221,25 +1182,15 @@ void FunctionDescriptor::_compute_function_hashes(ExtraFunctionHashData *extra) 
               if (chunk1 != chunk2) {
                 auto off = intexp->get_bit_offset();
                 auto sz = intexp->get_bit_size();
-                // should always be aligned to byte in x86?
-                if (off % 8 != 0 || sz % 8 != 0) {
-                  GERROR << "operand offset, non byte alignment or size found: " << off << " " << sz << LEND;
-                  return;
-                }
-                // saw some unusual offsets & sizes during testing,yell if we hit this:
                 auto insnsz = insn->get_raw_bytes().size();
-                if (insnsz > 17) { // max intel instruction size (32 bit)?
-                  GERROR << "suspiciously large instruction found @"
-                         << addr_str(insn->get_address()) << " : " << insnsz << LEND;
-                }
-                if (off/8 >= insnsz) {
-                  GERROR << "operand offset @ " << addr_str(insn->get_address())
-                         << " is suspuciously large: " << off << LEND;
-                  return;
-                }
-                if (sz/8 >= insnsz) {
-                  GERROR << "operand size @ " << addr_str(insn->get_address())
-                         << " is suspiciously large: " << sz << LEND;
+
+                // In some samples (e.g. 82c9e0083bd...) there are zero size expressions.  The
+                // cause seems to be related to an Image with an usual ImageBase of zero.
+                if (sz <= 0 || off % 8 != 0 || sz % 8 != 0 || // positive and byte-aligneed
+                    sz/8 >= insnsz || off/8 >= insnsz || insnsz > 17) { // reasonable sizes
+                  GWARN << "Instruction '" << debug_instruction(insn)
+                        << "' has suspicious properties, size=" << insnsz
+                        << " opsize=" << sz << " opoffset=" << off << LEND;
                   return;
                 }
                 std::pair< uint32_t, uint32_t > pval(off,sz);
@@ -1256,19 +1207,9 @@ void FunctionDescriptor::_compute_function_hashes(ExtraFunctionHashData *extra) 
       for (auto sc = searcher.candidates.begin(); sc != searcher.candidates.end(); ++sc) {
         auto off = sc->first;
         auto sz = sc->second;
-        // I *should* be catching this in the visitor above, but I'm paranoid now...
+        // Ensure that updates will fit in the buffer. Should be enforced by insnsz above.
         if ((off/8 + sz/8) > wildcard.size()) {
-          GERROR << "large offset + size found @ " << addr_str(insn->get_address())
-                 << " : " << off/8 + sz/8 << LEND;
-          continue;
-        }
-        // in some samples (82c9e0083bd16284b57c3a375844a0dc5f305ca1cfcfaeff885717aeaa92325a)
-        // an addressing scheme like [eax+ecx*2+14h] has some integer value expression (I
-        // assume the 14h) where the size comes back as zero???  Need to figure out why at
-        // some point, but for now, catch & ignore:
-        if (sz <= 0) {
-          GERROR << "bad operand size found @ " << addr_str(insn->get_address())
-                 << " : " << sz << LEND;
+          GERROR << "Instruction" << debug_instruction(insn) << " extends past buffer." << LEND;
           continue;
         }
         do {

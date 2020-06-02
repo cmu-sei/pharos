@@ -2864,6 +2864,7 @@ callTarget(0x406f31, 0x406f1b, 0x40126f).
 callTarget(0x406f42, 0x406f36, 0x4015c6).
 callTarget(0x406f4c, 0x406f36, 0x40126f).
 callTarget(0x406f60, 0x406f51, 0x40184d).
+fileInfo('1C0ED38374144580F3186B2379D49F3A', 'ooex1.exe').
 funcOffset(0x401027, 0x401020, 0x401000, 0x4).
 funcOffset(0x40102c, 0x401020, 0x4011b6, 0x4).
 funcOffset(0x401058, 0x401020, 0x401010, 0x4).
@@ -3459,10 +3460,10 @@ rTTICompleteObjectLocator(0x40713c, 0x4090f4, 0x40a000, 0x409108, 0, 0).
 rTTICompleteObjectLocator(0x407158, 0x409174, 0x40a01c, 0x40915c, 0, 0).
 rTTICompleteObjectLocator(0x407178, 0x409188, 0x40a044, 0x40919c, 0, 0).
 rTTICompleteObjectLocator(0x4071ec, 0x4091d0, 0x40a064, 0x4091e4, 0, 0).
-rTTITypeDescriptor(0x40a000, 0x40717c, '.?AVbad_alloc@std@@').
-rTTITypeDescriptor(0x40a01c, 0x40717c, '.?AVexception@std@@').
-rTTITypeDescriptor(0x40a044, 0x40717c, '.?AVtype_info@@').
-rTTITypeDescriptor(0x40a064, 0x40717c, '.?AVbad_exception@std@@').
+rTTITypeDescriptor(0x40a000, 0x40717c, '.?AVbad_alloc@std@@', 'std::bad_alloc').
+rTTITypeDescriptor(0x40a01c, 0x40717c, '.?AVexception@std@@', 'std::exception').
+rTTITypeDescriptor(0x40a044, 0x40717c, '.?AVtype_info@@', type_info).
+rTTITypeDescriptor(0x40a064, 0x40717c, '.?AVbad_exception@std@@', 'std::bad_exception').
 thisPtrAllocation(0x40103f, 0x401020, sv_444897627623450591, type_Heap, 0x8).
 thisPtrAllocation(0x4010a5, 0x401080, sv_7209660675378651845, type_Heap, 0x10).
 thisPtrAllocation(0x401163, 0x401136, sv_11024816921463617640, type_Global, 0).

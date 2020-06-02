@@ -1,92 +1,91 @@
 {
-    "Structures": [
-        {
-            "Name": "cls_411650",
-            "DemangledName": "",
-            "Size": "16",
-            "Members": [
-                {
-                    "name": "mbr_0",
+    "filemd5": "E13EFD11DDCA7D2340AF1545E54A6E55",
+    "filename": "ooex0.exe",
+    "structures": {
+        "cls_0x411650": {
+            "demangled_name": "",
+            "members": {
+                "0x0": {
+                    "base": false,
+                    "count": "1",
+                    "name": "mbr_0x0",
+                    "offset": "0x0",
+                    "parent": false,
+                    "struc": "",
                     "type": "dword",
-                    "offset": "0",
-                    "count": "1"
+                    "usages": [
+                        "0x411620",
+                        "0x411746"
+                    ]
                 },
-                {
-                    "name": "mbr_4",
+                "0x4": {
+                    "base": false,
+                    "count": "1",
+                    "name": "mbr_0x4",
+                    "offset": "0x4",
+                    "parent": false,
+                    "struc": "",
                     "type": "dword",
-                    "offset": "4",
-                    "count": "1"
+                    "usages": [
+                        "0x411616",
+                        "0x41174b"
+                    ]
                 },
-                {
-                    "name": "mbr_8",
+                "0x8": {
+                    "base": false,
+                    "count": "1",
+                    "name": "mbr_0x8",
+                    "offset": "0x8",
+                    "parent": false,
+                    "struc": "",
                     "type": "word",
-                    "offset": "8",
-                    "count": "1"
+                    "usages": [
+                        "0x41162e"
+                    ]
                 }
-            ],
-            "Methods": [
-                {
-                    "ea": "4115f0",
-                    "name": "ctor_4115f0",
+            },
+            "methods": {
+                "0x4115f0": {
                     "demangled_name": "",
-                    "import": "no",
+                    "ea": "0x4115f0",
+                    "import": false,
+                    "name": "ctor_0x4115f0",
                     "type": "ctor"
                 },
-                {
-                    "ea": "411650",
-                    "name": "dtor_411650",
+                "0x411650": {
                     "demangled_name": "",
-                    "import": "no",
+                    "ea": "0x411650",
+                    "import": false,
+                    "name": "dtor_0x411650",
                     "type": "dtor"
                 },
-                {
-                    "ea": "4116c0",
-                    "name": "meth_4116c0",
+                "0x4116c0": {
                     "demangled_name": "",
-                    "import": "no",
+                    "ea": "0x4116c0",
+                    "import": false,
+                    "name": "meth_0x4116c0",
                     "type": "meth"
                 },
-                {
-                    "ea": "411720",
-                    "name": "meth_411720",
+                "0x411720": {
                     "demangled_name": "",
-                    "import": "no",
+                    "ea": "0x411720",
+                    "import": false,
+                    "name": "meth_0x411720",
                     "type": "meth"
                 },
-                {
-                    "ea": "411770",
-                    "name": "deldtor_411770",
+                "0x411770": {
                     "demangled_name": "",
-                    "import": "no",
-                    "type": "meth"
+                    "ea": "0x411770",
+                    "import": false,
+                    "name": "deldtor_0x411770",
+                    "type": "deldtor"
                 }
-            ]
+            },
+            "name": "cls_0x411650",
+            "size": 16,
+            "vftables": {}
         }
-    ],
-    "Usages": [
-        {
-            "Members": [
-                {
-                    "class": "cls_411650",
-                    "ea": "411620"
-                },
-                {
-                    "class": "cls_411650",
-                    "ea": "411746"
-                },
-                {
-                    "class": "cls_411650",
-                    "ea": "411616"
-                },
-                {
-                    "class": "cls_411650",
-                    "ea": "41174b"
-                },
-                {
-                    "class": "cls_411650",
-                    "ea": "41162e"
-                }
-            ]
-        }
-    ]
+    },
+    "vcalls": {},
+    "version": "2.0.1"
 }

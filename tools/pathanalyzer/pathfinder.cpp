@@ -3,6 +3,7 @@
 #include <rose.h>
 #include <libpharos/descriptors.hpp>
 #include <libpharos/spacer.hpp>
+#include <boost/optional/optional_io.hpp>
 
 const std::string version = "0.1";
 

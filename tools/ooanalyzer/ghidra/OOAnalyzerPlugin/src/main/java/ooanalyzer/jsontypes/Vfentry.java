@@ -13,83 +13,83 @@ import com.google.gson.annotations.SerializedName;
  */
 
 public class Vfentry {
-	
-	@Expose
-	@SerializedName("ea")
-    private String ea;
-	
-	@Expose
-	@SerializedName("offset")
-    private String offset;
-	
-	@Expose
-	@SerializedName("name")
-    private String name;
-	
-	@Expose
-	@SerializedName("demangled_name")
-    private String demangeledName;
-	
-	@Expose
-	@SerializedName("import")
-    private String imported;
-	
-	@Expose
-	@SerializedName("type")
-    private String type;
 
-    public String getEa() {
-        return ea;
-    }
+  @Expose
+  @SerializedName("ea")
+  private String ea;
 
-    public String getDemangeledNname() {
-        return demangeledName;
-    }
+  @Expose
+  @SerializedName("offset")
+  private String offset;
+
+  @Expose
+  @SerializedName("name")
+  private String name;
+
+  @Expose
+  @SerializedName("demangled_name")
+  private String demangeledName;
+
+  @Expose
+  @SerializedName("import")
+  private String imported;
+
+  @Expose
+  @SerializedName("type")
+  private String type;
+
+  public String getEa() {
+    return ea;
+  }
+
+  public String getDemangeledNname() {
+    return demangeledName;
+  }
 
   public String getImported() {
-      return this.imported;
+    return this.imported;
   }
-    
-    public Integer getOffset() {
-        return Integer.parseInt(offset);
-    }
 
-    public String getName() {
-        return name;
-    }
+  public Integer getOffset() {
+    return Integer.parseInt(offset);
+  }
 
-    public String getType() {
-        return type;
-    }
-    
-    public void setEa(String ea) {
-		this.ea = ea;
-	}
+  public String getName() {
+    return name;
+  }
 
-	public void setOffset(String offset) {
-		this.offset = offset;
-	}
+  public String getType() {
+    return type;
+  }
 
-	public void setName(String name) {
-		this.name = name;
-	}
+  public void setEa(String ea) {
+    this.ea = ea;
+  }
 
-	public void setDemangeledName(String demangeled_name) {
-		this.demangeledName = demangeled_name;
-	}
+  public void setOffset(String offset) {
+    this.offset = offset;
+  }
 
-	public void setImported(String imported) {
-		this.imported = imported;
-	}
+  public void setName(String name) {
+    this.name = name;
+  }
 
-	public void setType(String type) {
-		this.type = type;
-	}
+  public void setDemangeledName(String demangeled_name) {
+    this.demangeledName = demangeled_name;
+  }
 
-	@Override
-    public String toString() {
-        return "[ea=" + ea + ", offset=" + offset + ", name=" + name
-                + ", demangled name= " + demangeledName + ", imported= "
-                + imported + ", type=" + type + "]";
-    }
+  public void setImported(String imported) {
+    this.imported = imported;
+  }
+
+  public void setType(String type) {
+    this.type = type;
+  }
+
+  @Override
+  public String toString() {
+    return "[ea=" + ea + ", offset=" + offset + ", name=" + name
+      + ", demangled name= " + demangeledName + ", imported= "
+      + imported + ", type=" + type + "]";
+  }
 }

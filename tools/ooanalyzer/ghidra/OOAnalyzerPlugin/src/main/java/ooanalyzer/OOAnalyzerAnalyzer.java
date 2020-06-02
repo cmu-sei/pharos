@@ -3,11 +3,10 @@ package ooanalyzer;
  * Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
  ******************************************************************************/
 
-// This is an analyzer for Ghidra to semi-automatically run OOAnalyzer. For the sake 
+// This is an analyzer for Ghidra to semi-automatically run OOAnalyzer. For the sake
 // of simplicity, this is commented out for now.
 
-
-/*  
+/*
 import java.util.List;
 import java.util.Optional;
 
@@ -27,90 +26,91 @@ import ghidra.util.task.TaskMonitor;
 import ooanalyzerplugin.jsontypes.OOAnalyzerType;
 
 public class OOAnalyzerAnalyzer extends AbstractAnalyzer {
-	
-	private final static String NAME = "CERT OOAnalyzer C++ class analysis";
-	private final static String DESCRIPTION = "Apply OOAnalyzer JSON.";
-	protected static final String OPTION_NAME_OOA_FILE = "Run CERT OOAnalyzer";
-	private static final String OPTION_DESCRIPTION_OOA_FILE = "If checked, analyst will be prompted to load OOAnalyzer JSON file;";
-	private File ooaJsonFile;
 
-	public OOAnalyzerAnalyzer() {
-		super(NAME, DESCRIPTION, AnalyzerType.DATA_ANALYZER);
+  private final static String NAME = "CERT OOAnalyzer C++ class analysis";
+  private final static String DESCRIPTION = "Apply OOAnalyzer JSON.";
+  protected static final String OPTION_NAME_OOA_FILE = "Run CERT OOAnalyzer";
+  private static final String OPTION_DESCRIPTION_OOA_FILE = "If checked, analyst will be prompted to load OOAnalyzer JSON file;";
+  private File ooaJsonFile;
 
-		// Data type propogation is the latest analysis phase. OOAnalyzer will run after
-		// that because it needs to update functions and data types
-		setPriority(AnalysisPriority.DATA_TYPE_PROPOGATION.after());
+  public OOAnalyzerAnalyzer() {
+    super(NAME, DESCRIPTION, AnalyzerType.DATA_ANALYZER);
 
-		// OO analysis is enabled by default, but it must be configured with a JSON file
-		// to actually run.
-		setDefaultEnablement(true);
+    // Data type propogation is the latest analysis phase. OOAnalyzer will run after
+    // that because it needs to update functions and data types
+    setPriority(AnalysisPriority.DATA_TYPE_PROPOGATION.after());
 
-		setSupportsOneTimeAnalysis();
-	}
+    // OO analysis is enabled by default, but it must be configured with a JSON file
+    // to actually run.
+    setDefaultEnablement(true);
 
-	@Override
-	public boolean canAnalyze(Program program) {
+    setSupportsOneTimeAnalysis();
+  }
 
-		// Only analyze 32-bit or less X86 programs. OOAnalyzer can handle nothing else
-		Processor processor = program.getLanguage().getProcessor();
-		if (program.getLanguage().getDefaultSpace().getSize() > 32) {
-			return false;
-		}
+  @Override
+  public boolean canAnalyze(Program program) {
 
-		return processor.equals(Processor.findOrPossiblyCreateProcessor("x86"));
-	}
+    // Only analyze 32-bit or less X86 programs. OOAnalyzer can handle nothing else
+    Processor processor = program.getLanguage().getProcessor();
+    if (program.getLanguage().getDefaultSpace().getSize() > 32) {
+      return false;
+    }
 
-	@Override
-	public void optionsChanged(Options options, Program program) {
-		ooaJsonFile = options.getFile(OPTION_NAME_OOA_FILE, null);
-	}
+    return processor.equals(Processor.findOrPossiblyCreateProcessor("x86"));
+  }
 
-	@Override
-	public void registerOptions(Options options, Program program) {
-		options.registerOption(OPTION_NAME_OOA_FILE, OptionType.FILE_TYPE, null, null, OPTION_DESCRIPTION_OOA_FILE);
-	}
+  @Override
+  public void optionsChanged(Options options, Program program) {
+    ooaJsonFile = options.getFile(OPTION_NAME_OOA_FILE, null);
+  }
 
-	@Override
-	public boolean added(Program program, AddressSetView set, TaskMonitor monitor, MessageLog log)
-			throws CancelledException {
-		
-		// if the OOAnalyzer namespace already exists, then don't reanalyze
-		Namespace ooaNs = program.getSymbolTable().getNamespace(OOAnalyzer.ooanalyzerCategory.toString(), null);
-		if (ooaNs==null) {
-			setDefaultEnablement(false);
-			return false;
-		}
-		
-		if (null == ooaJsonFile) {
-			ooaJsonFile = OOAnalyzerPlugin.getJson();
-		}
+  @Override
+  public void registerOptions(Options options, Program program) {
+    options.registerOption(OPTION_NAME_OOA_FILE, OptionType.FILE_TYPE, null, null, OPTION_DESCRIPTION_OOA_FILE);
+  }
 
-		Optional<List<OOAnalyzerType>> optJson = OOAnalyzer.parseJsonFile(ooaJsonFile);
+  @Override
+  public boolean added(Program program, AddressSetView set, TaskMonitor monitor, MessageLog log)
+    throws CancelledException {
 
-		if (optJson.isPresent()) {
-			// Actually run the plugin
+    // if the OOAnalyzer namespace already exists, then don't reanalyze
+    Namespace ooaNs = program.getSymbolTable().getNamespace(OOAnalyzer.ooanalyzerCategory.toString(), null);
+    if (ooaNs==null) {
+      setDefaultEnablement(false);
+      return false;
+    }
 
-			int tid = program.startTransaction("OOA");
-			boolean result = false;
-			try {
-				OOAnalyzer ooa = new OOAnalyzer(program);
-				ooa.setMonitor(monitor);
-				int count = ooa.analyzeClasses(optJson.get());
+    if (null == ooaJsonFile) {
+      ooaJsonFile = OOAnalyzerPlugin.getJson();
+    }
 
-				if (count > 0) {
-					Msg.info(this,
-							"OOAnalyzer loaded " + count + " classes from JSON file \"" + ooaJsonFile.getName() + "\"");
-					result = true;
-				} else {
-					Msg.info(this,
-							"OOAnalyzer could not load classes from JSON file \"" + ooaJsonFile.getName() + "\"");
-				}
-			} finally {
-				program.endTransaction(tid, result);
-			}
-		} else {
-			Msg.error(this, "Could not load/parse JSON file ");
-		}
-		return true;
-	}
-}*/
+    Optional<List<OOAnalyzerType>> optJson = OOAnalyzer.parseJsonFile(ooaJsonFile);
+
+    if (optJson.isPresent()) {
+      // Actually run the plugin
+
+      int tid = program.startTransaction("OOA");
+      boolean result = false;
+      try {
+        OOAnalyzer ooa = new OOAnalyzer(program);
+        ooa.setMonitor(monitor);
+        int count = ooa.analyzeClasses(optJson.get());
+
+        if (count > 0) {
+          Msg.info(this,
+                   "OOAnalyzer loaded " + count + " classes from JSON file \"" + ooaJsonFile.getName() + "\"");
+          result = true;
+        } else {
+          Msg.info(this,
+                   "OOAnalyzer could not load classes from JSON file \"" + ooaJsonFile.getName() + "\"");
+        }
+      } finally {
+        program.endTransaction(tid, result);
+      }
+    } else {
+      Msg.error(this, "Could not load/parse JSON file ");
+    }
+    return true;
+  }
+}
+*/

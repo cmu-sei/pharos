@@ -1,0 +1,8 @@
+set(SWIPL_ROOT "" CACHE PATH "The root directory of the SWI Prolog installation")
+set(_swipl_search)
+if(SWPIL_ROOT)
+  set(_swipl_search PATHS "${SWIPL_ROOT}/bin" NO_DEFAULT_PATH)
+endif()
+find_program(SWIPL_PROGRAM swipl ${_swipl_search} DOC "SWI Prolog runtime")
+find_package(PackageHandleStandardArgs)
+find_package_handle_standard_args(SWIPL REQUIRED_VARS SWIPL_PROGRAM)

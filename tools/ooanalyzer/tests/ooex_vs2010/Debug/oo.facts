@@ -1272,6 +1272,7 @@ callTarget(0x415a41, 0x415a28, 0x411212).
 callTarget(0x415a53, 0x415a50, 0x411195).
 callTarget(0x415a67, 0x415a58, 0x411019).
 callTarget(0x415a71, 0x415a58, 0x411212).
+fileInfo('41EAAD61520231448D8E06C28B0453FC', 'oo.exe').
 funcOffset(0x411856, 0x411830, 0x411a40, 0).
 funcOffset(0x411861, 0x411830, 0x411b10, 0xc).
 funcOffset(0x411891, 0x411830, 0x412760, 0xc).
@@ -2275,24 +2276,24 @@ rTTICompleteObjectLocator(0x417850, 0x4186bc, 0x41a000, 0x4186d4, 0, 0).
 rTTICompleteObjectLocator(0x41788c, 0x4187d8, 0x41a018, 0x418740, 0, 0).
 rTTICompleteObjectLocator(0x4178a8, 0x4187f0, 0x41a030, 0x418780, 0, 0).
 rTTICompleteObjectLocator(0x4178c8, 0x418808, 0x41a050, 0x418820, 0, 0).
-rTTITypeDescriptor(0x41a000, 0x4178cc, '.?AVCls3@@').
-rTTITypeDescriptor(0x41a018, 0x4178cc, '.?AVCls1@@').
-rTTITypeDescriptor(0x41a030, 0x4178cc, '.?AVCls2@@').
-rTTITypeDescriptor(0x41a050, 0x4178cc, '.?AVtype_info@@').
-symbolClass(0x41b2ec, 'std::basic_ostream<char, struct std::char_traits<char> >', '_Osfx').
-symbolClass(0x41b2f0, 'std::ios_base', good).
-symbolClass(0x41b2f4, 'std::basic_ios<char, struct std::char_traits<char> >', tie).
-symbolClass(0x41b2f8, 'std::basic_ostream<char, struct std::char_traits<char> >', flush).
-symbolClass(0x41b2fc, 'std::ios_base', width).
-symbolClass(0x41b300, 'std::ios_base', flags).
-symbolClass(0x41b304, 'std::basic_ios<char, struct std::char_traits<char> >', fill).
-symbolClass(0x41b308, 'std::basic_ios<char, struct std::char_traits<char> >', rdbuf).
-symbolClass(0x41b30c, 'std::basic_streambuf<char, struct std::char_traits<char> >', sputc).
-symbolClass(0x41b310, 'std::basic_ostream<char, struct std::char_traits<char> >', 'operator<<').
-symbolClass(0x41b314, 'std::basic_streambuf<char, struct std::char_traits<char> >', sputn).
-symbolClass(0x41b318, 'std::ios_base', width).
-symbolClass(0x41b31c, 'std::basic_ios<char, struct std::char_traits<char> >', setstate).
-symbolClass(0x41b37c, type_info, '_type_info_dtor_internal_method').
+rTTITypeDescriptor(0x41a000, 0x4178cc, '.?AVCls3@@', 'Cls3').
+rTTITypeDescriptor(0x41a018, 0x4178cc, '.?AVCls1@@', 'Cls1').
+rTTITypeDescriptor(0x41a030, 0x4178cc, '.?AVCls2@@', 'Cls2').
+rTTITypeDescriptor(0x41a050, 0x4178cc, '.?AVtype_info@@', type_info).
+symbolClass(0x41b2ec, '?_Osfx@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEXXZ', 'std::basic_ostream<char, struct std::char_traits<char> >', '_Osfx').
+symbolClass(0x41b2f0, '?good@ios_base@std@@QBE_NXZ', 'std::ios_base', good).
+symbolClass(0x41b2f4, '?tie@?$basic_ios@DU?$char_traits@D@std@@@std@@QBEPAV?$basic_ostream@DU?$char_traits@D@std@@@2@XZ', 'std::basic_ios<char, struct std::char_traits<char> >', tie).
+symbolClass(0x41b2f8, '?flush@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV12@XZ', 'std::basic_ostream<char, struct std::char_traits<char> >', flush).
+symbolClass(0x41b2fc, '?width@ios_base@std@@QBE_JXZ', 'std::ios_base', width).
+symbolClass(0x41b300, '?flags@ios_base@std@@QBEHXZ', 'std::ios_base', flags).
+symbolClass(0x41b304, '?fill@?$basic_ios@DU?$char_traits@D@std@@@std@@QBEDXZ', 'std::basic_ios<char, struct std::char_traits<char> >', fill).
+symbolClass(0x41b308, '?rdbuf@?$basic_ios@DU?$char_traits@D@std@@@std@@QBEPAV?$basic_streambuf@DU?$char_traits@D@std@@@2@XZ', 'std::basic_ios<char, struct std::char_traits<char> >', rdbuf).
+symbolClass(0x41b30c, '?sputc@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAEHD@Z', 'std::basic_streambuf<char, struct std::char_traits<char> >', sputc).
+symbolClass(0x41b310, '??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@P6AAAV01@AAV01@@Z@Z', 'std::basic_ostream<char, struct std::char_traits<char> >', 'operator<<').
+symbolClass(0x41b314, '?sputn@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAE_JPBD_J@Z', 'std::basic_streambuf<char, struct std::char_traits<char> >', sputn).
+symbolClass(0x41b318, '?width@ios_base@std@@QAE_J_J@Z', 'std::ios_base', width).
+symbolClass(0x41b31c, '?setstate@?$basic_ios@DU?$char_traits@D@std@@@std@@QAEXH_N@Z', 'std::basic_ios<char, struct std::char_traits<char> >', setstate).
+symbolClass(0x41b37c, '?_type_info_dtor_internal_method@type_info@@QAEXXZ', type_info, '_type_info_dtor_internal_method').
 symbolGlobalObject(0x41b324, 'std::basic_ostream<char, struct std::char_traits<char> >', 'std::cout').
 thisPtrAllocation(0x41156f, 0x411530, sv_4663738978184434380, type_Heap, 0x54).
 thisPtrAllocation(0x4115c8, 0x411530, sv_108682917730609694, type_Heap, 0x54).

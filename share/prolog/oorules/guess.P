@@ -3,7 +3,25 @@
 % Guessing rules.
 % ============================================================================================
 
-:- import take/3 from lists.
+:- if(current_prolog_flag(version_data, xsb(_,_,_,_))).
+:- use_module(lists, [length/2, member/2, take/3]).
+:- use_module(swi, [maplist/2]).
+:- else.
+take(N, List, Prefix) :-
+    length(Prefix, N),
+    append(Prefix, _, List).
+
+% Because of the way that we're mixing specific guessing rules with more general guessing
+% rules, SWI Prolog is complaining about non-contiugous rules, like so:
+%   Clauses of Name/Arity are not together in the source-file
+% This directive supresses those errors.
+:- discontiguous(guessMethod/1).
+:- discontiguous(guessConstructor/1).
+:- discontiguous(guessClassHasNoBase/1).
+:- discontiguous(guessMergeClasses/1).
+
+:- endif.
+
 
 countGuess :-
     delta_con(guesses, 1).
@@ -716,6 +734,30 @@ tryClassHasUnknownBase(Class) :-
     try_assert(factClassHasUnknownBase(Class)),
     try_assert(guessedClassHasUnknownBase(Class)).
 
+
+% This is also used to guess factClassHasNoBase, but is one of the last guesses made in the
+% system.  The idea is simply to guess factClassHasNoBase for any class that does not have an
+% identified base.
+guessClassHasNoBaseSpecial(Class) :-
+    % Class is a class
+    find(_, Class),
+
+    % Class does not have any base classes
+    not(factDerivedClass(Class, _Base, _Offset)),
+
+    % XXX: If we're at the end of reasoning and there is an unknown base, is that OK?  Should
+    % we leave it as is?  Try really hard to make a guess?  Or treat it as a failure?
+    doNotGuessHelper(factClassHasNoBase(Class),
+                     factClassHasUnknownBase(Class)).
+
+guessCommitClassHasNoBase(Out) :-
+    osetof(Class,
+           guessClassHasNoBaseSpecial(Class),
+           ClassSet),
+    logdebug('Proposing CommitClassHasNoBase('), logdebug(ClassSet), logdebugln(').'),
+    Out = tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
+           
+
 % --------------------------------------------------------------------------------------------
 % Various rules for guessing method to class assignments...
 % --------------------------------------------------------------------------------------------
@@ -843,37 +885,25 @@ guessMergeClassesB(Class1, Class2) :-
     % have the vftable for the method that's imported...
     not(symbolProperty(Method1, virtual)),
 
-    % The method is not also is some other VFTable.  When adding thunk support, Cory decided to
-    % allow the second entry to differ so long as it resolved to the same place.  It's unclear
-    % if this is really correct.
+    % Which class is VFTable associated with?
+    reasonVFTableBelongsToClass(VFTable, _ObjOffset1, Class2),
 
-    % Old code:
-    %% not((
-    %%            factVFTableEntry(OtherVFTable, _OtherVFTableOffset, Entry1A),
-    %%            % dethunk_nontabled?
-    %%            dethunk_nontabled(Entry1A, Method1),
-    %%            iso_dif(VFTable, OtherVFTable)
-    %%        )),
+    % The method is allowed to appear in other VFTables, but only if they are on the same
+    % class.  Ed conjectures this is necessary for multiple inheritance.  When adding thunk
+    % support, Cory decided to allow the second entry to differ so long as it resolved to the
+    % same place.  It's unclear if this is really correct.
 
-    % New code using factMethodInVFTable/2
-    not((
-               factMethodInVFTable(OtherVFTable, _Offset, Method1),
-               iso_dif(VFTable, OtherVFTable)
-           )),
+    forall(factMethodInVFTable(OtherVFTable, _Offset, Method1),
+           reasonVFTableBelongsToClass(OtherVFTable, _ObjOffset2, Class2)),
 
     find(Method1, Class1),
 
-    % Start with a non-overwritten VFTable.
-    factVFTableWrite(_Insn, Method2, _ObjectOffset, VFTable),
-    not(factVFTableOverwrite(VFTable, _OtherVFTable, _OtherOffset)),
 
-    find(Method2, Class2),
-    %logdebug('Proposing factMergeClasses_B('),
-    %logdebug(Method1), logdebug(', '),
-    %logdebug(Method2), logdebug(', '),
-    %logdebug(VFTable), logdebug(', '),
-    %logdebug(Class1), logdebug(', '),
-    %logdebug(Class2), logdebugln(').'),
+    %% logdebug('Proposing factMergeClasses_B('),
+    %% logdebug(Method1), logdebug(', '),
+    %% logdebug(VFTable), logdebug(', '),
+    %% logdebug(Class1), logdebug(', '),
+    %% logdebug(Class2), logdebugln(').'),
     checkMergeClasses(Class1, Class2).
 
 guessMergeClasses(Out) :-
@@ -975,8 +1005,7 @@ guessMergeClassesF(Class, Method1) :-
     iso_dif(Method1, Method2),
     not(purecall(Method2)), % Never merge purecall methods into classes.
     % One of the methods is in a class all by itself right now.
-    % ejs: The prolog does not match the comment.
-    find(Method1, Method1),
+    findall(Method1, [Method1]),
     % So go ahead and merge it into this class..
     find(Method2, Class),
     %logdebug('Proposing factMergeClasses_F('), logdebug(Class), logdebug(', '),
@@ -991,6 +1020,79 @@ guessMergeClasses(Out) :-
     logdebug('Proposing factMergeClasses_F('),
     logdebug(OneTuple), logdebugln(').'),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
+
+% Try guessing that a VFTable belongs to a method.
+
+% Say that a VFTable is installed by multiple methods.  If all of
+% these methods are on the same class, it's a fair bet that the
+% VFTable corresponds to that class.  This is implemented in
+% reasonVFTableBelongsToClass.  But if the methods are not (currently)
+% known to be on the same class, it's less clear what to do.  One
+% situation we've observed is when a destructor is not merged.  There
+% is some ambiguity because destructors are optimized more.  If a
+% destructor installs a VFTable, we can't tell if the destructor is
+% for that VFTable's class, or if the destructor is on a derived class
+% (and the base destructor was inlined).  This guess identifies this
+% situation.  We initially guess that the two class fragments are on
+% the same class.  If that fails, we guess that the class identified
+% by the destructor is derived from the other class.
+
+% XXX: We may be able to do additional reasoning based on whether the
+% classes have bases or not.  But this is probably handled by sanity
+% checks too
+guessMergeClassesG(Class1, Class2) :-
+    % A constructor/destructor installs a VFTable
+    factVFTableWrite(_Insn, Method, Offset, VFTable),
+    find(Method, Class1),
+
+    % This guessing rule is only for destructors, because
+    % VFTableOverwrite logic works for constructors (see
+    % reasonVFTableBelongsToClass).
+    not(factNOTConstructor(Method)),
+
+    % Which other classes also install this VFTable
+    setof(Class,
+	  Insn2^Offset2^Method2^(factVFTableWrite(Insn2, Method2, Offset2, VFTable),
+				 not(factVFTableOverwrite(Method2, _OtherVFTable, VFTable, Offset2)),
+				 find(Method2, Class),
+				 iso_dif(Class1, Class)),
+	  ClassSet),
+
+    logdebugln([factVFTableWrite(Method, Offset, VFTable), 'is installed by destructor', Method, 'and these other classes', ClassSet]),
+
+    (ClassSet = [Class2]
+     ->
+	 logdebug('guessMergeClassesG had one candidate class: '),
+	 logdebug(Class2),
+	 logdebugln('.')
+     ;
+     % We will merge with the largest class
+     % XXX: This could be implemented more efficiently using a maplist/2 and a sort.
+     % Select a class
+     member(Class2, ClassSet),
+     % How big is it?
+     numberOfMethods(Class2, Class2Size),
+     % There is no one bigger
+     forall(member(OtherClass, ClassSet),
+	    (numberOfMethods(OtherClass, OtherClassSize),
+	     not(OtherClassSize > Class2Size))),
+     
+     logdebug('guessMergeClassesG had more than one candidate class.  Merging with the largest class '),
+     logdebug(Class2),
+     logdebugln('.')
+    ),
+     
+    checkMergeClasses(Class1, Class2).
+
+guessMergeClasses(Out) :-
+    minof((Class1, Class2),
+          guessMergeClassesG(Class1, Class2)),
+    !,
+    OneTuple=[(Class1, Class2)],
+    logdebug('Proposing factMergeClasses_G('),
+    logdebug(OneTuple), logdebugln(').'),
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
+
 
 checkMergeClasses(Method1, Method2) :-
     iso_dif(Method1, Method2),
@@ -1261,9 +1363,3 @@ likelyDeletingDestructor(DeletingDestructor, RealDestructor) :-
     possibleDestructor(RealDestructor),
     not(factNOTRealDestructor(RealDestructor)),
     true.
-
-/* Local Variables:   */
-/* mode: prolog       */
-/* fill-column:    95 */
-/* comment-column: 0  */
-/* End:               */

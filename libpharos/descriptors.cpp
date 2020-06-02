@@ -8,9 +8,9 @@
 #include <boost/graph/named_function_params.hpp>
 #include <boost/range/adaptors.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
 
 #include <rose.h>
-#include <boost/property_tree/json_parser.hpp>
 #include <AstTraversal.h>
 
 #include "misc.hpp"
@@ -178,8 +178,16 @@ void DescriptorSet::init()
     }
   }
 
-  GDEBUG << "building FCG" << LEND;
+  using clock = std::chrono::steady_clock;
+  using time_point = std::chrono::time_point<clock>;
+  using duration = std::chrono::duration<double>;
+
+  time_point start_ts = clock::now();
+  GDEBUG << "Creating the whole-program function call graph..." << LEND;
   function_call_graph = partitioner.functionCallGraph(P2::AllowParallelEdges::NO);
+  duration secs = clock::now() - start_ts;
+  GDEBUG << "Creation of the whole-program function call graph took "
+         << secs.count() << " seconds." << LEND;
 
   // Create function descriptors, call descriptors, and global memory descriptors...
   create();
@@ -257,6 +265,11 @@ DescriptorSet::DescriptorSet(const ProgOptVarMap& povm, P2::Engine& eng,
   init();
 }
 
+std::string DescriptorSet::get_filename() const {
+  std::string filepath = vm["file"].as<std::string>();
+  return boost::filesystem::path(filepath).filename().string();
+}
+
 // Wes needed to be able to create a DescriptorSet from a single function because Wes loaded the
 // function from an assembly source file, and made the SgAsgInstruction objects himself.
 DescriptorSet::DescriptorSet(const ProgOptVarMap& povm, SgAsmFunction *func) : vm(povm) {
@@ -299,8 +312,8 @@ DescriptorSet::~DescriptorSet() {
   if (engine != NULL) delete engine;
 }
 
-const RegisterDictionary DescriptorSet::get_regdict() const {
-  return RegisterDictionary(partitioner.instructionProvider().registerDictionary());
+RegisterDictionary const & DescriptorSet::get_regdict() const {
+  return *partitioner.instructionProvider().registerDictionary();
 }
 
 void DescriptorSet::create() {
@@ -560,7 +573,7 @@ DescriptorSet::get_funcs_containing_address(rose_addr_t addr) const {
     // If there was a P2::Function::Ptr, but not a FunctionDescriptor that's an assertion
     // worthy level programming error, but let's not exit needlessly.
     else {
-      OERROR << "No function found at address " << addr_str(addr) << LEND;
+      GERROR << "No function found at address " << addr_str(addr) << LEND;
     }
   }
   // This list might be empty, and that's not an unexpected condition.
@@ -579,7 +592,7 @@ DescriptorSet::get_rw_funcs_containing_address(rose_addr_t addr) {
     // If there was a P2::Function::Ptr, but not a FunctionDescriptor that's an assertion
     // worthy level programming error, but let's not exit needlessly.
     else {
-      OERROR << "No function found at address " << addr_str(addr) << LEND;
+      GERROR << "No function found at address " << addr_str(addr) << LEND;
     }
   }
   // This list might be empty, and that's not an unexpected condition.
@@ -591,8 +604,7 @@ DescriptorSet::get_rw_funcs_containing_address(rose_addr_t addr) {
 RegisterDescriptor
 DescriptorSet::get_arch_reg(const std::string & name) const
 {
-  RegisterDictionary regdict(partitioner.instructionProvider().registerDictionary());
-  return pharos::get_arch_reg(regdict, name, arch_bytes);
+  return pharos::get_arch_reg(get_regdict(), name, arch_bytes);
 }
 
 unsigned int DescriptorSet::get_concurrency_level(ProgOptVarMap const & vm)

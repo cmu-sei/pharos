@@ -4,7 +4,8 @@
 
 package ooanalyzer.jsontypes;
 
-import java.util.List;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
 
 import com.google.gson.annotations.Expose;
@@ -16,44 +17,44 @@ import com.google.gson.annotations.SerializedName;
  */
 public class Vftable {
 
-	@Expose
-	@SerializedName("ea")
-	private String ea;
+  @Expose
+  @SerializedName("ea")
+  private String ea;
 
-	@Expose
-	@SerializedName("vfptr")
-	private String vfptr;
+  @Expose
+  @SerializedName("vftptr")
+  private String vftptr;
 
-	@Expose
-	@SerializedName("entries")
-	private List<Vfentry> entries;
+  @Expose
+  @SerializedName("entries")
+  private Map<String, Vfentry> entries;
 
-	public Long getEa() {
-		return Long.parseLong(ea, 16);
-	}
+  public Long getEa() {
+    return Long.decode (ea);
+  }
 
-	public Integer getVfptr() {
-		return Integer.parseInt(vfptr);
-	}
+  public Integer getVftptr() {
+    return Integer.decode (vftptr);
+  }
 
-	public Optional<List<Vfentry>> getEntries() {
-		return Optional.ofNullable(entries);
-	}
+  public Collection<Vfentry> getEntries() {
+    return entries.values ();
+  }
 
-	@Override
-	public String toString() {
-		String str = "[ea=" + ea + ", vfptr=" + vfptr + ", ";
+  @Override
+  public String toString() {
+    String str = "[ea=" + ea + ", vftptr=" + vftptr + ", ";
 
-		if (entries != null) {
-			str += "entries={";
+    if (entries != null) {
+      str += "entries={";
 
-			for (Vfentry vfe : entries) {
-				str += vfe.toString() + " ";
-			}
-			str += "}";
-		} else {
-			str += "entries={None}";
-		}
-		return str + "]";
-	}
+      for (Vfentry vfe : entries.values ()) {
+        str += vfe.toString() + " ";
+      }
+      str += "}";
+    } else {
+      str += "entries={None}";
+    }
+    return str + "]";
+  }
 }

@@ -310,8 +310,14 @@ void ThisPtrUsage::update_ctor_dtor(OOAnalyzer& ooa) const {
   // For each call instruction...
   for (const MethodEvidenceMap::value_type& mpair : method_evidence) {
     SgAsmInstruction* callinsn = mpair.first;
-    CFGVertex s = cov.call2vertex.at(callinsn->get_address());
-    //OINFO << "Considering call insn: " << addr_str(callinsn->get_address()) << LEND;
+    rose_addr_t caddr = callinsn->get_address();
+    auto s_found = cov.call2vertex.find(caddr);
+    if (s_found == cov.call2vertex.end()) {
+      GERROR << "Unable to find " << addr_str(caddr) << " in " << " call order visitor." << LEND;
+      continue;
+    }
+    CFGVertex s = s_found->second;
+    //OINFO << "Considering call insn: " << addr_str(caddr) << LEND;
     // For each method called by that instruction... (usually just one)
     for (const ThisCallMethod* tcm : mpair.second) {
       // Convert const tcm to non-const wtcm, so we can update the properties.
@@ -333,7 +339,7 @@ void ThisPtrUsage::update_ctor_dtor(OOAnalyzer& ooa) const {
         // not a constructor.   Update the ThisCallMethod to reflect this.
         catch (VertexFound&) {
           GINFO << "Method " << wtcm->address_string() << " is NOT a constructor because "
-                << "of the call at " << addr_str(callinsn->get_address()) << LEND;
+                << "of the call at " << addr_str(caddr) << LEND;
           // Mark the method as not a constructor.
           wtcm->no_calls_before = false;
         }
@@ -352,7 +358,7 @@ void ThisPtrUsage::update_ctor_dtor(OOAnalyzer& ooa) const {
         // not a destructor.   Update the ThisCallMethod to reflect this.
         catch (VertexFound&) {
           GINFO << "Method " << wtcm->address_string() << " is NOT a destructor because "
-                << "of the call at " << addr_str(callinsn->get_address()) << LEND;
+                << "of the call at " << addr_str(caddr) << LEND;
           // Mark the method as not a destructor.
           wtcm->no_calls_after = false;
         }
@@ -368,9 +374,13 @@ void ThisPtrUsage::update_ctor_dtor(OOAnalyzer& ooa) const {
 SymbolicValuePtr get_this_ptr_for_call(const CallDescriptor* cd) {
   const SymbolicStatePtr state = cd->get_state();
   if (state == NULL) {
-    // Moved to warning importance because it appears to be a cascading failure from
-    // a function analysis timeout.
-    GWARN << "No final state for call at " << cd->address_string() << LEND;
+    // Customize this message a little to account for known failure modes.,
+    if (cd->is_tail_call()) {
+      GINFO << "Tail call at " << cd->address_string() << " was not analyzed correctly for OO this-pointers." << LEND;
+    }
+    else {
+      GINFO << "Call at " << cd->address_string() << " was not analyzed correctly for OO this-pointers." << LEND;
+    }
     return SymbolicValue::instance();
   }
   // We should be able to find this globally somehow...

@@ -3,22 +3,30 @@
 % infrastructure, and perhaps more importantly, it serves to define what an "answer" is for
 % when it comes time to import the results back into OOAnalyzer.
 
-:- import maplist/2 from swi.
+:- if(current_prolog_flag(version_data, xsb(_,_,_,_))).
+:- use_module(lists, [length/2]).
 
-% Cory's not sure what this is for but he copied it from [rulerun].
-:- import error_writeln/1 from standard.
+% XSB drops into an interactive prompt on a runtime error, which isn't very helpful.  We'd
+% prefer to print an error and halt instead.
+:- use_module(standard, [error_writeln/1]).
 :- dynamic default_user_error_handler/1.
 default_user_error_handler(X) :-
     error_writeln(['Aborting due to error: ', X]),halt(1).
+:- else.
+:- use_module(library(dialect/xsb/timed_call), [timed_call/2]).
+:- endif.
+
+:- include('setup.P').
 
 psolve_no_halt(X) :-
-    load_dync(X),
+    loadInitialFacts(X),
     (loginfo('Guessing is '), guessingDisabled -> loginfoln('disabled.'); loginfoln('enabled.')),
     (loginfo('Profiling is '), profilingEnabled -> loginfoln('enabled.'); loginfoln('disabled.')),
     (loginfo('RTTI is '), rTTIEnabled -> loginfoln('enabled.'); loginfoln('disabled.')),
     profilingEnabled ->
         (timed_call(solve, [repeating(60000, show_progress)]), reportResults);
-    ((solve, reportResults)).
+    ((solve, reportResults)),
+    !.
 
 psolve(X) :- psolve_no_halt(X), halt.
 
@@ -26,16 +34,6 @@ psolve(X) :- psolve_no_halt(X), halt.
 % should do it here by wrapping psolve(X) and psolve_no_halt() with some code like:
 %
 % catch((something), E, somehow_report_error)
-
-writeHelper([]).
-writeHelper([H]) :-
-    !,
-    writeHex(H).
-writeHelper([H|T]) :-
-    writeHex(H), write(', '), writeHelper(T).
-
-writeList(L) :-
-    write('['), writeHelper(L), write(']').
 
 % This definition of progress is for when we're NOT running from within OOAnalyzer, which is
 % probably the same circumstances where we want this reporting module.
@@ -55,223 +53,95 @@ logln(Importance, Message) :-
     ) -> writelnHex(Message) ; true.
 
 % ============================================================================================
-% Virtual Function Tables
-% ============================================================================================
-
-reportFinalVFTable(V, C, L, A, N) :-
-    write('finalVFTable('),
-    writeHex(V), write(', '),
-    writeHex(C), write(', '),
-    writeHex(L), write(', '),
-    writeHex(A), write(', '),
-    write('\''), writeHex(N), write('\''), writeln(').').
-
-reportVFTables :-
-    forall(finalVFTable(V, C, L, A, N),
-           reportFinalVFTable(V, C, L, A, N)).
-
-reportFinalVFTableEntry(A, O, M) :-
-    write('finalVFTableEntry('),
-    writeHex(A), write(', '),
-    writeHex(O), write(', '),
-    writeHex(M), writeln(').').
-
-reportVFTableEntries :-
-    forall(finalVFTableEntry(A, O, M),
-           reportFinalVFTableEntry(A, O, M)).
-
-% ============================================================================================
-% Virtual Base Tables
-% ============================================================================================
-
-reportFinalVBTable(V, C, S, O) :-
-    write('finalVBTable('),
-    writeHex(V), write(', '),
-    writeHex(C), write(', '),
-    writeHex(S), write(', '),
-    writeHex(O), writeln(').').
-
-reportVBTables :-
-    forall(finalVBTable(V, C, S, O),
-           reportFinalVBTable(V, C, S, O)).
-
-reportFinalVBTableEntry(A, O, V) :-
-    write('finalVBTableEntry('),
-    writeHex(A), write(', '),
-    writeHex(O), write(', '),
-    writeHex(V), writeln(').').
-
-reportVBTableEntries :-
-    forall(finalVBTableEntry(A, O, V),
-           reportFinalVBTableEntry(A, O, V)).
-
-% ============================================================================================
-% Class Definitions
-% ============================================================================================
-
-reportFinalClass(C, V, S, L, R, M) :-
-    write('finalClass('),
-    writeHex(C), write(', '),
-    writeHex(V), write(', '),
-    writeHex(S), write(', '),
-    writeHex(L), write(', '),
-    writeHex(R), write(', '),
-    writeList(M), writeln(').').
-
-reportClasses :-
-    forall(finalClass(C, V, S, L, R, M),
-           reportFinalClass(C, V, S, L, R, M)).
-
-% ============================================================================================
-% Resolved Virtual Function Calls
-% ============================================================================================
-
-reportFinalResolvedVirtualCall(I, V, T) :-
-    write('finalResolvedVirtualCall('),
-    writeHex(I), write(', '),
-    writeHex(V), write(', '),
-    writeHex(T), writeln(').').
-
-reportResolvedVirtualCalls :-
-    forall(finalResolvedVirtualCall(I, V, T),
-           reportFinalResolvedVirtualCall(I, V, T)).
-
-% ============================================================================================
-% Embedded objects.
-% ============================================================================================
-
-reportFinalEmbeddedObject(C, O, E, X) :-
-    write('finalEmbeddedObject('),
-    writeHex(C), write(', '),
-    writeHex(O), write(', '),
-    writeHex(E), write(', '),
-    writeHex(X), writeln(').').
-
-reportEmbeddedObjects :-
-    forall(finalEmbeddedObject(C, O, E, X),
-           reportFinalEmbeddedObject(C, O, E, X)).
-
-% ============================================================================================
-% Inheritance relationships
-% ============================================================================================
-
-reportFinalInheritance(D, B, O, C, V) :-
-    write('finalInheritance('),
-    writeHex(D), write(', '),
-    writeHex(B), write(', '),
-    writeHex(O), write(', '),
-    writeHex(C), write(', '),
-    writeHex(V), writeln(').').
-
-reportInheritances :-
-    forall(finalInheritance(D, B, O, C, V),
-           reportFinalInheritance(D, B, O, C, V)).
-
-% ============================================================================================
-% Definitions of members on classes.
-% ============================================================================================
-
-reportFinalMember(C, O, S, L) :-
-    write('finalMember('),
-    writeHex(C), write(', '),
-    writeHex(O), write(', '),
-    writeList(S), write(', '),
-    writeHex(L), writeln(').').
-
-reportMembers :-
-    forall(finalMember(C, O, S, L),
-           reportFinalMember(C, O, S, L)).
-
-% ============================================================================================
-% Definitions of members on classes.
-% ============================================================================================
-
-reportFinalMemberAccess(C, O, S, E) :-
-    write('finalMemberAccess('),
-    writeHex(C), write(', '),
-    writeHex(O), write(', '),
-    writeHex(S), write(', '),
-    writeList(E), writeln(').').
-
-reportMemberAccesses :-
-    forall(finalMemberAccess(C, O, S, E),
-           reportFinalMemberAccess(C, O, S, E)).
-
-% ============================================================================================
-% Method Properties
-% ============================================================================================
-
-reportFinalMethodProperty(M, P, C) :-
-    write('finalMethodProperty('),
-    writeHex(M), write(', '),
-    writeHex(P), write(', '),
-    writeHex(C), writeln(').').
-
-reportMethodProperties :-
-    forall(finalMethodProperty(M, P, C),
-           reportFinalMethodProperty(M, P, C)).
-
-% ============================================================================================
-% Some thunk analysis (debugging?)
-% ============================================================================================
-
-reportEventualThunk(T, F) :-
-    write('eventualThunk('),
-    writeHex(T), write(', '),
-    writeHex(F), writeln(').').
-
-reportEventualThunks :-
-    forall(eventualThunk(T, F),
-           reportEventualThunks(T, F)).
-
-reportUniqueThunk(T, F) :-
-    write('uniqueThunk('),
-    writeHex(T), write(', '),
-    writeHex(F), writeln(').').
-
-reportUniqueThunks :-
-    forall(uniqueThunk(T, F),
-           reportUniqueThunk(T, F)).
-
-reportConflictedThunk(T, O, F) :-
-    write('conflictedThunk('),
-    writeHex(T), write(', '),
-    writeHex(O), write(', '),
-    writeHex(F), writeln(').').
-
-reportConflictedThunks :-
-    forall(conflictedThunk(T, O, F),
-           reportConflictedThunk(T, O, F)).
-
-% ============================================================================================
 % The main reporting rule.
 % ============================================================================================
+
+writePredicate(P) :-
+    writeHexTerm(P),
+    writeln('.').
+
+% A strange hybrid case.  We store these as find(C1, C2), but we frequently refer to them in
+% our code as factMergeClasses/2, which seems to be the more natural way to express them.  This
+% little bit of syntactic sugar should help ease that gap.
+reportPredicate(factMergeClasses/2) :-
+    forall(find(C1, C2), writePredicate(factMergeClasses(C1, C2))), !.
+
+reportPredicate(Name/Arity) :-
+    functor(Head, Name, Arity), forall(Head, writePredicate(Head)), !.
 
 reportResults :-
     reportGuessedStatistics,
     writeln('% Prolog results autogenerated by OOAnalyzer.'),
-    reportVFTables,
-    reportVFTableEntries,
-    reportVBTables,
-    reportVBTableEntries,
-    reportClasses,
-    reportResolvedVirtualCalls,
-    reportEmbeddedObjects,
-    reportInheritances,
-    reportMembers,
-    reportMemberAccesses,
-    reportMethodProperties,
-    %reportEventualThunks,
-    %reportUniqueThunks,
-    %reportConflictedThunks,
+    reportPredicate(finalFileInfo/2),
+    reportPredicate(finalVFTable/5),
+    reportPredicate(finalVFTableEntry/3),
+    reportPredicate(finalVBTable/4),
+    reportPredicate(finalVBTableEntry/3),
+    reportPredicate(finalClass/6),
+    reportPredicate(finalResolvedVirtualCall/3),
+    reportPredicate(finalEmbeddedObject/4),
+    reportPredicate(finalInheritance/5),
+    reportPredicate(finalMember/4),
+    reportPredicate(finalMemberAccess/4),
+    reportPredicate(finalMethodProperty/3),
+    reportPredicate(finalThunk/2),
+    reportPredicate(finalDemangledName/4),
     % Cory would like for this line to go to stderr?
     writeln('% Object detection reporting complete.').
+
+reportMethodFacts :-
+    reportPredicate(factMethod/1),
+    reportPredicate(factConstructor/1),
+    reportPredicate(factRealDestructor/1),
+    reportPredicate(factDeletingDestructor/1),
+    reportPredicate(factVirtualFunctionCall/5).
+
+reportNOTMethodFacts :-
+    reportPredicate(factNOTMethod/1),
+    reportPredicate(factNOTConstructor/1),
+    reportPredicate(factNOTRealDestructor/1),
+    reportPredicate(factNOTDeletingDestructor/1),
+    reportPredicate(factNOTVirtualFunctionCall/5).
+
+reportVirtualTableFacts :-
+    reportPredicate(factVFTable/1),
+    reportPredicate(factVFTableWrite/4),
+    reportPredicate(factVFTableOverwrite/4),
+    reportPredicate(factVFTableEntry/3),
+    reportPredicate(factVFTableSizeGTE/2),
+    reportPredicate(factVFTableSizeLTE/2),
+    reportPredicate(factVBTable/1),
+    reportPredicate(factVBTableWrite/4),
+    reportPredicate(factVBTableEntry/3).
+
+reportNOTVirtualTableFacts :-
+    reportPredicate(factNOTVFTable/1),
+    reportPredicate(factNOTVFTableEntry/3),
+    reportPredicate(factNOTVBTable/1),
+    reportPredicate(factNOTVBTableEntry/3).
+
+reportClassFacts :-
+    reportPredicate(factObjectInObject/3),
+    reportPredicate(factDerivedClass/3),
+    reportPredicate(factEmbeddedObject/3),
+    reportPredicate(factClassHasNoBase/1),
+    reportPredicate(factClassHasUnknownBase/1),
+    reportPredicate(factClassCallsMethod/2),
+    reportPredicate(factClassSizeGTE/2),
+    reportPredicate(factClassSizeLTE/2).
+
+reportFacts :-
+    reportMethodFacts,
+    reportNOTMethodFacts,
+    reportVirtualTableFacts,
+    reportNOTVirtualTableFacts,
+    reportClassFacts,
+    reportPredicate(factMergeClasses/2),
+    reportPredicate(factNOTMergeClasses/2).
 
 % ============================================================================================
 % Rules for counting guesses at the end of execution.
 % ============================================================================================
-
-:- import length/2 from basics.
 
 % Woot! Cory figured it out to count arbitary predicates all by himself! ;-)
 count(Pred/Arity, N) :-

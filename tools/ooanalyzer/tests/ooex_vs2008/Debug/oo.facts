@@ -1294,6 +1294,7 @@ callTarget(0x415961, 0x415948, 0x411221).
 callTarget(0x415973, 0x415970, 0x4111a4).
 callTarget(0x415987, 0x415978, 0x411023).
 callTarget(0x415991, 0x415978, 0x411221).
+fileInfo('F7786378E1E4EAB9F78BD129903E280E', 'oo.exe').
 funcOffset(0x411886, 0x411860, 0x411a70, 0).
 funcOffset(0x411891, 0x411860, 0x411b40, 0xc).
 funcOffset(0x4118c1, 0x411860, 0x4125a0, 0xc).
@@ -2317,29 +2318,29 @@ rTTICompleteObjectLocator(0x417820, 0x4185f4, 0x41a004, 0x41860c, 0, 0).
 rTTICompleteObjectLocator(0x41785c, 0x418710, 0x41a01c, 0x418678, 0, 0).
 rTTICompleteObjectLocator(0x417878, 0x418728, 0x41a034, 0x4186b8, 0, 0).
 rTTICompleteObjectLocator(0x417898, 0x418740, 0x41a054, 0x418758, 0, 0).
-rTTITypeDescriptor(0x41a004, 0x41789c, '.?AVCls3@@').
-rTTITypeDescriptor(0x41a01c, 0x41789c, '.?AVCls1@@').
-rTTITypeDescriptor(0x41a034, 0x41789c, '.?AVCls2@@').
-rTTITypeDescriptor(0x41a054, 0x41789c, '.?AVtype_info@@').
-symbolClass(0x41b2f8, 'std::basic_streambuf<char, struct std::char_traits<char> >', '_Unlock').
-symbolClass(0x41b2fc, 'std::basic_streambuf<char, struct std::char_traits<char> >', '_Lock').
-symbolClass(0x41b304, 'std::basic_ostream<char, struct std::char_traits<char> >', '_Osfx').
-symbolClass(0x41b308, 'std::ios_base', good).
-symbolClass(0x41b30c, 'std::basic_ios<char, struct std::char_traits<char> >', tie).
-symbolClass(0x41b310, 'std::basic_ostream<char, struct std::char_traits<char> >', 'operator<<').
-symbolClass(0x41b31c, 'std::basic_ios<char, struct std::char_traits<char> >', setstate).
-symbolClass(0x41b320, 'std::ios_base', width).
-symbolClass(0x41b324, 'std::basic_streambuf<char, struct std::char_traits<char> >', sputn).
-symbolClass(0x41b328, 'std::char_traits<char>', eq_int_type).
-symbolClass(0x41b32c, 'std::char_traits<char>', eof).
-symbolClass(0x41b330, 'std::basic_streambuf<char, struct std::char_traits<char> >', sputc).
-symbolClass(0x41b334, 'std::basic_ios<char, struct std::char_traits<char> >', rdbuf).
-symbolClass(0x41b338, 'std::basic_ios<char, struct std::char_traits<char> >', fill).
-symbolClass(0x41b33c, 'std::ios_base', flags).
-symbolClass(0x41b340, 'std::ios_base', width).
-symbolClass(0x41b344, 'std::char_traits<char>', length).
-symbolClass(0x41b348, 'std::basic_ostream<char, struct std::char_traits<char> >', flush).
-symbolClass(0x41b3a8, type_info, '_type_info_dtor_internal_method').
+rTTITypeDescriptor(0x41a004, 0x41789c, '.?AVCls3@@', 'Cls3').
+rTTITypeDescriptor(0x41a01c, 0x41789c, '.?AVCls1@@', 'Cls1').
+rTTITypeDescriptor(0x41a034, 0x41789c, '.?AVCls2@@', 'Cls2').
+rTTITypeDescriptor(0x41a054, 0x41789c, '.?AVtype_info@@', type_info).
+symbolClass(0x41b2f8, '?_Unlock@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAEXXZ', 'std::basic_streambuf<char, struct std::char_traits<char> >', '_Unlock').
+symbolClass(0x41b2fc, '?_Lock@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAEXXZ', 'std::basic_streambuf<char, struct std::char_traits<char> >', '_Lock').
+symbolClass(0x41b304, '?_Osfx@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEXXZ', 'std::basic_ostream<char, struct std::char_traits<char> >', '_Osfx').
+symbolClass(0x41b308, '?good@ios_base@std@@QBE_NXZ', 'std::ios_base', good).
+symbolClass(0x41b30c, '?tie@?$basic_ios@DU?$char_traits@D@std@@@std@@QBEPAV?$basic_ostream@DU?$char_traits@D@std@@@2@XZ', 'std::basic_ios<char, struct std::char_traits<char> >', tie).
+symbolClass(0x41b310, '??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@P6AAAV01@AAV01@@Z@Z', 'std::basic_ostream<char, struct std::char_traits<char> >', 'operator<<').
+symbolClass(0x41b31c, '?setstate@?$basic_ios@DU?$char_traits@D@std@@@std@@QAEXH_N@Z', 'std::basic_ios<char, struct std::char_traits<char> >', setstate).
+symbolClass(0x41b320, '?width@ios_base@std@@QAEHH@Z', 'std::ios_base', width).
+symbolClass(0x41b324, '?sputn@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAEHPBDH@Z', 'std::basic_streambuf<char, struct std::char_traits<char> >', sputn).
+symbolClass(0x41b328, '?eq_int_type@?$char_traits@D@std@@SA_NABH0@Z', 'std::char_traits<char>', eq_int_type).
+symbolClass(0x41b32c, '?eof@?$char_traits@D@std@@SAHXZ', 'std::char_traits<char>', eof).
+symbolClass(0x41b330, '?sputc@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAEHD@Z', 'std::basic_streambuf<char, struct std::char_traits<char> >', sputc).
+symbolClass(0x41b334, '?rdbuf@?$basic_ios@DU?$char_traits@D@std@@@std@@QBEPAV?$basic_streambuf@DU?$char_traits@D@std@@@2@XZ', 'std::basic_ios<char, struct std::char_traits<char> >', rdbuf).
+symbolClass(0x41b338, '?fill@?$basic_ios@DU?$char_traits@D@std@@@std@@QBEDXZ', 'std::basic_ios<char, struct std::char_traits<char> >', fill).
+symbolClass(0x41b33c, '?flags@ios_base@std@@QBEHXZ', 'std::ios_base', flags).
+symbolClass(0x41b340, '?width@ios_base@std@@QBEHXZ', 'std::ios_base', width).
+symbolClass(0x41b344, '?length@?$char_traits@D@std@@SAIPBD@Z', 'std::char_traits<char>', length).
+symbolClass(0x41b348, '?flush@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV12@XZ', 'std::basic_ostream<char, struct std::char_traits<char> >', flush).
+symbolClass(0x41b3a8, '?_type_info_dtor_internal_method@type_info@@QAEXXZ', type_info, '_type_info_dtor_internal_method').
 symbolGlobalObject(0x41b314, 'std::basic_ostream<char, struct std::char_traits<char> >', 'std::cout').
 thisPtrAllocation(0x41159f, 0x411560, sv_10077960125823974748, type_Heap, 0x54).
 thisPtrAllocation(0x4115f8, 0x411560, sv_5853571281691895446, type_Heap, 0x54).

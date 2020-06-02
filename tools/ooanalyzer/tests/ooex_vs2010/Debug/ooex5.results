@@ -2,6 +2,12 @@ finalClass(0x416754, 0x416754, 0x24, 0x24, 0, [0x4115b0, 0x4118e0, 0x411920]).
 finalClass(0x416768, 0x416768, 0x10, 0x10, 0, [0x411680, 0x4116f0, 0x411750]).
 finalClass(0x41677c, 0x41677c, 0x10, 0x10, 0, [0x4117b0, 0x411820, 0x411880]).
 finalClass(0x416790, 0x416790, 0x4, 0x4, 0, [0x411c00, 0x411c30, 0x41a278]).
+finalDemangledName(0x416754, '.?AVDerived@@', 'Derived', '').
+finalDemangledName(0x416768, '.?AVBase@@', 'Base', '').
+finalDemangledName(0x41677c, '.?AVBase2@@', 'Base2', '').
+finalDemangledName(0x416790, '.?AVtype_info@@', type_info, '').
+finalDemangledName(0x41a278, '?_type_info_dtor_internal_method@type_info@@QAEXXZ', type_info, '_type_info_dtor_internal_method').
+finalFileInfo('3CEC980F54BE3AE1EC9A8CA2A33F0318', 'ooex5.exe').
 finalInheritance(0x416754, 0x416768, 0, 0x416754, false).
 finalInheritance(0x416754, 0x41677c, 0x10, 0x416740, false).
 finalMember(0x416754, 0x20, [0x4], certain).
@@ -39,6 +45,13 @@ finalMethodProperty(0x411c00, constructor, certain).
 finalMethodProperty(0x411c30, virtual, certain).
 finalResolvedVirtualCall(0x4114f3, 0x416754, 0x411920).
 finalResolvedVirtualCall(0x41150b, 0x416754, 0x411920).
+finalThunk(0x41100a, 0x4118e0).
+finalThunk(0x4110c8, 0x411c30).
+finalThunk(0x411104, 0x411750).
+finalThunk(0x41113b, 0x411920).
+finalThunk(0x411154, 0x411880).
+finalThunk(0x411190, 0x411820).
+finalThunk(0x4111fe, 0x4116f0).
 finalVFTable(0x416740, 0xc, 0xc, 0x41673c, '.?AVDerived@@').
 finalVFTable(0x416754, 0xc, 0xc, 0x416750, '.?AVDerived@@').
 finalVFTable(0x416768, 0xc, 0xc, 0x416764, '.?AVBase@@').

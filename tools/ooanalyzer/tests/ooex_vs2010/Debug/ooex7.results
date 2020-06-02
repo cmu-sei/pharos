@@ -17,7 +17,32 @@ finalClass(0x41d338, 0, 0, 0, 0, [0x41d338, 0x41d348, 0x41d34c, 0x41d35c]).
 finalClass(0x41d350, 0, 0, 0, 0, [0x41d350, 0x41d354]).
 finalClass(0x41d374, 0, 0, 0, 0x41d374, [0x41d368, 0x41d370, 0x41d374]).
 finalClass(0x41d428, 0, 0, 0, 0x41d428, [0x41d428, 0x41d42c, 0x41d430, 0x41d434]).
+finalDemangledName(0x419940, '.?AVbad_alloc@std@@', 'std::bad_alloc', '').
+finalDemangledName(0x419950, '.?AVtype_info@@', type_info, '').
+finalDemangledName(0x41d330, '?_Osfx@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEXXZ', 'std::basic_ostream<char, struct std::char_traits<char> >', '_Osfx').
+finalDemangledName(0x41d334, '?good@ios_base@std@@QBE_NXZ', 'std::ios_base', good).
+finalDemangledName(0x41d338, '?tie@?$basic_ios@DU?$char_traits@D@std@@@std@@QBEPAV?$basic_ostream@DU?$char_traits@D@std@@@2@XZ', 'std::basic_ios<char, struct std::char_traits<char> >', tie).
+finalDemangledName(0x41d33c, '?flush@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV12@XZ', 'std::basic_ostream<char, struct std::char_traits<char> >', flush).
+finalDemangledName(0x41d340, '?width@ios_base@std@@QBE_JXZ', 'std::ios_base', width).
+finalDemangledName(0x41d344, '?flags@ios_base@std@@QBEHXZ', 'std::ios_base', flags).
+finalDemangledName(0x41d348, '?fill@?$basic_ios@DU?$char_traits@D@std@@@std@@QBEDXZ', 'std::basic_ios<char, struct std::char_traits<char> >', fill).
+finalDemangledName(0x41d34c, '?rdbuf@?$basic_ios@DU?$char_traits@D@std@@@std@@QBEPAV?$basic_streambuf@DU?$char_traits@D@std@@@2@XZ', 'std::basic_ios<char, struct std::char_traits<char> >', rdbuf).
+finalDemangledName(0x41d350, '?sputc@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAEHD@Z', 'std::basic_streambuf<char, struct std::char_traits<char> >', sputc).
+finalDemangledName(0x41d354, '?sputn@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAE_JPBD_J@Z', 'std::basic_streambuf<char, struct std::char_traits<char> >', sputn).
+finalDemangledName(0x41d358, '?width@ios_base@std@@QAE_J_J@Z', 'std::ios_base', width).
+finalDemangledName(0x41d35c, '?setstate@?$basic_ios@DU?$char_traits@D@std@@@std@@QAEXH_N@Z', 'std::basic_ios<char, struct std::char_traits<char> >', setstate).
+finalDemangledName(0x41d368, '?_Orphan_all@_Container_base12@std@@QAEXXZ', 'std::_Container_base12', '_Orphan_all').
+finalDemangledName(0x41d36c, '??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@P6AAAV01@AAV01@@Z@Z', 'std::basic_ostream<char, struct std::char_traits<char> >', 'operator<<').
+finalDemangledName(0x41d370, '??0_Container_base12@std@@QAE@XZ', 'std::_Container_base12', '_Container_base12').
+finalDemangledName(0x41d374, '??1_Container_base12@std@@QAE@XZ', 'std::_Container_base12', '~_Container_base12').
+finalDemangledName(0x41d378, '??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@H@Z', 'std::basic_ostream<char, struct std::char_traits<char> >', 'operator<<').
+finalDemangledName(0x41d3c8, '?_type_info_dtor_internal_method@type_info@@QAEXXZ', type_info, '_type_info_dtor_internal_method').
+finalDemangledName(0x41d428, '??1exception@std@@UAE@XZ', 'std::exception', '~exception').
+finalDemangledName(0x41d42c, '?what@exception@std@@UBEPBDXZ', 'std::exception', what).
+finalDemangledName(0x41d430, '??0exception@std@@QAE@ABQBD@Z', 'std::exception', exception).
+finalDemangledName(0x41d434, '??0exception@std@@QAE@ABV01@@Z', 'std::exception', exception).
 finalEmbeddedObject(0x411f00, 0x1c, 0x412220, likely).
+finalFileInfo('0040A51E006891D4525CC7E566153938', 'ooex7.exe').
 finalInheritance(0x411b70, 0x411f00, 0, 0, false).
 finalInheritance(0x413530, 0x4137b0, 0, 0, false).
 finalMember(0x411800, 0, [0x4], certain).
@@ -78,6 +103,8 @@ finalMethodProperty(0x41d428, virtual, certain).
 finalMethodProperty(0x41d42c, virtual, certain).
 finalMethodProperty(0x41d430, constructor, certain).
 finalMethodProperty(0x41d434, constructor, certain).
+finalThunk(0x411082, 0x413c40).
+finalThunk(0x41116d, 0x414390).
 finalVFTable(0x419940, 0x8, 0x8, 0x41993c, '.?AVbad_alloc@std@@').
 finalVFTable(0x419950, 0x4, 0x4, 0x41994c, '.?AVtype_info@@').
 finalVFTableEntry(0x419940, 0, 0x411082).

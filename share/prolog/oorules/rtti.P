@@ -1,9 +1,11 @@
-:- import member/2 from lists.
+% ============================================================================================
+% Runtime type information reasoning.
+% ============================================================================================
 
-:- dynamic rTTICompleteObjectLocator/6.
-:- dynamic rTTITypeDescriptor/3.
-:- dynamic rTTIClassHierarchyDescriptor/3.
-:- dynamic rTTIBaseClassDescriptor/8.
+:- if(current_prolog_flag(version_data, xsb(_,_,_,_))).
+:- use_module(lists, [member/2]).
+:- use_module(swi, [maplist/2]).
+:- endif.
 
 bogusName('MISSING').
 
@@ -12,11 +14,11 @@ bogusName('MISSING').
 % to report the details of a problem.
 :- table rTTIName/2 as opaque.
 rTTIName(TDA, Name) :-
-    rTTITypeDescriptor(TDA, _TIVTable, Name) -> true ; bogusName(Name).
+    rTTITypeDescriptor(TDA, _TIVTable, Name, _DName) -> true ; bogusName(Name).
 
 :- table rTTITDA2VFTable/2 as opaque.
 rTTITDA2VFTable(TDA, VFTable) :-
-    rTTITypeDescriptor(TDA, _TIVTable, _Name),
+    rTTITypeDescriptor(TDA, _TIVTable, _Name, _DName),
     rTTICompleteObjectLocator(Pointer, _COLA, TDA, _CHDA, _Offset, _O2),
     VFTable is Pointer + 4.
 
@@ -24,7 +26,7 @@ rTTITDA2VFTable(TDA, VFTable) :-
 :- table rTTITDA2Class/2 as incremental.
 rTTITDA2Class(TDA, Class) :-
     % First turn the TypeDescriptor address into a VFTable address.
-    rTTITypeDescriptor(TDA, _TIVTable, _Name),
+    rTTITypeDescriptor(TDA, _TIVTable, _Name, _DName),
     rTTICompleteObjectLocator(Pointer, _COLA, TDA, _CHDA, Offset, _O2),
     VFTable is Pointer + 4,
     % Now to turn the VFTable address into a class ID.  Presumably there's at least one method
@@ -50,7 +52,7 @@ rTTITDA2Class(TDA, Class) :-
 
 :- table rTTISelfRef/6 as opaque.
 rTTISelfRef(TDA, COLA, CHDA, BCDA, VFTable, Name) :-
-    rTTITypeDescriptor(TDA, _TIVTable, Name),
+    rTTITypeDescriptor(TDA, _TIVTable, Name, _DName),
     rTTICompleteObjectLocator(Pointer, COLA, TDA, CHDA, _O1, _CDOffset),
     % CDOffset is usually zero, but we've found at least one case (mysqld) where it was 4.  It
     % appears that this rule is too strict if it limits the CDOffset to zero.
@@ -88,7 +90,7 @@ rTTISelfRef(TDA, COLA, CHDA, BCDA, VFTable, Name) :-
 
 :- table rTTINoBase/1 as opaque.
 rTTINoBase(TDA) :-
-    rTTITypeDescriptor(TDA, _TIVTable, _Name),
+    rTTITypeDescriptor(TDA, _TIVTable, _Name, _DName),
     rTTIBaseClassDescriptor(_BCDA, TDA, 0, _M, _P, _V, _BaseAttributes, _ECHDA).
 
 :- table rTTIAncestorOf/2 as opaque.
@@ -163,6 +165,25 @@ rTTIInheritsFrom(DerivedTDA, AncestorTDA, Attributes, M, P, V) :-
     (rTTIInheritsDirectlyFrom(DerivedTDA, AncestorTDA, Attributes, M, P, V);
      rTTIInheritsVirtuallyFrom(DerivedTDA, AncestorTDA, Attributes, M, P, V)).
 
+% When RTTI is enabled, valid, and reports an inheritance relationship, this is a particularly
+% strong assertion.  In particular, it represents a rare opportunity to make confident negative
+% assertions -- this class is NOT derived from that class because the relationship wasn't in
+% the RTTI data.  Because the conclusion is based entirely off of RTTI data, we cane compute
+% these facts once at the beginning of the run, and be done with this rule for the rest of the
+% analysis.  Additionally, this rule may be used efficiently in places where we would normally
+% rely on sanity checking to detect contradictions because of the primacy of RTTI conclusions.
+% The only catch is that the RTTI data only gives us VFTables, not class ids, so we'll have to
+% call reasonPrimaryVFTableForClass(VFTable, Class) later to map these facts to get the correct
+% class ids.
+:- table rTTIDerivedClass/3 as opaque.
+rTTIDerivedClass(DerivedVFTable, BaseVFTable, Offset) :-
+    rTTIEnabled,
+    rTTIValid,
+    negative(1, NegativeOne),
+    rTTIInheritsFrom(DerivedTDA, BaseTDA, _Attributes, Offset, NegativeOne, 0),
+    rTTITDA2VFTable(DerivedTDA, DerivedVFTable),
+    rTTITDA2VFTable(BaseTDA, BaseVFTable).
+
 % --------------------------------------------------------------------------------------------
 :- table reasonRTTIInformation/3 as incremental.
 
@@ -171,7 +192,7 @@ rTTIInheritsFrom(DerivedTDA, AncestorTDA, Attributes, M, P, V) :-
 % PAPER: XXX
 reasonRTTIInformation(VFTableAddress, Pointer, RTTIName) :-
     rTTICompleteObjectLocator(Pointer, _COLAddress, TDAddress, _CHDAddress, _O1, _O2),
-    rTTITypeDescriptor(TDAddress, _VFTableCheck, RTTIName),
+    rTTITypeDescriptor(TDAddress, _VFTableCheck, RTTIName, _DName),
     VFTableAddress is Pointer + 4,
     factVFTable(VFTableAddress).
 
@@ -204,9 +225,6 @@ bcd_nonpolymorphic(0x20).
 bcd_has_CHD_pointer(0x40).
 
 % --------------------------------------------------------------------------------------------
-
-% Is the use of RTTI information during reasoning enabled?
-:- dynamic rTTIEnabled/0 as opaque.
 
 rTTIInvalidBaseAttributes :-
     rTTIBaseClassDescriptor(_BCDA, _TDA, _NumBases, _M, _P, _V, Attributes, _CHDA),
@@ -255,7 +273,7 @@ rTTIInvalidHierarchyAttributes :-
 
 :- table rTTIShouldHaveSelfRef/1 as opaque.
 rTTIShouldHaveSelfRef(TDA) :-
-    rTTITypeDescriptor(TDA, _VFTableCheck, _RTTIName),
+    rTTITypeDescriptor(TDA, _VFTableCheck, _RTTIName, _DName),
     rTTICompleteObjectLocator(_Pointer, _COLA, TDA, _CHDA, _O1, _O2).
 
 :- table rTTIHasSelfRef/1 as opaque.
@@ -264,7 +282,7 @@ rTTIHasSelfRef(TDA) :-
 
 :- table rTTIAllTypeDescriptors/1 as opaque.
 rTTIAllTypeDescriptors(TDA) :-
-    rTTITypeDescriptor(TDA, _VFTableCheck, _RTTIName).
+    rTTITypeDescriptor(TDA, _VFTableCheck, _RTTIName, _DName).
 
 rTTIAllTypeDescriptors(TDA) :-
     rTTICompleteObjectLocator(_Pointer, _Address, TDA, _CHDAddress, _Offset, _CDOffset).
@@ -274,7 +292,7 @@ rTTIAllTypeDescriptors(TDA) :-
 
 :- table rTTIHasTypeDescriptor/1 as opaque.
 rTTIHasTypeDescriptor(TDA) :-
-    rTTITypeDescriptor(TDA, _VFTableCheck, _RTTIName).
+    rTTITypeDescriptor(TDA, _VFTableCheck, _RTTIName, _DName).
 
 % Is the RTTI information internally consistent?
 :- table rTTIValid/0 as opaque.
@@ -295,14 +313,12 @@ rTTIValid :-
 % Reporting
 % ============================================================================================
 
-:- import maplist/2 from swi.
-
 reportMissingSelfRef(TDA) :-
     rTTISelfRef(TDA, _COLA, _CHDA, _BCDA, _VFTable, _Name) -> true;
     (logwarn('RTTI Information is invalid because missing self-reference for TDA at address '), logwarnln(TDA)).
 
 reportMissingTypeDescriptor(TDA) :-
-    rTTITypeDescriptor(TDA, _VFTableCheck, _RTTIName) -> true;
+    rTTITypeDescriptor(TDA, _VFTableCheck, _RTTIName, _DName) -> true;
     (logwarn('RTTI Information is invalid because no RTTITypeDescriptor at address '), logwarnln(TDA)).
 
 reportRTTIInvalidity :-
@@ -384,7 +400,8 @@ reportSelfRef :-
 reportSelfRef :- true.
 
 rTTISolve(X) :-
-    load_dyn(X).
+    loadInitialFacts(X),
+    reportRTTIResults.
 
 reportRTTIResults :-
     % Always enable RTTI before attempting to report on it.

@@ -15,20 +15,24 @@ namespace json {
 class Builder;
 class Simple;
 class Visitor;
+class Node;
+
+using NodeRef = std::unique_ptr<Node>;
 
 class Node {
  public:
   virtual bool visit(Visitor & v) const = 0;
   virtual ~Node() = default;
   virtual Builder & builder() const = 0;
+  NodeRef copy() const;
 };
-
-using NodeRef = std::unique_ptr<Node>;
 
 class Array : public virtual Node {
  public:
   virtual void add(NodeRef o) = 0;
   virtual void add(Simple && v) = 0;
+  virtual std::size_t size() const = 0;
+  bool empty() const { return size(); }
 };
 
 using ArrayRef = std::unique_ptr<Array>;
@@ -39,6 +43,8 @@ class Object : public virtual Node {
   virtual void add(std::string const & str, Simple && v) = 0;
   virtual void add(std::string && str, NodeRef o) = 0;
   virtual void add(std::string && str, Simple && v) = 0;
+  virtual std::size_t size() const = 0;
+  bool empty() const { return size(); }
 };
 
 using ObjectRef = std::unique_ptr<Object>;
@@ -132,12 +138,19 @@ class Builder {
   virtual NodeRef simple(Simple && val) const {
     return val.apply(*this);
   }
+
+  NodeRef copy(Node const &) const;
 };
 
 using BuilderRef = std::unique_ptr<Builder>;
 
 std::ostream & operator<<(std::ostream & stream, Node const & n);
-std::ostream & operator<<(std::ostream & stream, NodeRef const & n);
+
+template <typename T>
+std::enable_if_t<std::is_base_of<Node, typename T::element_type>::value, std::ostream &>
+operator<<(std::ostream & stream, T const & n) {
+  return stream << *n;
+}
 
 class pretty {
  private:

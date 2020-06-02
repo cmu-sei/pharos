@@ -338,16 +338,15 @@ std::string debug_instruction(const SgAsmInstruction *inst, const unsigned int m
                               const RoseLabelMap *labels)
 {
   char buffer[512];
+  std::string opbytes = "";
 
   if (inst == NULL) return "NULL!";
   if (!isSgAsmX86Instruction(inst)) {
-    std::string opbytes = "";
-    if (max_bytes > 0) {
-      opbytes = debug_opcode_bytes(inst->get_raw_bytes(), max_bytes);
-    }
-    // The API to unparseInstruction() is broken.
     SgAsmInstruction *ncinsn = const_cast<SgAsmInstruction *>(inst);
-    return opbytes + " " + addr_str(inst->get_address()) + " " + unparseInstruction(ncinsn);
+    if (max_bytes > 0) {
+      opbytes = " ; BYTES: " + debug_opcode_bytes(inst->get_raw_bytes(), max_bytes);
+    }
+    return addr_str(inst->get_address()) + " " + unparseInstruction(ncinsn) + opbytes;
   }
 
   SgAsmOperandList *oplist = inst->get_operandList();
@@ -360,18 +359,12 @@ std::string debug_instruction(const SgAsmInstruction *inst, const unsigned int m
   }
 
   if (max_bytes > 0) {
-    std::string opbytes = debug_opcode_bytes(inst->get_raw_bytes(), max_bytes);
-    //snprintf(buffer, sizeof(buffer), "%0" PRIX64 ": %-9s %s ; BYTES: %-*s", inst->get_address(), inst->get_mnemonic().c_str(), opstr.c_str(),(max_bytes * 2)+1,opbytes.c_str());
-    snprintf(buffer, sizeof(buffer), "%0" PRIX64 ": %-9s %-15s \t; BYTES: %s", inst->get_address(), inst->get_mnemonic().c_str(), opstr.c_str(),opbytes.c_str());
+    opbytes = " ; BYTES: " + debug_opcode_bytes(inst->get_raw_bytes(), max_bytes);
   }
-  else {
-    snprintf(buffer, sizeof(buffer), "%0" PRIX64 ": %-9s %s", inst->get_address(),
-             inst->get_mnemonic().c_str(), opstr.c_str());
-  }
+  snprintf(buffer, sizeof(buffer), "%0" PRIX64 ": %-9s %s", inst->get_address(),
+           inst->get_mnemonic().c_str(), opstr.c_str());
 
-  std::string result = buffer;
-
-  return result;
+  return buffer + opbytes;
 }
 
 } // namespace pharos

@@ -719,7 +719,7 @@ DUAnalysis::DUAnalysis(DescriptorSet& ds_, FunctionDescriptor & f)
   else {
     status = solve_flow_equation_iteratively();
   }
-  
+
   GDEBUG << "Analysis of function " << current_function->address_string() << " took "
          << func_limit.get_relative_clock().count() << " seconds." << LEND;
 
@@ -1530,7 +1530,7 @@ bool DUAnalysis::saved_register(SgAsmX86Instruction* insn, const Definition& def
 
   // We need a register descriptor for ESP, because it's special.
   RegisterDictionary regdict = ds.get_regdict();
-  RegisterDescriptor resp = regdict.lookup("esp");
+  RegisterDescriptor resp = regdict.find("esp");
 
   const AbstractAccess* saveloc = NULL;
 
@@ -2124,7 +2124,9 @@ DUAnalysis::loop_over_cfg()
   // the blocks reachable from the entry point.  This graph should now be internally consistent.
   std::vector<CFGVertex> flowlist = fd->get_vertices_in_flow_order();
   if (blocks.size() != flowlist.size()) {
-    GWARN << "Function " << fd->address_string() << " includes only " << flowlist.size()
+    // Info level because the message is fairly common.  Could be moved to WARN level if we
+    // were processing exception handlers a little better.
+    GINFO << "Function " << fd->address_string() << " includes only " << flowlist.size()
           << " of " << num_vertices(cfg) << " blocks in the control flow." << LEND;
   }
 

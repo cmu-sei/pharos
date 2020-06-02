@@ -16,7 +16,6 @@ pharos:
   # The maximum number of nodes allowed in ITE conditions before
   # substituting with a new dummy value
   maximum_nodes_per_condition: 500
-  propagate_conditions: false
   typedb: [ typedb/types.json ]
   concurrency_level: 1
 
@@ -24,16 +23,10 @@ pharos:
 application:
   apianalyzer:
     signature_file: "apianalyzer/sig.json"
-  objdigger:
   fn2yara:
     pharos:
       allow-64bit: true
   fn2hash:
     pharos:
       verbosity:
-      allow-64bit: true
-  stackstrings:
-    convolution-limit: 25 # maximum number of strings deduced for a single stack location
-    convolution-key-limit: 50 # maximum number of keys deduced for a single string
-    pharos:
       allow-64bit: true

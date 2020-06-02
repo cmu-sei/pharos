@@ -43,8 +43,9 @@
 %    % special case in that it does more than just call try_assert().
 %    Out = try_assert(factXXX(Parameters)).
 
-:- import maplist/3 from swi.
-:- import maplist/2 from swi.
+:- if(current_prolog_flag(version_data, xsb(_,_,_,_))).
+:- use_module(swi, [maplist/2, maplist/3]).
+:- endif.
 
 % --------------------------------------------------------------------------------------------
 % Make a singleton class for any method in Set.
@@ -265,11 +266,12 @@ concludeVFTableWrite(Out) :-
     Out = all(ActionSets).
 
 concludeVFTableOverwrite(Out) :-
-    setof((VFTable1, VFTable2, Offset),
-          (reasonVFTableOverwrite(VFTable1, VFTable2, Offset),
-           not(factVFTableOverwrite(VFTable1, VFTable2, Offset)),
-           %not(reasonNOTVFTableOverwrite(VFTable1, VFTable2, Offset)),
+    setof((Method, VFTable1, VFTable2, Offset),
+          (reasonVFTableOverwrite(Method, VFTable1, VFTable2, Offset),
+           not(factVFTableOverwrite(Method, VFTable1, VFTable2, Offset)),
+           %not(reasonNOTVFTableOverwrite(Method, VFTable1, VFTable2, Offset)),
            loginfo('Concluding factVFTableOverwrite('),
+           loginfo(Method), loginfo(', '),
            loginfo(VFTable1), loginfo(', '),
            loginfo(VFTable2), loginfo(', '),
            loginfo(Offset), loginfoln(').')),

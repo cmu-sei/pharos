@@ -9,9 +9,7 @@ Shared Pharos options:
   [--per-funtion-maximum-memory=MEMSIZE]
   [--maximum-instructions-per-block=NUMBER]
   [--maximum-iterations-per-function=NUMBER]
-  [--imports=IMPORT_CONFIG_FILE] [--type-file=FILE]
-  [--analyze-types] [--file=EXECUTABLE_FILE]
-
+  [--imports=IMPORT_CONFIG_FILE] [--file=EXECUTABLE_FILE]
   [--serialize=SERIALIZED_FILE] [--ignore-serialize-version]
   [--partitioner={pharos,rose,superset}
   [--stockpart] [--no-semantics] [--pdebug]

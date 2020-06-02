@@ -1,4 +1,4 @@
-{ "config": { "exports": [
+[
 {
   "dll": "OBSCURE32.DLL",
   "export_name": "SomeFunction",
@@ -10,4 +10,4 @@
   "type": "void",
   "ordinal": 123
 }
-]}}
+]

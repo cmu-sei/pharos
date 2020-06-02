@@ -931,6 +931,7 @@ callTarget(0x413a0d, 0x413840, 0x41101e).
 callTarget(0x414ab7, 0x414ab0, 0x411096).
 callTarget(0x414acd, 0x414abe, 0x41101e).
 callTarget(0x414ad7, 0x414abe, 0x4111a9).
+fileInfo('10F888C09EF81F3CB47E0639CC97D2EF', 'ooex4.exe').
 funcOffset(0x411596, 0x411570, 0x411620, 0).
 funcOffset(0x4115ae, 0x411570, 0x4117d0, 0).
 funcOffset(0x4115c2, 0x411570, 0x411690, 0).
@@ -1731,10 +1732,10 @@ rTTIClassHierarchyDescriptor(0x417560, 0, [0x41757c]).
 rTTICompleteObjectLocator(0x41673c, 0x417494, 0x418000, 0x4174ac, 0, 0).
 rTTICompleteObjectLocator(0x416750, 0x417530, 0x41801c, 0x417514, 0, 0).
 rTTICompleteObjectLocator(0x416764, 0x417548, 0x41803c, 0x417560, 0, 0).
-rTTITypeDescriptor(0x418000, 0x416768, '.?AVDerived@@').
-rTTITypeDescriptor(0x41801c, 0x416768, '.?AVBase@@').
-rTTITypeDescriptor(0x41803c, 0x416768, '.?AVtype_info@@').
-symbolClass(0x419260, type_info, '_type_info_dtor_internal_method').
+rTTITypeDescriptor(0x418000, 0x416768, '.?AVDerived@@', 'Derived').
+rTTITypeDescriptor(0x41801c, 0x416768, '.?AVBase@@', 'Base').
+rTTITypeDescriptor(0x41803c, 0x416768, '.?AVtype_info@@', type_info).
+symbolClass(0x419260, '?_type_info_dtor_internal_method@type_info@@QAEXXZ', type_info, '_type_info_dtor_internal_method').
 thisPtrAllocation(0x41147f, 0x411440, sv_9651359814356074120, type_Heap, 0x14).
 thisPtrUsage(0x41101e, 0x41101e, sv_17615275866203107922, 0x4117b0).
 thisPtrUsage(0x411028, 0x411028, sv_3486678931966408751, 0x411af0).

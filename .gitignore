@@ -6,7 +6,6 @@
 *.orig
 *.rej
 *.yaml.i
-.dir-locals.el
 TAGS
 
 # Auto-generated files
@@ -54,4 +53,3 @@ local.cmake
 **/.tramp_history
 **/.tramp_ignore
 **/.gdb_history
-**/.gradle

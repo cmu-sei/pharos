@@ -1,0 +1,291 @@
+=pod
+
+=head1 NAME
+
+B<pharos.yaml> - Pharos configuration file
+
+=head1 DESCRIPTION
+
+Pharos tools obtain configuration data from the following sources in the
+following order:
+
+=over
+
+=item 1. F<$HOME/.pharos.yaml>, if B<--no-user-file> is not specified.
+
+=item 2. F<$PREFIX/etc/pharos.yaml>, if B<PHAROS_CONFIG> is not set and
+B<--no-site-file> is not specified (B<PREFIX> is the pharos install
+location)
+
+=item 3. The file specified by the B<PHAROS_CONFIG> environment variable.
+
+=back
+
+For each parameter, the first obtained value will be used.  The
+resulting configuration can be obtained from any Pharos tool by using
+the B<--dump-config> option. Command line arguments override values in
+the configuration files.
+
+The configuration file is a YAML-formatted file.  The file should
+contain a map as its top level construct.  Pharos tools interpret two
+high-level keys in this map:
+
+=over
+
+=item 1. B<pharos>, generic pharos options
+
+=item 2. B<application>, application-specific settings and overrides
+
+=back
+
+Each section is itself a map and is described in the following sections.
+
+=head2 PHAROS
+
+Each key/value pair in the B<pharos> map represents a parameter that
+could be used by any of the Pharos tools.  An empty or non-existent
+value indicates that a system default value should be used.
+
+=over
+
+=item B<apidb>: list
+
+Indicates the data stores that will be used to find API information for
+resolving imported symbols and ordinals.  The value should be a list of
+entries.  API information will be looked up by using these entries, with
+the first entry providing the information taking precedence.  The
+entries can be:
+
+=over
+
+=item 1. a string representing a filename
+
+Any non-absolute filename is resolved relative to the L<library|/B<library>: string>
+directory.  A filename can represent one of three entities:
+
+=over
+
+=item a. a SQLite file using a schema defined by Pharos,
+
+=item b. a JSON file containing a list of API information,
+
+=item c. a directory containing a list of JSON files, one per DLL (deprecated)
+
+=back
+
+=item 2. A list of API definitions in JSON format
+
+=back
+
+This configuration value can be augmented on the command line with the
+B<--apidb> option.
+
+=item B<concurrency_level>: integer
+
+The number of threads to use when doing initial function analysis.  This
+does not affect function partitioning, which is single-threaded.  The
+value can be a positive integer which designated the maximum number of
+threads to use, C<0>, which indicates that as many threads should be
+used as available processors, or a negative number, which means to use
+no more threads than the number of available processors summed with that
+number.
+
+This configuration value can be modified using the B<--threads> option.
+
+=item B<library>: string
+
+The location that pharos programs will look for internal data files.
+This includes L<apidb|B<apidb>: list>, L<typedb|B<typedb>: list>, and
+L<prolog_rules_dir|B<prolog_rules_dir>: string>.  Generally this option
+should be left empty.
+
+This configuration value can be modified using the B<--library> option.
+
+=item B<maximum_instructions_per_block>: integer
+
+The maximum number of instructions allowed in a basic block before
+aborting the analysis of a function.  This limit is primarily a safety
+setting for degenerate situations where large blocks of data are
+incorrectly interpreted as thousands of instructions.
+
+This configuration value can be modified using the
+B<--maximum-instructions-per-block> option.
+
+=item B<maximum_iterations_per_function>: integer
+
+The maximum number of iterations over the control flow graph in a
+function before aborting analysis of the function.  This limit is
+primarily a safety setting for situations where the control flow graph
+is malformed.
+
+This configuration value can be modified using the
+B<--maximum-iterations-per-function> option.
+
+=item B<maximum_memory>: float
+
+The maximum memory usage in mibibytes.  The Pharos tool will usually
+exit shortly after this limit is reached.
+
+This configuration value can be modified using the
+B<--maximum-memory> option.
+
+=item B<maximum_nodes_per_condition>: integer
+
+The maximum number of nodes to handle in expressions before giving up on
+keeping track of individual nodes.  This is primarily a safety setting
+for degenerate situations when extremely large expressions are
+generated.
+
+This configuration value can be modified using the
+B<--maximum-nodes-per-condition> option.
+
+=item B<partitioner>: string
+
+The function partitioning algorithm to use.  Supported values are:
+
+=over
+
+=item B<pharos>
+
+This is the default and recommended partitioner.  It extends the
+standard ROSE partitioner to make code speculatively in undefined gaps
+between existing instructions.  This partitioner may not be required if
+the program being analyzed is "normal software".
+
+=item B<rose>
+
+Use the stock (built into ROSE) version of the partitioner.  This will
+generally give less complete results, but will also take less time to
+process the file.  The Pharos customized partitioner sometimes takes
+very much longer than the stock ROSE partitioner, so this option can be
+used to speed analysis if accuracy is not the top priority.  This option
+can also be used to troubleshoot problems in either partitioner by
+comparing the results from each.
+
+=item B<superset>
+
+This is an experimental disassembly algorithm that will create an
+instruction for every byte in the program image.  It is not generally
+suitable for analyzing programs at the current time because it does not
+partition instructions into functions.
+
+=back
+
+This configuration value can be modified using the
+B<--partitioner> option.
+
+=item B<partitioner_semantics>: boolean
+
+Whether to use semantic analysis during partitioning.  By default the
+function partitioner performs a limited semantic analysis to determine
+which branches are never taken and propagate constants in limited
+contexts.  This analysis typically increases the accuracy of the
+disassembly and function partitioning.  These improvements are the most
+dramatic when the analyzed executable contains assembly level control
+flow obfuscations.  This analysis pass also increases the time required
+to perform function partitioning.  Usually the increase is reasonably
+small, but it can sometimes take a very long time.
+
+This configuration value can be modified using the
+B<--no-semantics> option.
+
+=item B<partitioner_timeout>: float
+
+the time limit in seconds for the function partitioning phase of
+the analysis.  The default value is 300 seconds (5 minutes), but this
+value should definitely be increased for large programs.  This option
+defaults to a relatively small value to facilitate large scale
+analysis of many files.  This value should be smaller than the overall
+timeout to leave time for function analysis.
+
+This configuration value can be modified using the
+B<--partitioner-timeout> option.
+
+=item B<per_function_maximum_memory>: float
+
+The maximum memory usage that should be permitted for each function.
+The Pharos tool will usually abort the analysis of the current function
+and proceed to the next function shortly after this limit is reached.
+Skipping the analysis of functions obviously reduces the accuracy of the
+results, but a few functions are often the cause of the majority of the
+memory consumption.  Setting this value to a small value (tens of
+mibibytes) is often preferable to setting an overall memory limit since
+it allows the Pharos tool to complete and produce incomplete results
+rather than nothing at all when given limited resources.
+
+This configuration value can be modified using the
+B<--per-function-maximum-memory> option.
+
+=item B<prolog_dir>: string
+
+The location to look for the standard Prolog library files.  Currently
+this is the location of the XSB Prolog installation.  If this is a
+relative filename then it is considered relative to the
+L<library|/B<library>: string> directory.
+
+=item B<prolog_rules_dir>: string
+
+The location to look for pharos-specific Prolog files.  If this is a
+relative filename then it is considered relative to the
+L<library|/B<library>: string> directory.
+
+=item B<timeout>: float
+
+The execution timeout in seconds.  The pharos tool will usually exit
+shortly after this limit is reached.
+
+This configuration value can be modified using the
+B<--timeout> option.
+
+=item B<typedb>: list
+
+Indicates the data stores that will be used to find type information for
+type names from API definitions.The value should be a list of filenames.
+Any non-absolute filename is resolved relative to the
+L<library|/B<library>: string> directory.  This data is not currently
+being used for anything useful.
+
+=item B<verbosity>: integer
+
+The verbosity of logging, 1-14. Level one is additional warnings.  Level
+two is informational messages about analysis progress.  Level three is
+the coarsest level of debugging.  Level four enables warnings during the
+analysis of functions.  Higher numbers result in additional debugging
+messages.
+
+This configuration value can be modified using the
+B<--verbose> option.
+
+=back
+
+=head2 APPLICATION
+
+This B<application> map contains keys that correspond to the filename of
+the binary that is being executed.  When an application is run, the map
+underneath its key determines values specific to that application.  If
+the executable is linked or renamed to a new name, that name will be key
+looked up in the B<application> map.
+
+Each specific application can define its own valid values for its
+configuration, which can be found in the documentation for that specific
+application.  There is, however, one special entry that all applications
+can use:
+
+The B<pharos> key for an application should contain a map of ket/value
+pairs that will override the values in the top-level L<pharos> section
+for that application only.
+
+=head1 COPYRIGHT
+
+Copyright 2018-2020 Carnegie Mellon University.  All rights reserved.  This
+software is licensed under a "BSD" license.  Please see I<LICENSE.txt>
+for details.
+
+=cut
+
+Local Variables:
+mode:text
+indent-tabs-mode:nil
+fill-column: 72
+End:
+

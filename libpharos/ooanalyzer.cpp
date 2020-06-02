@@ -700,9 +700,13 @@ void OOAnalyzer::record_this_ptrs_for_calls(FunctionDescriptor* fd) {
   for (const CallDescriptor* cd : fd->get_outgoing_calls()) {
     SymbolicStatePtr state = cd->get_state();
     if (state == NULL) {
-      // Moved to warning importance because it appears to be a cascading failure from
-      // a function analysis timeout.
-      // GWARN << "No final state for call at " << cd->address_string() << LEND;
+      // Customize this message a little to account for known failure modes.,
+      if (cd->is_tail_call()) {
+        GINFO << "Tail call at " << cd->address_string() << " was not analyzed correctly for OO usages." << LEND;
+      }
+      else {
+        GINFO << "Call at " << cd->address_string() << " was not analyzed correctly for OO usages." << LEND;
+      }
       continue;
     }
     write_guard<decltype(mutex)> guard{mutex};

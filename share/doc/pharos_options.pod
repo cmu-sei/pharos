@@ -65,6 +65,9 @@ C<I<$PHAROS_ROOT>/etc/pharos.yaml>, from any file contained
 in the C<PHAROS_CONFIG> environment variable, and from
 C<~/.pharos.yaml>.  This option can be specified multiple times.
 
+Documentation for the format of I<PHAROS_CONFIG_FILE> can be found at
+L<pharos.yaml(5)>.
+
 =item B<--dump-config>
 
 After reading and merging configuration files, output the resulting
@@ -84,7 +87,9 @@ determining configuration options.
 Use the specified SQLite database or JSON file in I<APIDB_FILE> as a
 repository of API and type information.  This is a repeatable option,
 with earlier files searched before later ones.  The built-in databases
-will be checked after these.
+will be checked after these.  If I<APIDB_FILE> is a relative file name
+and does not exist relative to the current working directory, it will be
+searched for relative to C<I<$PHAROS_ROOT>/share/pharos>.
 
 =item B<--library>=I<DIR>, B<-l>=I<DIR>
 
@@ -94,11 +99,9 @@ XSB installation.
 
 =item B<--timeout>=I<TIMEOUT>
 
-Set the execution timeout in seconds.  The pharos tool will usually
-exit shortly after this limit is reached.  The default value is 900
-seconds (15 minutes), but this value should definitely be increased
-for large programs.  This option defaults to a relatively small value
-to facilitate large scale analysis of many files.
+Set the execution timeout in seconds.  The pharos tool will usually exit
+shortly after this limit is reached.  The default value is C<0>, which
+indicates that there should be no timout.
 
 =item B<--per-function-timeout>=I<TIMEOUT>
 
@@ -115,12 +118,10 @@ all when given limited resources.  The default value is 20 seconds.
 
 =item B<--partitioner-timeout>=I<TIMEOUT>
 
-Set the time limit in seconds for the function partitioning phase of
-the analysis.  The default value is 300 seconds (5 minutes), but this
-value should definitely be increased for large programs.  This option
-defaults to a relatively small value to facilitate large scale
-analysis of many files.  This value should be smaller than the overall
-timeout to leave time for function analysis.
+Set the time limit in seconds for the function partitioning phase of the
+analysis.  The default value is 0, which idicates that there should be
+no limit.  This value should be smaller than the overall timeout to
+leave time for function analysis.
 
 =item B<--maximum-memory>=I<MEMSIZE>
 
@@ -128,7 +129,7 @@ Set the maximum memory usage in mibibytes.  The Pharos tool will
 usually exit shortly after this limit is reached.  The default value
 is 8000 mibibytes (about 8 gigabytes).
 
-=item B<--per-function-memory>=I<MEMSIZE>
+=item B<--per-function-maximum-memory>=I<MEMSIZE>
 
 Set the maximum memory usage that should be permitted for each
 function.  The Pharos tool will usually abort the analysis of the
@@ -149,7 +150,7 @@ one thread.
 Set the maximum number of instructions allowed in a basic block before
 aborting the analysis of a function.  This limit is primarily a safety
 setting for degenerate situations where large blocks of data are
-incorrecly interpreted as thousands of instructions.  The default
+incorrectly interpreted as thousands of instructions.  The default
 value is 3000 instructions.
 
 =item B<--maximum-iterations-per-function>=I<NUMBER>
@@ -159,18 +160,12 @@ function before aborting analysis of the function.  This limit is
 primarily a safety setting for situations where the control flow graph
 is malformed.  The default value is 3000 iterations.
 
-=item B<--imports>=I<IMPORT_CONFIG_FILE>, B<-I>=I<IMPORT_CONFIG_FILE>
+=item B<--maximum-nodes-per-condition>=I<NUMBER>
 
-To be documented.
-
-=item B<--analyze-types>
-
-Enable an experimental pass that assigns types to symbolic values.
-This features is disabled by default.
-
-=item B<--type-file>=I<FILE>
-
-Jeff Gennari's something.
+Set the maximum number of nodes to handle in expressions before giving
+up on keeping track of individual nodes.  This is primarily a safety
+setting for degenerate situations when extremely large expressions are
+generated.  The default value is 500 nodes.
 
 =item B<--file>=I<EXECUTABLE_FILE>, B<-f>=I<EXECUTABLE_FILE>
 
@@ -295,3 +290,11 @@ instead.
 Output the version of ROSE that the program was compiled against, and exit.
 
 =back
+
+=begin comment
+Local Variables:
+mode:text
+indent-tabs-mode:nil
+fill-column: 72
+End:
+=end comment

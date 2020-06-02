@@ -1,47 +1,32 @@
 % Copyright 2017 Carnegie Mellon University.
 
 % ============================================================================================
+% Options.
+% ============================================================================================
+
+% A dynamically asserted option controlling whether guessing is enabled.
+:- dynamic guessingDisabled/0 as opaque.
+
+% Is the use of RTTI information during reasoning enabled?
+:- dynamic rTTIEnabled/0 as opaque.
+
+:- dynamic profilingEnabled/0.
+:- dynamic debuggingStoreEnabled/0.
+:- dynamic deterministicEnabled/0.
+
+% When an "upstream problem" occurs, by default we will terminate the analysis because it can
+% take a very long time to find the problematic guess.  If this option is set, we will continue
+% to backtrack until we fix the upstream problem.
+:- dynamic backtrackForUpstream/0.
+
+% ============================================================================================
 % Inputs facts.
 % ============================================================================================
 
 % Facts produced by the C++ component are all optional.  These facts are never asserted or
 % change in any way during execution.
 
-:- dynamic guessingDisabled/0 as opaque.
-:- dynamic method/1 as incremental.
-:- dynamic funcOffset/4.
-:- dynamic thisCallMethod/3.
-:- dynamic methodMemberAccess/4.
-:- dynamic returnsSelf/1.
-:- dynamic noCallsBefore/1.
-:- dynamic noCallsAfter/1.
-:- dynamic uninitializedReads/1.
-:- dynamic possibleVFTableWrite/4.
-%:- dynamic possibleVFTableEntry/3.
-:- dynamic possibleVBTableWrite/4.
-%:- dynamic possibleVBTableEntry/3.
-:- dynamic possibleVirtualFunctionCall/5.
-:- dynamic rTTICompleteObjectLocator/6.
-:- dynamic rTTITypeDescriptor/3.
-:- dynamic rTTIClassHierarchyDescriptor/3.
-:- dynamic rTTIBaseClassDescriptor/7.
-:- dynamic thisPtrAllocation/5.
-:- dynamic thisPtrUsage/4.
-:- dynamic thisPtrOffset/3.
-:- dynamic purecall/1.
-:- dynamic insnCallsDelete/3.
-:- dynamic symbolGlobalObject/3.
-:- dynamic symbolClass/3.
-:- dynamic symbolProperty/2.
-:- dynamic thunk/2.
-:- dynamic initialMemory/2.
-
-:- dynamic funcParameter/3.
-:- dynamic funcReturn/3.
-:- dynamic callingConvention/2.
-:- dynamic callTarget/3.
-:- dynamic callParameter/4.
-:- dynamic callReturn/4.
+:- include('facts.P').
 
 % For Debugging, not for rules!
 %:- dynamic termDebug/2 as incremental.
@@ -66,7 +51,7 @@
 :- dynamic factVFTable/1 as incremental.
 :- dynamic factNOTVFTable/1 as incremental.
 :- dynamic factVFTableWrite/4 as incremental,abstract(0).
-:- dynamic factVFTableOverwrite/3 as incremental.
+:- dynamic factVFTableOverwrite/4 as incremental.
 :- dynamic factVFTableEntry/3 as incremental.
 :- dynamic factNOTVFTableEntry/3 as incremental.
 :- dynamic factVFTableSizeGTE/2 as incremental.
@@ -175,23 +160,6 @@ classArgs(factClassSizeLTE/2, 1).
 % Assorted declarations.
 % ============================================================================================
 
-:- import member/2 from lists.
-:- import incr_assert/1, incr_asserta/1, incr_retract/1 from increval.
-
-%:- import gpp_options from parse.
-%:- assert(gpp_options('-P -m -nostdinc')).
-
-% Replacing xpp_on with xpp_dump in the following line will cause all our prolog rules to be
-% placed into a monolothic file, setup.pl_gpp.
-%:- compiler_options([xpp_on]).
-
-%:- import error_writeln/1 from standard.
-%:- dynamic default_user_error_handler/1.
-%default_user_error_handler(X) :-
-%    machine:xsb_backtrace(B),
-%    error_handler:print_backtrace(B),
-%    error_writeln(['Aborting due to error: ', X]),halt(1).
-
 % Can I put this somewhere else?
 :- dynamic findint/2 as incremental.
 
@@ -199,47 +167,67 @@ classArgs(factClassSizeLTE/2, 1).
 % Other modules.
 % ============================================================================================
 
-:- if(current_prolog_flag(version_data, xsb(_,_,_,_))).
-:- else.
-:- include(swihelp).
-:- endif.
+:- include('util.P').
+:- include('initial.P').
+:- include('rtti.P').
+:- include('rules.P').
+:- include('guess.P').
+:- include('forward.P').
+:- include('insanity.P').
+:- include('complete.P').
+:- include('final.P').
+:- include('softcut.P').
+:- include('class.P').
+:- include('trigger.P').
 
-:- include(util).
-:- include(initial).
-:- include(rtti).
-:- include(rules).
-:- include(guess).
-:- include(forward).
-:- include(insanity).
-:- include(complete).
-:- include(final).
-:- include(softcut).
-:- include(class).
-:- include(trigger).
-
+% --------------------------------------------------------------------------------------------
+% XSB Specific code
+% --------------------------------------------------------------------------------------------
 :- if(current_prolog_flag(version_data, xsb(_,_,_,_))).
 :- include(index).
-:- endif.
+
+:- use_module(increval, [incr_assert/1, incr_asserta/1, incr_retract/1]).
+:- use_module(swi, [maplist/3]).
 
 :- debug_ctl(profile, on).
 :- debug_ctl(prompt, off).
 :- debug_ctl(hide, [rootint/2]).
 
+% These disabled features appear to be XSB specific.
+
+%:- import gpp_options from parse.
+%:- assert(gpp_options('-P -m -nostdinc')).
+% Replacing xpp_on with xpp_dump in the following line will cause all our prolog rules to be
+% placed into a monolothic file, setup.pl_gpp.
+%:- compiler_options([xpp_on]).
+
+% --------------------------------------------------------------------------------------------
+% SWI Prolog specific code.
+% --------------------------------------------------------------------------------------------
+:- else.
+
+% Mostly profiling related.
+:- include('swihelp.P').
+
+% These predicates are just named differently in SWI Prolog.
+incr_assert(T)  :- assertz(T).
+incr_asserta(T) :- asserta(T).
+incr_retract(T) :- retract(T).
+
+:- use_module(library(dialect/xsb/timed_call), [timed_call/2]).
+:- endif.
+
 % ============================================================================================
 % Solving main engine.
 % ============================================================================================
 
+:- set_flag(numfacts, 0).
+:- set_flag(guesses, 0).
+:- set_flag(reasonForwardSteps, 0).
+
 % Numfacts keeps track of the number of currently recorded facts so we can show the user some
 % progress.  Super fancy.
-
-% Use conset/conget per Teri.
-
-:- import conset/2, conget/2 from machine.
-:- conset(numfacts,0).
-:- conset(guesses,0).
-:- conset(reasonForwardSteps,0).
-
-delta_con(Con,Delta):- conget(Con,Y), Z is Y+Delta, conset(Con,Z).
+delta_con(Con, Delta):- get_flag(Con, Y), Z is Y + Delta, set_flag(Con, Z).
 
 % trigger facts are not incremental, but regular facts are
 assert_helper(trigger_fact(X)) :-
@@ -444,15 +432,12 @@ reasonForwardAsManyTimesAsPossible :-
         reasonForwardAsManyTimesAsPossible,
         logdebugln('reasonForwardAsManyTimesAsPossible complete.')).
 
-countFacts(Total) :- conget(numfacts,Total).
-
 % Go forward: Make a guess, reason forward, and then sanity check
 tryAGuess :-
     logtraceln('reasoningLoop: guess'),
     guess,
-    countFacts(N),
+    get_flag(numfacts, N),
     progress(N).
-
 
 % When reasoning, if we ever run out of guesses, we are done!  Otherwise, we execute the rest
 % of the loop, but we must preserve choice points so that we can backtrack to the latest guess
@@ -489,7 +474,7 @@ reasoningLoop :-
 % well justified, but rather a hodge-podge of experimental results and gut feelings.  Cory has
 % no idea how to reason through this properly, so he's just going to take some notes.
 guess :-
-        conget(guesses, Guesses),
+        get_flag(guesses, Guesses),
         logdebug('Starting guess. There are currently '),
         logdebug(Guesses), logdebugln(' guesses.'),
         % These three guesses are first on the principle that guesing them has lots of
@@ -548,9 +533,14 @@ guess :-
 
               % Only after we've merged all the methods into the classes should we take wild guesses
               % at real destructors.
-              guessFinalDeletingDestructor(Out)
+              guessFinalDeletingDestructor(Out);
               % RealDestructorChange! (uncomment next line and add semicolon above)
               %guessFinalRealDestructor(Out)
+
+              % As the very last guess, explicitly guess factClassHasNoBase(Class) for any
+              % class that we have not identified a base class for.
+              guessCommitClassHasNoBase(Out)
+
              )),
 
         (
@@ -583,7 +573,8 @@ initialSanityChecks :-
     false.
 
 solve :-
-    timed_call(solve_internal, [max(3600000, recommend_swi)]).
+    timed_call(solve_internal, [max(3600000, recommend_swi)]),
+    !.
 
 % Solve when guessing is disabled
 solve_internal :-

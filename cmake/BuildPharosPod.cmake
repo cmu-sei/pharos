@@ -8,8 +8,8 @@ set(POD_DEPENDS
   "${CMAKE_SOURCE_DIR}/share/doc/pharos_options.pod")
 
 function(build_pharos_pod target podfile section)
-  get_filename_component(BASENAME "${podfile}" NAME_WE)
   get_filename_component(PODFILE "${podfile}" NAME)
+  string(REGEX REPLACE "\\.pod$" "" BASENAME "${PODFILE}")
   if(PODFILE STREQUAL podfile)
     set(podfile "${CMAKE_CURRENT_SOURCE_DIR}/${PODFILE}")
   endif()

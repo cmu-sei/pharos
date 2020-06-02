@@ -1,0 +1,10 @@
+# Standard things to ignore for Ghidra plugin
+
+# to support (& ignore) build and distribution  dirs in the repo dir:
+/build
+/build-*
+/dist
+
+# other misc gradle stuff
+**/.gradle
+

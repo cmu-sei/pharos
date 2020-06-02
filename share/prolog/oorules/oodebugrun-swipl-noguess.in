@@ -1,0 +1,5 @@
+#!/bin/bash
+STACK_LIMIT=${STACK_LIMIT:-20 000 000 000}
+TABLE_SPACE=${TABLE_SPACE:-20 000 000 000}
+@SWIPL_PROGRAM@ -g "set_prolog_flag(stack_limit, $STACK_LIMIT),set_prolog_flag(table_space, $TABLE_SPACE),asserta(library_directory('@CMAKE_CURRENT_SOURCE_DIR@')),['@CMAKE_CURRENT_SOURCE_DIR@/report.P'],assert(logLevel(7)),assert(rTTIEnabled),assert(guessingDisabled),psolve('${1}')."
+

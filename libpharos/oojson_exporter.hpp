@@ -5,12 +5,15 @@
 
 #include <rose.h>
 
-#include <boost/property_map/property_map.hpp>
+#include "json.hpp"
 
 #include "misc.hpp"
 #include "ooclass.hpp"
 
 namespace pharos {
+
+using JsonObject = pharos::json::ObjectRef;
+using JsonNode = pharos::json::NodeRef;
 
 // This class creates a JSON output file for the class specification. The created JSON file is
 // compatible with the JSON Importer IDA Plugin.
@@ -20,15 +23,16 @@ private:
   // the name of the JSON output file. Currently, the name of the file is
   // [Orignal executable].json
   std::string json_filename;
+  std::string exe_filename;
+  std::string file_md5;
 
-  //top-level property trees for the JSON output
-  boost::property_tree::ptree structs;
-  boost::property_tree::ptree cls_usages;
-  boost::property_tree::ptree object_instances;
+  // top level JSON
+  JsonObject json;
 
   // Used for counting the number of unique methods that we associated with classes.  This
   // doesn't have to be in the JSON exporter, but it's convenient here.
   AddrSet methods_associated;
+  size_t num_structs;
   size_t vcalls_resolved;
   size_t usages_found;
 
@@ -50,22 +54,16 @@ public:
      json_filename = fn;
   }
 
-  // C++11 was picky about auto-converting const char[] to string and to boost::property_tree
-  // simultaneously, so we had to make a helper function that was a little more explicit.
-  std::pair<const std::string, boost::property_tree::ptree>
-  make_ptree(const std::string s1, const std::string s2) {
-    return std::make_pair(s1, boost::property_tree::ptree(s2));
-  }
-
   // JSG isn't sure what to do with the object instances in OOAnalyzer? It remains commented
   // out for now
   // void generate_object_instances();
 
   // Generate the appropriate JSON data structure from the set of objects and
   // function calls.
-  void generate_json(const std::vector<OOClassDescriptorPtr>& classes);
+  void generate_json (const std::vector<OOClassDescriptorPtr>& classes);
 
-  boost::property_tree::ptree get_json();
+  json::Object const & get_json() const { return *json; }
+  json::ObjectRef get_json() { return std::move(json); }
 
 };
 

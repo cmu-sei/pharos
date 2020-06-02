@@ -166,6 +166,14 @@ public:
   // Const interface
   //======================================================================================
 
+  std::string get_filepath() const {
+    return vm["file"].as<std::string>();
+  }
+  std::string get_filename() const;
+  std::string get_filemd5() const {
+    return get_file_md5(get_filepath());
+  }
+
   const FunctionDescriptor* get_func(rose_addr_t a) const {
     return function_descriptors.get_func(a);
   }
@@ -217,7 +225,7 @@ public:
   // Here's how you can get access to the new Partitioner 2 engine (maybe)...
   const P2::Engine* get_engine() const { return engine; }
   const P2::Partitioner& get_partitioner() const { return partitioner; }
-  const RegisterDictionary get_regdict() const;
+  RegisterDictionary const & get_regdict() const;
 
   // Pharos API for getting instructions from the Partitioner 2 instruction provider.
   SgAsmInstruction* get_insn(rose_addr_t addr) const {

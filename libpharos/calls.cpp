@@ -290,7 +290,7 @@ void CallDescriptor::add_import_target(ImportDescriptor* id) {
 void CallDescriptor::_update_connections() {
   // We can't update anything if we're not a real descriptor yet.
   if (address == 0) {
-    OERROR << "Updating connections for NULL call descriptor!" << LEND;
+    GERROR << "Updating connections for NULL call descriptor!" << LEND;
     return;
   }
 
@@ -344,8 +344,11 @@ void CallDescriptor::_update_connections() {
       if (import_descriptor != NULL) {
         import_descriptor->add_caller(address);
         function_descriptor = import_descriptor->get_rw_function_descriptor(); // in update_connections()
-        GDEBUG << "Resolved thunked call descriptor " << self{*this}
-               << " to import " << *import_descriptor << LEND;
+        // While this message is usually fairly harmless, in some files, the import descriptor
+        // contains a very large list of call targets, making this message rather more annoying
+        // than helpful unless you're explicitly debugging a call descriptor problem.
+        //GDEBUG << "Resolved thunked call descriptor " << self{*this}
+        //       << " to import " << *import_descriptor << LEND;
       }
       // Of course the more likely scenario is that we just call to a normal function.
       else {
@@ -431,7 +434,7 @@ void CallDescriptor::analyze() {
   bool complete;
   CallTargetSet successors;
   targets = insn->getSuccessors(&complete);
-  GDEBUG << "CALL: " << debug_instruction(insn) << LEND;
+  //GDEBUG << "CALL: " << debug_instruction(insn) << LEND;
 
   SgAsmOperandList *oplist = insn->get_operandList();
   SgAsmExpressionPtrList& elist = oplist->get_operands();

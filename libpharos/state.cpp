@@ -156,7 +156,7 @@ CellMapChunks::CellMapChunks(const DUAnalysis & usedef, bool df_flag) {
 
   // The df f should be treated as a constant value when chunking addresses
   const RegisterDictionary regdict = usedef.ds.get_regdict();
-  RegisterDescriptor df_reg = regdict.lookup("df");
+  RegisterDescriptor df_reg = regdict.find("df");
   const auto & df_sym = const_cast<SymbolicStatePtr &>(input_state)->read_register(df_reg);
   const auto & df_tn = df_sym ? df_sym->get_expression() : TreeNodePtr();
   auto df_value = SymbolicExpr::makeBooleanConstant(df_flag);

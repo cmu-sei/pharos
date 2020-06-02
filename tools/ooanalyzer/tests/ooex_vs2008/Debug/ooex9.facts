@@ -946,6 +946,7 @@ callTarget(0x413bed, 0x413a20, 0x411023).
 callTarget(0x414c87, 0x414c80, 0x41109b).
 callTarget(0x414c9d, 0x414c8e, 0x411023).
 callTarget(0x414ca7, 0x414c8e, 0x4111ae).
+fileInfo('31280CB0682773615A24584A5F440259', 'ooex9.exe').
 funcOffset(0x411653, 0x411610, 0x4116f0, 0x1c).
 funcOffset(0x41165d, 0x411610, 0x411780, 0).
 funcOffset(0x41166a, 0x411610, 0x411860, 0xc).
@@ -1816,12 +1817,12 @@ rTTICompleteObjectLocator(0x416794, 0x4176d8, 0x419014, 0x4175a4, 0, 0).
 rTTICompleteObjectLocator(0x4167ac, 0x417720, 0x41903c, 0x41764c, 0xc, 0).
 rTTICompleteObjectLocator(0x4167b8, 0x417708, 0x41903c, 0x41764c, 0, 0).
 rTTICompleteObjectLocator(0x4167d0, 0x417738, 0x419058, 0x417750, 0, 0).
-rTTITypeDescriptor(0x419000, 0x4167d4, '.?AVD@@').
-rTTITypeDescriptor(0x419014, 0x4167d4, '.?AVB@@').
-rTTITypeDescriptor(0x419028, 0x4167d4, '.?AVA@@').
-rTTITypeDescriptor(0x41903c, 0x4167d4, '.?AVC@@').
-rTTITypeDescriptor(0x419058, 0x4167d4, '.?AVtype_info@@').
-symbolClass(0x41a270, type_info, '_type_info_dtor_internal_method').
+rTTITypeDescriptor(0x419000, 0x4167d4, '.?AVD@@', 'D').
+rTTITypeDescriptor(0x419014, 0x4167d4, '.?AVB@@', 'B').
+rTTITypeDescriptor(0x419028, 0x4167d4, '.?AVA@@', 'A').
+rTTITypeDescriptor(0x41903c, 0x4167d4, '.?AVC@@', 'C').
+rTTITypeDescriptor(0x419058, 0x4167d4, '.?AVtype_info@@', type_info).
+symbolClass(0x41a270, '?_type_info_dtor_internal_method@type_info@@QAEXXZ', type_info, '_type_info_dtor_internal_method').
 thisPtrAllocation(0x41148f, 0x411450, sv_9795505214497381384, type_Heap, 0x24).
 thisPtrOffset(sv_14052128147184999309, 0x1c, sv_9242770231233811851).
 thisPtrOffset(sv_14052128147184999309, 0xc, sv_15829099474927704736).

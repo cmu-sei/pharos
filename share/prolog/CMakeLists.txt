@@ -1,3 +1,9 @@
+find_package(SWIPL)
+set(SWIPL_COMMAND swipl)
+if(SWIPL_FOUND)
+  set(SWIPL_COMMAND ${SWIPL_PROGRAM})
+endif()
+
 find_package(XSB REQUIRED)
 function(compile_prolog)
   include(GetPrologDependencies)
@@ -9,7 +15,7 @@ function(compile_prolog)
     add_custom_command(
       OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/${xwam}" "${CMAKE_CURRENT_BINARY_DIR}/${xwam}"
       # The space after the ">" is critically important!
-      COMMAND ${XSB_PROGRAM} -e "catch(compile(${name}),X,halt(-1)),halt." > ${log} 2>&1
+      COMMAND ${XSB_PROGRAM} -e "catch(compile(${name}),X,(writeln(X),halt(-1))),halt." > ${log} 2>&1
       # Once the log file exists, look for ++Warning and ++Error since the XSB return code can't be trusted.
       COMMAND ! grep -e ^..Warning -e ^..Error ${log}
       COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/${xwam}" "${CMAKE_CURRENT_BINARY_DIR}/"

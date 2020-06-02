@@ -1,178 +1,182 @@
 {
-    "Structures": [
-        {
-            "Name": "cls_411560",
-            "DemangledName": "",
-            "Size": "28",
-            "Members": [
-                {
-                    "name": "mbr_18",
+    "filemd5": "1BEDD522957A3D7A4C0CABD6B6816EBD",
+    "filename": "ooex3.exe",
+    "structures": {
+        "cls_0x411560": {
+            "demangled_name": "",
+            "members": {
+                "0x0": {
+                    "base": false,
+                    "count": "1",
+                    "name": "cls_0x411610_0x0",
+                    "offset": "0x0",
+                    "parent": true,
+                    "struc": "cls_0x411610",
+                    "type": "struc",
+                    "usages": []
+                },
+                "0x18": {
+                    "base": false,
+                    "count": "1",
+                    "name": "mbr_0x18",
+                    "offset": "0x18",
+                    "parent": false,
+                    "struc": "",
                     "type": "dword",
-                    "offset": "18",
-                    "count": "1"
+                    "usages": [
+                        "0x4115bc",
+                        "0x4115cf"
+                    ]
                 },
-                {
-                    "name": "cls_411610_0",
+                "0xc": {
+                    "base": false,
+                    "count": "1",
+                    "name": "cls_0x411670_0xc",
+                    "offset": "0xc",
+                    "parent": true,
+                    "struc": "cls_0x411670",
                     "type": "struc",
-                    "struc": "cls_411610",
-                    "parent": "yes",
-                    "offset": "0",
-                    "count": "1"
-                },
-                {
-                    "name": "cls_411670_c",
-                    "type": "struc",
-                    "struc": "cls_411670",
-                    "parent": "yes",
-                    "offset": "c",
-                    "count": "1"
+                    "usages": []
                 }
-            ],
-            "Methods": [
-                {
-                    "ea": "411560",
-                    "name": "ctor_411560",
+            },
+            "methods": {
+                "0x411560": {
                     "demangled_name": "",
-                    "import": "no",
+                    "ea": "0x411560",
+                    "import": false,
+                    "name": "ctor_0x411560",
                     "type": "ctor"
                 }
-            ]
+            },
+            "name": "cls_0x411560",
+            "size": 28,
+            "vftables": {}
         },
-        {
-            "Name": "cls_411670",
-            "DemangledName": "",
-            "Size": "12",
-            "Members": [
-                {
-                    "name": "mbr_0",
+        "cls_0x411610": {
+            "demangled_name": "",
+            "members": {
+                "0x0": {
+                    "base": false,
+                    "count": "1",
+                    "name": "mbr_0x0",
+                    "offset": "0x0",
+                    "parent": false,
+                    "struc": "",
                     "type": "dword",
-                    "offset": "0",
-                    "count": "1"
+                    "usages": [
+                        "0x41153d",
+                        "0x411636"
+                    ]
                 },
-                {
-                    "name": "mbr_4",
+                "0x4": {
+                    "base": false,
+                    "count": "1",
+                    "name": "mbr_0x4",
+                    "offset": "0x4",
+                    "parent": false,
+                    "struc": "",
                     "type": "byte",
-                    "offset": "4",
-                    "count": "1"
+                    "usages": [
+                        "0x411536",
+                        "0x41163f"
+                    ]
                 },
-                {
-                    "name": "mbr_8",
+                "0x8": {
+                    "base": false,
+                    "count": "1",
+                    "name": "mbr_0x8",
+                    "offset": "0x8",
+                    "parent": false,
+                    "struc": "",
                     "type": "dword",
-                    "offset": "8",
-                    "count": "1"
+                    "usages": [
+                        "0x411646"
+                    ]
                 }
-            ],
-            "Methods": [
-                {
-                    "ea": "411670",
-                    "name": "ctor_411670",
+            },
+            "methods": {
+                "0x411510": {
                     "demangled_name": "",
-                    "import": "no",
-                    "type": "ctor"
-                },
-                {
-                    "ea": "4116d0",
-                    "name": "meth_4116d0",
-                    "demangled_name": "",
-                    "import": "no",
-                    "type": "meth"
-                }
-            ]
-        },
-        {
-            "Name": "cls_411610",
-            "DemangledName": "",
-            "Size": "12",
-            "Members": [
-                {
-                    "name": "mbr_0",
-                    "type": "dword",
-                    "offset": "0",
-                    "count": "1"
-                },
-                {
-                    "name": "mbr_4",
-                    "type": "byte",
-                    "offset": "4",
-                    "count": "1"
-                },
-                {
-                    "name": "mbr_8",
-                    "type": "dword",
-                    "offset": "8",
-                    "count": "1"
-                }
-            ],
-            "Methods": [
-                {
-                    "ea": "411510",
-                    "name": "meth_411510",
-                    "demangled_name": "",
-                    "import": "no",
+                    "ea": "0x411510",
+                    "import": false,
+                    "name": "meth_0x411510",
                     "type": "meth"
                 },
-                {
-                    "ea": "411610",
-                    "name": "ctor_411610",
+                "0x411610": {
                     "demangled_name": "",
-                    "import": "no",
+                    "ea": "0x411610",
+                    "import": false,
+                    "name": "ctor_0x411610",
                     "type": "ctor"
                 }
-            ]
-        }
-    ],
-    "Usages": [
-        {
-            "Members": [
-                {
-                    "class": "cls_411560",
-                    "ea": "4115bc"
+            },
+            "name": "cls_0x411610",
+            "size": 12,
+            "vftables": {}
+        },
+        "cls_0x411670": {
+            "demangled_name": "",
+            "members": {
+                "0x0": {
+                    "base": false,
+                    "count": "1",
+                    "name": "mbr_0x0",
+                    "offset": "0x0",
+                    "parent": false,
+                    "struc": "",
+                    "type": "dword",
+                    "usages": [
+                        "0x411696",
+                        "0x4116fd"
+                    ]
                 },
-                {
-                    "class": "cls_411560",
-                    "ea": "4115cf"
+                "0x4": {
+                    "base": false,
+                    "count": "1",
+                    "name": "mbr_0x4",
+                    "offset": "0x4",
+                    "parent": false,
+                    "struc": "",
+                    "type": "byte",
+                    "usages": [
+                        "0x41169f",
+                        "0x4116f6"
+                    ]
                 },
-                {
-                    "class": "cls_411670",
-                    "ea": "411696"
-                },
-                {
-                    "class": "cls_411670",
-                    "ea": "4116fd"
-                },
-                {
-                    "class": "cls_411670",
-                    "ea": "41169f"
-                },
-                {
-                    "class": "cls_411670",
-                    "ea": "4116f6"
-                },
-                {
-                    "class": "cls_411670",
-                    "ea": "4116a6"
-                },
-                {
-                    "class": "cls_411610",
-                    "ea": "41153d"
-                },
-                {
-                    "class": "cls_411610",
-                    "ea": "411636"
-                },
-                {
-                    "class": "cls_411610",
-                    "ea": "411536"
-                },
-                {
-                    "class": "cls_411610",
-                    "ea": "41163f"
-                },
-                {
-                    "class": "cls_411610",
-                    "ea": "411646"
+                "0x8": {
+                    "base": false,
+                    "count": "1",
+                    "name": "mbr_0x8",
+                    "offset": "0x8",
+                    "parent": false,
+                    "struc": "",
+                    "type": "dword",
+                    "usages": [
+                        "0x4116a6"
+                    ]
                 }
-            ]
+            },
+            "methods": {
+                "0x411670": {
+                    "demangled_name": "",
+                    "ea": "0x411670",
+                    "import": false,
+                    "name": "ctor_0x411670",
+                    "type": "ctor"
+                },
+                "0x4116d0": {
+                    "demangled_name": "",
+                    "ea": "0x4116d0",
+                    "import": false,
+                    "name": "meth_0x4116d0",
+                    "type": "meth"
+                }
+            },
+            "name": "cls_0x411670",
+            "size": 12,
+            "vftables": {}
         }
-    ]
+    },
+    "vcalls": {},
+    "version": "2.0.1"
 }

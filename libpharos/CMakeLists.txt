@@ -72,7 +72,6 @@ find_package(Boost 1.60.0 REQUIRED
   COMPONENTS system chrono timer iostreams serialization)
 
 configure_file(xsb_types.hpp.in xsb_types.hpp)
-configure_file(build.hpp.in build.hpp)
 
 # Create pharos library
 add_library(pharos SHARED ${PHAROS_SOURCES})
@@ -80,6 +79,9 @@ target_link_libraries(pharos PUBLIC
   Threads::Threads Boost::chrono Boost::timer Boost::iostreams Boost::serialization ${CMAKE_DL_LIBS}
   Rose::Rose SQLite::SQLite ${CURSES_LIBRARIES})
 target_link_libraries(pharos PRIVATE XSB::XSB SQLite::SQLite)
+if(COMMAND target_precompile_headers)
+  target_precompile_headers(pharos PRIVATE "<rose.h>")
+endif()
 
 # The following has been necessary to get things to work on OSX.  This
 # is almost certainly wrong on a Windows build, but we don't support

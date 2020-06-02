@@ -3,7 +3,6 @@
 // Author: Michael Duggan
 
 #include "prolog.hpp"
-#include "build.hpp"
 
 namespace pharos {
 namespace prolog {

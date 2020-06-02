@@ -38,12 +38,13 @@ ImportRewriteSet get_imports () {
   return {
     // Because of in-lining, we may need to jump over a call to path_goal to reach the one we
     // selected.  As a result we need to include time.
-    std::make_pair ("bogus.so", "time"),
-    std::make_pair ("bogus.so", "rand"),
-    std::make_pair ("bogus.so", "random"),
-    std::make_pair ("bogus.so", "_Znwm"),
-    std::make_pair ("MSVCR100D.dll", "rand"),
-    std::make_pair ("ucrtbased.dll", "rand")
+    ImportCall ("bogus.so", "time"),
+    ImportCall ("bogus.so", "rand"),
+    ImportCall ("bogus.so", "random"),
+    ImportCall ("bogus.so", "_Znwm"),
+    ImportCall ("bogus.so", "_Znwj"),
+    ImportCall ("MSVCR100D.dll", "rand"),
+    ImportCall ("ucrtbased.dll", "rand")
   };
 }
 
@@ -52,9 +53,12 @@ bool wp_method(PATestConfiguration& test, rose_addr_t target, std::shared_ptr<st
   using namespace pharos::ir;
 
   IR ir = get_inlined_cfg (CG::get_cg (*global_ds), test.start, target);
-  IRExprPtr post;
   ir = rewrite_imported_calls (*global_ds, ir, get_imports());
   ir = init_stackpointer (ir);
+  ir = rm_undefined (ir);
+  ir = add_datablocks (ir);
+
+  IRExprPtr post;
   std::tie (ir, post, std::ignore) = add_reached_postcondition (ir, {target});
 
   //std::cout << ir << std::endl;
@@ -124,13 +128,27 @@ TEST_P(PATestFixture, TestWP) {
 
   PATestConfiguration test = GetParam();
 
-  if (test.name=="" || test.start==INVALID_ADDRESS || test.bad==INVALID_ADDRESS ||
-      (test.goal==INVALID_ADDRESS && test.bad==INVALID_ADDRESS)) {
-    // Rather than fail gracefully here, we want to abort so that's it's easier to
-    // differentiate cases where compilation optimized away the path_nongoal() test.
-    //FAIL() << "Improper configuration!";
+  // Rather than fail gracefully through gtest on bad configurations, we want to abort so
+  // that's it's easier to differentiate cases where compilation optimized away the
+  // path_nongoal() test.
+  if (test.name=="") {
+    GFATAL << "Improper configuration, no test name!";
     abort();
-    return;
+  }
+
+  if (test.start==INVALID_ADDRESS) {
+    GFATAL << "Improper configuration, no start address!";
+    abort();
+  }
+
+  if (test.goal==INVALID_ADDRESS) {
+    GFATAL << "Improper configuration, no goal address!";
+    abort();
+  }
+
+  if (test.bad==INVALID_ADDRESS) {
+    GFATAL << "Improper configuration, no bad address!";
+    abort();
   }
 
   std::function<bool(PATestConfiguration&, rose_addr_t, std::shared_ptr<std::ofstream>)> method_func;
@@ -156,12 +174,12 @@ TEST_P(PATestFixture, TestWP) {
       goal_result = method_func(test, test.goal, smt_stream);
     }
     catch (const z3::exception &e) {
-      OERROR << "Z3 exception thrown: " << e.msg () << LEND;
+      GERROR << "Z3 exception thrown: " << e.msg () << LEND;
       // Re-throw as std exception so google test can print it
       throw std::runtime_error (std::string ("Z3: ") + e.msg ());
     }
     catch (const std::exception &e) {
-      OERROR << "Exception thrown: " << e.what () << LEND;
+      GERROR << "Exception thrown: " << e.what () << LEND;
       throw;
     }
     timer.stop();
@@ -169,7 +187,7 @@ TEST_P(PATestFixture, TestWP) {
       OINFO << "Correctly found path to goal in " << timer << " seconds." << LEND;
     }
     else {
-      OERROR << "Could not find path to goal in " << timer << " seconds." << LEND;
+      GERROR << "Could not find path to goal in " << timer << " seconds." << LEND;
     }
   }
 
@@ -185,10 +203,21 @@ TEST_P(PATestFixture, TestWP) {
   bool nongoal_result = false;
   if (test.bad!=INVALID_ADDRESS) {
     auto timer = make_timer();
+    try {
     nongoal_result = method_func(test, test.bad, smt_stream);
+    }
+    catch (const z3::exception &e) {
+      GERROR << "Z3 exception thrown: " << e.msg () << LEND;
+      // Re-throw as std exception so google test can print it
+      throw std::runtime_error (std::string ("Z3: ") + e.msg ());
+    }
+    catch (const std::exception &e) {
+      GERROR << "Exception thrown: " << e.what () << LEND;
+      throw;
+    }
     timer.stop();
     if (nongoal_result) {
-      OERROR << "Found invalid path to nongoal in " << timer << " seconds." << LEND;
+      GERROR << "Found invalid path to nongoal in " << timer << " seconds." << LEND;
     }
     else {
       OINFO << "Path to nongoal was correctly unsatisfiable in " << timer << " seconds." << LEND;

@@ -1,5 +1,6 @@
 finalClass(0x411510, 0, 0x10, 0x10, 0, [0x411510, 0x411660]).
 finalClass(0x4115b0, 0, 0xc, 0xc, 0, [0x4115b0, 0x411610]).
+finalFileInfo('8C7D713A6995122E997F1B999E3C6F67', 'ooex2.exe').
 finalInheritance(0x411510, 0x4115b0, 0, 0, false).
 finalMember(0x411510, 0xc, [0x4], certain).
 finalMember(0x4115b0, 0, [0x4], certain).

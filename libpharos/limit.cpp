@@ -83,7 +83,7 @@ LimitCode ResourceLimit::check() {
     if (absolute_clock_limit > duration()) {
       duration absolute_clock_delta = now_ts - first_ts;
       if (absolute_clock_delta >= absolute_clock_limit) {
-        msg = "absolute wall clock exceeded";
+        msg = "absolute wall clock exceeded; adjust with --timeout";
         return LimitAbsoluteClock;
       }
     }
@@ -122,7 +122,7 @@ LimitCode ResourceLimit::check() {
       double total_start_cpu = total_cpu_time(start_ru);
       double relative_cpu_delta = total_now_cpu - total_start_cpu;
       if (relative_cpu_delta >= relative_cpu_limit) {
-        msg = "relative CPU time exceeded";
+        msg = "relative CPU time exceeded; adjust with --per-function-timeout";
         return LimitRelativeCPU;
       }
     }

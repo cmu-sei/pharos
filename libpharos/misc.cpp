@@ -311,7 +311,7 @@ rose_addr_t insn_get_branch_target(SgAsmInstruction* insn) {
   bool complete;
   rose_addr_t fallthru = insn_get_fallthru(insn);
   for (rose_addr_t target : insn->getSuccessors(&complete)) {
-    GDEBUG << "INSN successor: " << addr_str(target) << LEND;
+    //GDEBUG << "INSN successor: " << addr_str(target) << LEND;
     if (target == fallthru) continue;
     else return target;
   }
@@ -845,17 +845,18 @@ rose_addr_t block_get_jmp_target(SgAsmBlock* bb) {
 }
 
 // For situations where the DescriptorSet isn't available.
-RegisterDescriptor get_arch_reg(RegisterDictionary &regdict, const std::string & name, size_t arch_bytes)
+RegisterDescriptor get_arch_reg(RegisterDictionary const &regdict,
+                                const std::string & name, size_t arch_bytes)
 {
   // Wow.  Horrible embarassing hack.   We'll need to think about this much harder.
   // 64-bit
   if (name.size() > 1 and name[0] == 'e' and arch_bytes == 8) {
     std::string large_name = name;
     large_name[0] = 'r';
-    return regdict.lookup(large_name);
+    return regdict.find(large_name);
   }
   // 32-bit (and assorted other failure cases)...
-  return regdict.lookup(name);
+  return regdict.find(name);
 }
 
 // Merge the expressions represented by "other" into "this"

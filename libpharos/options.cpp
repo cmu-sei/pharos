@@ -19,7 +19,6 @@
 #include "descriptors.hpp"
 #include "masm.hpp"
 #include "revision.hpp"
-#include "build.hpp"
 #include "apidb.hpp"
 #include "limit.hpp"
 #include "semantics.hpp"
@@ -114,8 +113,6 @@ ProgOptDesc cert_standard_options() {
     ("exclude-func,e",
      po::value<StrVector>(),
      "exclude analysis of a specific function")
-    ("propagate-conditions",
-     "Flag to preserve and propagate conditions when analyzing basic blocks")
 
     // These are options controlling the configuration of the Pharos system.
     ("config,C",
@@ -156,13 +153,6 @@ ProgOptDesc cert_standard_options() {
       "A value of zero means to use all available processors.  "
       "A negative value means to use that many less than the number of available processors."))
 
-    // Almost unused option to work around performance issues when enabled by default.
-    ("analyze-types",
-     "generate prolog type information")
-    ("type-file",
-     po::value<std::string>(),
-     "name of type (prolog) facts file")
-
     // Historical...  Do we even need this anymore?
     ("file,f",
      po::value<std::string>(),
@@ -185,6 +175,8 @@ ProgOptDesc cert_standard_options() {
      "the old maximum-instructions-per-block")
     ("funccounterlimit", po::value<int>(),
      "the old maximum-iterations-per-function")
+    ("propagate-conditions",
+     "Flag to preserve and propagate conditions when analyzing basic blocks")
     ;
   ;
 
@@ -292,20 +284,9 @@ ProgOptVarMap parse_cert_options(
   // If CMakeFiles is found in development builds, it's the repository root directory.
   bf::path lib_root;
 
-  if (prog_loc.filename() == "bin") {
-    // Assume the install root is one directory below.
-    root_loc = prog_loc.parent_path();
-    lib_root = root_loc / "share/pharos";
-  } else {
-    // This is disabled in release builds to prevent PHAROS_BUILD_LOCATION from ending up in
-    // the binary
-    if (exists(prog_loc / "CMakeFiles")) {
-      root_loc = lib_root = (PHAROS_BUILD_LOCATION "/share");
-    } else
-    {
-      root_loc = lib_root = bf::current_path();
-    }
-  }
+  // Assume the install root is one directory below.
+  root_loc = prog_loc.parent_path();
+  lib_root = root_loc / "share/pharos";
 
   ProgOptVarMap vm(argc, argv);;
 
@@ -407,9 +388,10 @@ ProgOptVarMap parse_cert_options(
   // Set the default verbosity to only emit errors and and fatal messages.
   Sawyer::Message::mfacilities.control("none, >=error");
   // Since the line above doesn't seem to work as expected...
-  glog[Sawyer::Message::WARN].disable();
   slog[Sawyer::Message::WARN].disable();
 
+  // We've recently decided to enable warnings as well.
+  glog[Sawyer::Message::WARN].enable();
   // The options log is the exception to the rule that only errors and above are reported.
   olog[Sawyer::Message::WARN].enable();
   olog[Sawyer::Message::INFO].enable();
@@ -595,21 +577,60 @@ void cleanup_our_globals() {
   global_rops.reset(); // riscops.hpp
 }
 
-static void report_exception(const std::exception & e, int level = 0)
+static void report_std_exception(const std::exception & e, int level = 0)
 {
   if (level == 0) {
     GFATAL << "Pharos main error: ";
+#ifdef __GNUC__
+    int status;
+    std::string ename (abi::__cxa_demangle(abi::__cxa_current_exception_type()->name(), 0, 0, &status));
+    GFATAL << "(" << ename << ") ";
+#endif
   }  else {
     GFATAL << std::string(level, ' ') << "Reason: ";
   }
   GFATAL << e.what() << LEND;
-  try {
+ try {
     std::rethrow_if_nested(e);
   } catch (const std::exception & e2) {
-    report_exception(e2, level + 1);
+    report_std_exception(e2, level + 1);
   } catch (...) {
     // Do nothing
   }
+}
+
+static void report_exception(const std::exception_ptr ep)
+{
+  try {
+    std::rethrow_exception (ep);
+  } catch (const std::exception &e) {
+    report_std_exception(e);
+  } catch (...) {
+#ifdef __GNUC__
+    // totally non portable gcc specific stuff, courtesy of here:
+    // http://stackoverflow.com/questions/4885334/c-finding-the-type-of-a-caught-default-exception/24997351#24997351
+    std::string uxname(__cxa_current_exception_type()->name());
+    int status = 0;
+    char * buff = __cxxabiv1::__cxa_demangle(uxname.c_str(), NULL, NULL, &status);
+    GFATAL << "Pharos main error, caught an unexpected exception named " << buff << LEND;
+    std::free(buff);
+#else
+    GFATAL << "Pharos main error, caught an unexpected exception" << LEND;
+#endif // __GNUC__
+  }
+} 
+
+static void pharos_terminate() {
+  // Prevent loops
+  std::set_terminate (std::terminate);
+
+  // Report on the current exception
+  report_exception (std::current_exception ());
+
+  // Print the backtrace
+  backtrace (glog, Sawyer::Message::FATAL);
+
+  std::exit (EXIT_FAILURE);
 }
 
 int pharos_main(std::string const & glog_name, main_func_ptr fn,
@@ -624,29 +645,10 @@ int pharos_main(std::string const & glog_name, main_func_ptr fn,
 
   ROSE_INITIALIZE;
 
-  if (getenv(PHAROS_PASS_EXCEPTIONS_ENV)) {
-    rc = fn(argc, argv);
-  } else {
-    try {
-      rc = fn(argc, argv);
-    } catch (const std::exception &e) {
-      report_exception(e);
-      rc = EXIT_FAILURE;
-    } catch (...) {
-#ifdef __GNUC__
-      // totally non portable gcc specific stuff, courtesy of here:
-      // http://stackoverflow.com/questions/4885334/c-finding-the-type-of-a-caught-default-exception/24997351#24997351
-      std::string uxname(__cxa_current_exception_type()->name());
-      int status = 0;
-      char * buff = __cxxabiv1::__cxa_demangle(uxname.c_str(), NULL, NULL, &status);
-      GFATAL << "Pharos main error, caught an unexpected exception named " << buff << LEND;
-      std::free(buff);
-#else
-      GFATAL << "Pharos main error, caught an unexpected exception" << LEND;
-#endif // __GNUC__
-      rc = EXIT_FAILURE;
-    }
-  }
+  if (!getenv(PHAROS_PASS_EXCEPTIONS_ENV))
+    std::set_terminate (pharos_terminate);
+
+  rc = fn(argc, argv);
 
   return rc;
 }

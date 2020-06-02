@@ -204,10 +204,13 @@ void GlobalMemoryDescriptor::add_write(SgAsmInstruction* insn, int asize) {
 // This is here primarily because I don't want to reference the global descriptor set in the
 // globals header file.
 void TypeBase::read(void *b) {
-  // This is a BUG!   We need to thow an exception here, for now just WARN.
+  // This is a BUG!  We need to thow an exception here, for now just report the problem.  Cory
+  // moved this back to the DEBUG level as part of an effort to enable GWARN level messages by
+  // default, and while this is a serious TODO fot the developers, there's nothing that the
+  // end-user can do about the message (or even that it's actually a problem in most cases).
   if (address == 0 || size == 0) {
-    GWARN << "Bad read of address and size. address=0x" << std::hex
-          << address << " size=0x" << size << std::dec << LEND;
+    GDEBUG << "Bad read of address and size. address=0x" << std::hex
+           << address << " size=0x" << size << std::dec << LEND;
     return;
   }
   memory.read_bytes_strict(address, (char *)b, Bytes(size));

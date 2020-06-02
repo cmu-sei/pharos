@@ -342,8 +342,11 @@ bool VirtualFunctionTable::analyze(VFTableAddrMap& vftables) {
     // entry.  For right now, we're going to only going to break after several adjacent
     // failures.
     else {
-      // Report every entry that we do not recognize as a function.
-      GWARN << "Virtual function table at " << addr_str(addr) << " entry " << entry
+      // Report every entry that we do not recognize as a function.  This is mildly useful to
+      // the end-user since as part of the OOAnalyzer output, but I'm not sure it's a warning,
+      // because it's a common side effect of partitioning failures, and OOAnalyzer should cope
+      // with the condition acceptably.
+      GINFO << "Virtual function table at " << addr_str(addr) << " entry " << entry
             << ", has a non-function pointer " << addr_str(fptr)
             << " at address " << addr_str(taddr) << LEND;
 

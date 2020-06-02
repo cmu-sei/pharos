@@ -1,7 +1,6 @@
 // Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/optional.hpp>
-#include <boost/property_tree/ptree.hpp>
 
 #include <rose.h>
 

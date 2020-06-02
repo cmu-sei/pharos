@@ -2,21 +2,31 @@
 % Ground truth validation rules.
 % ============================================================================================
 
+:- if(current_prolog_flag(version_data, xsb(_,_,_,_))).
+:- use_module(lists, [member/2]).
+:- use_module(swi, [maplist/2, nth1/3]).
+
+% XSB drops into an interactive prompt on a runtime error, which isn't very helpful.  We'd
+% prefer to print an error and halt instead.
+:- use_module(standard, [error_writeln/1]).
+:- dynamic default_user_error_handler/1.
+default_user_error_handler(X) :-
+    error_writeln(['Aborting due to error: ', X]),halt(1).
+:- endif.
+
+:- include('util.P').
+:- include('results.P').
+
 :- dynamic groundTruth/9.
-:- dynamic finalClass/6.
-:- dynamic finalVFTable/5.
-:- dynamic finalEmbeddedObject/4.
-:- dynamic finalInheritance/5.
-:- dynamic finalMemberAccess/4.
-:- dynamic finalMember/4.
-:- dynamic finalMethodProperty/3.
-:- dynamic finalResolvedVirtualCall/3.
-:- import maplist/2 from swi.
-:- import member/2 from lists.
+
+loadAndValidateResults(ResultsFile, GroundFile) :-
+    loadResults(ResultsFile),
+    loadPredicates(GroundFile),
+    validateResults.
 
 validateResults :-
-    % Write a newline so that our output messages don't get mixed up with XSB's ":-" prompt
-    writeln(''),
+    % Write a newline so that our output messages don't get mixed up with XSB's ":-" prompt?
+    writeln('% Validation results.'),
     validVFTables(ValidVFTableSet),
     validMethods(ValidMethodSet),
     finalVFTables(FinalVFTableSet),
@@ -127,8 +137,8 @@ correctAssignedMethod(GroundMethodClassPair) :-
     finalAssignedMethods(FinalAssignedMethods),
     % The real rule is to simply compare the lists.
     member(GroundMethodClassPair, FinalAssignedMethods),
-    basics:ith(1, GroundMethodClassPair, Method),
-    basics:ith(2, GroundMethodClassPair, Class),
+    nth1(1, GroundMethodClassPair, Method),
+    nth1(2, GroundMethodClassPair, Class),
     addressName(Method, MName),
     write('Correct method assignment: '), writeHex(Method),
     write(' Class='), write(Class),
@@ -141,8 +151,8 @@ extraAssignedMethod(FinalMethodClassPair) :-
     groundAssignedMethods(GroundAssignedMethods),
     % The real rule is to simply compare the lists.
     not(member(FinalMethodClassPair, GroundAssignedMethods)),
-    basics:ith(1, FinalMethodClassPair, Method),
-    basics:ith(2, FinalMethodClassPair, Class),
+    nth1(1, FinalMethodClassPair, Method),
+    nth1(2, FinalMethodClassPair, Class),
     addressName(Method, MName),
     write('Extra method assignment: '), writeHex(Method),
     write(' Class='), write(Class),
@@ -155,8 +165,8 @@ missingAssignedMethod(GroundMethodClassPair) :-
     finalAssignedMethods(FinalAssignedMethods),
     % The real rule is to simply compare the lists.
     not(member(GroundMethodClassPair, FinalAssignedMethods)),
-    basics:ith(1, GroundMethodClassPair, Method),
-    basics:ith(2, GroundMethodClassPair, Class),
+    nth1(1, GroundMethodClassPair, Method),
+    nth1(2, GroundMethodClassPair, Class),
     addressName(Method, MName),
     write('Missing method assignment: '), writeHex(Method),
     write(' Class='), write(Class),
@@ -264,8 +274,8 @@ missingAnyDestructorProperty(Method) :-
 extraAnyDestructorProperty(Method) :-
     (finalMethodProperty(Method, deletingDestructor, certain);
      finalMethodProperty(Method, realDestructor, certain)),
-    not((groundTruth(Method, Class, MName, method, deletingDestructor, _Linkage, _Scope, _Virtual, _Convention);
-         groundTruth(Method, Class, MName, method, realDestructor, _Linkage, _Scope, _Virtual, _Convention))),
+    not((groundTruth(Method, Class, MName, method, deletingDestructor, _Linkage1, _Scope1, _Virtual1, _Convention1);
+         groundTruth(Method, Class, MName, method, realDestructor, _Linkage2, _Scope2, _Virtual2, _Convention2))),
     addressName(Method, MName),
     addressClass(Method, Class),
     write('Extra any destructor property: '), writeHex(Method),

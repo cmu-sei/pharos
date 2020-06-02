@@ -524,10 +524,11 @@ bool ThisCallMethod::validate_vtable(ConstVirtualTableInstallationPtr install) {
   if (!insn) return false;
 
   // This is the offset into the object where the virtual function table pointer is stored.
-  // This shoudl be checked else where.
+  // This should be checked elsewhere.  This messaage was moved to debug because there was
+  // little evidence that the result was wrong any appreciable portion of the time.
   if (install->offset < 0) {
-    GWARN << "Rejected negative virtual function table offset=" << install->offset
-          << " at instruction: " << debug_instruction(insn) << LEND;
+    GDEBUG << "Rejected negative virtual function table offset=" << install->offset
+           << " at instruction: " << debug_instruction(insn) << LEND;
     return false;
   }
 
@@ -567,8 +568,8 @@ bool ThisCallMethod::validate_vtable(ConstVirtualTableInstallationPtr install) {
       }
     }
     if (found_this_ptr) {
-      GWARN << "Ignoring unknown virtual base table offset in instruction "
-            << addr_str(install->insn->get_address()) << LEND;
+      GDEBUG << "Ignoring unknown virtual base table offset in instruction "
+             << debug_instruction(insn) << LEND;
     }
     else {
       GDEBUG << "Rejected virtual function table write for wrong object " << *vp
