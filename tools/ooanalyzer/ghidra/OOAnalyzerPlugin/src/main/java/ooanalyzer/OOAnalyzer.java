@@ -1606,15 +1606,15 @@ public class OOAnalyzer {
         Msg.debug (OOAnalyzer.class, "Ghidra demangled " + mangledName + " to " + demangledName);
 
         // Now get the namespace
-        DemangledType namespaceType;
+        String namespaceType;
         if (isMethodName) {
           // method -> class -> namespace
-          namespaceType = demangledObj.getNamespace ().getNamespace ();
+          namespaceType = demangledObj.getNamespace ().getNamespace ().toString ();
         } else {
-          namespaceType = demangledObj.getNamespace ();
+          namespaceType = demangledObj.getNamespace ().toString ();
         }
         if (namespaceType != null) {
-          namespace = namespaceType.toString ();
+          namespace = namespaceType;
           // This will leave a :: at the end that we need to remove
           namespace = namespace.substring (0, namespace.length () - "::".length ());
 
