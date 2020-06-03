@@ -22,10 +22,10 @@ namespace detail {
 /// Node::const_iterator can be adapted.  Currently, only the latter is being adapted.
 template <typename Node, typename Base>
 class ConfigNode_iterator :
-  public boost::iterator_adaptor<ConfigNode_iterator<Node, Base>,
-                                 Base, std::pair<Node, Node>,
-                                 boost::use_default,
-                                 std::pair<Node, Node> >
+    public boost::iterator_adaptor<ConfigNode_iterator<Node, Base>,
+                                   Base, std::pair<Node, Node>,
+                                   boost::use_default,
+                                   std::pair<Node, Node> >
 {
   using base_t = boost::iterator_adaptor<ConfigNode_iterator<Node, Base>,
                                          Base,
@@ -168,7 +168,7 @@ class ConfigNode : public YAML::Node {
   /// fails.
   template <typename T, typename S>
   const T as_fallback(const S& fallback) const {
-      return Node::as<T, S>(fallback);
+    return Node::as<T, S>(fallback);
   }
 
   /// Return the path to this ConfigNode.  If this ConfigNode was returned by

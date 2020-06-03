@@ -28,7 +28,7 @@ using Addr2InsnMap = std::map<rose_addr_t, SgAsmX86Instruction*>;
 // A definition in definition and use analysis.
 class Definition {
 
-public:
+ public:
   // This is the instruction that did the defining.
   SgAsmX86Instruction* definer;
 
@@ -64,7 +64,7 @@ class BlockAnalysis {
   // Check to see if the jump/call isntruction goes in invalid code.
   bool check_for_invalid_code(SgAsmX86Instruction *insn, size_t i);
 
-public:
+ public:
   // We should probably make more of these members private once the API has settled down a
   // little bit.
 
@@ -142,7 +142,7 @@ class DUAnalysis {
 
   friend class BlockAnalysis;
 
-protected:
+ protected:
   // ==================================================================================
   // Parameters that control analysis.
   // ==================================================================================
@@ -254,7 +254,7 @@ protected:
   LimitCode loop_over_cfg();
   bool process_block_with_limit(CFGVertex vertex);
   SymbolicStatePtr merge_predecessors(CFGVertex vertex);
-    SymbolicStatePtr merge_predecessors_with_conditions(CFGVertex vertex);
+  SymbolicStatePtr merge_predecessors_with_conditions(CFGVertex vertex);
   bool check_for_eax_read(SgAsmX86Instruction* call_insn);
   LimitCode evaluate_bblock(SgAsmBlock* bblock);
   void update_call_targets(SgAsmX86Instruction* insn, SymbolicRiscOperatorsPtr& ops);
@@ -286,7 +286,7 @@ protected:
 
   void update_accesses(SgAsmX86Instruction *insn, SymbolicRiscOperatorsPtr& rops);
 
-public:
+ public:
 
   DescriptorSet& ds;
 

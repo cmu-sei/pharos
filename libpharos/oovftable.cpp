@@ -17,7 +17,8 @@ OOVirtualFunctionTable::set_address(rose_addr_t a) {
 }
 
 OOVirtualFunctionTable::OOVirtualFunctionTable(rose_addr_t a, size_t s, rose_addr_t ra,
-  TypeRTTICompleteObjectLocatorPtr rc) {
+                                               TypeRTTICompleteObjectLocatorPtr rc)
+{
   address_ = a;
   size_ = s;
   rtti_address_ = ra;

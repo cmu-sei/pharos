@@ -757,13 +757,13 @@ VisualStudioDemangler::get_managed_properties(DemangledTypePtr & t, int & cli_ar
       {
         // C++/CLI array
         auto xdigit = [this](char d) -> int {
-                        if (d >= '0' && d <= '9')
-                          return (d - '0');
-                        else if (d >= 'a' && d <= 'f')
-                          return (d - 'a');
-                        else if (d >= 'A' && d <= 'F')
-                          return (d - 'A');
-                        else bad_code(d, "hex digit"); };
+          if (d >= '0' && d <= '9')
+            return (d - '0');
+          else if (d >= 'a' && d <= 'f')
+            return (d - 'a');
+          else if (d >= 'A' && d <= 'F')
+            return (d - 'A');
+          else bad_code(d, "hex digit"); };
         int val = xdigit(c) * 16;
         c = get_next_char();
         val += xdigit(c);
@@ -1345,18 +1345,18 @@ DemangledTypePtr & VisualStudioDemangler::get_storage_class(DemangledTypePtr & t
    case 'C': return update_storage_class(t, Distance::Near, false, true,  false, false, false);
    case 'D': return update_storage_class(t, Distance::Near, true,  true,  false, false, false);
 
-   // E & F are not valid on their own in this context.
+    // E & F are not valid on their own in this context.
 
    case 'G': return update_storage_class(t, Distance::Near, false,  true,  false, false, false);
    case 'H': return update_storage_class(t, Distance::Near, true,   true,  false, false, false);
 
-   // I is not valid on it's own in this context.
+    // I is not valid on it's own in this context.
 
    case 'J': return update_storage_class(t, Distance::Near, true,   false, false, false, false);
    case 'K': return update_storage_class(t, Distance::Near, false,  true,  false, false, false);
    case 'L': return update_storage_class(t, Distance::Near, true,   true,  false, false, false);
 
-   // __based() variables, distance presumed to be near.
+    // __based() variables, distance presumed to be near.
    case 'M': return update_storage_class(t, Distance::Near, false, false, false, true,  false);
    case 'N': return update_storage_class(t, Distance::Near, true,  false, false, true,  false);
    case 'O': return update_storage_class(t, Distance::Near, false, true,  false, true,  false);
@@ -1525,7 +1525,7 @@ DemangledTypePtr & VisualStudioDemangler::get_symbol_type(DemangledTypePtr & t)
    case '9':
     t->symbol_type = SymbolType::GlobalThing1; return t;
 
-   // Codes A-X are for class methods.
+    // Codes A-X are for class methods.
    case 'A': return update_method(t, Scope::Private, MethodProperty::Ordinary, Distance::Near);
    case 'B': return update_method(t, Scope::Private, MethodProperty::Ordinary, Distance::Far);
    case 'C': return update_method(t, Scope::Private, MethodProperty::Static, Distance::Near);
@@ -1553,7 +1553,7 @@ DemangledTypePtr & VisualStudioDemangler::get_symbol_type(DemangledTypePtr & t)
    case 'W': return update_method(t, Scope::Public, MethodProperty::Thunk, Distance::Near);
    case 'X': return update_method(t, Scope::Public, MethodProperty::Thunk, Distance::Far);
 
-   // Codes Y & Z are for global (non-method) functions.
+    // Codes Y & Z are for global (non-method) functions.
    case 'Y': t->symbol_type = SymbolType::GlobalFunction; t->distance = Distance::Near; return t;
    case 'Z': t->symbol_type = SymbolType::GlobalFunction; t->distance = Distance::Far; return t;
 

@@ -24,12 +24,12 @@ using RoseDisassembler = Rose::BinaryAnalysis::Disassembler;
 // This instruction occurs rarely enough that IDA refuses to create it _ever_.  We'll try a
 // little harder, creating the instruction only in contexts that don't exceed some threshold.
 class RefuseZeroCode: public P2::BasicBlockCallback {
-protected:
+ protected:
   size_t threshold = 3;
   RefuseZeroCode(size_t t = 3) {
     threshold = t;
   }
-public:
+ public:
   using Ptr = Sawyer::SharedPointer<RefuseZeroCode>;
 
   static Ptr instance() {
@@ -55,9 +55,9 @@ public:
 };
 
 class RefuseOverlappingCode: public P2::BasicBlockCallback {
-protected:
+ protected:
   bool refusing = true;
-public:
+ public:
   using Ptr = Sawyer::SharedPointer<RefuseOverlappingCode>;
 
   static Ptr instance() {
@@ -80,7 +80,7 @@ bool check_zero_insn(SgAsmInstruction* insn);
 // behavior.  This might be corrected in a future version of ROSE, and if it is we should use
 // the standard implementation.
 class MatchJmpToPrologue: public P2::BasicBlockCallback {
-protected:
+ protected:
   // I wanted to use these, but they insist on inspecting bytes that have not been made into
   // instructions, and that's not what we wanted in this case.  Instead, we'll have to copy big
   // parts of the implementations. :-(
@@ -100,7 +100,7 @@ protected:
   // later.
   std::set<rose_addr_t> prologues;
 
-public:
+ public:
   using Ptr = Sawyer::SharedPointer<MatchJmpToPrologue>;
 
   static Ptr instance() {
@@ -113,9 +113,9 @@ public:
 
 // A CFG adjustment callback that might be useful for debugging.
 class Monitor: public P2::CfgAdjustmentCallback {
-private:
+ private:
   ResourceLimit partitioner_limit;
-public:
+ public:
   Monitor();
   static Ptr instance() { return Ptr(new Monitor); }
   virtual bool operator()(bool chain, const AttachedBasicBlock &args);
@@ -124,7 +124,7 @@ public:
 
 
 class MatchThunkPrologue: public P2::ModulesX86::MatchStandardPrologue {
-public:
+ public:
   static Ptr instance() { return Ptr(new MatchThunkPrologue); }
   virtual std::vector<P2::Function::Ptr> functions() const override {
     return std::vector<P2::Function::Ptr>(1, function_);
@@ -132,8 +132,9 @@ public:
   virtual bool match(const P2::Partitioner &partitioner, rose_addr_t anchor) override;
 };
 
-class NamePredicate:
- public Sawyer::Container::SegmentPredicate<MemoryMap::Address, MemoryMap::Value> {
+class NamePredicate :
+    public Sawyer::Container::SegmentPredicate<MemoryMap::Address, MemoryMap::Value>
+{
   const std::string name;
  public:
   NamePredicate(std::string const & n) : name(n) {}

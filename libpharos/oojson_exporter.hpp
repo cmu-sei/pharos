@@ -18,7 +18,7 @@ using JsonNode = pharos::json::NodeRef;
 // This class creates a JSON output file for the class specification. The created JSON file is
 // compatible with the JSON Importer IDA Plugin.
 class OOJsonExporter {
-private:
+ private:
 
   // the name of the JSON output file. Currently, the name of the file is
   // [Orignal executable].json
@@ -39,7 +39,7 @@ private:
   std::string demangle_class_name(std::string mangled_name);
   std::string demangle_method_name(std::string mangled_name);
 
-public:
+ public:
 
   // create a new JSON exporter with the JSON output filename.
   OOJsonExporter(ProgOptVarMap& vm);
@@ -51,7 +51,7 @@ public:
   void export_json(void);
 
   void set_json_filename(std::string fn) {
-     json_filename = fn;
+    json_filename = fn;
   }
 
   // JSG isn't sure what to do with the object instances in OOAnalyzer? It remains commented

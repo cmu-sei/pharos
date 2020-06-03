@@ -174,7 +174,7 @@ from the library; both must be installed, as the examples below.
 ```
 $ sudo yum install sqlite sqlite-devel
 -- or --
-$ sudo apt install sqlite3 libsqlite3-dev 
+$ sudo apt install sqlite3 libsqlite3-dev
 -- or --
 $ sudo zypper install sqlite3 sqlite3-devel
 ```
@@ -250,7 +250,7 @@ $ make -j4
 
 ROSE can consume a fair amount of RAM and CPU power during the build,
 and we recommend that you NOT use a virtual machine with limited RAM
-or old hardware.  Be patient and go have lunch. :-) 
+or old hardware.  Be patient and go have lunch. :-)
 
 To install ROSE, run:
 

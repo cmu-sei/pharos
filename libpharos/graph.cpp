@@ -374,69 +374,69 @@ Graph::create_return_edges(std::set<rose_addr_t> calls)
 }
 
 #if 0
-  // Unfortunately, this algorithm doesn't appear to actually do the correct thing (in my
-  // opinion at least).  It seems to just be missing edges. :-(
+// Unfortunately, this algorithm doesn't appear to actually do the correct thing (in my
+// opinion at least).  It seems to just be missing edges. :-(
 
-  // ROSE's control flow graph doesn't have RETURN edges by default.  You have to call
-  // expandFunctionReturnEdges() which modifies the ROSE cfg using the same algorithm as below,
-  // and then erases the old edges to the indeterminate vertex.  After calling that routine,
-  // I'd then need to walk the graph again to create the edges in our graph.  Copying the
-  // algorithm to here is more efficient and not much more complicated than the code to
-  // subsequently walk the resulting graph.  Of course the downside is that this code might
-  // become inconsistent with the ROSE routine.
+// ROSE's control flow graph doesn't have RETURN edges by default.  You have to call
+// expandFunctionReturnEdges() which modifies the ROSE cfg using the same algorithm as below,
+// and then erases the old edges to the indeterminate vertex.  After calling that routine,
+// I'd then need to walk the graph again to create the edges in our graph.  Copying the
+// algorithm to here is more efficient and not much more complicated than the code to
+// subsequently walk the resulting graph.  Of course the downside is that this code might
+// become inconsistent with the ROSE routine.
 
-  // Sawyer::Container::Map<P2::Function::Ptr, P2::CfgConstEdgeSet>
-  auto fre = findFunctionReturnEdges(p, p.cfg());
-  P2::CfgConstEdgeSet crEdges = findCallReturnEdges(p, p.cfg());
-  for (const P2::ControlFlowGraph::ConstEdgeIterator &crEdge : crEdges) {
-    P2::ControlFlowGraph::ConstVertexIterator callSite = crEdge->source();
-    P2::ControlFlowGraph::ConstVertexIterator returnSite = crEdge->target();
-    P2::CfgConstEdgeSet callEdges = P2::findCallEdges(callSite);
-    for (const P2::ControlFlowGraph::ConstEdgeIterator &callEdge : callEdges) {
-      if (callEdge->target()->value().type() != P2::V_BASIC_BLOCK)
-        continue; // functionCallEdge is not a call to a known function, so ignore it
+// Sawyer::Container::Map<P2::Function::Ptr, P2::CfgConstEdgeSet>
+auto fre = findFunctionReturnEdges(p, p.cfg());
+P2::CfgConstEdgeSet crEdges = findCallReturnEdges(p, p.cfg());
+for (const P2::ControlFlowGraph::ConstEdgeIterator &crEdge : crEdges) {
+  P2::ControlFlowGraph::ConstVertexIterator callSite = crEdge->source();
+  P2::ControlFlowGraph::ConstVertexIterator returnSite = crEdge->target();
+  P2::CfgConstEdgeSet callEdges = P2::findCallEdges(callSite);
+  for (const P2::ControlFlowGraph::ConstEdgeIterator &callEdge : callEdges) {
+    if (callEdge->target()->value().type() != P2::V_BASIC_BLOCK)
+      continue; // functionCallEdge is not a call to a known function, so ignore it
 
-      P2::BasicBlock::Ptr functionBlock = callEdge->target()->value().bblock();
-      std::vector<P2::Function::Ptr> functions = p.functionsOwningBasicBlock(functionBlock);
-      for (const P2::Function::Ptr &function : functions) {
-        for (auto oldReturnEdge : fre.getOrDefault(function)) {
+    P2::BasicBlock::Ptr functionBlock = callEdge->target()->value().bblock();
+    std::vector<P2::Function::Ptr> functions = p.functionsOwningBasicBlock(functionBlock);
+    for (const P2::Function::Ptr &function : functions) {
+      for (auto oldReturnEdge : fre.getOrDefault(function)) {
 
-          rose_addr_t saddr = oldReturnEdge->source()->value().address();
-          rose_addr_t taddr = returnSite->value().address();
-          OINFO << "Return edge from " << addr_str(saddr) << " to " << addr_str(taddr) << LEND;
-          //cfg.insertEdge(oldReturnEdge->source(), returnSite, E_FUNCTION_RETURN);
-        }
+        rose_addr_t saddr = oldReturnEdge->source()->value().address();
+        rose_addr_t taddr = returnSite->value().address();
+        OINFO << "Return edge from " << addr_str(saddr) << " to " << addr_str(taddr) << LEND;
+        //cfg.insertEdge(oldReturnEdge->source(), returnSite, E_FUNCTION_RETURN);
       }
     }
   }
+}
 #endif
 
 #if 0
-  // And this was the beginning of an implementation that was going to read the vertices out of
-  // the ROSE CFG (assuming that they already existed).
+// And this was the beginning of an implementation that was going to read the vertices out of
+// the ROSE CFG (assuming that they already existed).
 
-  // Sawyer::Container::Map<P2::Function::Ptr, P2::CfgConstEdgeSet>
-  auto rmap = P2::findFunctionReturnEdges(p);
+// Sawyer::Container::Map<P2::Function::Ptr, P2::CfgConstEdgeSet>
+auto rmap = P2::findFunctionReturnEdges(p);
 
-  // Iterators to the end vertex, and the indeterminate vertex in the ROSE cfg.
-  auto vend = p.cfg().vertices().end();
-  auto vindeterminate = p.indeterminateVertex();
+// Iterators to the end vertex, and the indeterminate vertex in the ROSE cfg.
+auto vend = p.cfg().vertices().end();
+auto vindeterminate = p.indeterminateVertex();
 
-  // For each function in the ROSE control flow graph.
-  for (auto redges : rmap.values()) {
-    // For each return edge in the ROSE control flow graph.
-    for (auto edge : redges) {
-      auto sourcev = edge->source();
-      auto targetv = edge->target();
-      // Probably just being overly defensive.
-      if (sourcev == vend) continue;
-      if (targetv == vend) continue;
-      // Definitely needed.
-      if (targetv == vindeterminate) continue;
+// For each function in the ROSE control flow graph.
+for (auto redges : rmap.values()) {
+  // For each return edge in the ROSE control flow graph.
+  for (auto edge : redges) {
+    auto sourcev = edge->source();
+    auto targetv = edge->target();
+    // Probably just being overly defensive.
+    if (sourcev == vend) continue;
+    if (targetv == vend) continue;
+    // Definitely needed.
+    if (targetv == vindeterminate) continue;
 
-      // Now that our vertices should both be valid, get the addresses.
-    }
+    // Now that our vertices should both be valid, get the addresses.
   }
+}
 #endif
 
 // Mostly just a mock up to show how we might alter the API.
@@ -474,16 +474,16 @@ Graph Graph::getFunctionCfgByReachability (const FunctionDescriptor *fd) const {
   for (; t; ++t) {
     switch (t.event ()) {
 
-    case Sawyer::Container::Algorithm::ENTER_EDGE: {
-      auto edge_type = t.edge ()->value ().get_type ();
-      if (edge_type == E_CALL || edge_type == E_RETURN)
-        t.skipChildren ();
-      else
-        reachable_edges.insert (t.edge ());
-      break;
-    }
+     case Sawyer::Container::Algorithm::ENTER_EDGE: {
+       auto edge_type = t.edge ()->value ().get_type ();
+       if (edge_type == E_CALL || edge_type == E_RETURN)
+         t.skipChildren ();
+       else
+         reachable_edges.insert (t.edge ());
+       break;
+     }
 
-    default:
+     default:
       break;
     }
   }

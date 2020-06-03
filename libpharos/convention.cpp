@@ -1158,9 +1158,9 @@ CallingConventionMatcher::match(const FunctionDescriptor* fd,
     // would have been in the register.
     if (allow_unused_parameters == false &&
         cc.get_reg_params().size() > 0 && !used_a_parameter_register) {
-        GDEBUG << "Function " << fd->address_string() << " can't match "
-               << cc.get_name() << " because it doesn't use "
-               << "any registers (and unused parameters are disallowed)." << LEND;
+      GDEBUG << "Function " << fd->address_string() << " can't match "
+             << cc.get_name() << " because it doesn't use "
+             << "any registers (and unused parameters are disallowed)." << LEND;
       continue;
     }
 

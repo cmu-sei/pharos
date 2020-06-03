@@ -101,7 +101,7 @@ struct PathVertexWriter {
       output << ", color=red";
     }
     if (is_start) {
-       output << ", color=green";
+      output << ", color=green";
     }
     output << "]";
   }

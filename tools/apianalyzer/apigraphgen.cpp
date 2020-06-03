@@ -37,7 +37,7 @@ ProgOptDesc apianalyzer_options() {
   ProgOptDesc apiopt(version_string.c_str());
 
   apiopt.add_options()
-           ("graphviz,G", po::value<std::string>(), "specify the graphviz output file");
+    ("graphviz,G", po::value<std::string>(), "specify the graphviz output file");
 
   return apiopt;
 }

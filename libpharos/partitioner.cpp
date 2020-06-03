@@ -1175,23 +1175,24 @@ MatchInterFunctionGap::match(const P2::Partitioner &partitioner, rose_addr_t anc
 // jump instruction found in the program image.
 bool
 MatchThunkPrologue::match(const P2::Partitioner &partitioner, rose_addr_t anchor) {
-    // If the instruction already exists, there's no need to create another?
-    if (partitioner.instructionExists(anchor))
-        return false;
+  // If the instruction already exists, there's no need to create another?
+  if (partitioner.instructionExists(anchor))
+    return false;
 
-    // Disassemble the instruction?
-    SgAsmX86Instruction *insn = isSgAsmX86Instruction(partitioner.discoverInstruction(anchor));
+  // Disassemble the instruction?
+  SgAsmX86Instruction *insn = isSgAsmX86Instruction(partitioner.discoverInstruction(anchor));
 
-    // If it's not a jump instruction, we're not interested.
-    if (!insn || insn->get_kind() != x86_jmp)
-        return false;
+  // If it's not a jump instruction, we're not interested.
+  if (!insn || insn->get_kind() != x86_jmp)
+    return false;
 
-    // We should add some additional criteria to further reduce false positives.
+  // We should add some additional criteria to further reduce false positives.
 
-    // We found a jmp instruction! Make a function out of it!
-    GDEBUG << "Making thunk function from: " << debug_instruction(insn) << LEND;
-    function_ = P2::Function::instance(anchor, SgAsmFunction::FUNC_THUNK | SgAsmFunction::FUNC_PATTERN);
-    return true;
+  // We found a jmp instruction! Make a function out of it!
+  GDEBUG << "Making thunk function from: " << debug_instruction(insn) << LEND;
+  function_ = P2::Function::instance(
+    anchor, SgAsmFunction::FUNC_THUNK | SgAsmFunction::FUNC_PATTERN);
+  return true;
 }
 
 bool

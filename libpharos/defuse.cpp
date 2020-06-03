@@ -347,7 +347,7 @@ BlockAnalysis::check_for_invalid_code(SgAsmX86Instruction *insn, size_t i)
 
   // This should really be insn_is_branch(insn)..
   if (((insn->get_kind() >= x86_ja && insn->get_kind() <= x86_js) ||
-        insn->get_kind() == x86_call) && i < insns.size()-1) {
+       insn->get_kind() == x86_call) && i < insns.size()-1) {
     SgAsmStatementPtrList ri;
     // The size_t i, is the current instruction in the basic block being analyzed.
     for (size_t qq = i+1; qq < insns.size(); qq++) ri.push_back(insns[qq]);
@@ -2302,7 +2302,7 @@ DUAnalysis::analyze_basic_blocks_independently()
     // moved to analyze, so it can be evaluated after each instruction?
     ResourceLimit block_limit;
     GDEBUG << "Starting analysis of block " << addr_str(baddr)
-          << " Reason " << bblock->reason_str("", bblock->get_reason()) << LEND;
+           << " Reason " << bblock->reason_str("", bblock->get_reason()) << LEND;
 
     analysis.analyze(false);
 
@@ -2325,8 +2325,8 @@ DUAnalysis::analyze_basic_blocks_independently()
     // GDEBUG << *map_mem;
 
     GDEBUG << "Analysis of basic block " << addr_str(baddr) << " in function "
-          << current_function->address_string() << ", took "
-          << block_limit.get_relative_clock().count() << " seconds." << LEND;
+           << current_function->address_string() << ", took "
+           << block_limit.get_relative_clock().count() << " seconds." << LEND;
   }
 
   return rstatus;

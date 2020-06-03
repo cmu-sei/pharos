@@ -6,7 +6,7 @@ B<callanalyzer> - Extract call sites and arguments from a binary
 
 =head1 SYNOPSIS
 
-callanalyzer [--allow-unknown] [--show-symbolic] 
+callanalyzer [--allow-unknown] [--show-symbolic]
   [--json=JSON_FILENAME] [--pretty-json[=INDENT]]
   [--calls=CALLSET_FILENAME] [--typedb=TYPEDB_FILENAME]
   [...Pharos options...] EXECUTABLE_FILE
@@ -164,7 +164,7 @@ parameters contains any non-abstract, non-unknown values.
 
 =head1 FILES
 
-=over 4 
+=over 4
 
 @PHAROS_FILES_POD@
 

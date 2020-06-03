@@ -42,7 +42,7 @@ using FunctionID = uint32_t;
 
 class PDG {
 
-protected:
+ protected:
   DescriptorSet& ds;
 
   // The function descriptor that we're analyzing.
@@ -78,7 +78,7 @@ protected:
   // A convenient way to get a single read (with some error checking).
   AbstractAccess get_single_mem_read(rose_addr_t addr) const;
 
-public:
+ public:
 
   PDG(DescriptorSet& ds, FunctionDescriptor& f);
   //~PDG();

@@ -171,8 +171,8 @@ struct Path {
   // path
   ExprMap value_exprs;
 
-   // This is the call trace element for this solution from entry to
-   // exit
+  // This is the call trace element for this solution from entry to
+  // exit
   CallTraceDescriptorPtr call_trace_desc;
 
   // here are all numeric because the tree node variables are all
@@ -207,12 +207,12 @@ class CallTraceDescriptor {
 
   CfgEdgeValueMap edge_values_;
 
-   // These values will be part of the frame values
+  // These values will be part of the frame values
   ParamVector parameters_, return_values_;
   ParamVector called_from_parameters_, called_from_return_values_;
   std::vector<StackVariable> stkvars_;
 
-   // values generated on the traversal
+  // values generated on the traversal
   ExprMap value_exprs_;
 
   // expressions to describe the call trace in Z3 terms

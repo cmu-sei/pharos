@@ -42,7 +42,7 @@ class ThisPtrUsage {
   // This is an unordered set of all of the methods sharing the same this-pointer.
   MethodEvidenceMap method_evidence;
 
-public:
+ public:
 
   // The symbolic value of the this-pointer.  In at least some cases, this (used to be?) the
   // allocated memory pointer following a call to new(), which is not really the this-pointer.
@@ -85,7 +85,7 @@ using ThisPtrUsageMap = std::map<SVHash, ThisPtrUsage>;
 // regardless of whether that function is itself an object-oriented method itself.
 class ObjectUse {
 
-public:
+ public:
   // This is the function that contains the object uses.
   const FunctionDescriptor* fd;
   // This is the list of ThisPtrUsages which records the this-pointer and the OO methods called

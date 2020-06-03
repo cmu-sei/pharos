@@ -11,7 +11,7 @@ mkir [--dot=DIRECTORY] [...Pharos options...] EXECUTABLE_FILE
 
 mkir --help
 
-@PHAROS_OPTS_POD@ 
+@PHAROS_OPTS_POD@
 
 =head1 DESCRIPTION
 
@@ -54,7 +54,7 @@ To output to a directory instead:
 
 =head1 FILES
 
-=over 4 
+=over 4
 
 @PHAROS_FILES_POD@
 

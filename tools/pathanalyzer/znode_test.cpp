@@ -507,7 +507,7 @@ TEST_F(Z3TreeNodeTestFixture, DISABLED_TEST_OP_SEXTEND) {
 }
 
 TEST_F(Z3TreeNodeTestFixture, DISABLED_TEST_OP_UEXTEND) {
-    // Not sure how to test this given the conversion
+  // Not sure how to test this given the conversion
 }
 
 TEST_F(Z3TreeNodeTestFixture, TEST_OP_ULT) {
@@ -739,7 +739,7 @@ TEST_F(Z3TreeNodeTestFixture, TEST_EASY_SIMPLIFY) {
         << ", z3::expr: " << e
         << ", Result treenode: " << *result << LEND;
 
-   ASSERT_TRUE(result->isEquivalentTo(false_tn));
+  ASSERT_TRUE(result->isEquivalentTo(false_tn));
 }
 
 // test simplifier for A && !A
@@ -759,7 +759,7 @@ TEST_F(Z3TreeNodeTestFixture, TEST_SPACER) {
         << ", z3::expr: " << e
         << ", Result treenode: " << *result << LEND;
 
-   ASSERT_TRUE(result->isEquivalentTo(false_tn));
+  ASSERT_TRUE(result->isEquivalentTo(false_tn));
 }
 
 // Driver for the program

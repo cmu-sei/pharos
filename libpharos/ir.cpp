@@ -241,11 +241,11 @@ IR add_datablocks (const IR& ir_) {
                      return boost::none;
                  })
                | boost::adaptors::filtered ([] (const auto &bb) {
-                   return bb != boost::none;
-                 })
+                 return bb != boost::none;
+               })
                | boost::adaptors::transformed ([] (const auto &bb) {
-                   return *bb;
-                 }),
+                 return *bb;
+               }),
                std::inserter (basicblocks, basicblocks.end ()));
 
   // Then copy data blocks
@@ -264,8 +264,8 @@ IR add_datablocks (const IR& ir_) {
                                  | boost::adaptors::indexed (db->address ())
                                  // Convert index_value to pair
                                  | boost::adaptors::transformed ([&] (const auto &iv) {
-                                     return std::make_pair (iv.index (), iv.value ());
-                                   }),
+                                   return std::make_pair (iv.index (), iv.value ());
+                                 }),
                                  std::inserter (tmpset, tmpset.end ()));
 
                    return std::make_pair (db, tmpset);
@@ -279,23 +279,26 @@ IR add_datablocks (const IR& ir_) {
 
   Stmts new_stmts;
 
-  boost::for_each (data,
-                   [&] (const auto &p) {
-                     auto db = p.first;
-                     auto m = p.second;
+  boost::for_each (
+    data,
+    [&] (const auto &p) {
+      auto db = p.first;
+      auto m = p.second;
 
-                     std::stringstream ss;
-                     ss << "Initialization of " << db->printableName ();
-                     new_stmts.push_back (CommentStmt (ss.str ()));
+      std::stringstream ss;
+      ss << "Initialization of " << db->printableName ();
+      new_stmts.push_back (CommentStmt (ss.str ()));
 
-                     boost::copy (m
-                                  | boost::adaptors::transformed ([&] (const auto &p2) {
-                                      auto addr = SymbolicExpr::makeIntegerConstant (ir.get_ds ()->get_arch_bits (), p2.first);
-                                      auto v = SymbolicExpr::makeIntegerConstant (8, p2.second);
-                                      return MemWriteStmt (addr, v);
-                                    }),
-                                  std::back_inserter (new_stmts));
-                   });
+      boost::copy (
+        m
+        | boost::adaptors::transformed ([&] (const auto &p2) {
+          auto addr = SymbolicExpr::makeIntegerConstant (
+            ir.get_ds ()->get_arch_bits (), p2.first);
+          auto v = SymbolicExpr::makeIntegerConstant (8, p2.second);
+          return MemWriteStmt (addr, v);
+        }),
+        std::back_inserter (new_stmts));
+    });
 
   // Prepend new statements to entry block
   auto entryv = ir.get_entry ();
@@ -950,30 +953,30 @@ IR IR::get_ir(const FunctionDescriptor* fd) {
         auto range = cd.get_targets ()
         // Only obtain import funcs
         | boost::adaptors::filtered ([&fd] (rose_addr_t target) -> bool {
-            const FunctionDescriptor* tfd = fd->ds.get_func(target);
-            if (!tfd) return false;
-            const SgAsmFunction* func = tfd->get_func ();
-            if (!func) return false;
+          const FunctionDescriptor* tfd = fd->ds.get_func(target);
+          if (!tfd) return false;
+          const SgAsmFunction* func = tfd->get_func ();
+          if (!func) return false;
 
-            return func->get_reason () & SgAsmFunction::FUNC_IMPORT;
-          })
+          return func->get_reason () & SgAsmFunction::FUNC_IMPORT;
+        })
         // Get the first import func
         // XXX: Ugh this wants a random access range.  But we will probably only have one of these 99.99999% of the time
         //| boost::adaptors::sliced (0, 1)
         // Get its name
         | boost::adaptors::transformed ([fd] (rose_addr_t target) -> std::string {
-            // precondition: tfd and func exist
-            const FunctionDescriptor* tfd = fd->ds.get_func(target);
-            const SgAsmFunction* func = tfd->get_func ();
-            std::string import_name = func->get_name();
-            // But try to strip off the "@plt" since a better future
-            // fix will use the import descriptor that doesn't have it.
-            size_t len = import_name.size();
-            if (len > 5 && import_name.substr(len-4, 4) == "@plt") {
-              import_name = import_name.substr(0, len-4);
-            }
-            return import_name;
-          });
+          // precondition: tfd and func exist
+          const FunctionDescriptor* tfd = fd->ds.get_func(target);
+          const SgAsmFunction* func = tfd->get_func ();
+          std::string import_name = func->get_name();
+          // But try to strip off the "@plt" since a better future
+          // fix will use the import descriptor that doesn't have it.
+          size_t len = import_name.size();
+          if (len > 5 && import_name.substr(len-4, 4) == "@plt") {
+            import_name = import_name.substr(0, len-4);
+          }
+          return import_name;
+        });
         auto import_name_iter = boost::begin (range);
 
         if (import_name_iter == boost::end (range)) {

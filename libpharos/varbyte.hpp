@@ -21,7 +21,7 @@
 template < typename T >
 class VarByteUInt
 {
-public:
+ public:
   // constructors
   //VarByteUInt< T >::VarByteUInt(T val):
   VarByteUInt(T val):
@@ -117,7 +117,7 @@ public:
     return retval;
   }
 
-private:
+ private:
   T _val;
   std::vector< uint8_t > _enc_val;
 };

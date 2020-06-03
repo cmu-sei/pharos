@@ -71,7 +71,7 @@ using XsbTerm = impl::xsb::xsb_term;
 bool
 has_type_descriptor(TreeNodePtr tnp) {
 
-   if (tnp == NULL) {
+  if (tnp == NULL) {
     GWARN << "Cannot fetch/create type descriptor because treenode is NULL" << LEND;
     return false;
   }
@@ -188,7 +188,7 @@ to_facts(TreeNodePtr tn, std::shared_ptr<prolog::Session> session) {
   // Emit known typename facts
   session->add_fact(KNOWN_TYPENAME_FACT, treenode_to_xsb(tn), td->get_type_name());
 
-   // Emit known bitwidth
+  // Emit known bitwidth
   session->add_fact(BITWIDTH_FACT, treenode_to_xsb(tn), td->bit_width());
 
   // Emit known pointerness facts
@@ -559,8 +559,8 @@ TypeSolver::assert_global_variable_facts() {
       }
       else {
 
-      // if the global variable has already been assigned a type descriptor, turn it to facts
-      // and re-analyze with new evidence
+        // if the global variable has already been assigned a type descriptor, turn it to facts
+        // and re-analyze with new evidence
 
         TypeDescriptorPtr known_val_tdp = fetch_type_descriptor(global_mem_tnp);
         to_facts(global_mem_tnp, session_);
@@ -621,7 +621,7 @@ TypeSolver::assert_objectness_facts(const CallDescriptor *cd) {
     if (ooa->is_new_method(target_fd->get_address())) {
 
       MTRACE << "Found call to static new method (" << target_fd->address_string() << ")"
-            << " at call " << addr_str(cd->get_address()) << LEND;
+             << " at call " << addr_str(cd->get_address()) << LEND;
 
       // This is how we must get the return value for new() at the call point
       SymbolicValuePtr new_retval;
@@ -719,8 +719,8 @@ TypeSolver::assert_objectness_facts(const CallDescriptor *cd) {
         }
       }
 
-       // If the import is not a call to new() then check to see if it is thiscall-ness and
-       // propogate objectness
+      // If the import is not a call to new() then check to see if it is thiscall-ness and
+      // propogate objectness
 
       else {
 
@@ -801,8 +801,8 @@ TypeSolver::assert_local_variable_facts() {
         }
 
         session_->add_fact(POINTS_TO_FACT,
-          treenode_to_xsb(var_addr_tnp),
-          treenode_to_xsb(var_val_tnp));
+                           treenode_to_xsb(var_addr_tnp),
+                           treenode_to_xsb(var_val_tnp));
 
 
         MDEBUG << "Stack variable PointsTo:  = "
@@ -831,7 +831,8 @@ TypeSolver::assert_local_variable_facts() {
                            treenode_to_xsb(nxt_val_tnp));
 
         MDEBUG << "Emitting sameType fact for stack values treenodes: (cur==nxt): "
-              << addr_str(treenode_to_xsb(cur_val_tnp)) << " == " << addr_str(treenode_to_xsb(nxt_val_tnp)) << LEND;
+               << addr_str(treenode_to_xsb(cur_val_tnp)) << " == "
+               << addr_str(treenode_to_xsb(nxt_val_tnp)) << LEND;
       }
     }
   }
@@ -987,49 +988,52 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
       const GlobalMemoryDescriptorMap& globals = du_analysis_.ds.get_global_map();
       const FunctionDescriptorMap& funcs = du_analysis_.ds.get_func_map();
 
-       for (const GlobalMemoryDescriptorMap::value_type & pair : globals) {
+      for (const GlobalMemoryDescriptorMap::value_type & pair : globals) {
 
-         GlobalMemoryDescriptor const & global_var = pair.second;
+        GlobalMemoryDescriptor const & global_var = pair.second;
 
-         // is this is a function, then it is not really a global variable
-         if (funcs.find(global_var.get_address()) != funcs.end()) continue;
+        // is this is a function, then it is not really a global variable
+        if (funcs.find(global_var.get_address()) != funcs.end()) continue;
 
-         SymbolicValuePtr global_address = global_var.get_memory_address();
-         auto global_values = global_var.get_values();
+        SymbolicValuePtr global_address = global_var.get_memory_address();
+        auto global_values = global_var.get_values();
 
-         if (smart_can_be_equal(global_address,retval.get_value()) == true) {
-           TreeNodePtr global_addr_tnp = global_address->get_expression();
+        if (smart_can_be_equal(global_address,retval.get_value()) == true) {
+          TreeNodePtr global_addr_tnp = global_address->get_expression();
 
-           session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(retval_tnp), treenode_to_xsb(global_addr_tnp));
+          session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(retval_tnp),
+                             treenode_to_xsb(global_addr_tnp));
 
-           MDEBUG << "Emitting sameType fact for global addr to ret val: (ret_val==global_addr) "
-                  << addr_str(treenode_to_xsb(retval_tnp)) << " == " << addr_str(treenode_to_xsb(global_addr_tnp))
-                  << LEND;
+          MDEBUG << "Emitting sameType fact for global addr to ret val: (ret_val==global_addr) "
+                 << addr_str(treenode_to_xsb(retval_tnp)) << " == "
+                 << addr_str(treenode_to_xsb(global_addr_tnp)) << LEND;
 
-         }
-         else {
-           for (auto global_val : global_values) {
-             if (smart_can_be_equal(global_val,retval.get_value()) == true) {
-               TreeNodePtr global_val_tnp = global_val->get_expression();
+        }
+        else {
+          for (auto global_val : global_values) {
+            if (smart_can_be_equal(global_val,retval.get_value()) == true) {
+              TreeNodePtr global_val_tnp = global_val->get_expression();
 
-               session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(retval_tnp), treenode_to_xsb(global_val_tnp));
+              session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(retval_tnp),
+                                 treenode_to_xsb(global_val_tnp));
 
-               MDEBUG << "Emitting sameType fact for global val to ret val: (global_val==ret_val) "
-                      << addr_str(treenode_to_xsb(global_val_tnp)) << " == " << addr_str(treenode_to_xsb(retval_tnp))
-                      << LEND;
-             }
-           }
-         }
-       }
+              MDEBUG << ("Emitting sameType fact for global val to ret val:"
+                         " (global_val==ret_val) ")
+                     << addr_str(treenode_to_xsb(global_val_tnp)) << " == "
+                     << addr_str(treenode_to_xsb(retval_tnp)) << LEND;
+            }
+          }
+        }
+      }
 
-       // TODO: We also need to check return values against parameters. Consider the
-       // following:
-       //
-       //  Object *o = new Object();
-       //  o->method();
-       //
-       // In this case the return value of new may be placed directly in ECX and passe to
-       // o::method
+      // TODO: We also need to check return values against parameters. Consider the
+      // following:
+      //
+      //  Object *o = new Object();
+      //  o->method();
+      //
+      // In this case the return value of new may be placed directly in ECX and passe to
+      // o::method
 
     } // if retval is valid
   } // for each retval
@@ -1089,17 +1093,18 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
       // address of a stack variable to a function
 
       MTRACE << "Checking sameType fact for PBR treenodes: var_addr: "
-            << *var_addr_tnp << " : " << addr_str(var_addr_id)
-            << ", par_val: " << *par_val_tnp << " : " << addr_str(par_val_id) << LEND;
+             << *var_addr_tnp << " : " << addr_str(var_addr_id)
+             << ", par_val: " << *par_val_tnp << " : " << addr_str(par_val_id) << LEND;
 
       if (smart_can_be_equal(var_addr, param.get_value()) == true) {
         if (var_addr_id != par_val_id) {
           MTRACE << "*** Detected stack variable pass by reference" << LEND;
-          session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(var_addr_tnp), treenode_to_xsb(par_val_tnp));
+          session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(var_addr_tnp),
+                             treenode_to_xsb(par_val_tnp));
 
           MDEBUG << "Emitting sameType fact for param/var PBR: (var_addr==param_val) "
-                 << addr_str(treenode_to_xsb(var_addr_tnp)) << " == " << addr_str(treenode_to_xsb(par_val_tnp))
-                 << LEND;
+                 << addr_str(treenode_to_xsb(var_addr_tnp)) << " == "
+                 << addr_str(treenode_to_xsb(par_val_tnp)) << LEND;
         }
       }
       else {
@@ -1127,7 +1132,8 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
 
             // sameType facts are not needed for the exact same treenode
 
-            if (var_val_id != par_val_id) { // TODO: Check this, it will not work for symbolic memory addresses
+            if (var_val_id != par_val_id) { // TODO: Check this, it will not work for symbolic
+                                            // memory addresses
 
               // If the two values are equal but not identical, check
               // their lineage to see if they are related (i.e. have
@@ -1152,8 +1158,8 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
                                    treenode_to_xsb(var_val_tnp), treenode_to_xsb(par_val_tnp));
 
                 MDEBUG << "Emitting sameType fact for param/var PBV: (var_val==param_val) "
-                       << addr_str(treenode_to_xsb(var_val_tnp)) << " == " << addr_str(treenode_to_xsb(par_val_tnp))
-                       << LEND;
+                       << addr_str(treenode_to_xsb(var_val_tnp)) << " == "
+                       << addr_str(treenode_to_xsb(par_val_tnp)) << LEND;
 
 
               }
@@ -1187,8 +1193,10 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
 
         if (!global_val_tnp || !global_mem_tnp) continue;
 
-        MDEBUG << "Global variable val = " << *global_val_tnp << ", mem = " << *global_mem_tnp << LEND;
-        MDEBUG << "Param "  << param.get_num() << " variable val = " << *par_val_tnp << ", mem = " << *par_mem_tnp << LEND;
+        MDEBUG << "Global variable val = " << *global_val_tnp << ", mem = "
+               << *global_mem_tnp << LEND;
+        MDEBUG << "Param "  << param.get_num() << " variable val = " << *par_val_tnp
+               << ", mem = " << *par_mem_tnp << LEND;
 
         // if the memory address of the global is the value of the parameter, then this is PBR
         if (global_mem_tnp->isEquivalentTo(par_val_tnp)) {
@@ -1200,9 +1208,11 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
             MDEBUG << "*** Detected global variable pass by reference" << LEND;
 
             MDEBUG << "Emitting sameType fact for global PBR treenodes: (global mem==param) "
-                  << addr_str(treenode_to_xsb(global_mem_tnp)) << " == " << addr_str(treenode_to_xsb(par_val_tnp)) << LEND;
+                   << addr_str(treenode_to_xsb(global_mem_tnp)) << " == "
+                   << addr_str(treenode_to_xsb(par_val_tnp)) << LEND;
 
-            session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(global_mem_tnp), treenode_to_xsb(par_val_tnp));
+            session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(global_mem_tnp),
+                               treenode_to_xsb(par_val_tnp));
           }
         }
 
@@ -1215,8 +1225,10 @@ TypeSolver::assert_function_call_parameter_facts(const CallDescriptor *cd) {
           if (gvaddr != par_val_id) {
             MDEBUG << "*** Detected global variable pass by value" << LEND;
 
-            MDEBUG << "Emitting sameType fact for global PBV treenodes: gbl address: (global==param) "
-                  << addr_str(treenode_to_xsb(global_val_tnp)) << " == " << addr_str(treenode_to_xsb(par_val_tnp)) << LEND;
+            MDEBUG << ("Emitting sameType fact for global PBV treenodes:"
+                       " gbl address: (global==param) ")
+                   << addr_str(treenode_to_xsb(global_val_tnp)) << " == "
+                   << addr_str(treenode_to_xsb(par_val_tnp)) << LEND;
 
             session_->add_fact(SAME_TYPE_FACT,
                                treenode_to_xsb(global_val_tnp), treenode_to_xsb(par_val_tnp));
@@ -1258,8 +1270,8 @@ TypeSolver::assert_initial_facts(TreeNodePtr tnp) {
       for (auto ite_elm : possible_val_set) {
 
         MDEBUG << "Emitting sameType fact for ITE (part 2)"
-               << addr_str( treenode_to_xsb(ite_elm)) << " == " << addr_str(treenode_to_xsb(tnp))
-               << LEND;
+               << addr_str( treenode_to_xsb(ite_elm)) << " == "
+               << addr_str(treenode_to_xsb(tnp)) << LEND;
 
         session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(ite_elm), treenode_to_xsb(tnp));
       }
@@ -1284,7 +1296,8 @@ TypeSolver::assert_api_facts(const CallDescriptor *cd) {
 
   // There is an import descriptor for this call, assert a fact for the name
   std::stringstream imp_ss;
-  imp_ss << boost::to_upper_copy(id->get_dll_name()) + "!" + boost::to_upper_copy(id->get_name());
+  imp_ss << boost::to_upper_copy(id->get_dll_name())
+         << '!' << boost::to_upper_copy(id->get_name());
 
   // add a fact that names the function call
   session_->add_fact(APINAME_FACT, cd->get_address(), imp_ss.str());
@@ -1329,7 +1342,7 @@ TypeSolver::assert_api_facts(const CallDescriptor *cd) {
       // emit a fact about return type
 
       MTRACE << "The return type of " << imp_ss.str()
-            << " is " << ret_type->get_name() << LEND;
+             << " is " << ret_type->get_name() << LEND;
 
       session_->add_fact(API_RET_TYPE_FACT, imp_ss.str(),  ret_type->get_name());
 
@@ -1626,14 +1639,14 @@ TypeSolver::recursively_assert_facts(TreeNodePtr tnp) {
         session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(kids[1]), treenode_to_xsb(tnp));
 
         MDEBUG << "Emitting sameType fact for ITE: "
-               << addr_str( treenode_to_xsb(kids[1])) << " == " << addr_str(treenode_to_xsb(tnp))
-               << LEND;
+               << addr_str( treenode_to_xsb(kids[1])) << " == "
+               << addr_str(treenode_to_xsb(tnp)) << LEND;
 
         session_->add_fact(SAME_TYPE_FACT, treenode_to_xsb(kids[2]), treenode_to_xsb(tnp));
 
         MDEBUG << "Emitting sameType fact for ITE: "
-              << addr_str( treenode_to_xsb(kids[2])) << " == " << addr_str(treenode_to_xsb(tnp))
-              << LEND;
+               << addr_str( treenode_to_xsb(kids[2])) << " == "
+               << addr_str(treenode_to_xsb(tnp)) << LEND;
       }
 
       for (TreeNodePtr child : kids) {
@@ -1781,7 +1794,8 @@ TypeSolver::update_pointerness() {
   uint64_t pointer_term;
   type_enum pointer_result;
 
-  auto pointer_query = session_->query(FINAL_POINTER_QUERY, var(pointer_term), var(pointer_result));
+  auto pointer_query = session_->query(FINAL_POINTER_QUERY, var(pointer_term),
+                                       var(pointer_result));
   for (; !pointer_query->done(); pointer_query->next()) {
 
     TreeNode* tn = xsb_to_treenode(pointer_term);
@@ -1996,50 +2010,50 @@ OperationContext::~OperationContext() {
 
 OperationContext::OperationContext()
 {
-
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_ADD, new AddStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_AND, new AndStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_ASR, new AsrStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_BV_AND, new BvAndStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_BV_OR, new BvOrStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_BV_XOR, new BvXorStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_CONCAT, new ConcatStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_EQ, new EqStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_EXTRACT, new ExtractStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_INVERT, new InvertStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_ITE, new IteStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_LSSB, new LssbStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_MSSB, new MssbStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_NE, new NeStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_NEGATE, new NegateStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_NOOP, new NoopStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_OR, new OrStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_READ, new ReadStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_ROL, new RolStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_ROR, new RorStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_SDIV, new SdivStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_SET, new SetStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_SEXTEND, new SextendStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_SGE, new SgeStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_SGT, new SgtStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_SHL0, new Shl0Strategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_SHL1, new Shl1Strategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_SHR0, new Shr0Strategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_SHR1, new Shr1Strategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_SLE, new SleStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_SLT, new SltStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_SMOD, new SmodStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_SMUL, new SmulStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_UDIV, new UdivStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_UEXTEND, new UextendStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_UGE, new UgeStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_UGT, new UgtStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_ULE, new UleStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_ULT, new UltStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_UMOD, new UmodStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_UMUL, new UmulStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_WRITE, new WriteStrategy());
-  strategies_.emplace(Rose::BinaryAnalysis::SymbolicExpr::Operator::OP_ZEROP, new ZeropStrategy());
+  namespace rbs = Rose::BinaryAnalysis::SymbolicExpr;
+  strategies_.emplace(rbs::Operator::OP_ADD, new AddStrategy());
+  strategies_.emplace(rbs::Operator::OP_AND, new AndStrategy());
+  strategies_.emplace(rbs::Operator::OP_ASR, new AsrStrategy());
+  strategies_.emplace(rbs::Operator::OP_BV_AND, new BvAndStrategy());
+  strategies_.emplace(rbs::Operator::OP_BV_OR, new BvOrStrategy());
+  strategies_.emplace(rbs::Operator::OP_BV_XOR, new BvXorStrategy());
+  strategies_.emplace(rbs::Operator::OP_CONCAT, new ConcatStrategy());
+  strategies_.emplace(rbs::Operator::OP_EQ, new EqStrategy());
+  strategies_.emplace(rbs::Operator::OP_EXTRACT, new ExtractStrategy());
+  strategies_.emplace(rbs::Operator::OP_INVERT, new InvertStrategy());
+  strategies_.emplace(rbs::Operator::OP_ITE, new IteStrategy());
+  strategies_.emplace(rbs::Operator::OP_LSSB, new LssbStrategy());
+  strategies_.emplace(rbs::Operator::OP_MSSB, new MssbStrategy());
+  strategies_.emplace(rbs::Operator::OP_NE, new NeStrategy());
+  strategies_.emplace(rbs::Operator::OP_NEGATE, new NegateStrategy());
+  strategies_.emplace(rbs::Operator::OP_NOOP, new NoopStrategy());
+  strategies_.emplace(rbs::Operator::OP_OR, new OrStrategy());
+  strategies_.emplace(rbs::Operator::OP_READ, new ReadStrategy());
+  strategies_.emplace(rbs::Operator::OP_ROL, new RolStrategy());
+  strategies_.emplace(rbs::Operator::OP_ROR, new RorStrategy());
+  strategies_.emplace(rbs::Operator::OP_SDIV, new SdivStrategy());
+  strategies_.emplace(rbs::Operator::OP_SET, new SetStrategy());
+  strategies_.emplace(rbs::Operator::OP_SEXTEND, new SextendStrategy());
+  strategies_.emplace(rbs::Operator::OP_SGE, new SgeStrategy());
+  strategies_.emplace(rbs::Operator::OP_SGT, new SgtStrategy());
+  strategies_.emplace(rbs::Operator::OP_SHL0, new Shl0Strategy());
+  strategies_.emplace(rbs::Operator::OP_SHL1, new Shl1Strategy());
+  strategies_.emplace(rbs::Operator::OP_SHR0, new Shr0Strategy());
+  strategies_.emplace(rbs::Operator::OP_SHR1, new Shr1Strategy());
+  strategies_.emplace(rbs::Operator::OP_SLE, new SleStrategy());
+  strategies_.emplace(rbs::Operator::OP_SLT, new SltStrategy());
+  strategies_.emplace(rbs::Operator::OP_SMOD, new SmodStrategy());
+  strategies_.emplace(rbs::Operator::OP_SMUL, new SmulStrategy());
+  strategies_.emplace(rbs::Operator::OP_UDIV, new UdivStrategy());
+  strategies_.emplace(rbs::Operator::OP_UEXTEND, new UextendStrategy());
+  strategies_.emplace(rbs::Operator::OP_UGE, new UgeStrategy());
+  strategies_.emplace(rbs::Operator::OP_UGT, new UgtStrategy());
+  strategies_.emplace(rbs::Operator::OP_ULE, new UleStrategy());
+  strategies_.emplace(rbs::Operator::OP_ULT, new UltStrategy());
+  strategies_.emplace(rbs::Operator::OP_UMOD, new UmodStrategy());
+  strategies_.emplace(rbs::Operator::OP_UMUL, new UmulStrategy());
+  strategies_.emplace(rbs::Operator::OP_WRITE, new WriteStrategy());
+  strategies_.emplace(rbs::Operator::OP_ZEROP, new ZeropStrategy());
 }
 
 // Analyze the operations by selecting and executing the strategy based on RISC
@@ -2062,8 +2076,9 @@ void OperationContext::assert_operation_fact(Rose::BinaryAnalysis::SymbolicExpr:
 
 // Flush asserted facts to a string stream. Each strategy must know how to
 // dump itself
-void OperationContext::save_operation_facts(std::shared_ptr<Session> session, std::iostream &out_sstream) {
-
+void OperationContext::save_operation_facts(std::shared_ptr<Session> session,
+                                            std::iostream &out_sstream)
+{
   if (!session) {
     MDEBUG << "Prolog session invalid!" << LEND;
     return;
@@ -2082,9 +2097,11 @@ void OperationContext::save_operation_facts(std::shared_ptr<Session> session, st
 // relevant to type information
 // *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
 
-// OP_SEXTEND: Signed extension at msb. Extend B to A bits by replicating B's most significant bit.
-void SextendStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session) {
-
+// OP_SEXTEND: Signed extension at msb. Extend B to A bits by replicating B's most significant
+// bit.
+void SextendStrategy::assert_facts(InternalNodePtr in,
+                                   std::shared_ptr<prolog::Session> session)
+{
   MDEBUG << "Generating facts for OP_SEXTEND tree node: " << *in << LEND;
 
   if (!session || !in) return;
@@ -2097,8 +2114,9 @@ void SextendStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::S
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
-void SextendStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream) {
-
+void SextendStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                                 std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm in, A, B;
@@ -2111,9 +2129,11 @@ void SextendStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::
 
 // ------------------------------------------------------------------------------
 
-// OP_UEXTEND: Unsigned extention at msb. Extend B to A bits by introducing zeros at the msb of B.
-void UextendStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session) {
-
+// OP_UEXTEND: Unsigned extention at msb. Extend B to A bits by introducing zeros at the msb of
+// B.
+void UextendStrategy::assert_facts(InternalNodePtr in,
+                                   std::shared_ptr<prolog::Session> session)
+{
   if (!session || !in) return;
 
   MDEBUG << "Generating facts for OP_UEXTEND tree node: " << *in << LEND;
@@ -2159,8 +2179,9 @@ void AddStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessi
   session->add_fact(op_name_, treenode_to_xsb(in), ops);
 }
 
-void AddStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream) {
-
+void AddStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                             std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term;
@@ -2185,8 +2206,9 @@ void SmulStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sess
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
-void SmulStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream) {
-
+void SmulStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                              std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -2213,8 +2235,9 @@ void UmulStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sess
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
-void UmulStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream) {
-
+void UmulStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                              std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -2243,8 +2266,9 @@ void BvAndStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Ses
   session->add_fact(op_name_, treenode_to_xsb(in), ops);
 }
 
-void BvAndStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void BvAndStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                               std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term;
@@ -2274,8 +2298,9 @@ void AndStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessi
   session->add_fact(op_name_, treenode_to_xsb(in), ops);
 }
 
-void AndStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void AndStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                             std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term;
@@ -2287,7 +2312,8 @@ void AndStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iost
 
 // ------------------------------------------------------------------------------
 
-// OP_ASR: Arithmetic shift right. Operand B shifted by A bits; 0 <= A < width(B). A is unsigned.
+// OP_ASR: Arithmetic shift right. Operand B shifted by A bits; 0 <= A < width(B). A is
+// unsigned.
 void AsrStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session) {
   if (!session || !in) return;
 
@@ -2302,8 +2328,9 @@ void AsrStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessi
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(B), treenode_to_xsb(A));
 }
 
-void AsrStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void AsrStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                             std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -2316,7 +2343,8 @@ void AsrStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iost
 // ------------------------------------------------------------------------------
 
 // OP_CONCAT: Concatenation. Operand A becomes high-order bits. Any number of operands.
-void ConcatStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session) {
+void ConcatStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session)
+{
   if (!session || !in) return;
 
   MDEBUG << "Generating facts for OP_CONCAT tree node: " << *in << LEND;
@@ -2332,8 +2360,9 @@ void ConcatStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Se
 
 }
 
-void ConcatStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void ConcatStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                                std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term;
@@ -2360,8 +2389,9 @@ void EqStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessio
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
-void EqStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void EqStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                            std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -2374,7 +2404,9 @@ void EqStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostr
 // ------------------------------------------------------------------------------
 
 // OP_EXTRACT: Extract subsequence of bits. Extract bits [A..B) of C. 0 <= A < B <= width(C).
-void ExtractStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session) {
+void ExtractStrategy::assert_facts(InternalNodePtr in,
+                                   std::shared_ptr<prolog::Session> session)
+{
   if (!session || !in) return;
 
   MDEBUG << "Generating facts for OP_EXTRACT tree node: " << *in << LEND;
@@ -2386,11 +2418,13 @@ void ExtractStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::S
   TreeNodePtr B = kids.at(1);
   TreeNodePtr C = kids.at(2);
 
-  session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B), treenode_to_xsb(C));
+  session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B),
+                    treenode_to_xsb(C));
 }
 
-void ExtractStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream) {
-
+void ExtractStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                                 std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term, A, B, C;
@@ -2403,9 +2437,9 @@ void ExtractStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::
 // ------------------------------------------------------------------------------
 
 // OP_INVERT  Boolean inversion. One operand.
-void InvertStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session) {
-  if (!session || !in) return;
-
+void InvertStrategy::assert_facts(InternalNodePtr in,
+                                  std::shared_ptr<prolog::Session> session)
+{
   MDEBUG << "Generating facts for OP_INVERT tree node: " << *in << LEND;
 
   TreeNodePtrVector kids;
@@ -2416,8 +2450,9 @@ void InvertStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Se
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A));
 }
 
-void InvertStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void InvertStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                                std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A;
@@ -2442,11 +2477,13 @@ void IteStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessi
   TreeNodePtr B = kids.at(1);
   TreeNodePtr C = kids.at(2);
 
-  session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B), treenode_to_xsb(C));
+  session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B),
+                    treenode_to_xsb(C));
 }
 
-void IteStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void IteStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                             std::iostream &out_sstream)
+{
   if (!session) return;
   XsbTerm term,A,B,C;
   auto query = session->query(op_name_, var(term), var(A), var(B), var(C));
@@ -2470,8 +2507,9 @@ void LssbStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sess
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A));
 }
 
-void LssbStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void LssbStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                              std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A;
@@ -2496,8 +2534,9 @@ void MssbStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sess
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A));
 }
 
-void MssbStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void MssbStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                              std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A;
@@ -2524,8 +2563,9 @@ void NeStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessio
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A) ,treenode_to_xsb(B));
 }
 
-void NeStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void NeStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                            std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -2538,7 +2578,8 @@ void NeStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostr
 // ------------------------------------------------------------------------------
 
 // OP_NEGATE: Arithmetic negation. One operand.
-void NegateStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session) {
+void NegateStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session)
+{
   if (!session || !in) return;
 
   MDEBUG << "Generating facts for OP_NEGATE tree node: " << *in << LEND;
@@ -2548,8 +2589,9 @@ void NegateStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Se
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(t));
 }
 
-void NegateStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void NegateStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                                std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A;
@@ -2570,8 +2612,9 @@ void NoopStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sess
   // JSG thinks that there is nothing to do here?
 }
 
-void NoopStrategy::save_facts(std::shared_ptr<prolog::Session> session, UNUSED std::iostream &out_sstream){
-
+void NoopStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                              UNUSED std::iostream &out_sstream)
+{
   if (!session) return;
   // there is nothing to do here
 }
@@ -2594,8 +2637,9 @@ void BvXorStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Ses
   session->add_fact(op_name_, treenode_to_xsb(in), ops);
 }
 
-void BvXorStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void BvXorStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                               std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term;
@@ -2621,8 +2665,9 @@ void BvOrStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sess
   session->add_fact(op_name_, treenode_to_xsb(in), ops);
 }
 
-void BvOrStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void BvOrStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                              std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term;
@@ -2651,8 +2696,9 @@ void OrStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessio
   session->add_fact(op_name_, treenode_to_xsb(in), ops);
 }
 
-void OrStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void OrStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                            std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term;
@@ -2664,7 +2710,8 @@ void OrStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostr
 
 // ------------------------------------------------------------------------------
 
-// OP_READ: Read a value from memory.  Arguments are the memory state and the address expression.
+// OP_READ: Read a value from memory.  Arguments are the memory state and the address
+// expression.
 void ReadStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session) {
   if (!session || !in) return;
 
@@ -2677,8 +2724,9 @@ void ReadStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sess
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(address_tnp));
 }
 
-void ReadStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void ReadStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                              std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A;
@@ -2705,8 +2753,9 @@ void RolStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessi
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(B), treenode_to_xsb(A));
 }
 
-void RolStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void RolStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                             std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -2732,8 +2781,9 @@ void RorStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessi
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(B), treenode_to_xsb(A));
 }
 
-void RorStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void RorStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                             std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -2759,8 +2809,9 @@ void SdivStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sess
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
-void SdivStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void SdivStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                              std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -2786,8 +2837,9 @@ void UdivStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sess
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
-void UdivStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void UdivStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                              std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -2815,8 +2867,9 @@ void SetStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessi
   session->add_fact(op_name_, treenode_to_xsb(in), ops);
 }
 
-void SetStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void SetStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                             std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term;
@@ -2843,8 +2896,9 @@ void SgeStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessi
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
-void SgeStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void SgeStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                             std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -2870,8 +2924,9 @@ void SgtStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessi
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
-void SgtStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void SgtStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                             std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -2883,7 +2938,8 @@ void SgtStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iost
 
 // ------------------------------------------------------------------------------
 
-// OP_SHL0: Shift left, introducing zeros at lsb. Bits of B are shifted by A, where 0 <=A < width(B).
+// OP_SHL0: Shift left, introducing zeros at lsb. Bits of B are shifted by A, where
+// 0 <= A < width(B).
 void Shl0Strategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session) {
   if (!session || !in) return;
 
@@ -2897,8 +2953,9 @@ void Shl0Strategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sess
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(B), treenode_to_xsb(A));
 }
 
-void Shl0Strategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void Shl0Strategy::save_facts(std::shared_ptr<prolog::Session> session,
+                              std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -2908,7 +2965,8 @@ void Shl0Strategy::save_facts(std::shared_ptr<prolog::Session> session, std::ios
   }
 }
 
-// OP_SHL1: Shift left, introducing ones at lsb. Bits of B are shifted by A, where 0 <=A < width(B).
+// OP_SHL1: Shift left, introducing ones at lsb. Bits of B are shifted by A,
+// where 0 <=A < width(B).
 void Shl1Strategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session) {
   if (!session || !in) return;
 
@@ -2922,8 +2980,9 @@ void Shl1Strategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sess
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(B), treenode_to_xsb(A));
 }
 
-void Shl1Strategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void Shl1Strategy::save_facts(std::shared_ptr<prolog::Session> session,
+                              std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -2934,7 +2993,8 @@ void Shl1Strategy::save_facts(std::shared_ptr<prolog::Session> session, std::ios
 }
 // ------------------------------------------------------------------------------
 
-// OP_SHR1: Shift right, introducing ones at msb. Bits of B are shifted by A, where 0 <=A <width(B).
+// OP_SHR1: Shift right, introducing ones at msb. Bits of B are shifted by A,
+// where 0 <=A <width(B).
 void Shr1Strategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session) {
   if (!session || !in) return;
 
@@ -2948,8 +3008,9 @@ void Shr1Strategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sess
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(B), treenode_to_xsb(A));
 }
 
-void Shr1Strategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void Shr1Strategy::save_facts(std::shared_ptr<prolog::Session> session,
+                              std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -2959,7 +3020,8 @@ void Shr1Strategy::save_facts(std::shared_ptr<prolog::Session> session, std::ios
   }
 }
 
-// OP_SHR0: Shift right, introducing zeros at msb. Bits of B are shifted by A, where 0 <=A <width(B)./
+// OP_SHR0: Shift right, introducing zeros at msb. Bits of B are shifted by A,
+// where 0 <=A <width(B)./
 void Shr0Strategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session) {
   if (!session || !in) return;
 
@@ -2973,8 +3035,9 @@ void Shr0Strategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sess
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(B), treenode_to_xsb(A));
 }
 
-void Shr0Strategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void Shr0Strategy::save_facts(std::shared_ptr<prolog::Session> session,
+                              std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -3000,8 +3063,9 @@ void SleStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessi
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
-void SleStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void SleStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                             std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -3027,8 +3091,9 @@ void SltStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessi
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
-void SltStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void SltStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                             std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -3054,8 +3119,9 @@ void SmodStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sess
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
-void SmodStrategy::save_facts(std::shared_ptr<prolog::Session> session, UNUSED std::iostream &out_sstream){
-
+void SmodStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                              UNUSED std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -3081,8 +3147,9 @@ void UmodStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sess
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
-void UmodStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void UmodStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                              std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -3109,8 +3176,9 @@ void UgeStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessi
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
-void UgeStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void UgeStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                             std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -3136,8 +3204,9 @@ void UgtStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessi
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
-void UgtStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void UgtStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                             std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -3163,8 +3232,9 @@ void UleStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessi
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
-void UleStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void UleStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                             std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -3191,8 +3261,9 @@ void UltStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sessi
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A), treenode_to_xsb(B));
 }
 
-void UltStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void UltStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                             std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A,B;
@@ -3213,8 +3284,9 @@ void WriteStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Ses
   // JSG is not sure what to do here ...
 }
 
-void WriteStrategy::save_facts(std::shared_ptr<prolog::Session> session, UNUSED std::iostream &out_sstream){
-
+void WriteStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                               UNUSED std::iostream &out_sstream)
+{
   if (!session) return;
 }
 
@@ -3233,8 +3305,9 @@ void ZeropStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Ses
   session->add_fact(op_name_, treenode_to_xsb(in), treenode_to_xsb(A));
 }
 
-void ZeropStrategy::save_facts(std::shared_ptr<prolog::Session> session, std::iostream &out_sstream){
-
+void ZeropStrategy::save_facts(std::shared_ptr<prolog::Session> session,
+                               std::iostream &out_sstream)
+{
   if (!session) return;
 
   XsbTerm term,A;

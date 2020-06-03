@@ -6,7 +6,7 @@ B<fn2yara> - Function based Yara signature generation
 
 =head1 SYNOPSIS
 
-fn2yara [--output-filename=YARA_FILE] [--min-instructions=NUMBER] 
+fn2yara [--output-filename=YARA_FILE] [--min-instructions=NUMBER]
   [--max-string-bytes=NUMBER] [--basic-blocks] [--comparison]
   [--threshold=NUMBER] [--prefix=STRING] [--address-only]
   [--include-thunks] [--oldway] [...Pharos options...] EXECUTABLE_FILE
@@ -93,7 +93,7 @@ Put examples here.
 
 =head1 FILES
 
-=over 4 
+=over 4
 
 @PHAROS_FILES_POD@
 

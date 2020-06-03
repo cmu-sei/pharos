@@ -56,7 +56,9 @@ tryBinarySearchInt(PosPred, NegPred, List) :-
 
     % We failed! Recurse on first half of the list
     logtrace('We failed! tryBinarySearch on '), logtraceln(List),
-    %(sanityChecks -> true; (logerrorln('sanityChecks failed after retracting guesses; this should never happen'), halt)),
+    %(sanityChecks -> true;
+    %(logerrorln('sanityChecks failed after retracting guesses; this should never happen'),
+    % halt)),
     length(List, ListLen),
     NewListLen is min(16, (ListLen+1)//2),
 
@@ -128,8 +130,9 @@ guessVirtualFunctionCall(Out) :-
     minof((Insn, Constructor, OOffset, VFTable, VOffset),
           (likelyVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset),
            not(factNOTConstructor(Constructor)),
-           doNotGuessHelper(factVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset),
-                            factNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset)))),
+           doNotGuessHelper(
+               factVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset),
+               factNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset)))),
 
     Out = tryOrNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset).
 
@@ -334,7 +337,8 @@ guessDerivedClass(Out) :-
           TupleSet),
     Out = tryBinarySearch(tryDerivedClass, tryEmbeddedObject, TupleSet).
 
-tryEmbeddedObject((OuterClass, InnerClass, Offset)) :- tryEmbeddedObject(OuterClass, InnerClass, Offset).
+tryEmbeddedObject((OuterClass, InnerClass, Offset)) :-
+    tryEmbeddedObject(OuterClass, InnerClass, Offset).
 tryEmbeddedObject(OuterClass, InnerClass, Offset) :-
     countGuess,
     loginfo('Guessing factEmbeddedObject('),
@@ -756,7 +760,7 @@ guessCommitClassHasNoBase(Out) :-
            ClassSet),
     logdebug('Proposing CommitClassHasNoBase('), logdebug(ClassSet), logdebugln(').'),
     Out = tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
-           
+
 
 % --------------------------------------------------------------------------------------------
 % Various rules for guessing method to class assignments...
@@ -1052,19 +1056,21 @@ guessMergeClassesG(Class1, Class2) :-
 
     % Which other classes also install this VFTable
     setof(Class,
-	  Insn2^Offset2^Method2^(factVFTableWrite(Insn2, Method2, Offset2, VFTable),
-				 not(factVFTableOverwrite(Method2, _OtherVFTable, VFTable, Offset2)),
-				 find(Method2, Class),
-				 iso_dif(Class1, Class)),
-	  ClassSet),
+          Insn2^Offset2^Method2^(
+              factVFTableWrite(Insn2, Method2, Offset2, VFTable),
+              not(factVFTableOverwrite(Method2, _OtherVFTable, VFTable, Offset2)),
+              find(Method2, Class),
+              iso_dif(Class1, Class)),
+          ClassSet),
 
-    logdebugln([factVFTableWrite(Method, Offset, VFTable), 'is installed by destructor', Method, 'and these other classes', ClassSet]),
+    logdebugln([factVFTableWrite(Method, Offset, VFTable),
+                'is installed by destructor', Method, 'and these other classes', ClassSet]),
 
     (ClassSet = [Class2]
      ->
-	 logdebug('guessMergeClassesG had one candidate class: '),
-	 logdebug(Class2),
-	 logdebugln('.')
+         logdebug('guessMergeClassesG had one candidate class: '),
+         logdebug(Class2),
+         logdebugln('.')
      ;
      % We will merge with the largest class
      % XXX: This could be implemented more efficiently using a maplist/2 and a sort.
@@ -1074,14 +1080,14 @@ guessMergeClassesG(Class1, Class2) :-
      numberOfMethods(Class2, Class2Size),
      % There is no one bigger
      forall(member(OtherClass, ClassSet),
-	    (numberOfMethods(OtherClass, OtherClassSize),
-	     not(OtherClassSize > Class2Size))),
-     
+            (numberOfMethods(OtherClass, OtherClassSize),
+             not(OtherClassSize > Class2Size))),
+
      logdebug('guessMergeClassesG had more than one candidate class.  Merging with the largest class '),
      logdebug(Class2),
      logdebugln('.')
     ),
-     
+
     checkMergeClasses(Class1, Class2).
 
 guessMergeClasses(Out) :-
@@ -1319,7 +1325,8 @@ tryNOTDeletingDestructor(Method) :-
 
 likelyDeletingDestructor(_, RealDestructor) :-
     ground(RealDestructor),
-    throw_with_backtrace(error(uninstantiation_error(RealDestructor), likelyDeletingDestructor/2)).
+    throw_with_backtrace(error(uninstantiation_error(RealDestructor),
+                               likelyDeletingDestructor/2)).
 
 likelyDeletingDestructor(DeletingDestructor, RealDestructor) :-
     % Deleting destructors must call the real destructor (we think).  Usually offset is zero,

@@ -14,7 +14,7 @@ class PDG; // Forward declaration to avoid include pdg.hpp
 
 // this is the call-specific information for virutal function calls.
 class VirtualFunctionCallInformation {
-public:
+ public:
   // the offset in the object of the virtual function table
   unsigned int vtable_offset;
 
@@ -37,7 +37,7 @@ using VirtualFunctionCallVector = std::vector<VirtualFunctionCallInformation>;
 // This class analyzes a virtual function call.  The algorithm is rather complex, and is
 // documented in the analyze method.
 class VirtualFunctionCallAnalyzer {
-private:
+ private:
 
   // the instruction for the call invocation
   SgAsmX86Instruction *call_insn;
@@ -49,7 +49,7 @@ private:
                       const TreeNodePtr& vtable_ptr,
                       int64_t vtable_offset);
 
-public:
+ public:
 
   // The results of the analysis.
   VirtualFunctionCallVector vcall_infos;

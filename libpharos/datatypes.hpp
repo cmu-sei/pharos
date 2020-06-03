@@ -14,7 +14,7 @@ namespace pharos {
 class Memory;
 
 class TypeBase {
-public:
+ public:
   Memory const & memory;
   rose_addr_t address;
   size_t size ;
@@ -28,7 +28,7 @@ public:
 };
 
 class TypeByte: public TypeBase {
-public:
+ public:
   uint8_t value;
   TypeByte(Memory const & mem): TypeBase(mem, 0, 1) { }
   TypeByte(Memory const & mem, rose_addr_t a): TypeBase(mem, a, 1) { read(); }
@@ -40,7 +40,7 @@ public:
 };
 
 class TypeWord: public TypeBase {
-public:
+ public:
   uint16_t value;
   TypeWord(Memory const & mem): TypeBase(mem, 0, 2) { }
   TypeWord(Memory const & mem, rose_addr_t a): TypeBase(mem, a, 2) { read(); }
@@ -52,7 +52,7 @@ public:
 };
 
 class TypeWordInt: public TypeWord {
-public:
+ public:
   TypeWordInt(Memory const & mem): TypeWord(mem) { }
   TypeWordInt(Memory const & mem, rose_addr_t a): TypeWord(mem, a) { }
   inline std::string str() const { return boost::str(boost::format("%d") % value); }
@@ -60,7 +60,7 @@ public:
 };
 
 class TypeWordSignedInt: public TypeWord {
-public:
+ public:
   TypeWordSignedInt(Memory const & mem): TypeWord(mem) { }
   TypeWordSignedInt(Memory const & mem, rose_addr_t a): TypeWord(mem, a) { }
   inline std::string str() const { return boost::str(boost::format("%d") % (int16_t)value); }
@@ -68,7 +68,7 @@ public:
 };
 
 class TypeDword: public TypeBase {
-public:
+ public:
   uint32_t value;
   TypeDword(Memory const & mem): TypeBase(mem, 0, 4) { }
   TypeDword(Memory const & mem, rose_addr_t a): TypeBase(mem, a, 4) { read(); }
@@ -80,7 +80,7 @@ public:
 };
 
 class TypeDwordInt: public TypeDword {
-public:
+ public:
   TypeDwordInt(Memory const & mem): TypeDword(mem) { }
   TypeDwordInt(Memory const & mem, rose_addr_t a): TypeDword(mem, a) { read(); }
   inline std::string str() const { return boost::str(boost::format("%d") % value); }
@@ -88,7 +88,7 @@ public:
 };
 
 class TypeDwordSignedInt: public TypeDword {
-public:
+ public:
   TypeDwordSignedInt(Memory const & mem): TypeDword(mem) { }
   TypeDwordSignedInt(Memory const & mem, rose_addr_t a): TypeDword(mem, a) { read(); }
   inline std::string str() const { return boost::str(boost::format("%d") % (int32_t)value); }
@@ -97,14 +97,14 @@ public:
 
 // TypeDwordAddr implies a 32-bit analysis architecture. :-(
 class TypeDwordAddr: public TypeDword {
-public:
+ public:
   TypeDwordAddr(Memory const & mem): TypeDword(mem) { }
   TypeDwordAddr(Memory const & mem, rose_addr_t a): TypeDword(mem, a) { read(); }
   inline DataType type() const { return DTypeDwordAddr; }
 };
 
 class TypeQword: public TypeBase {
-public:
+ public:
   uint64_t value;
   TypeQword(Memory const & mem): TypeBase(mem, 0, 8) { }
   TypeQword(Memory const & mem, rose_addr_t a): TypeBase(mem, a, 8) { TypeBase::read(&value); }
@@ -115,7 +115,7 @@ public:
 };
 
 class TypeChar: public TypeByte {
-public:
+ public:
   char value;
   TypeChar(Memory const & mem, rose_addr_t a): TypeByte(mem, a) { read(); }
   inline char read() { TypeByte::read(); return value; }
@@ -125,7 +125,7 @@ public:
 };
 
 class TypeWideChar: public TypeWord {
-public:
+ public:
   wchar_t value;
   TypeWideChar(Memory const & mem, rose_addr_t a): TypeWord(mem, a) { read(); }
   inline wchar_t read() { TypeWord::read(); return value; }
@@ -135,7 +135,7 @@ public:
 };
 
 class TypeString: public TypeBase {
-public:
+ public:
   std::string value;
   TypeString(Memory const & mem): TypeBase(mem) { }
   TypeString(Memory const & mem, rose_addr_t a) : TypeBase(mem) { read(a); }
@@ -146,7 +146,7 @@ public:
 };
 
 class TypeUnicodeString: public TypeBase {
-public:
+ public:
   std::wstring value;
   TypeUnicodeString(Memory const & mem, rose_addr_t a);
   inline std::wstring str() const { return value; }
@@ -154,26 +154,26 @@ public:
 };
 
 class TypeLen8String: public TypeString {
-public:
+ public:
   TypeLen8String(Memory const & mem, rose_addr_t a);
   inline DataType type() const { return DTypeLen8String; }
 };
 
 class TypeLen16String: public TypeString {
-public:
+ public:
   TypeLen16String(Memory const & mem, rose_addr_t a);
   inline DataType type() const { return DTypeLen16String; }
 };
 
 class TypeLen32String: public TypeString {
-public:
+ public:
   TypeLen32String(Memory const & mem, rose_addr_t a);
   inline DataType type() const { return DTypeLen32String; }
 };
 
 // _EH4_SCOPETABLE_RECORD
 class TypeSEH4ScopeTableRecord: public TypeBase {
-public:
+ public:
   TypeDwordSignedInt EnclosingLevel{memory};
   TypeDwordAddr FilterFunc{memory};
   TypeDwordAddr HandleFunc{memory};
@@ -187,7 +187,7 @@ public:
 
 // _EH4_SCOPETABLE
 class TypeSEH4ScopeTable: public TypeBase {
-public:
+ public:
   TypeDwordSignedInt GSCookieOffset{memory};
   TypeDword GSCookieXOROffset{memory};
   TypeDwordSignedInt EHCookieOffset{memory};
@@ -202,7 +202,7 @@ public:
 };
 
 class TypeSEH3ExceptionRegistration: public TypeBase {
-public:
+ public:
   TypeDwordAddr Next{memory};
   TypeDwordAddr ExceptionHandler{memory};
   TypeSEH4ScopeTable ScopeTable{memory};
@@ -217,7 +217,7 @@ public:
 
 // _s_HandlerType
 class TypeSEH4HandlerType: public TypeBase {
-public:
+ public:
   TypeDwordInt adjectives{memory};
   TypeDwordAddr pType{memory};
   TypeDwordInt dispatchObj{memory};
@@ -232,7 +232,7 @@ public:
 
 // _s_TryBlockMapEntry
 class TypeSEH4TryBlockMapEntry: public TypeBase {
-public:
+ public:
   TypeDwordInt tryLow{memory};
   TypeDwordInt tryHigh{memory};
   TypeDwordInt catchHigh{memory};
@@ -249,7 +249,7 @@ public:
 
 // _s_UnwindMapEntry
 class TypeSEH4UnwindMapEntry: public TypeBase {
-public:
+ public:
   TypeDwordSignedInt toState{memory};
   TypeDwordAddr action{memory};
   TypeSEH4UnwindMapEntry(Memory const & mem): TypeBase(mem) {}
@@ -262,7 +262,7 @@ public:
 
 // _s_FuncInfo
 class TypeSEH4FuncInfo: public TypeBase {
-public:
+ public:
   TypeDword magicNumber{memory};
   TypeDwordInt maxState{memory};
   TypeDwordAddr pUnwindMap{memory};
@@ -285,7 +285,7 @@ public:
 
 // _RTC_vardesc
 class TypeRTCVarDesc: public TypeBase {
-public:
+ public:
   TypeDwordSignedInt var_offset{memory}; // named addr in _RTC_vardesc
   TypeDwordInt var_size{memory}; // named size in _RTV_vardesc
   TypeDwordAddr var_name_addr{memory};
@@ -300,7 +300,7 @@ public:
 
 // _RTC_framedesc
 class TypeRTCFrameDesc: public TypeBase {
-public:
+ public:
   TypeDwordInt varCount{memory};
   TypeDwordAddr variables{memory};
   std::vector<TypeRTCVarDesc> vars;
@@ -315,7 +315,7 @@ public:
 
 // 'RTTI Type Descriptor'
 class TypeRTTITypeDescriptor: public TypeBase {
-public:
+ public:
   TypeDwordAddr pVFTable{memory};
   TypeDword spare{memory};
   TypeString name{memory};
@@ -330,7 +330,7 @@ public:
 
 // 'RTTI Base Class Array'
 class TypeRTTIBaseClassArray: public TypeBase {
-public:
+ public:
   TypeRTTIBaseClassArray(Memory const & mem): TypeBase(mem) { }
   TypeRTTIBaseClassArray(Memory const & mem, rose_addr_t a) : TypeBase(mem) { read(a); }
   using TypeBase::read;
@@ -341,7 +341,7 @@ public:
 
 // 'RTTI Base Class Descriptor'
 class TypeRTTIBaseClassDescriptor: public TypeBase {
-public:
+ public:
   TypeDwordAddr pTypeDescriptor{memory};
   TypeDwordInt numContainedBases{memory};
   // Really a _PMD structure for next three dwords.
@@ -363,7 +363,7 @@ public:
 
 // 'RTTI Class Hierarchy Descriptor'
 class TypeRTTIClassHierarchyDescriptor: public TypeBase {
-public:
+ public:
   TypeDword signature{memory};
   TypeDword attributes{memory};
   TypeDwordInt numBaseClasses{memory};
@@ -380,7 +380,7 @@ public:
 
 // 'RTTI Complete Object Locator'
 class TypeRTTICompleteObjectLocator: public TypeBase {
-public:
+ public:
   TypeDword signature{memory};
   TypeDword offset{memory};
   TypeDword cdOffset{memory};

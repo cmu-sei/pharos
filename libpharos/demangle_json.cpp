@@ -153,30 +153,30 @@ JsonOutput::ObjectRef JsonOutput::raw(DemangledType const & sym) const
   auto & obj = *node;
 
   auto add_bool = [&obj](char const * name, bool val) {
-                    if (val) {
-                      obj.add(name, val);
-                    }
-                  };
+    if (val) {
+      obj.add(name, val);
+    }
+  };
 
   auto add_rlist = [&obj, this](char const * name, FullyQualifiedName const & names) {
-                    if (!names.empty()) {
-                      auto nlist = builder.array();
-                      for (auto i = names.rbegin(); i != names.rend(); ++i) {
-                        nlist->add(raw(**i));
-                      }
-                      obj.add(name, std::move(nlist));
-                    }
-                   };
+    if (!names.empty()) {
+      auto nlist = builder.array();
+      for (auto i = names.rbegin(); i != names.rend(); ++i) {
+        nlist->add(raw(**i));
+      }
+      obj.add(name, std::move(nlist));
+    }
+  };
 
   auto add_list = [&obj, this](char const * name, FullyQualifiedName const & names) {
-                    if (!names.empty()) {
-                      auto nlist = builder.array();
-                      for (auto & n : names) {
-                        nlist->add(raw(*n));
-                      }
-                      obj.add(name, std::move(nlist));
-                    }
-                  };
+    if (!names.empty()) {
+      auto nlist = builder.array();
+      for (auto & n : names) {
+        nlist->add(raw(*n));
+      }
+      obj.add(name, std::move(nlist));
+    }
+  };
 
   add_bool("is_const", sym.is_const);
   add_bool("is_volatile", sym.is_volatile);

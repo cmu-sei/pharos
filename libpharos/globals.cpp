@@ -288,8 +288,8 @@ void TypeSEH3ExceptionRegistration::read(rose_addr_t a) {
 
 std::string TypeSEH3ExceptionRegistration::str() const {
   return boost::str(boost::format("<next=%s ehfunc=%s scopetable=%s lvl=%s>") %
-             Next.str() % ExceptionHandler.str() %
-             ScopeTable.str() % TryLevel.str());
+                    Next.str() % ExceptionHandler.str() %
+                    ScopeTable.str() % TryLevel.str());
 }
 
 // This is defined in the Microsoft source code as:
@@ -303,7 +303,7 @@ void TypeSEH4ScopeTableRecord::read(rose_addr_t a) {
 
 std::string TypeSEH4ScopeTableRecord::str() const {
   return boost::str(boost::format("<lvl=%s filter=%s handler=%s>") %
-             EnclosingLevel.str() % FilterFunc.str() % HandleFunc.str());
+                    EnclosingLevel.str() % FilterFunc.str() % HandleFunc.str());
 }
 
 // This is defined in the Microsoft source code as:
@@ -327,10 +327,10 @@ void TypeSEH4ScopeTable::read(rose_addr_t a) {
 
 std::string TypeSEH4ScopeTable::str() const {
   std::string base = boost::str(boost::format("<gsc=%s gscx=%s ehc=%s ehcx=%s>") %
-                         GSCookieOffset.str() %
-                         GSCookieXOROffset.str() %
-                         EHCookieOffset.str() %
-                         EHCookieXOROffset.str());
+                                GSCookieOffset.str() %
+                                GSCookieXOROffset.str() %
+                                EHCookieOffset.str() %
+                                EHCookieXOROffset.str());
   base += "recs=[ ";
   for (const TypeSEH4ScopeTableRecord & scope : ScopeRecord) {
     base += scope.str();
@@ -359,8 +359,8 @@ void TypeSEH4TryBlockMapEntry::read(rose_addr_t a) {
 
 std::string TypeSEH4TryBlockMapEntry::str() const {
   return boost::str(boost::format("<trylow=%s tryhigh=%s catchhigh=%s ncatches=%s handlers=%s>") %
-             tryLow.str() % tryHigh.str() % catchHigh.str() %
-             nCatches.str() % pHandlerArray.str());
+                    tryLow.str() % tryHigh.str() % catchHigh.str() %
+                    nCatches.str() % pHandlerArray.str());
 }
 
 void TypeSEH4HandlerType::read(rose_addr_t a) {
@@ -372,8 +372,8 @@ void TypeSEH4HandlerType::read(rose_addr_t a) {
 
 std::string TypeSEH4HandlerType::str() const {
   return boost::str(boost::format("<adj=%s type=%s obj=%s handler=%s>") %
-             adjectives.str() % pType.str() %
-             dispatchObj.str() % addressOfHandler.str());
+                    adjectives.str() % pType.str() %
+                    dispatchObj.str() % addressOfHandler.str());
 }
 
 void TypeSEH4UnwindMapEntry::read(rose_addr_t a) {
@@ -430,13 +430,14 @@ void TypeSEH4FuncInfo::read(rose_addr_t a) {
 }
 
 std::string TypeSEH4FuncInfo::str() const {
-  return boost::str(boost::format(
-    "<magic=%s states=%s unwind=%s ntries=%s trymap=%s nip=%s ipm=%s estypes=%s flags=%s>") %
-             magicNumber.str() %
-             maxState.str() % pUnwindMap.str() %
-             nTryBlocks.str() % pTryBlocksMap.str() %
-             nIPMapEntries.str() % pIPtoStateMap.str() %
-             pESTypeList.str() % EHFlags.str());
+  return boost::str(
+    boost::format(
+      "<magic=%s states=%s unwind=%s ntries=%s trymap=%s nip=%s ipm=%s estypes=%s flags=%s>") %
+    magicNumber.str() %
+    maxState.str() % pUnwindMap.str() %
+    nTryBlocks.str() % pTryBlocksMap.str() %
+    nIPMapEntries.str() % pIPtoStateMap.str() %
+    pESTypeList.str() % EHFlags.str());
 }
 
 void TypeSEH4FuncInfo::dump() {

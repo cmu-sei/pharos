@@ -419,7 +419,7 @@ void p2c(Functor<T...> & arg, xsb_term pt, detail::Index<i, Next...>) {
 template <typename T>
 void c2p(const T * arg, xsb_term pt) {
   static_assert(sizeof(T*) <= sizeof(xsb_int), "Cannot store pointer as int");
-    c2p(functor("__ptr", reinterpret_cast<xsb_int>(arg)), pt);
+  c2p(functor("__ptr", reinterpret_cast<xsb_int>(arg)), pt);
 }
 template <typename T>
 void p2c(T * & arg, xsb_term pt) {

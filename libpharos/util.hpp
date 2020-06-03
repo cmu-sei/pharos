@@ -115,14 +115,14 @@ constexpr
 typename std::enable_if<detail::tget_tuple_helper<T, Types...>::count == 1,
                         typename detail::tget_tuple_helper<T, Types...>::type &>::type
 tget(std::tuple<Types...> & t) {
-    return std::get<detail::tget_tuple_helper<T, Types...>::pos>(t);
+  return std::get<detail::tget_tuple_helper<T, Types...>::pos>(t);
 }
 template <typename T, typename... Types>
 constexpr
 typename std::enable_if<detail::tget_tuple_helper<T, Types...>::count == 1,
                         typename detail::tget_tuple_helper<T, Types...>::type const &>::type
 tget(std::tuple<Types...> const & t) {
-    return std::get<detail::tget_tuple_helper<T, Types...>::pos>(t);
+  return std::get<detail::tget_tuple_helper<T, Types...>::pos>(t);
 }
 
 // Accessor by type functions for std::pair
@@ -147,7 +147,7 @@ tget(std::pair<A, B> const & t) {
 template<typename T, typename... Args>
 std::unique_ptr<T> make_unique(Args&&... args)
 {
-    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+  return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 #else
 using std::make_unique;

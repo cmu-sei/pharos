@@ -29,13 +29,13 @@ using Rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_LATE
 // we temporarily store reads and writes on a per instruction basis here.
 class SymbolicRiscOperators: public SymRiscOperators {
 
-public:
+ public:
   struct Callbacks {
     virtual ~Callbacks() = default;
     virtual void readMemory(SymbolicRiscOperators &, SymbolicValuePtr /* saddr */) {}
   };
 
-private:
+ private:
   // Cache a handle to the EIP register descriptor so that we can easily remove reads and
   // writes of the instruction pointer.
   RegisterDescriptor EIP;
@@ -57,7 +57,7 @@ private:
   // Map for every treenode we every find
   std::map<TreeNode*, TreeNodePtr> unique_treenodes;
 
-protected:
+ protected:
 
   // Constructors must remain private so that all instances are constructed through calls to
   // instance().
@@ -74,7 +74,7 @@ protected:
                                  const SmtSolverPtr & solver_,
                                  Callbacks * callbacks_);
 
-public:
+ public:
 
   // Instance() methods must take custom types to ensure promotion.
   static SymbolicRiscOperatorsPtr instance(

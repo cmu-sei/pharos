@@ -69,7 +69,7 @@ class OOVirtualFunctionTable {
   OOVirtualFunctionTable() : address_(INVALID), size_(0), rtti_address_(INVALID),rtti_col_(nullptr) { }
 
   OOVirtualFunctionTable(rose_addr_t a, size_t s, rose_addr_t ra,
-    TypeRTTICompleteObjectLocatorPtr rc);
+                         TypeRTTICompleteObjectLocatorPtr rc);
 
   OOVirtualFunctionTable(rose_addr_t a);
 

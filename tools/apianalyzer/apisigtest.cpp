@@ -11,7 +11,7 @@ using namespace pharos;
 // This is the main test fixture
 class ApiSigTest : public testing::Test {
 
-protected:
+ protected:
 
   std::unique_ptr<ApiSigManager> sig_manager_;
 

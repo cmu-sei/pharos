@@ -140,7 +140,7 @@ class CallDescriptor : private Immobile {
     return o;
   }
 
-public:
+ public:
 
   DescriptorSet& ds;
 
@@ -268,7 +268,7 @@ public:
 
 class CallDescriptorMap: public std::map<rose_addr_t, CallDescriptor>, private Immobile {
 
-public:
+ public:
 
   CallDescriptorMap() = default;
 
@@ -307,7 +307,7 @@ public:
 // values are included during iteration. Currently, the included values are a conjunction. That
 // is, they are "and'd" together
 class CallDescMapPredicate {
-public:
+ public:
 
   // The default values for predicate parameters are unspecified, which is different than
   // unknown.
@@ -344,7 +344,7 @@ public:
     return (ct_match && gc_match && tc_match);
   }
 
-private:
+ private:
 
   CallType call_type;
   GenericConfidence conf;

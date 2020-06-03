@@ -35,7 +35,7 @@ const DescriptorSet* global_ds = nullptr;
 // Thisis the main test fixture
 class ApiAnalyzerTest : public testing::Test {
 
-protected:
+ protected:
 
   ApiGraph api_graph_;
   std::vector<rose_addr_t> component_list_;
@@ -292,7 +292,7 @@ TEST_F(ApiAnalyzerApiCfgComponentTest, TEST_DISCONNECT_ENTRY) {
 
   // TODO: make this a weak pointer
   cfg = ci->GetCfg();
-  
+
 
   target =  ci->GetVertexByAddr(entry_ea);
 
@@ -837,7 +837,7 @@ TEST_F(ApiAnalyzertSearchManagerTest, TEST_SHOULD_HANDLE_BACKTRACKING_INTRAPROCE
     break;
   }
   // this is the valid signature for
-                            //"0x0040125D 0x004012AB                       0x004012DF 0x004012E5"
+  //"0x0040125D 0x004012AB                       0x004012DF 0x004012E5"
   std::string expected_st = "0x0040125D0x004012AB0x004012BE0x004012D50x004012DF0x004012E5";
   EXPECT_EQ(st, expected_st);
 }

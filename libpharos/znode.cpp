@@ -237,7 +237,7 @@ PharosZ3Solver::z3_to_treenode(z3::expr const & e) {
        auto sa = z3_to_treenode(e.arg(1));
        auto expr = z3_to_treenode(e.arg(0));
 
-      return SymbolicExpr::makeAsr(sa, expr);
+       return SymbolicExpr::makeAsr(sa, expr);
      }
      case Z3_OP_EQ: {
        // According to rose, two arguments of the same size are required
@@ -263,18 +263,18 @@ PharosZ3Solver::z3_to_treenode(z3::expr const & e) {
      }
      case Z3_OP_BSUB:
 
-       assert(e.num_args() == 2);
+      assert(e.num_args() == 2);
 
-       // If the first argument is 0 then this is bvsub 0, E, which is
-       // really -E
-       if (e.arg(0).is_numeral() && 0==e.arg(0).get_numeral_uint()) {
-         return SymbolicExpr::makeNegate(z3_to_treenode(e.arg(1)));
-       }
-       // If the first argument is not 0, then this is a genuine
-       // subtraction. Making this into a treenode requires having
-       // an addition of an (arithmetically?) negated term
-       return SymbolicExpr::makeAdd(z3_to_treenode(e.arg(0)),
-                                    SymbolicExpr::makeNegate(z3_to_treenode(e.arg(1))));
+      // If the first argument is 0 then this is bvsub 0, E, which is
+      // really -E
+      if (e.arg(0).is_numeral() && 0==e.arg(0).get_numeral_uint()) {
+        return SymbolicExpr::makeNegate(z3_to_treenode(e.arg(1)));
+      }
+      // If the first argument is not 0, then this is a genuine
+      // subtraction. Making this into a treenode requires having
+      // an addition of an (arithmetically?) negated term
+      return SymbolicExpr::makeAdd(z3_to_treenode(e.arg(0)),
+                                   SymbolicExpr::makeNegate(z3_to_treenode(e.arg(1))));
 
       // -----------------------------------------
       // ITE FTW!
@@ -525,7 +525,7 @@ PharosHornRule::vars () const {return vars_;}
 
 PharosHornAnalyzer::PharosHornAnalyzer() : goal_name_("goal")
 {
-   // Set the fixed point engine to use spacer and CHC
+  // Set the fixed point engine to use spacer and CHC
   z3::context& ctx = *z3_.z3Context();
   fixedpoint_ = std::make_unique<z3::fixedpoint>(ctx);
   z3::params params(ctx);

@@ -21,7 +21,7 @@ class ThisCallMethod;
 // __thiscall method.  This includes objects embedded in the current object.
 class FuncOffset {
 
-public:
+ public:
 
   // The address being called.
   rose_addr_t address;
@@ -48,7 +48,7 @@ public:
 // thought to -- in particular Jeff Gennari made some progress in this area I think.
 class Member {
 
-public:
+ public:
   // This is the offset in the current object where the member is located.
   unsigned int offset;
 
@@ -108,7 +108,7 @@ class ThisCallMethod {
   // non-leaf pointers...
   LeafNodePtr leaf;
 
-public:
+ public:
 
   bool returns_self;
   bool no_calls_before;

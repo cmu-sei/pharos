@@ -51,7 +51,7 @@ TestConfigVector test_config;
 
 ::std::ostream& operator<<(::std::ostream& os, const PATestConfiguration& cfg) {
   return os << cfg.DebugString();  // whatever needed to print bar to os
-}
+  }
 
 class PATestAnalyzer : public BottomUpAnalyzer {
  private:
@@ -97,7 +97,7 @@ class PATestAnalyzer : public BottomUpAnalyzer {
 
     test_config_.push_back(
       PATestConfiguration(test_name, method, goal_smt_file, nongoal_smt_file, s));
-     config_ = &(test_config_.back());
+    config_ = &(test_config_.back());
   }
 
   void visit(FunctionDescriptor *fd) override {

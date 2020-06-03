@@ -25,7 +25,7 @@ std::string test_config = "";
 // Thisis the main test fixture
 class ApiParamTest : public testing::Test {
 
-protected:
+ protected:
 
   std::unique_ptr<ApiSigManager> sig_manager_;
 
@@ -35,7 +35,7 @@ protected:
 
   ApiParamTest() : api_graph_(*global_ds) {
 
-     //;tests/apitests3_sig.json";
+    //;tests/apitests3_sig.json";
     json_file_ = test_config;
 
   }
@@ -141,7 +141,7 @@ TEST_F(ApiParamTest,TEST_SHOULD_NOT_FIND_API_MATCH_WITH_PARAM_MISMATCH) {
 TEST_F(ApiParamTest,TEST_SHOULD_NOT_FIND_API_MATCH_WITH_RETVAL_MISMATCH) {
 
   ApiSig sig = GetSigToMatch("BadRetvalSig");
-   if (!sig.IsValid()) {
+  if (!sig.IsValid()) {
     FAIL() << "Could not find test signature!";
     return;
   }
@@ -185,11 +185,11 @@ TEST_F (ApiParamTest,TEST_SHOULD_CORRECTLY_HANDLE_OUT_PARAMS_INTER) {
   sig.api_count = sig.api_calls.size();
 
   ApiSearchResultVector results;
-   api_graph_.Search(sig, &results);
+  api_graph_.Search(sig, &results);
 
-   rose_addr_t component = 0x00401B10;
-   std::string search_tree = "0x00401AD00x00401B360x00401B5B";
-   CheckResultTree(component, search_tree, results);
+  rose_addr_t component = 0x00401B10;
+  std::string search_tree = "0x00401AD00x00401B360x00401B5B";
+  CheckResultTree(component, search_tree, results);
 }
 
 TEST_F(ApiParamTest,TEST_SHOULD_CORRECTLY_HANDLE_MULTIPLE_IN_PARAMS) {

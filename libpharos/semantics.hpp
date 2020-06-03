@@ -77,7 +77,7 @@ constexpr uint32_t LOADER_DEFINED      = UINT32_C(0x00040000);
 
 class SymbolicValue: public ParentSValue {
 
-private:
+ private:
   // These two used to be in OUR SValue (non-templated) class.  Cory notes that these should
   // all be private to ensure that we're not using them inappropriately.  Fortunately, at the
   // time of this comment, all constructor calls are wrapped in SymbolicValuePtr().
@@ -96,7 +96,7 @@ private:
     this->set_comment(other.get_comment());
   }
 
-public:
+ public:
 
   // Conversion to TreeNodePtr
   operator TreeNodePtr() const {
@@ -280,7 +280,7 @@ class AbstractAccess {
   // responsibility in the constructor to this private method.
   void set_latest_writers(DescriptorSet const & ds, SymbolicStatePtr& state);
 
-public:
+ public:
 
   // The memory address when the abstract location references memory.
   SymbolicValuePtr memory_address;

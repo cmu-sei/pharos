@@ -449,47 +449,47 @@ void CallDescriptor::analyze() {
 
   SgAsmExpression* expr = elist[0];
   switch (expr->variantT()) {
-    case V_SgAsmMemoryReferenceExpression: {
-      SgAsmMemoryReferenceExpression* mr = isSgAsmMemoryReferenceExpression(expr);
-      SgAsmExpression *addr_expr = mr->get_address();
-      SgAsmIntegerValueExpression* addr_value = isSgAsmIntegerValueExpression(addr_expr);
-      if (addr_value != NULL) {
-        uint64_t v = addr_value->get_absoluteValue();
-        ImportDescriptor *id = ds.get_rw_import(v); // Set in CD
-        if (id) {
-          // We'd like to call add_import_target() here, but it calls update_connections, which
-          // we're not ready for yet. Try to keep this in sync with add_import_target() :-(
-          confidence = ConfidenceConfident;
-          call_location = CallExternal;
-          call_type = CallImport;
-          import_descriptor = id;
-          targets.insert(id->get_address());
-        } else
-          call_type = CallGlobalVariable;
-      } else
-        call_type = CallUnknown;
-      break;
-    }
-    case V_SgAsmDirectRegisterExpression: {
-      call_type = CallRegister;
-      break;
-    }
-    case V_SgAsmIntegerValueExpression: {
-      size_t arch_bits = ds.get_arch_bits();
-      SgAsmIntegerValueExpression* int_expr = isSgAsmIntegerValueExpression(expr);
-      if (int_expr->get_significantBits() != arch_bits) {
-        GWARN << "Unexpected size for fixed call target address at" << address_string() << LEND;
-      }
-      confidence = ConfidenceCertain;
-      call_location = CallInternal;
-      call_type = CallImmediate;
-      break;
-    }
-    default: {
-      call_type = CallUnknown;
-      GERROR << "Unexpected operand type in: " << debug_instruction(insn) << LEND;
-      break;
-    }
+   case V_SgAsmMemoryReferenceExpression: {
+     SgAsmMemoryReferenceExpression* mr = isSgAsmMemoryReferenceExpression(expr);
+     SgAsmExpression *addr_expr = mr->get_address();
+     SgAsmIntegerValueExpression* addr_value = isSgAsmIntegerValueExpression(addr_expr);
+     if (addr_value != NULL) {
+       uint64_t v = addr_value->get_absoluteValue();
+       ImportDescriptor *id = ds.get_rw_import(v); // Set in CD
+       if (id) {
+         // We'd like to call add_import_target() here, but it calls update_connections, which
+         // we're not ready for yet. Try to keep this in sync with add_import_target() :-(
+         confidence = ConfidenceConfident;
+         call_location = CallExternal;
+         call_type = CallImport;
+         import_descriptor = id;
+         targets.insert(id->get_address());
+       } else
+         call_type = CallGlobalVariable;
+     } else
+       call_type = CallUnknown;
+     break;
+   }
+   case V_SgAsmDirectRegisterExpression: {
+     call_type = CallRegister;
+     break;
+   }
+   case V_SgAsmIntegerValueExpression: {
+     size_t arch_bits = ds.get_arch_bits();
+     SgAsmIntegerValueExpression* int_expr = isSgAsmIntegerValueExpression(expr);
+     if (int_expr->get_significantBits() != arch_bits) {
+       GWARN << "Unexpected size for fixed call target address at" << address_string() << LEND;
+     }
+     confidence = ConfidenceCertain;
+     call_location = CallInternal;
+     call_type = CallImmediate;
+     break;
+   }
+   default: {
+     call_type = CallUnknown;
+     GERROR << "Unexpected operand type in: " << debug_instruction(insn) << LEND;
+     break;
+   }
   }
 }
 

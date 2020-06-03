@@ -55,7 +55,7 @@ std::string debug_function(const FunctionDescriptor* fd, const unsigned int max_
 
 class DebugDisasm: public AstSimpleProcessing
 {
-public:
+ public:
   const DescriptorSet& ds;
   unsigned int hex_bytes;
   bool basic_block_lines;

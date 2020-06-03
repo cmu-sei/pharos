@@ -13,7 +13,7 @@ dumpmasm --help
 
 dumpmasm --rose-version
 
-@PHAROS_OPTS_POD@ 
+@PHAROS_OPTS_POD@
 
 =head1 DESCRIPTION
 
@@ -61,7 +61,7 @@ Put examples here.
 
 =head1 FILES
 
-=over 4 
+=over 4
 
 @PHAROS_FILES_POD@
 

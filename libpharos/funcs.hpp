@@ -28,7 +28,7 @@ class FunctionDescriptorMap;
 // actual implementation is later in this file once we have a full function descriptor
 // definiton.
 class FunctionDescriptorCompare {
-public:
+ public:
   bool operator()(const FunctionDescriptor* x, const FunctionDescriptor* y) const;
 };
 // A set of function descriptors.
@@ -39,7 +39,7 @@ class CallDescriptor;
 // This is to keep members in the CallDescriptorSet in a consistent address order.  The actual
 // implementation is over in calls.cpp where we have a full call descriptor definition.
 class CallDescriptorCompare {
-public:
+ public:
   bool operator()(const CallDescriptor* x, const CallDescriptor* y) const;
 };
 // A set of call descriptors.
@@ -75,7 +75,7 @@ class ThisCallMethod;
 
 class FunctionDescriptor : private Immobile {
 
-public:
+ public:
   DescriptorSet& ds;
 
   mutable shared_mutex mutex;
@@ -85,7 +85,7 @@ public:
   // keeping them in the FunctionDescriptor, we'll generate them only if explicitly requested
   // by passing in this classs to populate, and return them in there:
   class ExtraFunctionHashData {
-  public:
+   public:
     std::string mnemonics; // concatenated mnemonics
     std::string mnemcats; // concatenated mnemonic categories
 
@@ -100,7 +100,7 @@ public:
     std::vector< rose_addr_t > basic_block_addrs; // added in flow order (take len to get # bbs)
     std::vector< std::pair< rose_addr_t, rose_addr_t > > cfg_edges; // from->to pairs of bb addrs (empty if only 1 bb?)
     class BasicBlockHashData {
-    public:
+     public:
       //rose_addr_t addr; // eh, get addr from list above or map below
       std::string pic;
       std::string cpic;
@@ -110,7 +110,7 @@ public:
     std::map< rose_addr_t, BasicBlockHashData > basic_block_hash_data;
   };
 
-private:
+ private:
 
   // The address of the function.  This can refer to address that does not yet have a function
   // object, or it can be an invalid address (typically zero).
@@ -296,7 +296,7 @@ private:
     return boost::str(boost::format("0x%08X") % address);
   }
 
-public:
+ public:
 
   FunctionDescriptor(DescriptorSet& ds);
   FunctionDescriptor(DescriptorSet& ds, SgAsmFunction* f);
@@ -541,7 +541,7 @@ using FuncDescVector = std::vector<FunctionDescriptor *>;
 
 class FunctionDescriptorMap: public std::map<rose_addr_t, FunctionDescriptor> {
 
-public:
+ public:
 
   const FunctionDescriptor* get_func(rose_addr_t addr) const {
     FunctionDescriptorMap::const_iterator it = this->find(addr);

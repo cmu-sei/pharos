@@ -28,7 +28,7 @@ std::string neghex(int x);
 // StackDelta is basically a glorified struct, but we might want to put some accessors and
 // convience methods on the confidence and delta members.
 class StackDelta {
-public:
+ public:
 
   // The stack delta before the instruction executes.  Stack deltas are measured from the value
   // zero occuring before the first instruction at the entry point of the function.  e.g. after

@@ -62,14 +62,14 @@ void ApiSigFuncParam::Clear() {
 
 ApiSigFunc::ApiSigFunc(std::string a) {
 
-    name = a;
-    boost::to_upper(name);
+  name = a;
+  boost::to_upper(name);
 
-    has_params = false;
-    params.clear();
+  has_params = false;
+  params.clear();
 
-    has_retval = false;
-    retval.Clear();
+  has_retval = false;
+  retval.Clear();
 }
 
 bool ApiSigFunc::Validate() const {
@@ -140,9 +140,9 @@ std::string ApiSig::ToString() const {
   std::ostringstream out_stream;
 
   out_stream << "Name: " << name << "\n"
-      << "Description: " << description << "\n"
-      << "Category: " << category << "\n"
-      << "APIS:\n";
+             << "Description: " << description << "\n"
+             << "Category: " << category << "\n"
+             << "APIS:\n";
 
   for (const ApiSigFunc& f : api_calls) {
     out_stream << f.ToString() << "\n";

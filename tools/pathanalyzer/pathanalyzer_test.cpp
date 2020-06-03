@@ -204,7 +204,7 @@ TEST_P(PATestFixture, TestWP) {
   if (test.bad!=INVALID_ADDRESS) {
     auto timer = make_timer();
     try {
-    nongoal_result = method_func(test, test.bad, smt_stream);
+      nongoal_result = method_func(test, test.bad, smt_stream);
     }
     catch (const z3::exception &e) {
       GERROR << "Z3 exception thrown: " << e.msg () << LEND;

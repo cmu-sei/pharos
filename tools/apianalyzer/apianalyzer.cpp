@@ -37,12 +37,18 @@ ProgOptDesc apianalyzer_options() {
   ProgOptDesc apiopt(version_string.c_str());
 
   apiopt.add_options()
-           ("sig_file,S", po::value<std::string>(), "Specify the API signature file")
-           ("graphviz,G", po::value<std::string>(), "Specify the graphviz output file (for troubleshooting)")
-           ("path,P", po::value<std::string>(), "Set the search path output level (nopath, sigpath, fullpath)")
-           ("format,F", po::value<std::string>(), "Set output format: json or text")
-           ("out_file,O", po::value<std::string>(), "Set output file")
-           ("category,C", po::value<std::string>(), "Select signature categories for which to search");
+    ("sig_file,S", po::value<std::string>(),
+     "Specify the API signature file")
+    ("graphviz,G", po::value<std::string>(),
+     "Specify the graphviz output file (for troubleshooting)")
+    ("path,P", po::value<std::string>(),
+     "Set the search path output level (nopath, sigpath, fullpath)")
+    ("format,F", po::value<std::string>(),
+     "Set output format: json or text")
+    ("out_file,O", po::value<std::string>(),
+     "Set output file")
+    ("category,C", po::value<std::string>(),
+     "Select signature categories for which to search");
 
   return apiopt;
 }
@@ -185,7 +191,7 @@ static int apianalyzer_main(int argc, char* argv[]) {
   }
 
   if (sig_filter == "*") {
-     OINFO << " - Display all signature categories" << LEND;
+    OINFO << " - Display all signature categories" << LEND;
   }
   else {
     std::vector<std::string> filters;

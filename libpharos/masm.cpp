@@ -109,16 +109,16 @@ std::string masm_x86TypeToPtrName(SgAsmType* ty) {
 
   if (SgAsmIntegerType *it = isSgAsmIntegerType(ty)) {
     switch (it->get_nBits()) {
-    case 8: return "byte";
-    case 16: return "word";
-    case 32: return "dword";
-    case 64: return "qword";
+     case 8: return "byte";
+     case 16: return "word";
+     case 32: return "dword";
+     case 64: return "qword";
     }
   } else if (SgAsmFloatType *ft = isSgAsmFloatType(ty)) {
     switch (ft->get_nBits()) {
-    case 32: return "float";
-    case 64: return "double";
-    case 80: return "ldouble";
+     case 32: return "float";
+     case 64: return "double";
+     case 80: return "ldouble";
     }
   } else if (ty == Rose::SageBuilderAsm::buildTypeVector(2, Rose::SageBuilderAsm::buildTypeU64())) {
     return "dqword";
@@ -140,142 +140,142 @@ std::string masm_unparseX86Expression(SgAsmExpression *expr,
   std::string rstr;
 
   switch (expr->variantT()) {
-    case V_SgAsmBinaryAdd:
-      lhs = isSgAsmBinaryExpression(expr)->get_lhs();
-      rhs = isSgAsmBinaryExpression(expr)->get_rhs();
-      lstr = masm_unparseX86Expression(lhs, insn, false, labels);
-      rstr = masm_unparseX86Expression(rhs, insn, false, labels);
-      if (rstr[0] == '-') {
-        result = lstr + rstr;
-      }
-      else {
-        result = lstr + "+" + rstr;
-      }
-      break;
-    case V_SgAsmBinarySubtract:
-      lhs = isSgAsmBinaryExpression(expr)->get_lhs();
-      rhs = isSgAsmBinaryExpression(expr)->get_rhs();
-      lstr = masm_unparseX86Expression(lhs, insn, false, labels);
-      rstr = masm_unparseX86Expression(rhs, insn, false, labels);
-      result = lstr + "-" + rstr;
-      break;
-    case V_SgAsmBinaryMultiply:
-      lhs = isSgAsmBinaryExpression(expr)->get_lhs();
-      rhs = isSgAsmBinaryExpression(expr)->get_rhs();
-      lstr = masm_unparseX86Expression(lhs, insn, false, labels);
-      rstr = masm_unparseX86Expression(rhs, insn, false, labels);
-      result = lstr + "*" + rstr;
-      break;
-    case V_SgAsmMemoryReferenceExpression: {
-      SgAsmMemoryReferenceExpression* mr = isSgAsmMemoryReferenceExpression(expr);
-      if (!leaMode) {
-        // The MASM and NASM assemblers are quite intelligent about
-        // determining the memory size of the operation.  We only need
-        // to explictly display the size if it's ambiguous.  For now,
-        // we're just going to say that it's never ambiguous.  BUG!!!
-        bool ambiguous = false;
-
-        if (ambiguous) {
-          result += masm_x86TypeToPtrName(mr->get_type()) + " ptr ";
-        }
-
-        std::string segment_override = "";
-        // We really should be checking for a segment override prefix here, but the
-        // method is private, and I expect overrides to be very rare anyway.  BUG!!!
-        SgAsmExpression* segexpr = mr->get_segment();
-        if (segexpr != NULL) {
-          // The fs override is common enough that we should always print it.
-          std::string segreg = masm_unparseX86Expression(segexpr, insn, false, NULL);
-          if (segreg == "fs") {
-            result += segreg + ":";
-          }
-        }
-      }
-      result += "[" + masm_unparseX86Expression(mr->get_address(), insn, false, labels) + "]";
-      break;
+   case V_SgAsmBinaryAdd:
+    lhs = isSgAsmBinaryExpression(expr)->get_lhs();
+    rhs = isSgAsmBinaryExpression(expr)->get_rhs();
+    lstr = masm_unparseX86Expression(lhs, insn, false, labels);
+    rstr = masm_unparseX86Expression(rhs, insn, false, labels);
+    if (rstr[0] == '-') {
+      result = lstr + rstr;
     }
-    case V_SgAsmDirectRegisterExpression: {
-      SgAsmDirectRegisterExpression* rr = isSgAsmDirectRegisterExpression(expr);
-      result = unparseX86Register(rr->get_descriptor(),NULL);
-      break;
+    else {
+      result = lstr + "+" + rstr;
     }
+    break;
+   case V_SgAsmBinarySubtract:
+    lhs = isSgAsmBinaryExpression(expr)->get_lhs();
+    rhs = isSgAsmBinaryExpression(expr)->get_rhs();
+    lstr = masm_unparseX86Expression(lhs, insn, false, labels);
+    rstr = masm_unparseX86Expression(rhs, insn, false, labels);
+    result = lstr + "-" + rstr;
+    break;
+   case V_SgAsmBinaryMultiply:
+    lhs = isSgAsmBinaryExpression(expr)->get_lhs();
+    rhs = isSgAsmBinaryExpression(expr)->get_rhs();
+    lstr = masm_unparseX86Expression(lhs, insn, false, labels);
+    rstr = masm_unparseX86Expression(rhs, insn, false, labels);
+    result = lstr + "*" + rstr;
+    break;
+   case V_SgAsmMemoryReferenceExpression: {
+     SgAsmMemoryReferenceExpression* mr = isSgAsmMemoryReferenceExpression(expr);
+     if (!leaMode) {
+       // The MASM and NASM assemblers are quite intelligent about
+       // determining the memory size of the operation.  We only need
+       // to explictly display the size if it's ambiguous.  For now,
+       // we're just going to say that it's never ambiguous.  BUG!!!
+       bool ambiguous = false;
+
+       if (ambiguous) {
+         result += masm_x86TypeToPtrName(mr->get_type()) + " ptr ";
+       }
+
+       std::string segment_override = "";
+       // We really should be checking for a segment override prefix here, but the
+       // method is private, and I expect overrides to be very rare anyway.  BUG!!!
+       SgAsmExpression* segexpr = mr->get_segment();
+       if (segexpr != NULL) {
+         // The fs override is common enough that we should always print it.
+         std::string segreg = masm_unparseX86Expression(segexpr, insn, false, NULL);
+         if (segreg == "fs") {
+           result += segreg + ":";
+         }
+       }
+     }
+     result += "[" + masm_unparseX86Expression(mr->get_address(), insn, false, labels) + "]";
+     break;
+   }
+   case V_SgAsmDirectRegisterExpression: {
+     SgAsmDirectRegisterExpression* rr = isSgAsmDirectRegisterExpression(expr);
+     result = unparseX86Register(rr->get_descriptor(),NULL);
+     break;
+   }
     // Cory says: This case demonstrates how crusty masm.cpp has gotten.  The new floating
     // point case was missing entirely, and when copied into our code, it wouldn't compile
     // because the entire interface to unparsex86Expression has changed.  We should try to
     // report our changes to a current version of unparseAsm.C.  BUG!!! BUG!!! BUG!!!
-    case V_SgAsmIndirectRegisterExpression: {
-      //SgAsmInstruction *tinsn = Rose::SageInterface::getEnclosingNode<SgAsmInstruction>(expr);
-      SgAsmIndirectRegisterExpression* rr = isSgAsmIndirectRegisterExpression(expr);
-      //result = unparseX86Register(insn, rr->get_descriptor(), registers);
-      //if (!result.empty() && '0'==result[result.size()-1])
-      //  result = result.substr(0, result.size()-1);
-      result += "(" + std::to_string(rr->get_index()) + ")";
-      break;
-    }
-    case V_SgAsmIntegerValueExpression: {
-      char buf[64];
-      SgAsmIntegerValueExpression* int_expr = isSgAsmIntegerValueExpression(expr);
-      uint64_t v = SageInterface::getAsmConstant(int_expr);
-      // Cory says there's probably a better way to do this since I haven't looked at this code
-      // in forever.  But the goal right now is to build under the new version of ROSE.
-      size_t bits = int_expr->get_significantBits();
-      if (bits == 8) {
-        if ((v & 0x80) && (v & 0x7f))
-          sprintf(buf, "-%" PRIX64, (~v+1) & 0xff);
-        else
-          sprintf(buf, "%" PRIX64, v);
+   case V_SgAsmIndirectRegisterExpression: {
+     //SgAsmInstruction *tinsn = Rose::SageInterface::getEnclosingNode<SgAsmInstruction>(expr);
+     SgAsmIndirectRegisterExpression* rr = isSgAsmIndirectRegisterExpression(expr);
+     //result = unparseX86Register(insn, rr->get_descriptor(), registers);
+     //if (!result.empty() && '0'==result[result.size()-1])
+     //  result = result.substr(0, result.size()-1);
+     result += "(" + std::to_string(rr->get_index()) + ")";
+     break;
+   }
+   case V_SgAsmIntegerValueExpression: {
+     char buf[64];
+     SgAsmIntegerValueExpression* int_expr = isSgAsmIntegerValueExpression(expr);
+     uint64_t v = SageInterface::getAsmConstant(int_expr);
+     // Cory says there's probably a better way to do this since I haven't looked at this code
+     // in forever.  But the goal right now is to build under the new version of ROSE.
+     size_t bits = int_expr->get_significantBits();
+     if (bits == 8) {
+       if ((v & 0x80) && (v & 0x7f))
+         sprintf(buf, "-%" PRIX64, (~v+1) & 0xff);
+       else
+         sprintf(buf, "%" PRIX64, v);
 
-        result = buf;
-      }
-      else if (bits == 16) {
-        if ((v & 0x8000) && (v & 0x7fff))
-          sprintf(buf, "-%" PRIX64, (~v+1) & 0xffff);
-        else
-          sprintf(buf, "%" PRIX64, v);
-        result = buf;
-      }
-      else if (bits == 32) {
-        std::string label = masm_x86ValToLabel(v, labels);
-        if (!label.empty()) {
-          sprintf(buf, "%s", label.c_str());
-        } else if ((v & 0x80000000) && (v & 0x7fffffff)) {
-          sprintf(buf, "-%" PRIX64, (~v+1) & 0xffffffff);
-        }
-        else {
-          sprintf(buf, "%" PRIX64, v);
-        }
-        result = buf;
-      }
-      else if (bits == 64) {
-      std::string label = masm_x86ValToLabel(v, labels);
-      if (!label.empty()) {
-        sprintf(buf, "%s", label.c_str());
-      } else if ((v & ((uint64_t)1<<63)) && (v & (((uint64_t)1<<63)-1))) {
-        sprintf(buf, "-%" PRIX64, (~v+1));
-      }
-      else {
-        sprintf(buf, "%" PRIX64, v);
-      }
-      result = buf;
-      }
-      break;
-    }
-    default: {
-      GFATAL << "Unhandled expression kind " << expr->class_name() << LEND;
-      ROSE_ASSERT (false);
-    }
+       result = buf;
+     }
+     else if (bits == 16) {
+       if ((v & 0x8000) && (v & 0x7fff))
+         sprintf(buf, "-%" PRIX64, (~v+1) & 0xffff);
+       else
+         sprintf(buf, "%" PRIX64, v);
+       result = buf;
+     }
+     else if (bits == 32) {
+       std::string label = masm_x86ValToLabel(v, labels);
+       if (!label.empty()) {
+         sprintf(buf, "%s", label.c_str());
+       } else if ((v & 0x80000000) && (v & 0x7fffffff)) {
+         sprintf(buf, "-%" PRIX64, (~v+1) & 0xffffffff);
+       }
+       else {
+         sprintf(buf, "%" PRIX64, v);
+       }
+       result = buf;
+     }
+     else if (bits == 64) {
+       std::string label = masm_x86ValToLabel(v, labels);
+       if (!label.empty()) {
+         sprintf(buf, "%s", label.c_str());
+       } else if ((v & ((uint64_t)1<<63)) && (v & (((uint64_t)1<<63)-1))) {
+         sprintf(buf, "-%" PRIX64, (~v+1));
+       }
+       else {
+         sprintf(buf, "%" PRIX64, v);
+       }
+       result = buf;
+     }
+     break;
+   }
+   default: {
+     GFATAL << "Unhandled expression kind " << expr->class_name() << LEND;
+     ROSE_ASSERT (false);
+   }
   }
 
 #if 0
   if (expr->get_replacement() != "") {
     result += " <" + expr->get_replacement() + ">";
   }
-    if (expr->get_bit_size()>0) {
-      result += " <@" + std::to_string(expr->get_bit_offset()) +
-                "+" + std::to_string(expr->get_bit_size()) + ">";
-    }
+  if (expr->get_bit_size()>0) {
+    result += " <@" + std::to_string(expr->get_bit_offset()) +
+              "+" + std::to_string(expr->get_bit_size()) + ">";
+  }
 #endif
-    return result;
+  return result;
 }
 
 /** Returns a string containing the specified operand. */

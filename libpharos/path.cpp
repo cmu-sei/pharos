@@ -47,28 +47,28 @@ PathFinder::generate_cfg_constraints(CallTraceDescriptorPtr call_trace_desc) {
 
     GWARN << "CFG for function " << addr_str(fd.get_address()) << " has no edges" << LEND;
 
-     CfgEdgeInfo ei(ctx);
+    CfgEdgeInfo ei(ctx);
 
-     auto vp = boost::vertices(cfg);
-     CfgVertex v = *vp.first;
-     SgAsmBlock *vbb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, v));
-     ei.edge_src_addr = vbb->get_address();
-     ei.edge_tgt_addr = vbb->get_address();
+    auto vp = boost::vertices(cfg);
+    CfgVertex v = *vp.first;
+    SgAsmBlock *vbb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, v));
+    ei.edge_src_addr = vbb->get_address();
+    ei.edge_tgt_addr = vbb->get_address();
 
-     std::stringstream e_name, c_name;
+    std::stringstream e_name, c_name;
 
-     e_name << "edge_" << addr_str(vbb->get_address()) << ":" << call_trace_desc->get_index();
-     c_name << "cond_" << addr_str(vbb->get_address()) << ":" << call_trace_desc->get_index();
+    e_name << "edge_" << addr_str(vbb->get_address()) << ":" << call_trace_desc->get_index();
+    c_name << "cond_" << addr_str(vbb->get_address()) << ":" << call_trace_desc->get_index();
 
-     ei.edge_str = e_name.str();
-     ei.cond_str = c_name.str();
+    ei.edge_str = e_name.str();
+    ei.cond_str = c_name.str();
 
-     ei.edge_expr = ctx->bool_const(ei.edge_str.c_str());
-     ei.cond_expr = ctx->bool_const(ei.cond_str.c_str());
+    ei.edge_expr = ctx->bool_const(ei.edge_str.c_str());
+    ei.cond_expr = ctx->bool_const(ei.cond_str.c_str());
 
-     ei.call_trace_desc = call_trace_desc;
+    ei.call_trace_desc = call_trace_desc;
 
-     call_trace_desc->add_edge_info(ei);
+    call_trace_desc->add_edge_info(ei);
 
   }
   else {
@@ -1184,7 +1184,7 @@ PathFinder::find_path(rose_addr_t start_addr, rose_addr_t goal_addr) {
   const FunctionDescriptor* start_fd = ds_.get_func_containing_address(start_address_);
   const FunctionDescriptor* goal_fd = ds_.get_func_containing_address(goal_address_);
 
-    if (start_fd && goal_fd) {
+  if (start_fd && goal_fd) {
 
     // if (detect_recursion()) {
     //   GWARN << "Recursion not yet handled!" << LEND;
@@ -1541,11 +1541,12 @@ CallTraceDescriptor::add_called_from_return_value(ParameterDefinition const & ol
 boost::optional<CfgEdgeInfo>
 CallTraceDescriptor::get_edge_info(rose_addr_t addr) {
 
-  auto edge_it = std::find_if(edge_info_.begin(), edge_info_.end(),
-                              [addr](auto entry) {
-                                CfgEdgeInfo edge_info = entry.second;
-                          return ((edge_info.edge_tgt_addr == addr) || (edge_info.edge_src_addr == addr));
-                        });
+  auto edge_it = std::find_if(
+    edge_info_.begin(), edge_info_.end(),
+    [addr](auto entry) {
+      CfgEdgeInfo edge_info = entry.second;
+      return ((edge_info.edge_tgt_addr == addr) || (edge_info.edge_src_addr == addr));
+    });
 
   // The edge information is a map keyed by edge (which is really just
   // a number).

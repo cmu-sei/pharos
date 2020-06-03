@@ -49,13 +49,13 @@ using CERTMergerPtr = Sawyer::SharedPointer<class CERTMerger>;
 // Controls merging of symbolic values.  Specifically permit passing of the condition
 // expression from the state merge() to the symbolic value merge().
 class CERTMerger: public Semantics2::SymbolicSemantics::Merger {
-protected:
+ protected:
   CERTMerger(): Semantics2::SymbolicSemantics::Merger() {
     inverted = false;
     condition = SymbolicValue::incomplete(1);
   }
 
-public:
+ public:
   // Should the condition be inverted?
   bool inverted = false;
   // The condition that determined whether this or other is the current value.
@@ -73,7 +73,7 @@ public:
 // Custom class required to implement equals().  At least for a while longer.
 class SymbolicRegisterState: public RegisterStateGeneric {
 
-protected:
+ protected:
 
   const Rose::BinaryAnalysis::InstructionProvider& ip;
   RegisterDescriptor ipreg;
@@ -93,7 +93,7 @@ protected:
     STRACE << "SymbolicRegisterState::SymbolicRegisterState(other)" << LEND;
   }
 
-public:
+ public:
 
   // Instance() methods must take custom types to ensure promotion.
   static SymbolicRegisterStatePtr instance(const Rose::BinaryAnalysis::InstructionProvider& ip,
@@ -183,7 +183,7 @@ public:
 //==============================================================================================
 class SymbolicMemoryMapState: public BaseMemoryCellMap {
 
-protected:
+ protected:
   // Constructors are protected to ensure that instance() methods are used instead.
 
   // Constructors must take custom types to ensure promotion.
@@ -204,7 +204,7 @@ protected:
     // Our merger is copied by default?
   }
 
-public:
+ public:
 
   // Promote to our type.
   static SymbolicMemoryMapStatePtr promote(const BaseMemoryStatePtr &x) {
@@ -287,7 +287,7 @@ public:
 //==============================================================================================
 class SymbolicMemoryListState: public BaseMemoryCellList {
 
-protected:
+ protected:
   // Constructors are protected to ensure that instance() methods are used instead.
 
   // Constructors must take custom types to ensure promotion.
@@ -305,7 +305,7 @@ protected:
     : BaseMemoryCellList(other) {
   }
 
-public:
+ public:
 
   // Promote to our type.
   static SymbolicMemoryListStatePtr promote(const BaseMemoryStatePtr &x) {
@@ -346,7 +346,7 @@ public:
   }
 
   virtual BaseMemoryStatePtr create(const BaseSValuePtr &addr,
-                                        const BaseSValuePtr &val) const override {
+                                    const BaseSValuePtr &val) const override {
     STRACE << "SymbolicMemoryListState::create(addr, val)" << LEND;
     SymbolicValuePtr addr_ = SymbolicValue::promote(addr);
     SymbolicValuePtr val_ = SymbolicValue::promote(val);
@@ -535,7 +535,7 @@ class CellMapChunks {
 // Custom class required to implement equals().  At least for a while longer.
 class SymbolicState: public BaseState {
 
-protected:
+ protected:
   // Are we using the list-based or map-based memory model?
   bool map_based;
 
@@ -561,7 +561,7 @@ protected:
     map_based = other.map_based;
   }
 
-public:
+ public:
 
   // Instance() methods must take custom types to ensure promotion.
   static SymbolicStatePtr instance(const SymbolicRegisterStatePtr &regs,

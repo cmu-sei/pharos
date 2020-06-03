@@ -27,7 +27,7 @@ using VirtualFunctionCallMap = std::map<rose_addr_t, VirtualFunctionCallVector>;
 using MethodMap = std::map<rose_addr_t, std::unique_ptr<ThisCallMethod>>;
 
 class OOAnalyzer : public BottomUpAnalyzer {
-private:
+ private:
   using clock = std::chrono::steady_clock;
   using time_point = std::chrono::time_point<clock>;
   using duration = std::chrono::duration<double>;
@@ -113,8 +113,8 @@ private:
 
   // Mark methods as new(), delete(), and purecall() respectively.
   void set_new_method(rose_addr_t addr) {
-      write_guard<decltype(mutex)> guard{mutex};
-      new_addrs.insert(addr);
+    write_guard<decltype(mutex)> guard{mutex};
+    new_addrs.insert(addr);
   }
   void set_delete_method(rose_addr_t addr) {
     {
@@ -124,7 +124,7 @@ private:
   }
   void set_purecall_method(rose_addr_t addr) { purecall_addrs.insert(addr); }
 
-public:
+ public:
 
   OOAnalyzer(DescriptorSet& ds_, const ProgOptVarMap& vm_, AddrSet& new_addrs_);
 

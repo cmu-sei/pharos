@@ -214,9 +214,9 @@ bool insn_is_nop(const SgAsmX86Instruction* insn) {
      case 0xff: return true;
     }
     return false;
-      // lea ...
+    // lea ...
    case 0x8d:
-      if (size < 2) return false;
+    if (size < 2) return false;
     switch (bytes.at(1)) {
       // one byte displacements?
      case 0x49:
@@ -328,7 +328,8 @@ std::string insn_get_generic_category(SgAsmInstruction *insn) {
 
   // okay, I think a lot of these comparisons for x86 can be simplified by using the first
   // couple of chars in the mnemonic much of the time, so let's start there:
-  std::string mnemonic = insn->get_mnemonic(); // this comes back lowercase, but may want to force that at some point...
+  std::string mnemonic = insn->get_mnemonic(); // this comes back lowercase, but may want to
+                                               // force that at some point...
 
   // should I remove the "rep" prefix?  I think remove it from mnemonic, then add REP prefix to
   // the category?
@@ -341,7 +342,8 @@ std::string insn_get_generic_category(SgAsmInstruction *insn) {
     //prefix = SplitVec[0];
     mnemonic = SplitVec[1];
     got_rep = true;
-  } else if (boost::starts_with(mnemonic,"far")) {  // WHY are "farCall" and "farJmp" being output as mnemonics???
+  } else if (boost::starts_with(mnemonic,"far")) {  // WHY are "farCall" and "farJmp" being
+                                                    // output as mnemonics???
     if (mnemonic[3] == 'C')
       mnemonic = "call";
     else
@@ -353,408 +355,412 @@ std::string insn_get_generic_category(SgAsmInstruction *insn) {
   // probably best to swtich on the first char:
   switch (mnemonic[0])
   {
-    case 'a':
-      if (mnemonic[1] == 'a')
+   case 'a':
+    if (mnemonic[1] == 'a')
+      result = "MATH";
+    else if (mnemonic[1] == 'd')
+    {
+      if (mnemonic == "adc" || mnemonic == "add")
         result = "MATH";
-      else if (mnemonic[1] == 'd')
-      {
-        if (mnemonic == "adc" || mnemonic == "add")
-          result = "MATH";
-        else // others are SIMD variants
-          result = "SIMD";
-      }
-      else if (mnemonic[1] == 'e') // aes*
-        result = "CRYPTO";
-      else if (mnemonic[1] == 'n') // and*
-      {
-        if (mnemonic.size() <=4) // and & andn
-          result = "LOGIC";
-        else
-          result = "SIMD";
-      }
-      // else stay uncat
-      break;
-    case 'b':
-      if (mnemonic[1] == 'e')
-        result = "LOGIC"; // bextr
-      else if (mnemonic[1] == 'l')
-        if (mnemonic[1] == 's')
-          result = "LOGIC";
-        else
-          result = "SIMD";
-      else if (mnemonic[1] == 's')
-        if (mnemonic[2] == 'w')
-          result = "XFER";
-        else
-          result = "LOGIC";
-      else if (mnemonic[1] == 't')
+      else // others are SIMD variants
+        result = "SIMD";
+    }
+    else if (mnemonic[1] == 'e') // aes*
+      result = "CRYPTO";
+    else if (mnemonic[1] == 'n') // and*
+    {
+      if (mnemonic.size() <=4) // and & andn
         result = "LOGIC";
-      else if (mnemonic[1] == 'z')
+      else
+        result = "SIMD";
+    }
+    // else stay uncat
+    break;
+   case 'b':
+    if (mnemonic[1] == 'e')
+      result = "LOGIC"; // bextr
+    else if (mnemonic[1] == 'l')
+      if (mnemonic[1] == 's')
         result = "LOGIC";
-      // else stay uncat
-      break;
-    case 'c':
-      if (mnemonic[1] == 'a') // call
-        result = "BR";
-      else if (mnemonic[1] == 'b' ||
-               mnemonic[1] == 'd' ||
-               mnemonic[1] == 'q' ||
-               mnemonic[1] == 'w') // all sign extend instructions...
-        result = "XFER"; // I guess...
-      //else if (mnemonic[1] == 'l') // all flags related or flushing cache
-      //  result = ???
-      else if (boost::starts_with(mnemonic,"cmov"))
+      else
+        result = "SIMD";
+    else if (mnemonic[1] == 's')
+      if (mnemonic[2] == 'w')
         result = "XFER";
-      else if (boost::starts_with(mnemonic,"cmp"))
-      {
-        if (mnemonic == "cmp")
-          result = "CMP";
-        else if (mnemonic[3] == 'x')
-          result = "XFER"; // I guess....
-        else if (mnemonic[3] == 'p')
-          result = "SIMD";
-        else if (mnemonic[3] == 's')
-          result = "STR"; // there is actually a conflict here w/ CMPSD being STR or SIMD based on operands and there is a CMPSS that is SIMD only...but lets err on the likely more common case I assume, for now
-      }
-      else if (mnemonic[1] == 'l')
-      {
-        if (mnemonic[2] == 'd')
-          result = "STR"; // CLD, let's call that STR related I guess
-        else
-          result = "SYS"; // most of the other CL* ones feel like SYS, I think...
-      }
-      else if (mnemonic[1] == 'o')
-        result = "SIMD";
-      else if (mnemonic[1] == 'p') // CPUID
-        result = "SYS"; // I guess, maybe?
-      else if (mnemonic[1] == 'r') // CRC32
-        result = "MATH";
-      else if (mnemonic[1] == 'v')
-        result = "SIMD";
-      // else stay uncat
-      break;
-    case 'd':
-      if (mnemonic[1] < 'i' || mnemonic == "div")
-        result = "MATH";
       else
-        result = "SIMD";
-      break;
-    case 'e':
-      if (mnemonic[1] == 'm') // EMMS
-        result = "FLT";
-      else if (mnemonic[1] == 'n') // ENTER
-        result = "XFER"; // initially I picked BR, but it's really like (push ebp;sub esp,#) XFER+MATH (see LEAVE too)
-      else // EXTRACTPS
-        result = "SIMD";
-      break;
-    case 'f':
-      result = "FLT";
-      break;
-    case 'g': // no g instructions in x86?
-      break;
-    case 'h':
-      if (mnemonic == "HLT")
-        result = "SYS";
-      else
-        result = "SIMD";
-      break;
-    case 'i':
-      if (mnemonic[1] == 'd' || mnemonic[1] == 'm') // IDIV IMUL
-        result = "MATH";
-      else if (mnemonic[1] == 'n')
-      {
-        if (mnemonic.size() == 2) // IN
-        {
-          result = "I/O";
-        }
-        else if (mnemonic[2] == 'c') // INC
-          result = "MATH";
-        else if (mnemonic[2] == 's')
-        {
-          if (mnemonic.size() == 3 || // INS, INS{B,W,D}
-              mnemonic[3] == 'b' ||
-              mnemonic[3] == 'w' ||
-              mnemonic[3] == 'd')
-            result = "I/O"; // and/or STR?
-          else
-            result = "SIMD";
-        }
-        else if (mnemonic[2] == 't') // INT variants
-          result = "BR"; // or SYS?
-        else if (mnemonic[2] == 'v') // INV*
-          result = "SYS";
-      }
-      else if (mnemonic[1] == 'r') // IRET variants
-        result = "BR"; // or SYS?
-      // that should cover the e range completely
-      break;
-    case 'j': // all jump variants
+        result = "LOGIC";
+    else if (mnemonic[1] == 't')
+      result = "LOGIC";
+    else if (mnemonic[1] == 'z')
+      result = "LOGIC";
+    // else stay uncat
+    break;
+   case 'c':
+    if (mnemonic[1] == 'a') // call
       result = "BR";
-      // else stay uncat
-      break;
-    case 'k':
-      // no k's really
-      break;
-    case 'l':
-      if (mnemonic[1] == 'a')
-        result = "XFER";
-      else if (mnemonic[1] == 'd')
+    else if (mnemonic[1] == 'b' ||
+             mnemonic[1] == 'd' ||
+             mnemonic[1] == 'q' ||
+             mnemonic[1] == 'w') // all sign extend instructions...
+      result = "XFER"; // I guess...
+    //else if (mnemonic[1] == 'l') // all flags related or flushing cache
+    //  result = ???
+    else if (boost::starts_with(mnemonic,"cmov"))
+      result = "XFER";
+    else if (boost::starts_with(mnemonic,"cmp"))
+    {
+      if (mnemonic == "cmp")
+        result = "CMP";
+      else if (mnemonic[3] == 'x')
+        result = "XFER"; // I guess....
+      else if (mnemonic[3] == 'p')
+        result = "SIMD";
+      else if (mnemonic[3] == 's')
+        result = "STR"; // there is actually a conflict here w/ CMPSD being STR or SIMD based
+                        // on operands and there is a CMPSS that is SIMD only...but lets err on
+                        // the likely more common case I assume, for now
+    }
+    else if (mnemonic[1] == 'l')
+    {
+      if (mnemonic[2] == 'd')
+        result = "STR"; // CLD, let's call that STR related I guess
+      else
+        result = "SYS"; // most of the other CL* ones feel like SYS, I think...
+    }
+    else if (mnemonic[1] == 'o')
+      result = "SIMD";
+    else if (mnemonic[1] == 'p') // CPUID
+      result = "SYS"; // I guess, maybe?
+    else if (mnemonic[1] == 'r') // CRC32
+      result = "MATH";
+    else if (mnemonic[1] == 'v')
+      result = "SIMD";
+    // else stay uncat
+    break;
+   case 'd':
+    if (mnemonic[1] < 'i' || mnemonic == "div")
+      result = "MATH";
+    else
+      result = "SIMD";
+    break;
+   case 'e':
+    if (mnemonic[1] == 'm') // EMMS
+      result = "FLT";
+    else if (mnemonic[1] == 'n') // ENTER
+      result = "XFER"; // initially I picked BR, but it's really like (push ebp;sub esp,#)
+                       // XFER+MATH (see LEAVE too)
+    else // EXTRACTPS
+      result = "SIMD";
+    break;
+   case 'f':
+    result = "FLT";
+    break;
+   case 'g': // no g instructions in x86?
+    break;
+   case 'h':
+    if (mnemonic == "HLT")
+      result = "SYS";
+    else
+      result = "SIMD";
+    break;
+   case 'i':
+    if (mnemonic[1] == 'd' || mnemonic[1] == 'm') // IDIV IMUL
+      result = "MATH";
+    else if (mnemonic[1] == 'n')
+    {
+      if (mnemonic.size() == 2) // IN
       {
-        if (mnemonic[2] == 's') // LDS
-          result = "XFER";
+        result = "I/O";
+      }
+      else if (mnemonic[2] == 'c') // INC
+        result = "MATH";
+      else if (mnemonic[2] == 's')
+      {
+        if (mnemonic.size() == 3 || // INS, INS{B,W,D}
+            mnemonic[3] == 'b' ||
+            mnemonic[3] == 'w' ||
+            mnemonic[3] == 'd')
+          result = "I/O"; // and/or STR?
         else
           result = "SIMD";
       }
-      else if (mnemonic[1] == 'e')
-      {
-        switch (mnemonic[2])
-        {
-          case 's':
-            result = "XFER"; // LES
-            break;
-          case 'a':
-            if (mnemonic.size() == 3)
-              result = "MATH"; // LEA
-            else
-              result = "XFER"; // LEAVE ; initially I picked BR but it's really like (mov esp,ebp;pop ebp) XFER+XFER? (see ENTER too)
-        }
-      }
-      else if (mnemonic[1] == 'g')
-      {
-        if (mnemonic.size() == 3) // LGS
-          result = "XFER";
-        else // must be LGDT
-          result = "SYS";
-      }
-      else if (mnemonic[1] == 'i' ||
-               mnemonic[1] == 'l' ||
-               mnemonic[1] == 'm') // LIDT LLDT LMSW
+      else if (mnemonic[2] == 't') // INT variants
+        result = "BR"; // or SYS?
+      else if (mnemonic[2] == 'v') // INV*
         result = "SYS";
-      else if (mnemonic[1] == 'o')
-      {
-        if (mnemonic[2] == 'd') // LODS*
-          result = "STR";
-        else // LOOP
-          result = "BR";
-      }
-      else if (mnemonic[1] == 'z') // LZCNT
-        result = "LOGIC";
-      else if (mnemonic[2] == 's') // L{F,S}S
+    }
+    else if (mnemonic[1] == 'r') // IRET variants
+      result = "BR"; // or SYS?
+    // that should cover the e range completely
+    break;
+   case 'j': // all jump variants
+    result = "BR";
+    // else stay uncat
+    break;
+   case 'k':
+    // no k's really
+    break;
+   case 'l':
+    if (mnemonic[1] == 'a')
+      result = "XFER";
+    else if (mnemonic[1] == 'd')
+    {
+      if (mnemonic[2] == 's') // LDS
         result = "XFER";
-      else // LSL, LTR
-        result = "SYS";
-      break;
-    case 'm':
-      if (mnemonic[1] == 'o') // let's start w/ 'o' because of MOV
+      else
+        result = "SIMD";
+    }
+    else if (mnemonic[1] == 'e')
+    {
+      switch (mnemonic[2])
       {
-        if (mnemonic[2] == 'v')
+       case 's':
+        result = "XFER"; // LES
+        break;
+       case 'a':
+        if (mnemonic.size() == 3)
+          result = "MATH"; // LEA
+        else
+          result = "XFER"; // LEAVE ; initially I picked BR but it's really like (mov
+                           // esp,ebp;pop ebp) XFER+XFER? (see ENTER too)
+      }
+    }
+    else if (mnemonic[1] == 'g')
+    {
+      if (mnemonic.size() == 3) // LGS
+        result = "XFER";
+      else // must be LGDT
+        result = "SYS";
+    }
+    else if (mnemonic[1] == 'i' ||
+             mnemonic[1] == 'l' ||
+             mnemonic[1] == 'm') // LIDT LLDT LMSW
+      result = "SYS";
+    else if (mnemonic[1] == 'o')
+    {
+      if (mnemonic[2] == 'd') // LODS*
+        result = "STR";
+      else // LOOP
+        result = "BR";
+    }
+    else if (mnemonic[1] == 'z') // LZCNT
+      result = "LOGIC";
+    else if (mnemonic[2] == 's') // L{F,S}S
+      result = "XFER";
+    else // LSL, LTR
+      result = "SYS";
+    break;
+   case 'm':
+    if (mnemonic[1] == 'o') // let's start w/ 'o' because of MOV
+    {
+      if (mnemonic[2] == 'v')
+      {
+        if (mnemonic.size() == 3) // MOV
+          result = "XFER";
+        else if (mnemonic[3] == 's')
         {
-          if (mnemonic.size() == 3) // MOV
-            result = "XFER";
-          else if (mnemonic[3] == 's')
-          {
-            if (mnemonic.size() == 4) // MOVS
-              result = "STR";
-            else if (mnemonic[4] == 'b' ||
-                     mnemonic[4] == 'w' ||
-                     mnemonic[4] == 'd' ||
-                     mnemonic[4] == 'q')
-              result = "STR"; // note, collision w/ MOVSD between STR & SIMD
-            else if (mnemonic[4] == 'x') // MOVSX*
-              result = "XFER";
-            else
-              result = "SIMD";
-          }
-          else if (mnemonic[3] == 'z') // MOVZX*
+          if (mnemonic.size() == 4) // MOVS
+            result = "STR";
+          else if (mnemonic[4] == 'b' ||
+                   mnemonic[4] == 'w' ||
+                   mnemonic[4] == 'd' ||
+                   mnemonic[4] == 'q')
+            result = "STR"; // note, collision w/ MOVSD between STR & SIMD
+          else if (mnemonic[4] == 'x') // MOVSX*
             result = "XFER";
           else
             result = "SIMD";
         }
-        else // MONITOR
-          result = "SYS";
-      }
-      else if (mnemonic[1] == 'a' || mnemonic[1] == 'i') // MAX* MIN*
-        result = "SIMD";
-      else if (mnemonic[1] == 'f') // MFENCE
-        result = "XFER";
-      else if (mnemonic[1] == 'u')
-      {
-        if (mnemonic.size() == 3) // MUL
-          result = "MATH";
-        else if (mnemonic[3] == 'x') // MULX
-          result = "MATH";
+        else if (mnemonic[3] == 'z') // MOVZX*
+          result = "XFER";
         else
           result = "SIMD";
       }
-      else // MWAIT
+      else // MONITOR
         result = "SYS";
-      break;
-    case 'n':
-      if (mnemonic[1] == 'e') // NEG
+    }
+    else if (mnemonic[1] == 'a' || mnemonic[1] == 'i') // MAX* MIN*
+      result = "SIMD";
+    else if (mnemonic[1] == 'f') // MFENCE
+      result = "XFER";
+    else if (mnemonic[1] == 'u')
+    {
+      if (mnemonic.size() == 3) // MUL
         result = "MATH";
-      else if (mnemonic[2] == 'p') // NOP
-        result = "NOP";
-      else // NOT
-        result = "LOGIC";
-      break;
-    case 'o':
-      if (mnemonic.size() == 2) // OR
-        result = "LOGIC";
-      else if (mnemonic[1] == 'r')
-        result = "SIMD"; // ORP{D,S}
-      else if (mnemonic.size() == 3) // OUT
-        result = "I/O";
-      else // OUTS*
-        result = "I/O"; // or STR?
-      break;
-    case 'p':
-      if (mnemonic[1] == 'a')
-      {
-        if (mnemonic[1] == 'u') // PAUSE
-          result = "SYS";
-        else
-          result = "SIMD"; // most of PA*
-      }
-      else if (mnemonic[1] == 'o')
-      {
-        if (mnemonic[2] == 'p') // POP*
-          if (mnemonic.size() == 6) // POPCNT
-            result = "LOGIC";
-          else
-            result = "XFER";
-        else // POR
-          result = "SIMD";
-      }
-      else if (mnemonic[1] == 'r') // PRE*
-        result = "XFER"; // I guess?
-      else if (boost::starts_with(mnemonic,"push"))
-        result = "XFER";
-      else if (mnemonic == "pdep" || mnemonic == "pext")
-        result = "LOGIC";
-      else
-        result = "SIMD"; // LOTS of them in P*
-      // else stay uncat
-      break;
-    case 'q':
-      // no Q* in x86
-      break;
-    case 'r':
-      if (mnemonic.size() == 3)
-      {
-        if (mnemonic[1] == 'e') // RET
-          result = "BR";
-        else if (mnemonic[1] == 's') // RSM
-          result = "SYS";
-        else // RCL/RCR/ROL/ROR
-          result = "LOGIC";
-      }
-      else if (mnemonic[1] == 'd')
-        result = "SYS";
-      else if (mnemonic == "rorx")
-        result = "LOGIC";
-      else
-        result = "SIMD";
-      break;
-    case 's': // much diversity here...
-      if (mnemonic.size() == 3 && (mnemonic[1] == 'a' || mnemonic[1] == 'h')) // shifts
-        result = "LOGIC";
-      else if (mnemonic.size() == 4 && mnemonic[3] == 'x') // shifts
-        result = "LOGIC";
-      else if (mnemonic[1] == 'a') // SAHF only one not covered by the first two checks...
-        result = "XFER"; // I guess?
-      else if (mnemonic[1] == 'b')
+      else if (mnemonic[3] == 'x') // MULX
         result = "MATH";
-      else if (mnemonic[1] == 'c')
-        result = "STR";
-      else if (mnemonic[1] == 'e') // SETcc
-        result = "LOGIC"; // maybe?
-      else if (mnemonic[1] == 'f') // SFENCE
-        result = "XFER"; // maybe?
-      else if (mnemonic[1] == 'g' || // SGDT, SIDT, SLDT
-               mnemonic[1] == 'i' ||
-               mnemonic[1] == 'l')
-        result = "SYS";
-      else if (mnemonic[1] == 'h')
-      {
-        if (mnemonic[2] == 'a') // SHA*
-          result = "CRYPTO";
-        else if (mnemonic[3] == 'd')  // SH{L,R}D
-          result = "LOGIC";
-        else
-          result = "SIMD";
-      }
-      else if (mnemonic[1] == 'h')
-        result = "SYS";
-      else if (mnemonic[1] == 'q')
-        result = "SIMD";
-      else if (mnemonic[1] == 't')
-      {
-        if (mnemonic[2] == 'd')
-          result = "STR"; // STD, same logic for calling this STR as for CLD
-        else if (mnemonic[2] == 'r' || mnemonic[2] == 'i') // STR STI
-          result = "SYS";
-        else if (mnemonic[2] == 'm')
-          result = "FLT";
-        else if (mnemonic[2] == 'o')
-          result = "STR";
-        // else uncat
-      }
-      else if (mnemonic[1] == 'u')
-      {
-        if (mnemonic.size() == 3) // SUB
-          result = "MATH";
-        else
-          result = "SIMD";
-      }
-      else if (mnemonic[1] == 'w' || mnemonic[1] == 'y') // SWAPGS and SYS*
-        result = "SYS";
-      // else stay uncat
-      break;
-    case 't': // only 2 of these in x86?
-      if (mnemonic[1] == 'e') // TEST
-        result = "CMP";
-      else // TZCNT
-        result = "LOGIC";
-      break;
-    case 'u':
-      if (mnemonic[1] == 'd') // UD2
-        result = "SYS"; // or could leave uncat?
-      else if (mnemonic != "unknown") // ROSE sometimes returns this????
-        result = "SIMD";
-      break;
-    case 'v':
-      if (mnemonic[1] == 'e' && mnemonic[2] == 'r')
-        result = "SYS";
-      else if (mnemonic[1] == 'm' && mnemonic[2] != 'a')
-        result = "VMM";
       else
         result = "SIMD";
-      break;
-    case 'w':
-      // only a couple of these, and they all look like SYS to me
+    }
+    else // MWAIT
       result = "SYS";
-      break;
-    case 'x':
-      if (mnemonic == "xor")
-        result = "LOGIC";
-      else if (mnemonic == "xchg")
-        result = "XFER";
-      else if (mnemonic == "xadd")
-        result = "MATH";
-      else if (boost::starts_with(mnemonic,"xorp"))
-        result = "SIMD";
-      else if (boost::starts_with(mnemonic,"xlat"))
-        result = "XFER";
-      else
+    break;
+   case 'n':
+    if (mnemonic[1] == 'e') // NEG
+      result = "MATH";
+    else if (mnemonic[2] == 'p') // NOP
+      result = "NOP";
+    else // NOT
+      result = "LOGIC";
+    break;
+   case 'o':
+    if (mnemonic.size() == 2) // OR
+      result = "LOGIC";
+    else if (mnemonic[1] == 'r')
+      result = "SIMD"; // ORP{D,S}
+    else if (mnemonic.size() == 3) // OUT
+      result = "I/O";
+    else // OUTS*
+      result = "I/O"; // or STR?
+    break;
+   case 'p':
+    if (mnemonic[1] == 'a')
+    {
+      if (mnemonic[1] == 'u') // PAUSE
         result = "SYS";
-      // else stay uncat
-      break;
-    case 'y':
-      // no y in x86
-      break;
-    case 'z':
-      // no z in x86
-      break;
+      else
+        result = "SIMD"; // most of PA*
+    }
+    else if (mnemonic[1] == 'o')
+    {
+      if (mnemonic[2] == 'p') // POP*
+        if (mnemonic.size() == 6) // POPCNT
+          result = "LOGIC";
+        else
+          result = "XFER";
+      else // POR
+        result = "SIMD";
+    }
+    else if (mnemonic[1] == 'r') // PRE*
+      result = "XFER"; // I guess?
+    else if (boost::starts_with(mnemonic,"push"))
+      result = "XFER";
+    else if (mnemonic == "pdep" || mnemonic == "pext")
+      result = "LOGIC";
+    else
+      result = "SIMD"; // LOTS of them in P*
+    // else stay uncat
+    break;
+   case 'q':
+    // no Q* in x86
+    break;
+   case 'r':
+    if (mnemonic.size() == 3)
+    {
+      if (mnemonic[1] == 'e') // RET
+        result = "BR";
+      else if (mnemonic[1] == 's') // RSM
+        result = "SYS";
+      else // RCL/RCR/ROL/ROR
+        result = "LOGIC";
+    }
+    else if (mnemonic[1] == 'd')
+      result = "SYS";
+    else if (mnemonic == "rorx")
+      result = "LOGIC";
+    else
+      result = "SIMD";
+    break;
+   case 's': // much diversity here...
+    if (mnemonic.size() == 3 && (mnemonic[1] == 'a' || mnemonic[1] == 'h')) // shifts
+      result = "LOGIC";
+    else if (mnemonic.size() == 4 && mnemonic[3] == 'x') // shifts
+      result = "LOGIC";
+    else if (mnemonic[1] == 'a') // SAHF only one not covered by the first two checks...
+      result = "XFER"; // I guess?
+    else if (mnemonic[1] == 'b')
+      result = "MATH";
+    else if (mnemonic[1] == 'c')
+      result = "STR";
+    else if (mnemonic[1] == 'e') // SETcc
+      result = "LOGIC"; // maybe?
+    else if (mnemonic[1] == 'f') // SFENCE
+      result = "XFER"; // maybe?
+    else if (mnemonic[1] == 'g' || // SGDT, SIDT, SLDT
+             mnemonic[1] == 'i' ||
+             mnemonic[1] == 'l')
+      result = "SYS";
+    else if (mnemonic[1] == 'h')
+    {
+      if (mnemonic[2] == 'a') // SHA*
+        result = "CRYPTO";
+      else if (mnemonic[3] == 'd')  // SH{L,R}D
+        result = "LOGIC";
+      else
+        result = "SIMD";
+    }
+    else if (mnemonic[1] == 'h')
+      result = "SYS";
+    else if (mnemonic[1] == 'q')
+      result = "SIMD";
+    else if (mnemonic[1] == 't')
+    {
+      if (mnemonic[2] == 'd')
+        result = "STR"; // STD, same logic for calling this STR as for CLD
+      else if (mnemonic[2] == 'r' || mnemonic[2] == 'i') // STR STI
+        result = "SYS";
+      else if (mnemonic[2] == 'm')
+        result = "FLT";
+      else if (mnemonic[2] == 'o')
+        result = "STR";
+      // else uncat
+    }
+    else if (mnemonic[1] == 'u')
+    {
+      if (mnemonic.size() == 3) // SUB
+        result = "MATH";
+      else
+        result = "SIMD";
+    }
+    else if (mnemonic[1] == 'w' || mnemonic[1] == 'y') // SWAPGS and SYS*
+      result = "SYS";
+    // else stay uncat
+    break;
+   case 't': // only 2 of these in x86?
+    if (mnemonic[1] == 'e') // TEST
+      result = "CMP";
+    else // TZCNT
+      result = "LOGIC";
+    break;
+   case 'u':
+    if (mnemonic[1] == 'd') // UD2
+      result = "SYS"; // or could leave uncat?
+    else if (mnemonic != "unknown") // ROSE sometimes returns this????
+      result = "SIMD";
+    break;
+   case 'v':
+    if (mnemonic[1] == 'e' && mnemonic[2] == 'r')
+      result = "SYS";
+    else if (mnemonic[1] == 'm' && mnemonic[2] != 'a')
+      result = "VMM";
+    else
+      result = "SIMD";
+    break;
+   case 'w':
+    // only a couple of these, and they all look like SYS to me
+    result = "SYS";
+    break;
+   case 'x':
+    if (mnemonic == "xor")
+      result = "LOGIC";
+    else if (mnemonic == "xchg")
+      result = "XFER";
+    else if (mnemonic == "xadd")
+      result = "MATH";
+    else if (boost::starts_with(mnemonic,"xorp"))
+      result = "SIMD";
+    else if (boost::starts_with(mnemonic,"xlat"))
+      result = "XFER";
+    else
+      result = "SYS";
+    // else stay uncat
+    break;
+   case 'y':
+    // no y in x86
+    break;
+   case 'z':
+    // no z in x86
+    break;
   }
 
   if (got_rep)
@@ -1028,7 +1034,7 @@ void backtrace(Sawyer::Message::Facility & log, Sawyer::Message::Importance leve
       if (demangled) {
         assert(status == 0);
         trace.replace(begin_symbol, end_symbol - begin_symbol,
-                       demangled.get());
+                      demangled.get());
       }
     }
 
@@ -1041,8 +1047,8 @@ void backtrace(Sawyer::Message::Facility & log, Sawyer::Message::Importance leve
 
 rose_addr_t
 address_from_node(LeafNodePtr leaf) {
-   assert(leaf && leaf->isIntegerConstant());
-   return static_cast<rose_addr_t>(*leaf->toUnsigned());
+  assert(leaf && leaf->isIntegerConstant());
+  return static_cast<rose_addr_t>(*leaf->toUnsigned());
 }
 
 void print_expression(std::ostream & stream, TreeNode & e)

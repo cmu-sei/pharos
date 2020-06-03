@@ -13,7 +13,7 @@ namespace pharos {
 class FunctionDescriptor;
 
 class BottomUpAnalyzer {
-public:
+ public:
   // Cory sees no reason not to make these public.  They're practically global.
   DescriptorSet & ds;
   ProgOptVarMap const & vm;

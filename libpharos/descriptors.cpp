@@ -371,7 +371,7 @@ void DescriptorSet::create() {
               GTRACE << "Right hand side of add expression is not constant!"
                      << " insn=" << debug_instruction(xinsn, 0)
                      << " expr=" << unparseExpression(const_expr, NULL, NULL) << LEND;}
-            }
+          }
           // The remaning cases appear to be register dereferences e.g. "[eax]".  It appears
           // that V_SgAsmBinarySubtract is not actually used (at least on X86).
         }

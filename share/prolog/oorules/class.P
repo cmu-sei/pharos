@@ -44,7 +44,7 @@ findall(M, S) :-
 findallMethods(C, O) :- findall(C, L), include(factMethod, L, O).
 
 numberOfMethods(C, O) :- findallMethods(C, L),
-			 length(L, O).
+                         length(L, O).
 
 findAllClasses(S) :-
     setof(C, M^find(M, C), S).

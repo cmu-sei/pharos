@@ -12,7 +12,7 @@ class DescriptorSet;
 // of which are currently generating other errors and warnings in our code.
 class BadCodeMetrics {
 
-protected:
+ protected:
 
   bool isUnusualInstruction(const SgAsmX86Instruction *insn) const;
   bool sameInstruction(const SgAsmX86Instruction *a, const SgAsmX86Instruction *b) const;
@@ -23,7 +23,7 @@ protected:
   size_t maxDead ;
   size_t maxUnusualJmp;
 
-public:
+ public:
 
   // Needed because we instantiate a rops object...  should we?
   DescriptorSet& ds;

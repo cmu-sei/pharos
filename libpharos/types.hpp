@@ -543,8 +543,8 @@ class OperationContext {
   // Analyze the operations by selecting and executing the strategy based on RISC
   // operator
   void assert_operation_fact(Rose::BinaryAnalysis::SymbolicExpr::Operator op,
-                               InternalNodePtr tnp,
-                               std::shared_ptr<prolog::Session> session);
+                             InternalNodePtr tnp,
+                             std::shared_ptr<prolog::Session> session);
 
 
   // Print asserted operation facts to a string stream. Each strategy must know how to
@@ -639,13 +639,13 @@ class TypeSolver {
   // Assert facts for function calls. These are tied to calls, not tree nodes
   void assert_api_facts(const CallDescriptor *cd);
 
- // Print the accumulated botwidth factsto a string stream. (bitwidth hash SIZE_VALUE)
+  // Print the accumulated botwidth factsto a string stream. (bitwidth hash SIZE_VALUE)
   void save_bitwidth_facts(std::iostream &out_sstream);
 
   // Print the accumulated memory address facts to a string stream. The format is (memaddr hash)
   void save_memory_facts(std::iostream &out_sstream);
 
-   // Print the accumulated memory address facts to a string stream. The format is (memaddr hash)
+  // Print the accumulated memory address facts to a string stream. The format is (memaddr hash)
   void save_api_facts(std::iostream &out_sstream);
 
   // Print the accumulated function call facts to a string stream. The format is (memaddr hash)

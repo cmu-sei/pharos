@@ -147,7 +147,7 @@ extern template void debug_print_expression(SymbolicSemantics::SValuePtr const &
 
 // ROSE's InsnSet isn't sorted, so we're using our own...
 class InsnCompare {
-  public:
+ public:
   bool operator()(const SgAsmInstruction* x, const SgAsmInstruction* y)
     const { return (x->get_address() < y->get_address()); }
 };
@@ -299,7 +299,7 @@ RegisterDescriptor get_arch_reg(RegisterDictionary const & regdict,
 
 // Determine whether an expression contains an additive offset
 class AddConstantExtractor {
-public:
+ public:
   // Well formed means that we had both a variable and a constant portion, although the
   // variable portion might be more complex than the caller desired.  If desired the caller can
   // confirm that the variable portion is a simple leaf node (and not an ADD operation).

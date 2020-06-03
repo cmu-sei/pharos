@@ -31,7 +31,7 @@ int main() {
       }
     }
     else {
-     goal = -10;
+      goal = -10;
     }
   }
 

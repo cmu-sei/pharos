@@ -590,7 +590,7 @@ static void report_std_exception(const std::exception & e, int level = 0)
     GFATAL << std::string(level, ' ') << "Reason: ";
   }
   GFATAL << e.what() << LEND;
- try {
+  try {
     std::rethrow_if_nested(e);
   } catch (const std::exception & e2) {
     report_std_exception(e2, level + 1);
@@ -618,7 +618,7 @@ static void report_exception(const std::exception_ptr ep)
     GFATAL << "Pharos main error, caught an unexpected exception" << LEND;
 #endif // __GNUC__
   }
-} 
+}
 
 static void pharos_terminate() {
   // Prevent loops

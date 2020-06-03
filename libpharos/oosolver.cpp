@@ -874,12 +874,12 @@ SolveClassesFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
   std::vector<rose_addr_t> method_list;
 
   auto class_query = session_->query("finalClass",
-                                    var(cid),
-                                    var(vft),
-                                    var(csize),
-                                    any(), // we'll use the certain size for now
-                                    var(dtor),
-                                    var(method_list));
+                                     var(cid),
+                                     var(vft),
+                                     var(csize),
+                                     any(), // we'll use the certain size for now
+                                     var(dtor),
+                                     var(method_list));
   // populate the master class list
   while (!class_query->done()) {
     OOClassDescriptorPtr new_cls = std::make_shared<OOClassDescriptor>(
@@ -909,11 +909,11 @@ SolveInheritanceFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
   size_t obj_offset;
 
   auto parent_query = session_->query("finalInheritance",
-                                    var(derived_id),
-                                    var(base_id),
-                                    var(obj_offset),
-                                    var(derived_vft),
-                                    any() // disregard virtual property because it's new?
+                                      var(derived_id),
+                                      var(base_id),
+                                      var(obj_offset),
+                                      var(derived_vft),
+                                      any() // disregard virtual property because it's new?
     );
 
   while (!parent_query->done()) {
@@ -921,7 +921,7 @@ SolveInheritanceFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
     OOClassDescriptorPtr derived=NULL, base=NULL;
 
     auto dit = std::find_if(classes.begin(), classes.end(),
-                           [derived_id](OOClassDescriptorPtr cls)
+                            [derived_id](OOClassDescriptorPtr cls)
                             { return cls->get_id() == derived_id; });
     if (dit != classes.end()) {
       derived = *dit;
@@ -968,11 +968,11 @@ SolveVFTableFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
   size_t vft_size;
   std::string rtti_name;
   auto vft_query = session_->query("finalVFTable",
-                                  var(vft_addr),
-                                  var(vft_size),
-                                  any(),
-                                  var(rtti_addr),
-                                  var(rtti_name));
+                                   var(vft_addr),
+                                   var(vft_size),
+                                   any(),
+                                   var(rtti_addr),
+                                   var(rtti_name));
 
   while (!vft_query->done()) {
     GDEBUG << "Prolog returned VFTable " << addr_str(vft_addr) << " with size " << addr_str(vft_size) << LEND;
@@ -1030,10 +1030,10 @@ SolveMemberAccessFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
 
   // Add tradtional (primative) class members
   auto mbr_access_query = session_->query("finalMemberAccess",
-                                         var(mbr_cid),
-                                         var(mbr_off),
-                                         var(mbr_size),
-                                         var(mbr_evidence));
+                                          var(mbr_cid),
+                                          var(mbr_off),
+                                          var(mbr_size),
+                                          var(mbr_evidence));
   while (!mbr_access_query->done()) {
 
     auto mit = std::find_if(classes.begin(), classes.end(),
@@ -1103,13 +1103,13 @@ SolveMemberFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
 
   // Add tradtional (primative) class members
   auto mbr_query = session_->query("finalMember",
-                                  var(mbr_cid),
-                                  var(mbr_off),
-                                  var(mbr_sizes),
-                                  any());
+                                   var(mbr_cid),
+                                   var(mbr_off),
+                                   var(mbr_sizes),
+                                   any());
   while (!mbr_query->done()) {
 
-     auto mit = std::find_if(classes.begin(), classes.end(),
+    auto mit = std::find_if(classes.begin(), classes.end(),
                             [mbr_cid](OOClassDescriptorPtr cls)
                             { return cls->get_id() == mbr_cid; });
 
@@ -1146,10 +1146,10 @@ SolveEmbeddedObjFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
 
   OOClassDescriptorPtr outer=NULL, embedded=NULL;
   auto emb_obj_query = session_->query("finalEmbeddedObject",
-                                      var(out_cid),
-                                      var(emb_off),
-                                      var(emb_cid),
-                                      any());
+                                       var(out_cid),
+                                       var(emb_off),
+                                       var(emb_cid),
+                                       any());
   while (!emb_obj_query->done()) {
 
     // look up the outer class by id
@@ -1164,9 +1164,9 @@ SolveEmbeddedObjFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
 
     // look up the embedded class by id
     auto eit = std::find_if(classes.begin(),
-                                 classes.end(),
-                                 [emb_cid](OOClassDescriptorPtr cls)
-                                 { return emb_cid == cls->get_id(); });
+                            classes.end(),
+                            [emb_cid](OOClassDescriptorPtr cls)
+                            { return emb_cid == cls->get_id(); });
 
     if (eit != classes.end()) {
       embedded = *eit;
@@ -1200,9 +1200,9 @@ SolveMethodPropertyFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes)
 
       std::string meth_prop;
       auto meth_query = session_->query("finalMethodProperty",
-                                       meth->get_address(),
-                                       var(meth_prop),
-                                       any());
+                                        meth->get_address(),
+                                        var(meth_prop),
+                                        any());
       while (!meth_query->done()) {
 
         if (meth_prop == "virtual") {
@@ -1227,14 +1227,15 @@ SolveMethodPropertyFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes)
                 if (f->is_thunk()) faddr = f->get_jmp_addr();
 
                 OINFO << "faddr=" << addr_str(faddr)
-                       << ", meth->get_address()="
-                       << addr_str(meth->get_address()) << LEND;
+                      << ", meth->get_address()="
+                      << addr_str(meth->get_address()) << LEND;
 
                 if (faddr == meth->get_address() ) {
                   vftbl->add_virtual_function(OOVirtualFunctionTableEntry(offset, meth));
 
                   OINFO << "Added virtual function " << addr_str(meth->get_address())
-                         << " to vftable " << addr_str(vftbl->get_address()) << " @ " << offset << LEND;
+                        << " to vftable " << addr_str(vftbl->get_address())
+                        << " @ " << offset << LEND;
 
                   // Just because we found the method in a table doesn't mean that we can't
                   //find it again (even in the same table), so don't break here...
@@ -1275,9 +1276,9 @@ SolveResolvedVirtualCallFromProlog::solve(std::vector<OOClassDescriptorPtr>& cla
   // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
   rose_addr_t to_addr, vfcall_id, from_addr;
   auto vcall_query = session_->query("finalResolvedVirtualCall",
-                                    var(from_addr),
-                                    var(vfcall_id),
-                                    var(to_addr));
+                                     var(from_addr),
+                                     var(vfcall_id),
+                                     var(to_addr));
   while (!vcall_query->done()) {
     for (OOClassDescriptorPtr cls : classes) {
       for (OOVirtualFunctionTablePtr vftcall : cls->get_vftables()) {

@@ -42,7 +42,7 @@ struct ApiSigFuncParam : public ApiSigParam {
   ApiSigFuncParam() : index(INVALID_INDEX) { }
 
   ApiSigFuncParam(std::string n, ApiParamType t, size_t i)
-  : ApiSigParam(n,t), index(i) { }
+    : ApiSigParam(n,t), index(i) { }
 
   ~ApiSigFuncParam() = default;
 
@@ -113,7 +113,7 @@ using sig_iterator = ApiSigVector::iterator;
 
 // this is the partial interface that signature parsers must implement
 class ApiSigParser {
-public:
+ public:
   // A signature parser must implement this method
   virtual bool Parse(const std::string &sig_file, ApiSigVector& sigs, size_t *valid_sigs, size_t *error_sigs)=0;
   virtual ~ApiSigParser() { /* Nothing to do */ }
@@ -122,7 +122,7 @@ public:
 using ApiSigParserPtr = std::shared_ptr<ApiSigParser>;
 
 class ApiSigManager {
-private:
+ private:
 
   ApiSigVector sigs_;
 
@@ -132,7 +132,7 @@ private:
 
   size_t valid_sigs_, error_sigs_;
 
-public:
+ public:
 
   ApiSigManager() : parser_(nullptr), valid_sigs_(0), error_sigs_(0) { }
 
@@ -158,7 +158,7 @@ public:
 // A class to parse API signatures
 class ApiJsonSigParser : public ApiSigParser {
 
-private:
+ private:
 
   void ParseApiPattern(boost::property_tree::ptree pattern,
                        ApiSig& sig);
@@ -169,7 +169,7 @@ private:
 
   void ParseSigParams(boost::property_tree::ptree arg_tree, ApiSigFunc& api);
 
-public:
+ public:
 
   virtual ~ApiJsonSigParser() { }
 
@@ -182,11 +182,11 @@ public:
 // A class to parse API signatures
 class ApiTextSigParser : public ApiSigParser {
 
-private:
+ private:
 
   bool ParseSigLine(const std::string sig_str, ApiSigVector& sigs);
 
-public:
+ public:
 
   virtual ~ApiTextSigParser() { }
 

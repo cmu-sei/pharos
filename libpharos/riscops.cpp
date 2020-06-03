@@ -93,8 +93,8 @@ BaseSValuePtr SymbolicRiscOperators::readRegister(
     TreeNodePtr tnp = SymbolicValue::promote(bv)->get_expression();
     if (tnp) {
 
-       TreeNode * t = &*tnp;
-       unique_treenodes.emplace(t, tnp);
+      TreeNode * t = &*tnp;
+      unique_treenodes.emplace(t, tnp);
 
     }
     // We make a copy because this value isn't supposed to change ever again?  Really needed?
@@ -119,8 +119,8 @@ void SymbolicRiscOperators::writeRegister(RegisterDescriptor reg, const BaseSVal
     TreeNodePtr tnp = SymbolicValue::promote(v)->get_expression();
 
     if (tnp) {
-       TreeNode* t = &*tnp;
-       unique_treenodes.emplace(t, tnp);
+      TreeNode* t = &*tnp;
+      unique_treenodes.emplace(t, tnp);
     }
 
     // We make a copy because this value isn't supposed to change ever again? Really needed?
@@ -141,9 +141,9 @@ BaseSValuePtr SymbolicRiscOperators::readMemory(RegisterDescriptor segreg,
 
   TreeNodePtr addr_tnp = saddr->get_expression();
   if (addr_tnp) {
-     TreeNode *at = &*addr_tnp;
-     memory_accesses.emplace(at, addr_tnp);
-     unique_treenodes.emplace(at, addr_tnp);
+    TreeNode *at = &*addr_tnp;
+    memory_accesses.emplace(at, addr_tnp);
+    unique_treenodes.emplace(at, addr_tnp);
   }
 
   SymbolicValuePtr sdflt = SymbolicValue::promote(dflt);
@@ -254,14 +254,14 @@ void SymbolicRiscOperators::writeMemory(UNUSED RegisterDescriptor segreg,
   TreeNodePtr addr_tnp = saddr->get_expression();
 
   if (addr_tnp) {
-     TreeNode* at = &*addr_tnp;
-     unique_treenodes.emplace(at, addr_tnp);
-     memory_accesses.emplace(at, addr_tnp);
+    TreeNode* at = &*addr_tnp;
+    unique_treenodes.emplace(at, addr_tnp);
+    memory_accesses.emplace(at, addr_tnp);
   }
 
   TreeNodePtr data_tnp = sdata->get_expression();
   if (data_tnp) {
-     TreeNode *dt = &*data_tnp;
+    TreeNode *dt = &*data_tnp;
     unique_treenodes.emplace(dt, data_tnp);
   }
 
@@ -506,7 +506,7 @@ BaseSValuePtr SymbolicRiscOperators::extract(const BaseSValuePtr &a_, size_t beg
   // mwd: A hack workaround a bug in ROSE that does not propagate the definers properly when
   // the extracted value is the same size as the value being extracted from.  Remove this once ROSE gets the fix.
   if (a->get_width() == retval->get_width()) {
-      retval->add_defining_instructions(a);
+    retval->add_defining_instructions(a);
   }
 
   if (STRACE) {

@@ -470,7 +470,7 @@ StackVariableAnalyzer::analyze_stkvar_evidence() {
     GDEBUG << "  Insn: " << addr_str(evidence->insn->get_address()) << LEND;
     GDEBUG << "  Uses param: " << ((evidence->uses_param) ? "true" : "false") << LEND;
     GDEBUG << "  Evidence location: "
-          << ((evidence->in_value) ? "value" : "memory") << LEND;
+           << ((evidence->in_value) ? "value" : "memory") << LEND;
     GDEBUG << "  Accesses: " << evidence->aa.str() << LEND;
     GDEBUG << "  AA mem/reg: " << ((evidence->aa.is_mem()) ? "mem" : "reg") << LEND;
     GDEBUG << "---"  << LEND;
@@ -512,7 +512,7 @@ StackVariableAnalyzer::analyze_stkvar_evidence() {
       if (true == evidence->uses_param) {
 
         GDEBUG << "Evaluating evidence at instruction "
-          << addr_str(evidence->insn->get_address()) << LEND;
+               << addr_str(evidence->insn->get_address()) << LEND;
 
         // In the case of parameters, we care about the value that is,
         // stack variable evidence in parameters is typically seen in
@@ -568,7 +568,8 @@ StackVariableAnalyzer::analyze_stkvar_evidence() {
             continue;
           }
           if (evidence->aa.value) {
-             GDEBUG << "Evidence not param and is_reg insn: " << addr_str(evidence->insn->get_address()) << LEND;
+            GDEBUG << "Evidence not param and is_reg insn: "
+                   << addr_str(evidence->insn->get_address()) << LEND;
             candidate->set_memory_address(evidence->aa.value);
             is_new_var = true;
           }
@@ -621,7 +622,7 @@ StackVariableAnalyzer::analyze_stkvar_evidence() {
     if (is_new_var) {
 
       GDEBUG << "The evidence suggests that a stack variable exists at offset "
-            << candidate->get_offset() << LEND;
+             << candidate->get_offset() << LEND;
 
       // Add the stack variable in offset order
       StackVariablePtrList::iterator pos =

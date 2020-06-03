@@ -244,8 +244,8 @@ Config::load_config(
   }
   if (!env && default_location) {
     if (get_file(default_location, file)) {
-        cfg.merge(file, std::string(default_location));
-        file.close();
+      cfg.merge(file, std::string(default_location));
+      file.close();
     }
   }
   const char *home = getenv("HOME");
@@ -254,8 +254,8 @@ Config::load_config(
     home_str.push_back('/');
     home_str.append(home_config);
     if (get_file(home_str.c_str(), file)) {
-        cfg.merge(file, home_str);
-        file.close();
+      cfg.merge(file, home_str);
+      file.close();
     }
   }
   return cfg;

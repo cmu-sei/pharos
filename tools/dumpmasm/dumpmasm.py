@@ -53,7 +53,7 @@ import os
 
 def build_a2fmap():
     a2fmap = {}
-    
+
     print "Generating address to functon map..."
     min_ea = idaapi.cvar.inf.minEA
     max_ea = idaapi.cvar.inf.maxEA
@@ -78,7 +78,7 @@ def dump_heads(out):
     # bytes and reports them in the wrong order. It appears that the
     # best we can do is to build a map in advance. :-(
     a2fmap = build_a2fmap()
-    
+
     min_ea = idaapi.cvar.inf.minEA
     max_ea = idaapi.cvar.inf.maxEA
     ea = min_ea
@@ -90,25 +90,25 @@ def dump_heads(out):
         iflags = ida_bytes.get_flags(ea)
 
         # Skip the PE header?
-        if not ida_bytes.is_head(iflags): 
+        if not ida_bytes.is_head(iflags):
             ea = ida_bytes.next_head(ea, max_ea)
             continue
-        
+
         # Loop up this address in the address-to-function map.
         if ea in a2fmap:
             faddrs = a2fmap[ea]
         else:
             faddrs = [ea]
-                
+
         tcode = "ERROR"
         imnem = "???"
         iops = "???"
-        
-        if ida_bytes.is_code(iflags): 
+
+        if ida_bytes.is_code(iflags):
             tcode = "INSN"
             imnem = "???"
             iops = "???"
-            
+
             insn = idautils.DecodeInstruction(ea)
             if insn == None:
                 imnem = "BAD"
@@ -118,7 +118,7 @@ def dump_heads(out):
                 iops = ""
             else:
                 imnem = insn.get_canon_mnem()
-                
+
                 sops = []
                 for n in range(8):
                     ostr = ida_ua.print_operand(ea, n)
@@ -127,7 +127,7 @@ def dump_heads(out):
                         if ostrnt != '':
                             sops.append(ostrnt)
                 iops = ', '.join(sops)
-                        
+
         elif ida_bytes.is_data(iflags):
             tcode = "DATA"
             imnem = "db"
@@ -156,7 +156,7 @@ if True:
     if fhash is not None:
         fhash = fhash.lower()
         outname = "/tmp/%s_idadata.csv" % fhash
-        
+
 if outname == None:
     # Get the file name of the file being analyzed.
     fpath = ida_nalt.get_input_file_path()

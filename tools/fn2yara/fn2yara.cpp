@@ -295,53 +295,53 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
   }
 
  public:
-   FnToYaraAnalyzer(DescriptorSet& ds_, ProgOptVarMap& vm_)
-     : BottomUpAnalyzer(ds_, vm_), program(ds_), dupe_count(0)
-   {
-     include_thunks = vm_["include-thunks"].as<bool>();
-     address_only = vm_["address-only"].as<bool>();
-     oldway = vm_["oldway"].as<bool>();
-     std::string filename = vm_["file"].as<std::string>();
-     size_t slash = filename.find_last_of('/');
-     if (slash == std::string::npos) {
-       slash = 0;
-     } else {
-       ++slash;
-     }
-     basename = filename.substr(slash);
-     if (vm_.count("output-filename")) {
-       outname = vm_["output-filename"].as<std::string>();
-     } else {
-       outname = basename + ".yara";
-     }
-     minimum_instr = vm_["min-instructions"].as<size_t>();
-     maximum_str_bytes = vm_["max-string-bytes"].as<size_t>();
-     match_threshold = vm_["threshold"].as<double>();
-     if (match_threshold <= 0.0 || match_threshold > 100.0) {
-         throw std::runtime_error("threshold option must be between 0 and 100");
-     }
-     compare_mode = vm_["comparison"].as<bool>();
-     coalesce_blocks = !vm_["basic-blocks"].as<bool>();
-     if (vm_.count("prefix")) {
-       prefix = vm_["prefix"].as<std::string>();
-       boost::algorithm::trim(prefix);
-       if (prefix.empty()) {
-         throw std::runtime_error("prefix must be non-empty");
-       }
-       auto bad = std::find_if_not(
-         prefix.begin(), prefix.end(),
-         [](char c){ return c == '_' || std::isalnum(c);});
-       if (bad != prefix.end()) {
-         throw std::runtime_error(
-           boost::str(boost::format("illegal character '%c' in prefix") % *bad));
-       }
-       if (isdigit(prefix[0])) {
-         throw std::runtime_error("first character of prefix may not be numeric");
-       }
-     } else {
-       prefix = "md5_" + get_file_md5(filename.c_str());
-     }
-   }
+  FnToYaraAnalyzer(DescriptorSet& ds_, ProgOptVarMap& vm_)
+    : BottomUpAnalyzer(ds_, vm_), program(ds_), dupe_count(0)
+  {
+    include_thunks = vm_["include-thunks"].as<bool>();
+    address_only = vm_["address-only"].as<bool>();
+    oldway = vm_["oldway"].as<bool>();
+    std::string filename = vm_["file"].as<std::string>();
+    size_t slash = filename.find_last_of('/');
+    if (slash == std::string::npos) {
+      slash = 0;
+    } else {
+      ++slash;
+    }
+    basename = filename.substr(slash);
+    if (vm_.count("output-filename")) {
+      outname = vm_["output-filename"].as<std::string>();
+    } else {
+      outname = basename + ".yara";
+    }
+    minimum_instr = vm_["min-instructions"].as<size_t>();
+    maximum_str_bytes = vm_["max-string-bytes"].as<size_t>();
+    match_threshold = vm_["threshold"].as<double>();
+    if (match_threshold <= 0.0 || match_threshold > 100.0) {
+      throw std::runtime_error("threshold option must be between 0 and 100");
+    }
+    compare_mode = vm_["comparison"].as<bool>();
+    coalesce_blocks = !vm_["basic-blocks"].as<bool>();
+    if (vm_.count("prefix")) {
+      prefix = vm_["prefix"].as<std::string>();
+      boost::algorithm::trim(prefix);
+      if (prefix.empty()) {
+        throw std::runtime_error("prefix must be non-empty");
+      }
+      auto bad = std::find_if_not(
+        prefix.begin(), prefix.end(),
+        [](char c){ return c == '_' || std::isalnum(c);});
+      if (bad != prefix.end()) {
+        throw std::runtime_error(
+          boost::str(boost::format("illegal character '%c' in prefix") % *bad));
+      }
+      if (isdigit(prefix[0])) {
+        throw std::runtime_error("first character of prefix may not be numeric");
+      }
+    } else {
+      prefix = "md5_" + get_file_md5(filename.c_str());
+    }
+  }
 
   ~FnToYaraAnalyzer() {
     delete outfile;

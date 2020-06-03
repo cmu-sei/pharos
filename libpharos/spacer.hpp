@@ -26,7 +26,7 @@ struct back_inserter_iter :
 
 template <typename C>
 auto z3_vector_back_inserter(C & container) {
-   return back_inserter_iter<C>(container);
+  return back_inserter_iter<C>(container);
 }
 
 
@@ -51,19 +51,19 @@ using TupleState = std::tuple<Z3RegMap, Z3RegMap, std::vector<z3::expr>, z3::exp
 
 namespace {
 
-  pharos::ConvertCallFun dummy_convert_call =
-    [] (
-        const CallStmt &, const IRCFGVertex &, const z3::expr_vector &)
-    -> z3::func_decl {
-      throw std::logic_error("Internal logic error: called dummy_convert_call()!");
-    };
+pharos::ConvertCallFun dummy_convert_call =
+  [] (
+    const CallStmt &, const IRCFGVertex &, const z3::expr_vector &)
+  -> z3::func_decl {
+    throw std::logic_error("Internal logic error: called dummy_convert_call()!");
+  };
 
-   pharos::PartialConvertCallFun dummy_partial_convert_call =
-    [] (
-      const CallStmt &, const z3::expr_vector &)
-    -> z3::func_decl {
-      throw std::logic_error("Internal logic error: called dummy_partial_convert_call()!");
-    };
+pharos::PartialConvertCallFun dummy_partial_convert_call =
+  [] (
+    const CallStmt &, const z3::expr_vector &)
+  -> z3::func_decl {
+    throw std::logic_error("Internal logic error: called dummy_partial_convert_call()!");
+  };
 
 }
 
@@ -84,7 +84,7 @@ class SpacerAnalyzer {
   Z3FixedpointPtr fp_;
   ImportRewriteSet import_set_;
 
-private:
+ private:
 
   // Given a CFG and post-conditions, return the the entry, exit, and
   // goal relations.  If propagate_input is set, all relations will

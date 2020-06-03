@@ -244,7 +244,7 @@ class TypeRecoveryVisitor: public TreeNodeVisitor {
 
   std::string indent;
 
-public:
+ public:
 
   // We should really pass the Formatter into the constructor to get the proper indentation prefix.
   TypeRecoveryVisitor() {

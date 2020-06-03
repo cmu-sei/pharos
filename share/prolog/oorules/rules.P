@@ -697,16 +697,16 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class) :-
 
         % Alternatively, if we are a destructor, make sure there is no other class trying to
         % install this vftable
-	% XXX: Should Offset = Offset2?
+        % XXX: Should Offset = Offset2?
         forall(factVFTableWrite(_Insn2, Method2, Offset2, VFTable),
-	       % It is ok to ignore overwritten vftables
-	       (factVFTableOverwrite(Method2, _OtherVFTable, VFTable, Offset2);
-		% Otherwise it better be the same class
-		find(Method2, Class)));
+               % It is ok to ignore overwritten vftables
+               (factVFTableOverwrite(Method2, _OtherVFTable, VFTable, Offset2);
+                % Otherwise it better be the same class
+                find(Method2, Class)));
 
         % If Class has no base, then the VFTable installation we see must be the right one.
         factClassHasNoBase(Class)
-     
+
     ).
 
 % Bound, _, Bound: OK
@@ -728,16 +728,16 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class) :-
 
         % Alternatively, if we are a destructor, make sure there is no other class trying to
         % install this vftable
-	% XXX: Should Offset = Offset2?
+        % XXX: Should Offset = Offset2?
         forall(factVFTableWrite(_Insn2, Method2, Offset2, VFTable),
-	       % It is ok to ignore overwritten vftables
-	       (factVFTableOverwrite(Method2, _OtherVFTable, VFTable, Offset2);
-		% Otherwise it better be the same class
-		find(Method2, Class)));
+               % It is ok to ignore overwritten vftables
+               (factVFTableOverwrite(Method2, _OtherVFTable, VFTable, Offset2);
+                % Otherwise it better be the same class
+                find(Method2, Class)));
 
         % If Class has no base, then the VFTable installation we see must be the right one.
         factClassHasNoBase(Class)
-     
+
     ).
 
 reasonPrimaryVFTableForClass(V, C) :-

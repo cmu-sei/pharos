@@ -756,7 +756,7 @@ struct SQLLiteApiDictionary::Data {
       "INNER JOIN dllmeta AS sm ON sm.rowId = o.dllMetaId "
       "INNER JOIN dllname AS s ON s.rowId = sm.dllNameId "
       "LEFT JOIN apiname AS n ON f.rowId = n.apiFunctionId")
-     }
+    }
   };
 
 

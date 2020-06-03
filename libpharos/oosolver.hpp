@@ -156,7 +156,7 @@ struct TreeNodePtrHashCompare {
 // Object Oriented class detection Prolog solver.
 class OOSolver {
 
-private:
+ private:
 
   using ProgressBar = Sawyer::ProgressBar<size_t, std::string>;
   static std::unique_ptr<ProgressBar> progress_bar;
@@ -219,7 +219,7 @@ private:
 
   DescriptorSet & ds;
 
-public:
+ public:
 
   // Construction based on a user-supplied option.
   OOSolver(DescriptorSet & ds, const ProgOptVarMap& vm);

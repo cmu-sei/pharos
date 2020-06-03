@@ -103,7 +103,7 @@ class GlobalMemoryDescriptor : private Immobile {
   // The type of the global memory reference.  e.g. Virtual function table, compiler data
   // struct, jump table, etc.
 
-public:
+ public:
 
   GlobalMemoryDescriptor(rose_addr_t addr, size_t bits);
 
@@ -164,7 +164,7 @@ public:
 
 class GlobalMemoryDescriptorMap: public std::map<rose_addr_t, GlobalMemoryDescriptor> {
 
-public:
+ public:
 
   const GlobalMemoryDescriptor* get_global(rose_addr_t addr) const {
     GlobalMemoryDescriptorMap::const_iterator it = this->find(addr);

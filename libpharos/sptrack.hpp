@@ -11,7 +11,7 @@ namespace pharos {
 
 class spTracker {
 
-protected:
+ protected:
   // This is our map of address to stack delta (and confidence) for each instruction.  This is
   // the stack delta before the instruction is executed.  See the declaration of StackDelta in
   // delta.hpp for more details.
@@ -24,7 +24,7 @@ protected:
   // Multi-threaded protection
   mutable std_mutex mutex;
 
-public:
+ public:
 
   // Construct a stack delta oracle.
   spTracker(DescriptorSet const & ds) : descriptor_set(ds) {}

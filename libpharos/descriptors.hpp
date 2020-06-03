@@ -109,7 +109,7 @@ class DescriptorSet
   ImportDescriptor *add_import(rose_addr_t addr, std::string dll, std::string name, size_t ord = 0);
 
 
-public:
+ public:
   // Binary image
   Memory memory;
 

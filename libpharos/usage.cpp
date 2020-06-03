@@ -421,8 +421,8 @@ void ObjectUse::analyze_object_uses(OOAnalyzer const & ooa) {
       // If we don't create a new entry for the this-pointer.
       if (finder == references.end()) {
         GDEBUG << "Adding ref this_ptr=" << *this_ptr << LEND;
-        references.insert(ThisPtrUsageMap::value_type(hash,
-          ThisPtrUsage(fd, this_ptr, tcm, cd->get_insn())));
+        references.insert(ThisPtrUsageMap::value_type(
+                            hash, ThisPtrUsage(fd, this_ptr, tcm, cd->get_insn())));
       }
       // Otherwise, add this method to the existing list of methods.
       else {

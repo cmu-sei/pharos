@@ -31,7 +31,7 @@ const DescriptorSet* global_ds = nullptr;
 // This is the main test fixture
 class ApiAnalyzerTest2 : public testing::Test {
 
-protected:
+ protected:
 
   ApiGraph api_graph_;
 
@@ -52,16 +52,16 @@ protected:
   void CheckResultTree(rose_addr_t component, std::string &expected_tree, ApiSearchResultVector &results) {
 
     std::string st = "";
-     for (ApiSearchResultVector::iterator ri=results.begin(), end=results.end(); ri!=end; ri++) {
-       if (ri->match_component_start == component) {
-         for (std::vector<ApiWaypointDescriptor>::iterator pi=ri->search_tree.begin(); pi!=ri->search_tree.end(); pi++) {
-           st += addr_str(pi->block->get_address());
-         }
-         break;
-       }
-     }
-     // this is the correct search tree for the simple inter-procedural search
-     EXPECT_EQ(expected_tree,st);
+    for (ApiSearchResultVector::iterator ri=results.begin(), end=results.end(); ri!=end; ri++) {
+      if (ri->match_component_start == component) {
+        for (std::vector<ApiWaypointDescriptor>::iterator pi=ri->search_tree.begin(); pi!=ri->search_tree.end(); pi++) {
+          st += addr_str(pi->block->get_address());
+        }
+        break;
+      }
+    }
+    // this is the correct search tree for the simple inter-procedural search
+    EXPECT_EQ(expected_tree,st);
   }
 };
 
@@ -89,13 +89,13 @@ TEST_F(ApiAnalyzerInterproceduralTest, TEST_SHOULD_NOT_FIND_INVALID_INTERPROCEDU
   sig2.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!READFILE")); // Invalid
   sig2.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!Garbage")); // Valid
 
-   sig2.api_count = sig2.api_calls.size();
+  sig2.api_count = sig2.api_calls.size();
 
-   ApiSearchResultVector results2;
-   bool r2 = api_graph_.Search(sig2, &results2);
+  ApiSearchResultVector results2;
+  bool r2 = api_graph_.Search(sig2, &results2);
 
-   EXPECT_FALSE(r2);
-   EXPECT_EQ(results2.size(),ApiSearchResultVector::size_type(0));
+  EXPECT_FALSE(r2);
+  EXPECT_EQ(results2.size(),ApiSearchResultVector::size_type(0));
 }
 
 // This test is designed to force backtracking for a valid signature
@@ -131,7 +131,7 @@ TEST_F(ApiAnalyzerInterproceduralTest, TEST_SHOULD_NOT_FIND_INTERPROCEDURAL_SIG)
   sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!PEEKNAMEDPIPE"));
   sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!WRITEFILE"));
   sig.api_calls.push_back(ApiSigFunc("KERNEL32.DLL!CREATEPROCESSA")); // This is in a sub-component
-  
+
   sig.api_count = sig.api_calls.size();
 
   ApiSearchResultVector results;
@@ -157,7 +157,7 @@ TEST_F(ApiAnalyzerInterproceduralTest, TEST_SHOULD_FIND_VALID_INTERPROCEDURAL_SI
   bool r = api_graph_.Search(sig, &results);
   EXPECT_TRUE(r);
   EXPECT_EQ(results.size(), ApiSearchResultVector::size_type(1));
-  
+
   rose_addr_t component = 0x00401160;
   // "0x0040129A 0x004010D0 0x004010A4 0x00401060 0x00401040 0x00401084 0x00401307"
   std::string expected = "0x0040129A0x004010D00x004010A40x004010600x004010400x004010840x00401307";

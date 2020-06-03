@@ -45,7 +45,7 @@ template std::string Enum2Str<GenericConfidence>(GenericConfidence);
 // json objects.
 class RoseAddrTranslator
 {
-public:
+ public:
   using internal_type = std::string;
   using external_type = rose_addr_t;
 
@@ -112,7 +112,7 @@ FunctionDescriptor::FunctionDescriptor(DescriptorSet& d, SgAsmFunction* f)
     // don't really want the function padding to show up in the extents, however, so I modified
     // the sample code in the ROSE docs on SgAsmFunction::get_extent() to avoid those "better":
     class NotPadding: public SgAsmFunction::NodeSelector {
-    public:
+     public:
       virtual bool operator()(SgNode *node) {
         SgAsmStaticData *data = isSgAsmStaticData(node);
         SgAsmBlock *block = SageInterface::getEnclosingNode<SgAsmBlock>(data);

@@ -28,7 +28,7 @@ class FunctionDescriptor;
 // his anyway, and so this seemed reasonable.
 
 class CallingConvention {
-public:
+ public:
 
   // The order that arguments are pushed onto the stack.  If a particular call has more
   // arguments than the size of the reg_params vector then the extra (last) arguments are
@@ -66,7 +66,7 @@ public:
     CLEANUP_UNKNOWN,        // It is not known how the stack is cleaned up.
   };
 
-private:
+ private:
 
   // Word size for the architecture for which this calling convention applies.  The size is
   // measured in bits.  When searching for a calling convention dictionary, only conventions
@@ -149,7 +149,7 @@ private:
   // clean the coprocessor stack unless you are returning a float or double value (which your
   // function should return in ST(0)).
 
-public:
+ public:
 
   // Constructor. All calling conventions must have a non-zero word size and non-empty
   // name. The name need not be unique, but it is often helpful if it is.  The compiler name
@@ -480,7 +480,7 @@ class ParameterList {
 
   mutable shared_mutex mutex;
 
-public:
+ public:
   ParameterList() = default;
   ParameterList(ParameterList const & other) {
     *this = other;
@@ -520,9 +520,9 @@ public:
   ParameterDefinition* create_stack_parameter(size_t delta);
   // Find and create if needed the parameter for a given register descriptor.
   ParameterDefinition & create_reg_parameter(RegisterDescriptor r,
-                                            const SymbolicValuePtr v,
-                                            const SgAsmInstruction* i,
-                                            const SymbolicValuePtr p);
+                                             const SymbolicValuePtr v,
+                                             const SgAsmInstruction* i,
+                                             const SymbolicValuePtr p);
   ParameterDefinition & create_return_reg(RegisterDescriptor r,
                                           const SymbolicValuePtr v);
 
@@ -540,7 +540,7 @@ public:
 // restoring.
 
 class SavedRegister {
-public:
+ public:
   // The register that was saved.
   RegisterDescriptor reg;
   // The instruction that did the saving (usually a push).
@@ -552,7 +552,7 @@ public:
 };
 
 class SavedRegisterCompare {
-public:
+ public:
   bool operator()(const SavedRegister& x, const SavedRegister& y) const;
 };
 using SavedRegisterSet = std::set<SavedRegister, SavedRegisterCompare>;
@@ -572,7 +572,7 @@ class RegisterUsage {
   // Populate changed and unchanged registers.
   void analyze_changed();
 
-public:
+ public:
   FunctionDescriptor const * fd = NULL;
 
   // Registers that were changed between the input state and the output state.
@@ -612,12 +612,12 @@ using CallingConventionPtrVector = std::vector<const CallingConvention*>;
 // match arbitrary patterns of register and stack parameter accesses agaist these known
 // conventions, and return a list of matching conventions.
 class CallingConventionMatcher {
-private:
+ private:
 
   RegisterDictionary const & regdict;
   CallingConventionVector conventions;
 
-public:
+ public:
 
   CallingConventionMatcher();
 

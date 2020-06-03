@@ -35,7 +35,7 @@ ProgOptDesc hash_options() {
      "Output as JSON to the given file.  ('-' means stdout)")
     ("pretty-json,p", po::value<unsigned>()->implicit_value(4),
      "Pretty-print json.  Argument is the indent width")
-     ;
+    ;
   return hashopt;
 }
 
@@ -49,7 +49,7 @@ class HashAnalyzer : public BottomUpAnalyzer {
   std::unique_ptr<std::ofstream> fout;
   std::ostream *out = nullptr;
 
-public:
+ public:
   HashAnalyzer(DescriptorSet& ds_, ProgOptVarMap& vm_) : BottomUpAnalyzer(ds_, vm_) {
     matcher.report();
     min_instructions = vm_["min-instructions"].as<size_t>();
