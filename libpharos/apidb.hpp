@@ -60,6 +60,10 @@ class APIDictionary {
 
   static Sawyer::Message::Facility & initDiagnostics();
 
+  // Check -apidb args.  If we can't read one, return the filename so we can produce a
+  // meaningful error message.
+  static boost::optional<std::string> verify_args(const ProgOptVarMap & vm);
+
   enum handle_error_t { IGNORE, LOG_WARN, LOG_ERROR, THROW };
 
   static std::unique_ptr<APIDictionary> create_standard(

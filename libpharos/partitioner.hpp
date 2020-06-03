@@ -116,6 +116,9 @@ class Monitor: public P2::CfgAdjustmentCallback {
  private:
   ResourceLimit partitioner_limit;
  public:
+  class ResourceException: public std::runtime_error {
+    using std::runtime_error::runtime_error;
+  };
   Monitor();
   static Ptr instance() { return Ptr(new Monitor); }
   virtual bool operator()(bool chain, const AttachedBasicBlock &args);

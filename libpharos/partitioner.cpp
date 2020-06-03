@@ -182,8 +182,10 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
   engine->demangleNames(false);
 
   // Check the specimens
-  if (specimen_names.empty())
-    throw std::runtime_error("no specimen specified; see --help");
+  if (specimen_names.empty()) {
+    GFATAL << "no specimen specified; see --help" << LEND;
+    std::exit (EXIT_FAILURE);
+  }
 
   // Load the specimen as raw data or an ELF or PE container.
   MemoryMap::Ptr map;
@@ -240,7 +242,7 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
       OWARN << "Non 32-bit Windows PE support is still highly experimental for this tool!" << LEND;
       if (not vm.count("allow-64bit")) {
         GFATAL << "Please specify --allow-64bit to allow the analysis of 64-bit executables." << LEND;
-        throw std::invalid_argument("Program analysis aborted.");
+        std::exit (EXIT_FAILURE);
       }
     }
   }
@@ -275,52 +277,78 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
     bfs::path path(vm["serialize"].as<std::string>());
     if (exists(path)) {
       OINFO << "Reading serialized data from " << path << "." << LEND;
-      bfs::ifstream file(path);
-      bio::filtering_streambuf<bio::input> in;
-      in.push(bio::gzip_decompressor());
-      in.push(file);
-      bar::binary_iarchive ia(in);
-      std::string version;
-      ia >> version;
-      if (version != version_number()) {
-        if (vm.count("ignore-serialize-version")) {
-          GWARN << "Serialized data was from a different version of Rose."
-                << "  Loading anyway as requested." << LEND;
-          version = version_number();
-        } else {
-          GFATAL << "Serialized data was from a different version of Rose.  Exiting.\n"
-                 << "If you want to overwrite the file, remove the file " << path << '\n'
-                 << "If you want to ignore this, use the --ignore-serialize-version switch."
-                 << LEND;
-          exit(EXIT_FAILURE);
+      try {
+        bfs::ifstream file(path);
+        bio::filtering_streambuf<bio::input> in;
+        in.push(bio::gzip_decompressor());
+        in.push(file);
+        bar::binary_iarchive ia(in);
+        std::string version;
+        ia >> version;
+        if (version != version_number()) {
+          if (vm.count("ignore-serialize-version")) {
+            GWARN << "Serialized data was from a different version of Rose."
+                  << "  Loading anyway as requested." << LEND;
+            version = version_number();
+          } else {
+            GFATAL << "Serialized data was from a different version of Rose.  Exiting.\n"
+                   << "If you want to overwrite the file, remove the file " << path << '\n'
+                   << "If you want to ignore this, use the --ignore-serialize-version switch."
+                   << LEND;
+            exit(EXIT_FAILURE);
+          }
         }
+        time_point start_ts = clock::now();
+        ia >> partitioner;
+        duration secs = clock::now() - start_ts;
+        OINFO << "Reading serialized data took " << secs.count() << " seconds." << LEND;
+      } catch (boost::iostreams::gzip_error &e) {
+        OFATAL << "Unable to read serialized data: " << e.what () << LEND;
+        std::exit (EXIT_FAILURE);
       }
-      time_point start_ts = clock::now();
-      ia >> partitioner;
-      duration secs = clock::now() - start_ts;
-      OINFO << "Reading serialized data took " << secs.count() << " seconds." << LEND;
     } else {
-      // No serialized data.  Write it instead.
-      time_point start_ts = clock::now();
-      engine->runPartitioner(partitioner);
-      time_point now = clock::now();
-      duration secs = now - start_ts;
-      start_ts = now;
-      OINFO << "Function partitioning took " << secs.count() << " seconds." << LEND;
-      OINFO << "Writing serialized data to " << path << "." << LEND;
       bfs::ofstream file(path);
-      bio::filtering_streambuf<bio::output> out;
-      out.push(bio::gzip_compressor());
-      out.push(file);
-      bar::binary_oarchive oa(out);
-      oa << version_number();
-      oa << partitioner;
-      secs = clock::now() - start_ts;
-      OINFO << "Writing serialized data took " << secs.count() << " seconds." << LEND;
+      // This is kind of yucky, but the inner try ensures that we remove the .serialize file.
+      // The outer try then allows us to "really" handle the exceptions.
+      try {
+        try {
+          // No serialized data.  Write it instead.
+          time_point start_ts = clock::now();
+          engine->runPartitioner(partitioner);
+          time_point now = clock::now();
+          duration secs = now - start_ts;
+          start_ts = now;
+          OINFO << "Function partitioning took " << secs.count() << " seconds." << LEND;
+          OINFO << "Writing serialized data to " << path << "." << LEND;
+          bio::filtering_streambuf<bio::output> out;
+          out.push(bio::gzip_compressor());
+          out.push(file);
+          bar::binary_oarchive oa(out);
+          oa << version_number();
+          oa << partitioner;
+          secs = clock::now() - start_ts;
+          OINFO << "Writing serialized data took " << secs.count() << " seconds." << LEND;
+        } catch (...) {
+          file.close();
+          boost::system::error_code ec;
+          if (!bfs::remove(path, ec)) {
+            OWARN << "Could not remove incomplete serialization file " << path << LEND;
+          }
+          throw;
+        }
+      } catch (const Monitor::ResourceException &e) {
+        OFATAL << "During partitioning: " << e.what () << LEND;
+        std::exit (EXIT_FAILURE);
+      }
     }
   } else {
     time_point start_ts = clock::now();
-    engine->runPartitioner(partitioner);
+    try {
+      engine->runPartitioner(partitioner);
+    } catch (const Monitor::ResourceException &e) {
+      OFATAL << LEND << "During partitioning: " << e.what () << LEND;
+      std::exit (EXIT_FAILURE);
+    }
     duration secs = clock::now() - start_ts;
     OINFO << "Pharos function partitioning took " << secs.count() << " seconds." << LEND;
   }
@@ -863,6 +891,12 @@ CERTEngine::create_arbitrary_code(P2::Partitioner& partitioner) {
               if (end == greatest) break;
               ++end;
             }
+            catch (const Monitor::ResourceException &e) {
+              // Make sure we keep propagating ResourceExceptions back up to the caller so we
+              // can terminate.
+              throw;
+            }
+            // ejs: Why is this here? What exceptions is it supposed to be catching?
             catch (std::exception& e) {
               break;
             }
@@ -1570,11 +1604,18 @@ Monitor::operator()(bool chain, const AttachedBasicBlock& /* args */) {
   partitioner_limit.increment_counter();
   LimitCode rstatus = partitioner_limit.check();
   if (rstatus != LimitSuccess) {
-    GFATAL << "Partitioner " << partitioner_limit.get_message() << ": "
-           << partitioner_limit.get_absolute_usage() << LEND;
+    std::stringstream ss;
+    ss << "Partitioner " << partitioner_limit.get_message() << " exceeded: "
+       << partitioner_limit.get_absolute_usage()
+       << ", adjust with --maximum-memory";
+
+    // This is an old comment:
     // Rather ungraceful exit here. :-(  I'm not sure how else to stop the partitioner.
-    GFATAL << "Exiting prematurely, increase --partitioner-timeout and try again." << LEND;
-    exit(4);
+
+    // ejs: I'm not sure what the above comment means.  Why not throw an exception?  We need to
+    // throw an exception here so we can catch it and remove the .serialize file we may have
+    // opened.
+    throw ResourceException(ss.str());
   }
   //if (args.bblock)
   //  OINFO << "Attached basic block " << addr_str(args.bblock->address()) << LEND;

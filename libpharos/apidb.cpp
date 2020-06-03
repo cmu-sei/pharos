@@ -330,6 +330,37 @@ bool APIDictionary::handle_node(MultiApiDictionary & db, const YAML::Node & node
   }
 }
 
+boost::optional<std::string> APIDictionary::verify_args(const ProgOptVarMap & vm) {
+  if (vm.count("apidb")) {
+    for (auto & filename : vm["apidb"].as<std::vector<std::string>>()) {
+      boost::filesystem::path path(filename);
+      auto loc = weakly_canonical(filename);
+      if (!loc.has_root_directory()) {
+        loc = get_library_path() / path;
+      }
+      if (is_directory(loc)) {
+        // XXX: Well, the directory exists.  We should maybe walk through and make sure the files
+        // are readable?
+      } else {
+        try {
+          // Open the file to make sure we can.
+          boost::filesystem::ifstream file;
+          file.exceptions(boost::filesystem::ifstream::failbit |
+                          boost::filesystem::ifstream::badbit);
+          file.open(loc);
+          file.close();
+        } catch (const std::ios_base::failure &e) {
+          // Maybe we should return the exception too, but they generally don't have useful
+          // messages.
+          return loc.native ();
+        }
+      }
+    }
+  }  
+
+  return boost::none;
+}
+
 std::unique_ptr<APIDictionary> APIDictionary::create_standard(
   const ProgOptVarMap &vm,
   handle_error_t handle)
@@ -675,14 +706,12 @@ struct SQLLiteApiDictionary::Data {
 #endif
 
   void enable_trace() {
-    static bool initialized = false;
-    if (!initialized && mlog[Sawyer::Message::DEBUG]) {
+    if (mlog[Sawyer::Message::DEBUG]) {
 #if SQLITE_TRACE_V2_EXISTS
       sqlite3_trace_v2(db, SQLITE_TRACE_STMT, log_sql, nullptr);
 #else
       sqlite3_trace(db, log_sql, nullptr);
 #endif
-      initialized = true;
     }
   }
 

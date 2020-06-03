@@ -49,6 +49,7 @@ enable users to navigate and edit C++ data structures.
 
 We have tested the IDA Pro Plugin on the following configurations:
 
+* IDA Pro 7.5 on Linux with Python 3.8.2
 * IDA Pro 7.5 on Linux with Python 3.6.9
 * IDA Pro 7.4 on Linux with Python 3.6.9
 * IDA Pro 7.4 on macOS with Python 2.7.16

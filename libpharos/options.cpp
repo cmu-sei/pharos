@@ -234,7 +234,7 @@ std::string ProgOptVarMap::command_line() const
   return os.str();
 }
 
-ProgOptVarMap parse_cert_options(
+static ProgOptVarMap parse_cert_options_internal(
   int argc, char** argv,
   ProgOptDesc od,
   const std::string & proghelptext,
@@ -521,10 +521,32 @@ ProgOptVarMap parse_cert_options(
     OINFO << "Propagating full conditions (up to " << limit
           << " terms) during function analysis." << LEND;
   }
+
+  // Early checks to make sure APIDB files exist
+  boost::optional<std::string> badfile = APIDictionary::verify_args(vm);
+  if (badfile) {
+    OFATAL << "Unable to read APIDB file: " << *badfile << LEND;
+    exit (EXIT_FAILURE);
+  }
+
   // We might want to investigate allowing unknown options for pasthru to ROSE
   // http://www.boost.org/doc/libs/1_53_0/doc/html/program_options/howto.html
 
   return vm;
+}
+
+ProgOptVarMap parse_cert_options(
+  int argc, char** argv,
+  ProgOptDesc od,
+  const std::string & proghelptext,
+  boost::optional<ProgPosOptDesc> posopt,
+  Sawyer::Message::UnformattedSinkPtr destination) {
+  try {
+    return parse_cert_options_internal(argc, argv, od, proghelptext, posopt, destination);
+  } catch (boost::program_options::unknown_option &e) {
+    OFATAL << "Error parsing arguments: " << e.what() << LEND;
+    exit (EXIT_FAILURE);
+  }
 }
 
 const bf::path& get_library_path()

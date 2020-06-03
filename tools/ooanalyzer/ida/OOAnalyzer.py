@@ -12,7 +12,9 @@ from abc import ABCMeta, abstractmethod
 import sys
 import codecs
 import pickle
-import six
+
+# In lieu of using "six", let's make out own Python2/3 changes ourselves.
+python_version_2 = (sys.version_info[0] == 2)
 
 PLUGIN_VERSION = 2.0
 
@@ -205,10 +207,15 @@ class PyOOAnalyzer(object):
         Parse the JSON object into a Python dictionary. Parse methods are responsible for properly
         setting the type of data. addresses are always base 16 and offsets are always in base 10
         """
+
         def _byteify(data):
             # if this is a unicode string, return its string representation
-            if isinstance(data, six.string_types):
-                return str(data.encode('utf-8').decode())
+            if python_version_2:
+                if isinstance(data, basestring):
+                    return str(data.encode('utf-8').decode())
+            else:
+                if isinstance(data, str):
+                    return str(data.encode('utf-8').decode())
 
             # if this is a list of values, return list of byteified values
             if isinstance(data, list):
@@ -217,9 +224,11 @@ class PyOOAnalyzer(object):
             # if this is a dictionary, return dictionary of byteified keys and values
             # but only if we haven't already byteified it
             if isinstance(data, dict):
-                return {
-                    _byteify(key): _byteify(value) for key, value in six.iteritems(data)
-                }
+                if python_version_2:
+                    return { _byteify(key): _byteify(value) for key, value in data.iteritems() }
+                else:
+                    return { _byteify(key): _byteify(value) for key, value in data.items() }
+
             # if it's anything else, return it in its original form
             return data
 
