@@ -39,17 +39,17 @@ like opening a file, writing to it, and the closing it.
 ## OOAnalyzer
 
 OOAnalyzer is a tool for the analysis and recovery of object oriented
-constructs. This tool was the subject of a paper titled "Using Logic
+constructs. This tool was the subject of a paper titled ["Using Logic
 Programming to Recover C++ Classes and Methods from Compiled
-Executables" which was published at the ACM Conference on Computer and
-Communications Security in 2018. The tool identifies object members
-and methods by tracking object pointers between functions in the
-program.  A previous implementation of this tool was named
-"Objdigger", but it was renamed to reflect a substantial redesign
-using Prolog rules to recover the object attributes.  For more
-detailed instructons on how to run OOAnalyzer on very large
-executables, see the [notes](share/prolog/oorules) in the Prolog rules
-directory.
+Executables"](https://edmcman.github.io/papers/ccs18.pdf) which was
+published at the ACM Conference on Computer and Communications
+Security in 2018. The tool identifies object members and methods by
+tracking object pointers between functions in the program.  A previous
+implementation of this tool was named "Objdigger", but it was renamed
+to reflect a substantial redesign using Prolog rules to recover the
+object attributes.  For more detailed instructons on how to run
+OOAnalyzer on very large executables, see the
+[notes](share/prolog/oorules) in the Prolog rules directory.
 
 ## CallAnalyzer
 

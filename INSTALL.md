@@ -220,7 +220,7 @@ that was known to compile with the latest major commit to the Pharos
 repository, you can checkout this commit (ROSE version 0.10.4.3):
 
 ```
-$ git checkout -b v0.10.4.3
+$ git checkout v0.10.4.3
 ```
 
 ROSE can be configured in a multitude of ways, and some attention to

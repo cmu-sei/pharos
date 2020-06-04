@@ -12,6 +12,8 @@ install(FILES
 
 macro(install_ooscript script_name)
   configure_file(${script_name}.in ${CMAKE_CURRENT_BINARY_DIR}/${script_name} @ONLY)
+  install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${script_name}
+    DESTINATION share/pharos/prolog/oorules)
 endmacro()
 
 install_ooscript(oodebugrun)

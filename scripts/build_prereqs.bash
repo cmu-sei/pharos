@@ -94,7 +94,7 @@ sudo ldconfig
 CXXFLAGS="$CXXFLAGS --param ggc-min-expand=5 --param ggc-min-heapsize=32768" \
 cmake -GNinja -DCMAKE_INSTALL_PREFIX=$PREFIX -DBOOST_ROOT=$PREFIX -DZ3_ROOT=$PREFIX \
         -Denable-binary-analysis=yes -Denable-c=no -Denable-opencl=no -Denable-java=no -Denable-php=no \
-        -Denable-fortran=no -Ddisable-tutorial-directory=yes \
+        -Denable-fortran=no -Ddisable-tutorial-directory=yes -Denable-projects-directory=no \
         -Ddisable-tests-directory=yes ../rose
 
 # Try once in parallel and then if things fail due to memory

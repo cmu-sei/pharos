@@ -133,7 +133,7 @@ jobs:
       URL: $(ghidraUrl)
   - bash: |
       set -e
-      sudo apt-get -y install bison flex
+      sudo apt-get -y install bison flex xvfb
       git clone --depth 1 https://github.com/NationalSecurityAgency/ghidra
     condition: eq(variables['ghidraUrl'], '')
     workingDirectory: $(Pipeline.Workspace)
@@ -166,9 +166,18 @@ jobs:
   - bash: |
       set -e
       GHIDRA_INSTALL_DIR=$(find $WS -maxdepth 1 -type d -name 'ghidra_*') gradle --build-cache
+    displayName: Build Ghidra plugin
+    workingDirectory: tools/ooanalyzer/ghidra/OOAnalyzerPlugin
+    env:
+      JAVA_HOME: /usr/lib/jvm/zulu-11-azure-amd64
+      WS: $(Pipeline.Workspace)
+  - bash: |
+      set -e
       # Needs a head
-      #GHIDRA_INSTALL_DIR=$(find $WS -maxdepth 1 -type d -name 'ghidra_*') gradle --build-cache test
-    displayName: Build Ghidra plugin and run tests
+      Xvfb :1 &
+      DISPLAY=:1 GHIDRA_INSTALL_DIR=$(find $WS -maxdepth 1 -type d -name 'ghidra_*') gradle --build-cache test
+      kill %%
+    displayName: Run tests
     workingDirectory: tools/ooanalyzer/ghidra/OOAnalyzerPlugin
     env:
       JAVA_HOME: /usr/lib/jvm/zulu-11-azure-amd64

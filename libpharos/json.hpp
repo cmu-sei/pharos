@@ -8,6 +8,7 @@
 #include <ostream>              // std::ostream
 #include <cstdint>              // std::nullptr_t, std::intmax_t, std::uintmax_t
 #include <string>               // std::string
+#include <type_traits>          // std::is_convertible_t
 
 namespace pharos {
 namespace json {
@@ -33,6 +34,11 @@ class Array : public virtual Node {
   virtual void add(Simple && v) = 0;
   virtual std::size_t size() const = 0;
   bool empty() const { return size(); }
+
+  // Workaround for g++ 5.4 bug
+  template <typename T>
+  std::enable_if_t< !std::is_convertible<T, NodeRef>::value>
+  add(T && x);
 };
 
 using ArrayRef = std::unique_ptr<Array>;
@@ -45,6 +51,14 @@ class Object : public virtual Node {
   virtual void add(std::string && str, Simple && v) = 0;
   virtual std::size_t size() const = 0;
   bool empty() const { return size(); }
+
+  // Workaround for g++ 5.4 bug
+  template <typename T>
+  std::enable_if_t< !std::is_convertible<T, NodeRef>::value>
+  add(std::string const & str, T && x);
+  template <typename T>
+  std::enable_if_t< !std::is_convertible<T, NodeRef>::value>
+  add(std::string && str, T && x);
 };
 
 using ObjectRef = std::unique_ptr<Object>;
@@ -96,6 +110,23 @@ class Simple {
 
   NodeRef apply(Builder const & b);
 };
+
+// Workaround for g++ 5.4 bug
+template <typename T>
+std::enable_if_t< !std::is_convertible<T, NodeRef>::value>
+Array::add(T && x) {
+  add(Simple{std::forward<T>(x)});
+}
+template <typename T>
+std::enable_if_t< !std::is_convertible<T, NodeRef>::value>
+Object::add(std::string const & str, T && x) {
+  add(str, Simple{std::forward<T>(x)});
+}
+template <typename T>
+std::enable_if_t< !std::is_convertible<T, NodeRef>::value>
+Object::add(std::string && str, T && x) {
+  add(std::move(str), Simple{std::forward<T>(x)});
+}
 
 class Visitor {
  private:

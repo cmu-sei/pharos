@@ -1,5 +1,7 @@
 # pharos library sources
 set(PHAROS_SOURCES
+  partitioner.cpp               # Placed at the top, as it is a slow compile
+
   apidb.cpp
   apigraph.cpp
   apisig.cpp
@@ -19,7 +21,6 @@ set(PHAROS_SOURCES
   imports.cpp
   ir.cpp
   json.cpp
-  oojson_exporter.cpp
   limit.cpp
   masm.cpp
   md5.cpp
@@ -27,9 +28,15 @@ set(PHAROS_SOURCES
   method.cpp
   misc.cpp
   ooanalyzer.cpp
+  ooclass.cpp
+  ooelement.cpp
+  oojson_exporter.cpp
+  oomember.cpp
+  oomethod.cpp
   oosolver.cpp
+  oovftable.cpp
   options.cpp
-  partitioner.cpp
+  path.cpp
   pdg.cpp
   prolog.cpp
   prologimpl.cpp
@@ -47,15 +54,10 @@ set(PHAROS_SOURCES
   util.cpp
   vcall.cpp
   vftable.cpp
-  xsb.cpp
-  ooelement.cpp
-  ooclass.cpp
-  oomember.cpp
-  oomethod.cpp
-  oovftable.cpp
-  path.cpp
   wp.cpp
+  xsb.cpp
   znode.cpp
+
   PHAROS_REVISION.ii
   config.yaml.ii
   )
