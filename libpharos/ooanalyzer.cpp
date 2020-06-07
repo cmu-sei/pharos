@@ -320,6 +320,11 @@ OOAnalyzer::get_result_classes() {
 // set will eventually be, but it'll probably be managable regardless.  We should investigate
 // the variation some more and expand the list for real use.
 void OOAnalyzer::initialize_known_method_hashes() {
+  // MSVC 12
+  // operator new()
+  new_hashes.insert("F826EF14E44F7C45D21EEE19865CF7B3");
+  // operator new(nothrow)
+  new_hashes.insert("272852A8B9C637A71D693D7D8D312ACE");
   // According to Udit Agarwal... (Thanks!)
   // MVSC 15, 17, & 19.
   new_hashes.insert("BACD68267934497D17B3D6E22A7C8425");
