@@ -147,23 +147,11 @@ def run_prolog_test(args):
     testname = args.testcase[0]
 
     update_rules(args)
-    if args.swi:
-        tool = 'swi'
-        prog_path = args.swi_path
-        # SWI loads from the git_dir because it loads .P files...
-        inc_path = args.git_dir
-        # SWI uses -g for goals.
-        # The stack_limit and table_space options for large files are NOT set here!
-        prog_opts = " -g"
-    else:
-        tool = 'xsb'
-        prog_path = args.xsb_path
-        # SWI loads from the build_dir because it loads .xwam files...
-        inc_path = args.build_dir
-        # XSB uses -e for the goal.
-        prog_opts = ' --noprompt -e'
 
-    rules_path = os.path.join(inc_path, "share", "prolog", "oorules")
+    script = "oodebugrun-swipl" if args.swi else "oodebugrun"
+    tool = "swi" if args.swi else "xsb"
+
+    rules_path = os.path.join(args.build_dir, "share", "prolog", "oorules")
     os.chdir(rules_path)
 
     # Separate outputs for each command so we can run both simultaneously.
@@ -171,16 +159,9 @@ def run_prolog_test(args):
     prolog_output_path = test_output_path(args) + "." + tool + "prolog_output"
     prolog_spew_path = test_output_path(args) + "." + tool + "prolog_error"
 
-    # SWI doesn't use the value of library_directory(), so it seems to require full paths here.
-    # XSB doesn't require this, but it seems to be happy with full paths.
-    file_path = "['%s/report.P']" % rules_path
-
-    prolog_libpath = "asserta(library_directory('%s'))" % (rules_path)
-    oo_options = "assert(rTTIEnabled),assert(logLevel(7))"
-    assertions = "%s,%s,%s,psolve('%s')." % (prolog_libpath, file_path, oo_options, ground_facts_path)
     redirection = ">%s 2>%s" % (prolog_output_path, prolog_spew_path)
-    prolog_cmd = prog_path + prog_opts + ' "' + assertions + '" ' + redirection
-
+    prolog_cmd = "%s %s %s" % (os.path.join(rules_path, script), ground_facts_path, redirection)
+    
     if args.commands:
         print prolog_cmd
 
@@ -199,12 +180,11 @@ def run_prolog_test(args):
         failed += compare_prolog_answers(args, ground_facts_path, gen_results_path)
 
     if args.swi:
-        file_path = "['%s/oojson.P']" % rules_path
-        assertions = "%s,exportJSON('%s'),halt." % (file_path, gen_results_path)
         prolog_json_path = test_output_path(args) + ".swirawjson"
         prolog_spew_path = test_output_path(args) + "." + tool + "prolog_json_error"
         redirection = ">%s 2>%s" % (prolog_json_path, prolog_spew_path)
-        prolog_cmd = prog_path + prog_opts + ' "' + assertions + '" ' + redirection
+
+        prolog_cmd = "%s %s %s" % (os.path.join(rules_path, "oojson-swipl"), gen_results_path, redirection)
 
         if args.commands:
             print prolog_cmd
