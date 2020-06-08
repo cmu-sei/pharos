@@ -1,2 +1,3 @@
 #!/bin/bash
-@XSB_PROGRAM@ --noprompt -e "asserta(library_directory('@CMAKE_CURRENT_BINARY_DIR@')),['validate.P'],loadAndValidateResults('${1}', '${2}'),halt."
+@XSB_HEADER@
+@XSB_PROGRAM@ --noprompt -e "asserta(library_directory('$DIR')),['validate.P'],loadAndValidateResults('${1}', '${2}'),halt."

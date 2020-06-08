@@ -48,8 +48,8 @@ tracking object pointers between functions in the program.  A previous
 implementation of this tool was named "Objdigger", but it was renamed
 to reflect a substantial redesign using Prolog rules to recover the
 object attributes.  For more detailed instructons on how to run
-OOAnalyzer on very large executables, see the
-[notes](share/prolog/oorules) in the Prolog rules directory.
+OOAnalyzer on very large executables, see these
+[notes](share/prolog/oorules/README.md).
 
 ## CallAnalyzer
 

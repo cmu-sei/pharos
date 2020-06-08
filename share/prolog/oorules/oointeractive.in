@@ -1,2 +1,3 @@
 #!/bin/bash
-@XSB_PROGRAM@ --noprompt -e "asserta(library_directory('@CMAKE_CURRENT_BINARY_DIR@')),[report],assert(rTTIEnabled),psolve_no_halt('${1}')."
+@XSB_HEADER@
+@XSB_PROGRAM@ --noprompt -e "asserta(library_directory('$DIR')),[report],assert(rTTIEnabled),psolve_no_halt('${1}')."

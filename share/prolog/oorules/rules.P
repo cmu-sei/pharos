@@ -48,6 +48,7 @@ reasonMethod(Method) :-
 % Because we already know.
 % PAPER: ??? This entire rule is new and still pretty experimental.
 reasonMethod_A(Method) :-
+    traceAtLevel(1, 'testing'),
     factMethod(Method).
 
 % Because contructors are definitely methods.
@@ -107,10 +108,10 @@ reasonMethod_L(Method) :-
     factMethod(Caller),
     % Intentionally NOT a validFuncOffset!
     funcOffset(_Insn1, Caller, Method, 0),
-    %logtrace('reasonMethod_L('), logtrace(Method), logtraceln(').'),
     % Require that the Method also read/use the value.
     funcParameter(Method, ecx, _SymbolicValue),
-    %logtrace('reasonMethod_L('), logtrace(Method), logtraceln(').'),
+    traceAtLevel('TRACE',
+                 (logtrace('reasonMethod_L('), logtrace(Method), logtraceln(').'))),
     true.
 
 % Because direct data flow from new() makes the function a method.
@@ -119,7 +120,9 @@ reasonMethod_M(Method) :-
     thisPtrUsage(_Insn2, Func, ThisPtr, Method),
     % Require that the Method also read/use the value.
     funcParameter(Method, ecx, _SymbolicValue),
-    %logtrace('reasonMethod_M('), logtrace(Method), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonMethod_M('), logtrace(Method), logtraceln(').'),
+    true); true),
     true.
 
 % Because the thisptr is known to be an object pointer.
@@ -130,7 +133,9 @@ reasonMethod_N(Func) :-
     % oo, poly, and ooex7 test cases.
     (callingConvention(Func, '__thiscall'); callingConvention(Func, 'invalid')),
     funcParameter(Func, 'ecx', ThisPtr),
-    %logtrace('reasonMethod_N('), logtrace(Func), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonMethod_N('), logtrace(Func), logtraceln(').'),
+    true); true),
     true.
 
 % First attempt at guessing that a cdecl method is really an OO cdecl method.
@@ -147,7 +152,9 @@ reasonMethod_O(Method) :-
     dethunk(Target, Method),
     % And we're __cdecl.
     callingConvention(Method, '__cdecl'),
-    %logtrace('reasonMethod_O('), logtrace(Method), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonMethod_O('), logtrace(Method), logtraceln(').'),
+    true); true),
     true.
 
 % Know this-pointers passed from one method to another within a function.
@@ -162,7 +169,9 @@ reasonMethod_P(Method) :-
     callTarget(Insn2, Func, Target2),
     dethunk(Target2, Method),
     callingConvention(Method, '__cdecl'),
-    %logtrace('reasonMethod_P('), logtrace(Method), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonMethod_P('), logtrace(Method), logtraceln(').'),
+    true); true),
     true.
 
 %reasonMethod_Q(Method) :-
@@ -263,8 +272,10 @@ reasonNOTConstructor_A(Method) :-
 reasonNOTConstructor_B(Method) :-
     factRealDestructor(Method),
     % Debugging
-    %not(factNOTConstructor(Method)),
-    %logtrace('reasonFactNOTConstructor_B('), logtrace(Method), logtraceln(').'),
+    (logTrace -> (
+    not(factNOTConstructor(Method)),
+    logtrace('reasonFactNOTConstructor_B('), logtrace(Method), logtraceln(').'),
+    true); true),
     true.
 
 % Because it is a deleting destructor.
@@ -272,8 +283,10 @@ reasonNOTConstructor_B(Method) :-
 reasonNOTConstructor_C(Method) :-
     factDeletingDestructor(Method),
     % Debugging
-    %not(factNOTConstructor(Method)),
-    %logtrace('reasonFactNOTConstructor_C('), logtrace(Method), logtraceln(').'),
+    (logTrace -> (
+    not(factNOTConstructor(Method)),
+    logtrace('reasonFactNOTConstructor_C('), logtrace(Method), logtraceln(').'),
+    true); true),
     true.
 
 % Because it is in a virtual function table and constructors can't be virtual.
@@ -283,8 +296,10 @@ reasonNOTConstructor_D(Method) :-
     factVFTableEntry(_VFTable, _Offset, Entry),
     dethunk(Entry, Method),
     % Debugging
-    %not(factNOTConstructor(Method)),
-    %logtrace('reasonFactNOTConstructor_D('), logtrace(Method), logtraceln(').'),
+    (logTrace -> (
+    not(factNOTConstructor(Method)),
+    logtrace('reasonFactNOTConstructor_D('), logtrace(Method), logtraceln(').'),
+    true); true),
     true.
 
 % Because it is called after another method on an object instance pointer.
@@ -294,8 +309,10 @@ reasonNOTConstructor_E(Method) :-
     factMethod(Method),
     not(possibleConstructor(Method)),
     % Debugging
-    %not(factNOTConstructor(Method)),
-    %logtrace('reasonFactNOTConstructor_E('), logtrace(Method), logtraceln(').'),
+    (logTrace -> (
+    not(factNOTConstructor(Method)),
+    logtrace('reasonFactNOTConstructor_E('), logtrace(Method), logtraceln(').'),
+    true); true),
     true.
 
 % Because it is called by a non-constructor on the same object instance.
@@ -305,8 +322,10 @@ reasonNOTConstructor_F(Method) :-
     factNOTConstructor(OtherMethod),
     validFuncOffset(_Insn, OtherMethod, Method, _Offset),
     % Debugging
-    %not(factNOTConstructor(Method)),
-    %logtrace('reasonFactNOTConstructor_F('), logtrace(Method), logtraceln(').'),
+    (logTrace -> (
+    not(factNOTConstructor(Method)),
+    logtrace('reasonFactNOTConstructor_F('), logtrace(Method), logtraceln(').'),
+    true); true),
     true.
 
 % Because you can't be a constructor on a class that's already known to have a VFTable if you
@@ -324,10 +343,12 @@ reasonNOTConstructor_G(Method) :-
     not(possibleVFTableWrite(_Insn2, Method, 0, _VFTable2)),
     %
     % Debugging
-    %not(factNOTConstructor(Method)),
-    %logtrace('reasonFactNOTConstructor_G('),
-    %logtrace(Caller), logtrace(', '),
-    %logtrace(Method), logtraceln(').'),
+    (logTrace -> (
+    not(factNOTConstructor(Method)),
+    logtrace('reasonFactNOTConstructor_G('),
+    logtrace(Caller), logtrace(', '),
+    logtrace(Method), logtraceln(').'),
+    true); true),
     true.
 
 reasonNOTConstructorSet(Set) :-
@@ -425,9 +446,11 @@ reasonNOTRealDestructor_F(Method) :-
     iso_dif(Method, Caller),
     factNOTDeletingDestructor(Caller),
     % Debugging
-    %logtrace('reasonNOTRealDestructor_F('),
-    %logtrace(Method), logtrace(', '),
-    %logtrace(Caller), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonNOTRealDestructor_F('),
+    logtrace(Method), logtrace(', '),
+    logtrace(Caller), logtraceln(').'),
+    true); true),
     true.
 
 % A correlary to reasonNOTConstructor_G (requiring VFTable writes if others have them).
@@ -442,10 +465,12 @@ reasonNOTRealDestructor_G(Method) :-
     % But this method doesn't have the required write.
     not(possibleVFTableWrite(_Insn2, Method, 0, _VFTable2)),
     % Debugging
-    %not(factNOTRealDestructor(Method)),
-    %logtrace('reasonFactNOTRealDestructor_G('),
-    %logtrace(Caller), logtrace(', '),
-    %logtrace(Method), logtraceln(').'),
+    (logTrace -> (
+    not(factNOTRealDestructor(Method)),
+    logtrace('reasonFactNOTRealDestructor_G('),
+    logtrace(Caller), logtrace(', '),
+    logtrace(Method), logtraceln(').'),
+    true); true),
     true.
 
 reasonNOTRealDestructorSet(Set) :-
@@ -522,9 +547,11 @@ reasonNOTDeletingDestructor_E(Method) :-
     iso_dif(Method, Caller),
     validFuncOffset(_Insn, Caller, Method, 0),
     % Debugging
-    %logtrace('reasonNOTDeletingDestructor_E('),
-    %logtrace(Method), logtrace(', '),
-    %logtrace(Caller), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonNOTDeletingDestructor_E('),
+    logtrace(Method), logtrace(', '),
+    logtrace(Caller), logtraceln(').'),
+    true); true),
     true.
 
 reasonNOTDeletingDestructorSet(Set) :-
@@ -574,8 +601,11 @@ reasonVFTable(VFTable) :-
 reasonVFTable(VFTable) :-
     rTTIEnabled,
     rTTIValid,
-    rTTITDA2VFTable(_TDA, VFTable).
-    %logtrace('reasonVFTable1('), logtrace(VFTable), logtraceln(').').
+    rTTITDA2VFTable(_TDA, VFTable),
+    (logTrace -> (
+    logtrace('reasonVFTable1('), logtrace(VFTable), logtraceln(').'),
+    true); true),
+    true.
 
 % Because the VFTable was used in a virtual function call.
 % PAPER: VirtualCall-VFTable
@@ -631,12 +661,14 @@ reasonVFTableOverwrite(Method, VFTable1, VFTable2, Offset) :-
     factConstructor(Method),
 
     % Debugging
-    %not(factVFTableOverwrite(Method, VFTable1, VFTable2, Offset)),
-    %logtrace('reasonVFTableOverwrite_A('),
-    %logtrace(Method), logtrace(', '),
-    %logtrace(VFTable1), logtrace(', '),
-    %logtrace(VFTable2), logtrace(', '),
-    %logtrace(Offset), logtraceln(').'),
+    (logTrace -> (
+    not(factVFTableOverwrite(Method, VFTable1, VFTable2, Offset)),
+    logtrace('reasonVFTableOverwrite_A('),
+    logtrace(Method), logtrace(', '),
+    logtrace(VFTable1), logtrace(', '),
+    logtrace(VFTable2), logtrace(', '),
+    logtrace(Offset), logtraceln(').'),
+    true); true),
     true.
 
 % Because VFTable1 is overwritten by VFTable2, and the method is a NOT a constructor, so we're
@@ -657,27 +689,31 @@ reasonVFTableOverwrite(Method, VFTable2, VFTable1, Offset) :-
     factNOTConstructor(Method),
 
     % Debugging
-    %not(factVFTableOverwrite(Method, VFTable2, VFTable1, Offset)),
-    %logtrace('reasonVFTableOverwrite_B('),
-    %logtrace(Method), logtrace(', '),
-    %logtrace(VFTable2), logtrace(', '),
-    %logtrace(VFTable1), logtrace(', '),
-    %logtrace(Offset), logtraceln(').'),
+    (logTrace -> (
+    not(factVFTableOverwrite(Method, VFTable2, VFTable1, Offset)),
+    logtrace('reasonVFTableOverwrite_B('),
+    logtrace(Method), logtrace(', '),
+    logtrace(VFTable2), logtrace(', '),
+    logtrace(VFTable1), logtrace(', '),
+    logtrace(Offset), logtraceln(').'),
+    true); true),
     true.
 
 % --------------------------------------------------------------------------------------------
+
 % The following two predicates both relate vftables to classes.
-% reasonVFTableBelongsToClass(VFTable, Offset, Class) means that a method on Class installs a
-% pointer at offset in the object to VFTable.  The "Primary" VFTable is simply defined to be
-% the one at offset 0.
+
+% reasonVFTableBelongsToClass(VFTable, Offset, Class) means that a
+% method on Class installs a pointer at Offset _in its own object_
+% (NOT an embedded object) to VFTable.  Roughly, this means a pimary
+% VFTable at offset 0 for the class, and any extra vftables that are
+% used in the case of multiple inheritance.  The "Primary" VFTable is
+% simply defined to be the one at offset 0.
 
 :- table reasonPrimaryVFTableForClass/2 as incremental.
 :- table reasonVFTableBelongsToClass/3 as incremental.
 
 % PAPER: PrimaryVFTable
-
-% If we see a constructor install a table that is not over-written, we can make the association
-% with the class.
 
 % Free, _, Bound
 reasonVFTableBelongsToClass(VFTable, Offset, Class) :-
@@ -686,6 +722,11 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class) :-
     !,
     find(Method, Class),
     factVFTableWrite(_Insn, Method, Offset, VFTable),
+
+    % Constructors may inline embedded constructors.  If non-offset
+    % zero, we must make sure that there is an inherited class at this
+    % offset.
+    (Offset = 0 -> true; factDerivedClass(Class, _BaseClass, Offset)),
 
     % Additional checks.  One of the following must be true...
     (
@@ -717,6 +758,11 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class) :-
     factVFTableWrite(_Insn, Method, Offset, VFTable),
 
     find(Method, Class),
+
+    % Constructors may inline embedded constructors.  If non-offset
+    % zero, we must make sure that there is an inherited class at this
+    % offset.
+    (Offset = 0 -> true; factDerivedClass(Class, _BaseClass, Offset)),
 
     % Additional checks.  One of the following must be true...
     (
@@ -837,10 +883,12 @@ reasonNOTVFTableEntry_E(VFTable, Offset, Entry) :-
     dethunk(Entry, Method),
     factConstructor(Method),
     % Debugging
-    %logtrace('reasonNOTVFTableEntry_E('),
-    %logtrace(VFTable), logtrace(', '),
-    %logtrace(Offset), logtrace(', '),
-    %logtrace(Entry), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonNOTVFTableEntry_E('),
+    logtrace(VFTable), logtrace(', '),
+    logtrace(Offset), logtrace(', '),
+    logtrace(Entry), logtraceln(').'),
+    true); true),
     true.
 
 % Implement: Because our derived VFTable already has a smaller table?
@@ -867,10 +915,12 @@ reasonVFTableSizeGTE(VFTable, Size) :-
     list_max(Set, LastEntry),
     Size is LastEntry + 4,
     % Debugging
-    %not((factVFTableSizeGTE(VFTable, ExistingSize), ExistingSize <= Size)),
-    %logtrace('reasonVFTableSizeGTE_A('),
-    %logtrace(VFTable), logtrace(', '),
-    %logtrace(Size), logtraceln(').'),
+    (logTrace -> (
+    not((factVFTableSizeGTE(VFTable, ExistingSize), ExistingSize =< Size)),
+    logtrace('reasonVFTableSizeGTE_A('),
+    logtrace(VFTable), logtrace(', '),
+    logtrace(Size), logtraceln(').'),
+    true); true),
     true.
 
 % A derived class' vftable must be at least as large as its base class'.
@@ -882,12 +932,14 @@ reasonVFTableSizeGTE(VFTable, Size) :-
     factDerivedClass(DerivedClass, BaseClass, _ObjectOffset),
     reasonPrimaryVFTableForClass(VFTable, DerivedClass),
     % Debugging
-    %not((factVFTableSizeGTE(VFTable, ExistingSize), ExistingSize <= Size)),
-    %logtrace('reasonVFTableSizeGTE_B('),
-    %logtrace(DerivedClass), logtrace(', '),
-    %logtrace(BaseClass), logtrace(', '),
-    %logtrace(VFTable), logtrace(', '),
-    %logtrace(Size), logtraceln(').'),
+    (logTrace -> (
+    not((factVFTableSizeGTE(VFTable, ExistingSize), ExistingSize =< Size)),
+    logtrace('reasonVFTableSizeGTE_B('),
+    logtrace(DerivedClass), logtrace(', '),
+    logtrace(BaseClass), logtrace(', '),
+    logtrace(VFTable), logtrace(', '),
+    logtrace(Size), logtraceln(').'),
+    true); true),
     true.
 
 % --------------------------------------------------------------------------------------------
@@ -908,10 +960,12 @@ reasonVFTableSizeLTE(VFTable, Size) :-
     list_max(Set, LastEntry),
     Size is LastEntry + 4,
     % Debugging
-    %not((factVFTableSizeLTE(VFTable, ExistingSize), ExistingSize >= Size)),
-    %logtrace('reasonVFTableSizeLTE_A('),
-    %logtrace(VFTable), logtrace(', '),
-    %logtrace(Size), logtraceln(').'),
+    (logTrace -> (
+    not((factVFTableSizeLTE(VFTable, ExistingSize), ExistingSize >= Size)),
+    logtrace('reasonVFTableSizeLTE_A('),
+    logtrace(VFTable), logtrace(', '),
+    logtrace(Size), logtraceln(').'),
+    true); true),
     true.
 
 % A base class' vftable must be no larger than its smallest derived class'.
@@ -922,12 +976,14 @@ reasonVFTableSizeLTE(VFTable, Size) :-
     factDerivedClass(DerivedClass, BaseClass, _ObjectOffset),
     reasonPrimaryVFTableForClass(VFTable, BaseClass),
     % Debugging
-    %not((factVFTableSizeLTE(VFTable, ExistingSize), ExistingSize >= Size)),
-    %logtrace('reasonVFTableSizeLTE_B('),
-    %logtrace(DerivedClass), logtrace(', '),
-    %logtrace(BaseClass), logtrace(', '),
-    %logtrace(VFTable), logtrace(', '),
-    %logtrace(Size), logtraceln(').'),
+    (logTrace -> (
+    not((factVFTableSizeLTE(VFTable, ExistingSize), ExistingSize >= Size)),
+    logtrace('reasonVFTableSizeLTE_B('),
+    logtrace(DerivedClass), logtrace(', '),
+    logtrace(BaseClass), logtrace(', '),
+    logtrace(VFTable), logtrace(', '),
+    logtrace(Size), logtraceln(').'),
+    true); true),
     true.
 
 
@@ -949,12 +1005,14 @@ reasonVirtualFunctionCall(Insn, Method, ObjectOffset, VFTable, VFTableOffset) :-
     % We know what VFTable was written into that object offset.
     factVFTableWrite(_WriteInsn, Method, ObjectOffset, VFTable),
     % Debugging
-    %logtrace('reasonVirtualFunctionCall('),
-    %logtrace(Insn), logtrace(', '),
-    %logtrace(Method), logtrace(', '),
-    %logtrace(ObjectOffset), logtrace(', '),
-    %logtrace(VFTable), logtrace(', '),
-    %logtrace(VFTableOffset), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonVirtualFunctionCall('),
+    logtrace(Insn), logtrace(', '),
+    logtrace(Method), logtrace(', '),
+    logtrace(ObjectOffset), logtrace(', '),
+    logtrace(VFTable), logtrace(', '),
+    logtrace(VFTableOffset), logtraceln(').'),
+    true); true),
     true.
 
 % ============================================================================================
@@ -974,7 +1032,9 @@ reasonVBTable(VBTable) :-
 reasonVBTable(VBTable) :-
     factVBTableEntry(VBTable, Offset, _Value),
     Offset >= 4,
-    %logtrace('reasonVBTable_A('), logtrace(VBTable), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonVBTable_A('), logtrace(VBTable), logtraceln(').'),
+    true); true),
     true.
 
 % --------------------------------------------------------------------------------------------
@@ -992,11 +1052,13 @@ reasonVBTableWrite(Insn, Method, Offset, VBTable) :-
     % And there's a VBTable write that references that VBTable.
     possibleVBTableWrite(Insn, Method, Offset, VBTable),
     % Debugging
-    %logtrace('reasonVBTableWrite_A('),
-    %logtrace(Insn), logtrace(', '),
-    %logtrace(Method), logtrace(', '),
-    %logtrace(Offset), logtrace(', '),
-    %logtrace(VBTable), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonVBTableWrite_A('),
+    logtrace(Insn), logtrace(', '),
+    logtrace(Method), logtrace(', '),
+    logtrace(Offset), logtrace(', '),
+    logtrace(VBTable), logtraceln(').'),
+    true); true),
     true.
 
 % --------------------------------------------------------------------------------------------
@@ -1033,10 +1095,12 @@ reasonVBTableEntry(VBTable, Offset, Value) :-
     find(Method, DerivedClass),
     possibleVBTableEntry(VBTable, Offset, Value),
     % Debugging
-    %logtrace('reasonVBTableEntry_A('),
-    %logtrace(VBTable), logtrace(', '),
-    %logtrace(Offset), logtrace(', '),
-    %logtrace(Value), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonVBTableEntry_A('),
+    logtrace(VBTable), logtrace(', '),
+    logtrace(Offset), logtrace(', '),
+    logtrace(Value), logtraceln(').'),
+    true); true),
     true.
 
 % ============================================================================================
@@ -1075,10 +1139,12 @@ reasonObjectInObject_B(OuterClass, InnerClass, Offset) :-
     % database consistent in cases where we do (e.g. from RTTI information).
     factDerivedClass(OuterClass, InnerClass, Offset),
     % Debugging
-    %logtrace('reasonObjectInObject_B('),
-    %logtrace(OuterClass), logtrace(', '),
-    %logtrace(InnerClass), logtrace(', '),
-    %logtrace(Offset), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonObjectInObject_B('),
+    logtrace(OuterClass), logtrace(', '),
+    logtrace(InnerClass), logtrace(', '),
+    logtrace(Offset), logtraceln(').'),
+    true); true),
     true.
 
 % Because an existing embedded object relationship exists.
@@ -1086,10 +1152,12 @@ reasonObjectInObject_C(OuterClass, InnerClass, Offset) :-
     % This case probably is used at all yet, but it might be someday.
     factEmbeddedObject(OuterClass, InnerClass, Offset),
     % Debugging
-    %logtrace('reasonObjectInObject_C('),
-    %logtrace(OuterClass), logtrace(', '),
-    %logtrace(InnerClass), logtrace(', '),
-    %logtrace(Offset), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonObjectInObject_C('),
+    logtrace(OuterClass), logtrace(', '),
+    logtrace(InnerClass), logtrace(', '),
+    logtrace(Offset), logtraceln(').'),
+    true); true),
     true.
 
 % This rule is a special case of the reasonObjectInObject_E, that relies on the fact that it
@@ -1115,10 +1183,12 @@ reasonObjectInObject_D(OuterClass, InnerClass, Offset) :-
     not(reasonDerivedClassRelationship(OuterClass, InnerClass)),
 
     % Debugging
-    %logtrace('reasonObjectInObject_D('),
-    %logtrace(OuterClass), logtrace(', '),
-    %logtrace(InnerClass), logtrace(', '),
-    %logtrace(Offset), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonObjectInObject_D('),
+    logtrace(OuterClass), logtrace(', '),
+    logtrace(InnerClass), logtrace(', '),
+    logtrace(Offset), logtraceln(').'),
+    true); true),
     true.
 
 % Because the outer constructor explicitly calls the inner constructor on that offset.
@@ -1156,10 +1226,12 @@ reasonObjectInObject_E(OuterClass, InnerClass, Offset) :-
     not(reasonDerivedClassRelationship(OuterClass, InnerClass)),
 
     % Debugging
-    %logtrace('reasonObjectInObject_E('),
-    %logtrace(OuterClass), logtrace(', '),
-    %logtrace(InnerClass), logtrace(', '),
-    %logtrace(Offset), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonObjectInObject_E('),
+    logtrace(OuterClass), logtrace(', '),
+    logtrace(InnerClass), logtrace(', '),
+    logtrace(Offset), logtraceln(').'),
+    true); true),
     true.
 
 % The member at Offset in OuterConstructor is certain to be an object instance of class
@@ -1183,10 +1255,12 @@ reasonObjectInObject_E(OuterClass, InnerClass, Offset) :-
 %    find(OuterConstructor, OuterClass),
 %    iso_dif(InnerClass, OuterClass).
 %    % Debugging
-%    %logtrace('reasonObjectInObject2('),
-%    %logtrace(OuterClass), logtrace(', '),
-%    %logtrace(InnerClass), logtrace(', '),
-%    %logtrace(Offset), logtraceln(').').
+%    (logTrace -> (
+%    logtrace('reasonObjectInObject2('),
+%    logtrace(OuterClass), logtrace(', '),
+%    logtrace(InnerClass), logtrace(', '),
+%    logtrace(Offset), logtraceln(').').
+%    true); true),
 
 % --------------------------------------------------------------------------------------------
 % The member at Offset in Class is certain to be an object instance of the type associated with
@@ -1335,16 +1409,20 @@ reasonDerivedClass_B(DerivedClass, BaseClass, ObjectOffset) :-
     not(reasonDerivedClassRelationship(DerivedClass, BaseClass)),
 
     % Debugging
-    %logtrace('DEBUG Derived VFTable: '), logtrace(DerivedVFTable),
-    %logtrace(' Base VFTable: '), logtrace(BaseVFTable),
-    %logtrace(' Derived Contstructor: '), logtrace(DerivedConstructor),
-    %logtrace(' Base Constructor: '), logtraceln(BaseConstructor),
+    (logTrace -> (
+    not(factDerivedClass(DerivedClass, BaseClass, ObjectOffset)),
+    logtrace('DEBUG Derived VFTable: '), logtrace(DerivedVFTable),
+    logtrace(' Base VFTable: '), logtrace(BaseVFTable),
+    logtrace(' Derived Contstructor: '), logtrace(DerivedConstructor),
+    logtrace(' Base Constructor: '), logtraceln(BaseConstructor),
+    true); true),
 
-    %not(factDerivedClass(DerivedClass, BaseClass, ObjectOffset)),
-    %logtrace('reasonDerivedClass_B('),
-    %logtrace(DerivedClass), logtrace(', '),
-    %logtrace(BaseClass), logtrace(', '),
-    %logtrace(ObjectOffset), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonDerivedClass_B('),
+    logtrace(DerivedClass), logtrace(', '),
+    logtrace(BaseClass), logtrace(', '),
+    logtrace(ObjectOffset), logtraceln(').'),
+    true); true),
     true.
 
 % Ed: So this situation is complicated as well.  This rule is flawed because the last statement
@@ -1392,20 +1470,24 @@ reasonDerivedClass_B(DerivedClass, BaseClass, ObjectOffset) :-
     %not(factDerivedClass(DerivedClass, BaseClass, _OtherObjectOffset)),
 
     % Short format debugging.
-    %logtrace('reasonDerivedClass2('),
-    %logtrace(DerivedClass), logtrace(', '),
-    %logtrace(BaseClass), logtrace(', '),
-    %logtrace(ObjectOffset), logtraceln(').').
+%%     (logTrace -> (
+%%     logtrace('reasonDerivedClass2('),
+%%     logtrace(DerivedClass), logtrace(', '),
+%%     logtrace(BaseClass), logtrace(', '),
+%%     logtrace(ObjectOffset), logtraceln(').').
+%%     true); true),
 
-    % Long format debugging.
-    %logtrace('reasonDerivedClass2()...'),
-    %logtrace('  Method: '), logtraceln(Method),
-    %logtrace('  Base VFTable: '), logtrace(BaseVFTable),
-    %logtrace('    Constructor: '), logtrace(BaseConstructor),
-    %logtrace('    Class: '), logtraceln(BaseClass),
-    %logtrace('  Derived VFTable: '), logtrace(DerivedVFTable),
-    %logtrace('    Constructor: '), logtrace(DerivedConstructor),
-    %logtrace('    Class: '), logtraceln(DerivedClass).
+%%     % Long format debugging.
+%%     (logTrace -> (
+%%     logtrace('reasonDerivedClass2()...'),
+%%     logtrace('  Method: '), logtraceln(Method),
+%%     logtrace('  Base VFTable: '), logtrace(BaseVFTable),
+%%     logtrace('    Constructor: '), logtrace(BaseConstructor),
+%%     logtrace('    Class: '), logtraceln(BaseClass),
+%%     logtrace('  Derived VFTable: '), logtrace(DerivedVFTable),
+%%     logtrace('    Constructor: '), logtrace(DerivedConstructor),
+%%     logtrace('    Class: '), logtraceln(DerivedClass).
+%%     true); true),
 
 
 % This rule might be slightly off, because another possibility is that there's a nearly
@@ -1416,11 +1498,13 @@ reasonDerivedClass_C(DerivedClass, BaseClass, Offset) :-
     factObjectInObject(DerivedClass, BaseClass, Offset),
     factNOTEmbeddedObject(DerivedClass, BaseClass, Offset),
     % Debugging
-    %not(factDerivedClass(DerivedClass, BaseClass, Offset)),
-    %logtrace('reasonDerivedClass_C('),
-    %logtrace(DerivedClass), logtrace(', '),
-    %logtrace(BaseClass), logtrace(', '),
-    %logtrace(Offset), logtraceln(').'),
+    (logTrace -> (
+    not(factDerivedClass(DerivedClass, BaseClass, Offset)),
+    logtrace('reasonDerivedClass_C('),
+    logtrace(DerivedClass), logtrace(', '),
+    logtrace(BaseClass), logtrace(', '),
+    logtrace(Offset), logtraceln(').'),
+    true); true),
     true.
 
 % Because RTTI tells us so for a non-virtual base class.
@@ -1433,20 +1517,22 @@ reasonDerivedClass_D(DerivedClass, BaseClass, Offset) :-
     rTTITDA2Class(BaseTDA, BaseClass),
     iso_dif(BaseClass, DerivedClass),
     % Debugging
-    %not(factDerivedClass(DerivedClass, BaseClass, Offset)),
-    %logtrace('reasonDerivedClass_D('),
-    %logtrace(DerivedTDA), logtrace(', '),
-    %logtrace(BaseTDA), logtrace(', '),
-    %logtrace(DerivedClass), logtrace(', '),
-    %logtrace(BaseClass), logtrace(', '),
-    %logtrace(Offset), logtraceln(').'),
+    (logTrace -> (
+    not(factDerivedClass(DerivedClass, BaseClass, Offset)),
+    logtrace('reasonDerivedClass_D('),
+    logtrace(DerivedTDA), logtrace(', '),
+    logtrace(BaseTDA), logtrace(', '),
+    logtrace(DerivedClass), logtrace(', '),
+    logtrace(BaseClass), logtrace(', '),
+    logtrace(Offset), logtraceln(').'),
+    true); true),
     true.
 
 % Because RTTI tells us so for a virtual base class.
 reasonDerivedClass_E(DerivedClass, BaseClass, Offset) :-
     rTTIEnabled,
     rTTIValid,
-    rTTIInheritsFrom(DerivedTDA, BaseTDA, _Attributes, _M, P, V),
+    rTTIInheritsFrom(DerivedTDA, BaseTDA, _Attributes, M, P, V),
     negative(1, NegativeOne),
     iso_dif(P, NegativeOne),
     possibleVBTableWrite(_Insn, Method, P, VBTableAddr),
@@ -1457,16 +1543,18 @@ reasonDerivedClass_E(DerivedClass, BaseClass, Offset) :-
     possibleVBTableEntry(VBTableAddr, V, Entry),
     Offset is P + Entry,
     % Debugging
-    %not(factDerivedClass(DerivedClass, BaseClass, Offset)),
-    %logtrace('reasonDerivedClass_E('),
-    %logtrace(_M), logtrace(', '),
-    %logtrace(P), logtrace(', '),
-    %logtrace(V), logtrace(', '),
-    %logtrace(Method), logtrace(', '),
-    %logtrace(VBTableAddr), logtrace(', '),
-    %logtrace(DerivedClass), logtrace(', '),
-    %logtrace(BaseClass), logtrace(', '),
-    %logtrace(Offset), logtraceln(').'),
+    (logTrace -> (
+    not(factDerivedClass(DerivedClass, BaseClass, Offset)),
+    logtrace('reasonDerivedClass_E('),
+    logtrace(M), logtrace(', '),
+    logtrace(P), logtrace(', '),
+    logtrace(V), logtrace(', '),
+    logtrace(Method), logtrace(', '),
+    logtrace(VBTableAddr), logtrace(', '),
+    logtrace(DerivedClass), logtrace(', '),
+    logtrace(BaseClass), logtrace(', '),
+    logtrace(Offset), logtraceln(').'),
+    true); true),
     true.
 
 % An easier to understand version of E that builds on concluded VBTable facts instead of RTTI.
@@ -1480,12 +1568,14 @@ reasonDerivedClass_F(DerivedClass, BaseClass, Offset) :-
     % This is the unification that makes the VBTableEntry relevant.
     find(Method, DerivedClass),
     % Debugging
-    %not(factDerivedClass(DerivedClass, BaseClass, Offset)),
-    %logtrace('reasonDerivedClass_F('),
-    %logtrace(DerivedClass), logtrace(', '),
-    %logtrace(BaseClass), logtrace(', '),
-    %logtrace(Offset), logtrace(', '),
-    %logtrace(VBTableAddress), logtraceln(').'),
+    (logTrace -> (
+    not(factDerivedClass(DerivedClass, BaseClass, Offset)),
+    logtrace('reasonDerivedClass_F('),
+    logtrace(DerivedClass), logtrace(', '),
+    logtrace(BaseClass), logtrace(', '),
+    logtrace(Offset), logtrace(', '),
+    logtrace(VBTableAddress), logtraceln(').'),
+    true); true),
     true.
 
 % --------------------------------------------------------------------------------------------
@@ -1505,6 +1595,31 @@ reasonNOTDerivedClass(DerivedClass, BaseClass, ObjectOffset) :-
     % ejs: Why do these need to be constructors?
     factConstructor(DerivedConstructor),
     factConstructor(BaseConstructor).
+
+% There can't be multiple inhertitance without single inheritance.  VFTable writes at non-zero
+% offsets can not represent base classes unless there's also a VFTable write at offset zero.
+% In other words, all VFTables installed into non-zero offsets of an object must be
+% inlined-constructors of embedded objects rather than base classes.  The only possible
+% exception to this could be a first base class that had no virtual functions and a second base
+% class that did have virtual functions. However, I would expect that the compiler would choose
+% the class with the virtual functions as the first base class in that case as a clear
+% performance optimization.
+reasonNOTDerivedClass(DerivedClass, BaseClass, ObjectOffset) :-
+
+    % There is embedding or inheritance at non-offset 0
+    factObjectInObject(DerivedClass, BaseClass, ObjectOffset),
+    iso_dif(ObjectOffset, 0),
+    find(DerivedConstructor, DerivedClass),
+    factConstructor(DerivedConstructor),
+
+    % The derived constructor does not write a vftable at offset 0
+    not(factVFTableWrite(_Insn, DerivedConstructor, 0, _DVFTable)),
+
+    % The base class has a primary vftable
+    find(BaseConstructor, BaseClass),
+    % ejs: Why do these need to be constructors?
+    factConstructor(BaseConstructor),
+    reasonPrimaryVFTableForClass(_BVFTable, BaseClass).
 
 % Add rule for: We cannot be a derived constructor if the table we write was the certain normal
 % (unmodified) table of the base constructor.
@@ -1544,7 +1659,9 @@ reasonClassHasNoBase(Class) :-
     rTTIValid,
     rTTINoBase(TDA),
     rTTITDA2Class(TDA, Class),
-    %logtrace('reasonClassHasNoBase('), logtrace(TDA), logtrace(', '), logtrace(Class), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonClassHasNoBase('), logtrace(TDA), logtrace(', '), logtrace(Class), logtraceln(').'),
+    true); true),
     true.
 
 reasonClassHasNoBaseSet(Set) :-
@@ -1714,9 +1831,11 @@ reasonClassHasUnknownBase_D(Class) :-
     rTTIInheritsFrom(DerivedTDA, _BaseTDA, _Attributes, _Offset1, _P, _V),
     rTTITDA2Class(DerivedTDA, Class),
     % Debugging
-    %not(factClassHasUnknownBase(Class)),
-    %logtrace('reasonClassHasUnknownBase_D('),
-    %logtrace(Class), logtraceln(').'),
+    (logTrace -> (
+    not(factClassHasUnknownBase(Class)),
+    logtrace('reasonClassHasUnknownBase_D('),
+    logtrace(Class), logtraceln(').'),
+    true); true),
     true.
 
 % Because the class shares a method that we know is not assigned to the class.
@@ -1725,7 +1844,9 @@ reasonClassHasUnknownBase_E(Class, Method, MethodClass) :-
     find(Method, MethodClass),
     dynFactNOTMergeClasses(Class, MethodClass),
     % Debugging
-    %logtrace('reasonClassHasUnknownBase_E('), logtrace(Class), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonClassHasUnknownBase_E('), logtrace(Class), logtraceln(').'),
+    true); true),
     true.
 
 reasonClassHasUnknownBaseSet(Set) :-
@@ -1773,12 +1894,14 @@ reasonClassCallsMethod_A(Class1, Method2) :-
     % Functions that are methods can call base methods
 
     % Debugging
-    %not(factClassCallsMethod(Class1, Method2)),
-    %logtrace('reasonClassCallsMethod_A('),
-    %logtrace(Function), logtrace(', '),
-    %logtrace(Method1), logtrace(', '),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Method2), logtraceln(').'),
+    (logTrace -> (
+    not(factClassCallsMethod(Class1, Method2)),
+    logtrace('reasonClassCallsMethod_A('),
+    logtrace(Function), logtrace(', '),
+    logtrace(Method1), logtrace(', '),
+    logtrace(Class1), logtrace(', '),
+    logtrace(Method2), logtraceln(').'),
+    true); true),
     true.
 
 % Because the method appears in a vftable assigned in another method.
@@ -1794,12 +1917,13 @@ reasonClassCallsMethod_B(Class1, Method2) :-
     find(Method2, Class2),
     iso_dif(Class1, Class2),
     % Debugging
-    %not(factClassCallsMethod(Class1, Method2)),
-    %logtrace('reasonClassCallsMethod_B('),
-    %logtrace(VFTable), logtrace(', '),
-    %logtrace(Method1), logtrace(', '),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Method2), logtraceln(').'),
+    (logTrace -> (
+    not(factClassCallsMethod(Class1, Method2)),
+    logtrace('reasonClassCallsMethod_B('),
+    logtrace(VFTable), logtrace(', '),
+    logtrace(Class1), logtrace(', '),
+    logtrace(Method2), logtraceln(').'),
+    true); true),
     true.
 
 % Because one method calls another method on the same this-pointer.
@@ -1812,11 +1936,13 @@ reasonClassCallsMethod_C(Class1, Method2) :-
     find(Method2, Class2),
     iso_dif(Class1, Class2),
     % Debugging
-    %not(factClassCallsMethod(Class1, Method2)),
-    %logtrace('reasonClassCallsMethod_C('),
-    %logtrace(Method1), logtrace(', '),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Method2), logtraceln(').'),
+    (logTrace -> (
+    not(factClassCallsMethod(Class1, Method2)),
+    logtrace('reasonClassCallsMethod_C('),
+    logtrace(Method1), logtrace(', '),
+    logtrace(Class1), logtrace(', '),
+    logtrace(Method2), logtraceln(').'),
+    true); true),
     true.
 
 % Because a method on an outer class calls a method on a known inner object.
@@ -1833,12 +1959,14 @@ reasonClassCallsMethod_D(InnerClass, InnerMethod) :-
     iso_dif(OuterClass, InnerClass),
     iso_dif(InnerClass, InnerMethod),
     % Debugging
-    %not(factClassCallsMethod(InnerClass, InnerMethod)),
-    %logtrace('reasonClassCallsMethod_D('),
-    %logtrace(OuterClass), logtrace(', '),
-    %logtrace(OuterMethod), logtrace(', '),
-    %logtrace(InnerClass), logtrace(', '),
-    %logtrace(InnerMethod), logtraceln(').'),
+    (logTrace -> (
+    not(factClassCallsMethod(InnerClass, InnerMethod)),
+    logtrace('reasonClassCallsMethod_D('),
+    logtrace(OuterClass), logtrace(', '),
+    logtrace(OuterMethod), logtrace(', '),
+    logtrace(InnerClass), logtrace(', '),
+    logtrace(InnerMethod), logtraceln(').'),
+    true); true),
     true.
 
 % This is basically a duplicate of the logic that made the cdecl functon a method in the first
@@ -1853,11 +1981,13 @@ reasonClassCallsMethod_E(Class, Method) :-
     callTarget(Insn, Proven, Method),
     callingConvention(Method, '__cdecl'),
     % Debugging
-    %not(factClassCallsMethod(Class, Method)),
-    %logtrace('reasonClassCallsMethod_E('),
-    %logtrace(Insn), logtrace(', '),
-    %logtrace(Class), logtrace(', '),
-    %logtrace(Method), logtraceln(').'),
+    (logTrace -> (
+    not(factClassCallsMethod(Class, Method)),
+    logtrace('reasonClassCallsMethod_E('),
+    logtrace(Insn), logtrace(', '),
+    logtrace(Class), logtrace(', '),
+    logtrace(Method), logtraceln(').'),
+    true); true),
     true.
 
 % Know this-pointers passed from one method to another within a function.
@@ -1875,12 +2005,14 @@ reasonClassCallsMethod_F(Class, Method) :-
     dethunk(Target2, Method),
     callingConvention(Method, '__cdecl'),
     % Debugging
-    %not(factClassCallsMethod(Class, Method)),
-    %logtrace('reasonClassCallsMethod_F('),
-    %logtrace(Insn1), logtrace(', '),
-    %logtrace(Insn2), logtrace(', '),
-    %logtrace(Class), logtrace(', '),
-    %logtrace(Method), logtraceln(').'),
+    (logTrace -> (
+    not(factClassCallsMethod(Class, Method)),
+    logtrace('reasonClassCallsMethod_F('),
+    logtrace(Insn1), logtrace(', '),
+    logtrace(Insn2), logtrace(', '),
+    logtrace(Class), logtrace(', '),
+    logtrace(Method), logtraceln(').'),
+    true); true),
     true.
 
 % --------------------------------------------------------------------------------------------
@@ -1985,11 +2117,13 @@ reasonMergeClasses_B(BaseClass, MethodClass) :-
     iso_dif(BaseClass, MethodClass),
 
     % Debugging.
-    %not(find(BaseClass, MethodClass)),
-    %logtrace('reasonMergeClasses_B('),
-    %logtrace(BaseClass), logtrace(', '),
-    %logtrace(MethodClass), logtrace(', '),
-    %logtrace(Method), logtraceln(').'),
+    (logTrace -> (
+    not(find(BaseClass, MethodClass)),
+    logtrace('reasonMergeClasses_B('),
+    logtrace(BaseClass), logtrace(', '),
+    logtrace(MethodClass), logtrace(', '),
+    logtrace(Method), logtraceln(').'),
+    true); true),
     true.
 
 % If an object instance associated with the constructor calls the method, and it has no base
@@ -2016,10 +2150,12 @@ reasonMergeClasses_C(Class, ExistingClass) :-
     not(factObjectInObject(ExistingClass, _0InnerClass, 0)),
 
     % Debugging
-    %not(find(Class, ExistingClass)),
-    %logtrace('reasonMergeClasses_C('),
-    %logtrace(Class), logtrace(', '),
-    %logtrace(ExistingClass), logtraceln(').'),
+    (logTrace -> (
+    not(find(Class, ExistingClass)),
+    logtrace('reasonMergeClasses_C('),
+    logtrace(Class), logtrace(', '),
+    logtrace(ExistingClass), logtraceln(').'),
+    true); true),
     true.
 
 % If there are two implementations of the constructor on the same class, they should be merged
@@ -2092,12 +2228,14 @@ reasonMergeClasses_D(Method1, Method2) :-
     %   )),
 
     % Debugging
-    %not(find(Class1, Class2)),
-    %logtrace('reasonMergeClasses_D('),
-    %logtrace(Method1), logtrace(', '),
-    %logtrace(Method2), logtrace(', '),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtraceln(').'),
+    (logTrace -> (
+    not(find(Class1, Class2)),
+    logtrace('reasonMergeClasses_D('),
+    logtrace(Method1), logtrace(', '),
+    logtrace(Method2), logtrace(', '),
+    logtrace(Class1), logtrace(', '),
+    logtrace(Class2), logtraceln(').'),
+    true); true),
     true.
 
 % The constructors are certain to be on the exact same class.  The reasoning is that if there's
@@ -2112,12 +2250,14 @@ reasonMergeClasses_E(Class1, Class2) :-
     iso_dif(Class1, Class2),
 
     % Debugging
-    %not(find(Class1, Class2)),
-    %logtrace('reasonMergeClasses_E('),
-    %logtrace(DerivedClass), logtrace(', '),
-    %logtrace(ObjectOffset), logtrace(', '),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtraceln(').'),
+    (logTrace -> (
+    not(find(Class1, Class2)),
+    logtrace('reasonMergeClasses_E('),
+    logtrace(DerivedClass), logtrace(', '),
+    logtrace(ObjectOffset), logtrace(', '),
+    logtrace(Class1), logtrace(', '),
+    logtrace(Class2), logtraceln(').'),
+    true); true),
     true.
 
 % Because the Method2 appears in VFTable assocated with a class, and that class has no base, so
@@ -2139,13 +2279,14 @@ reasonMergeClasses_F(Class1, Class2) :-
     find(Method2, Class2),
     iso_dif(Class1, Class2),
     % Debugging
-    %not(find(Class1, Class2)),
-    %logtrace('reasonMergeClasses_F('),
-    %logtrace(Method1), logtrace(', '),
-    %logtrace(Method2), logtrace(', '),
-    %logtrace(VFTable), logtrace(', '),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtraceln(').'),
+    (logTrace -> (
+    not(find(Class1, Class2)),
+    logtrace('reasonMergeClasses_F('),
+    logtrace(Method2), logtrace(', '),
+    logtrace(VFTable), logtrace(', '),
+    logtrace(Class1), logtrace(', '),
+    logtrace(Class2), logtraceln(').'),
+    true); true),
     true.
 
 % Because the symbols tell us they're the same class.
@@ -2158,13 +2299,15 @@ reasonMergeClasses_G(Class1, Class2) :-
     find(Method2, Class2),
     iso_dif(Class1, Class2),
     % Debugging
-    %not(find(Class1, Class2)),
-    %logtrace('reasonMergeClasses_G('),
-    %logtrace(Method1), logtrace(', '),
-    %logtrace(Method2), logtrace(', '),
-    %logtrace(ClassName), logtrace(', '),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtraceln(').'),
+    (logTrace -> (
+    not(find(Class1, Class2)),
+    logtrace('reasonMergeClasses_G('),
+    logtrace(Method1), logtrace(', '),
+    logtrace(Method2), logtrace(', '),
+    logtrace(ClassName), logtrace(', '),
+    logtrace(Class1), logtrace(', '),
+    logtrace(Class2), logtraceln(').'),
+    true); true),
     true.
 
 % Because additional methods in our VFTable must be ours.
@@ -2191,15 +2334,17 @@ reasonMergeClasses_H(DerivedClass, MethodClass) :-
     find(Method, MethodClass),
     iso_dif(DerivedClass, MethodClass),
     % Debugging
-    %not(find(DerivedClass, MethodClass)),
-    %logtrace('reasonMergeClasses_H('),
-    %logtrace(DerivedVFTable), logtrace(', '),
-    %logtrace(BaseSize), logtrace(', '),
-    %logtrace(VOffset), logtrace(', '),
-    %logtrace(BaseVFTable), logtrace(', '),
-    %logtrace(Method), logtrace(', '),
-    %logtrace(DerivedClass), logtrace(', '),
-    %logtrace(MethodClass), logtraceln(').'),
+    (logTrace -> (
+    not(find(DerivedClass, MethodClass)),
+    logtrace('reasonMergeClasses_H('),
+    logtrace(DerivedVFTable), logtrace(', '),
+    logtrace(BaseSize), logtrace(', '),
+    logtrace(VOffset), logtrace(', '),
+    logtrace(BaseVFTable), logtrace(', '),
+    logtrace(Method), logtrace(', '),
+    logtrace(DerivedClass), logtrace(', '),
+    logtrace(MethodClass), logtraceln(').'),
+    true); true),
     true.
 
 
@@ -2299,12 +2444,14 @@ reasonNOTMergeClasses_C_asymmetric(DerivedClass, MethodClass) :-
     % not(factDeletingDestructor(Method)),
 
     % Debugging
-    %not(dynFactNOTMergeClasses(DerivedClass, MethodClass)),
-    %logtrace('reasonNOTMergeClasses_C_asymmetric('),
-    %logtrace(Method), logtrace(', '),
-    %logtrace(BaseClass), logtrace(', '),
-    %logtrace(DerivedClass), logtrace(', '),
-    %logtrace(MethodClass), logtraceln(').'),
+    (logTrace -> (
+    not(dynFactNOTMergeClasses(DerivedClass, MethodClass)),
+    logtrace('reasonNOTMergeClasses_C_asymmetric('),
+    logtrace(Method), logtrace(', '),
+    logtrace(BaseClass), logtrace(', '),
+    logtrace(DerivedClass), logtrace(', '),
+    logtrace(MethodClass), logtraceln(').'),
+    true); true),
     true.
 
 % Handle the complicated asymmetry of reasonNOTMergeClasses_C_asymmetric, so that we always
@@ -2314,10 +2461,12 @@ reasonNOTMergeClasses_C(Class1, Class2) :-
      (reasonNOTMergeClasses_C_asymmetric(Class2, Class1), Class1 < Class2)),
 
     % Debugging
-    %not(dynFactNOTMergeClasses(Class1, Class2)),
-    %logtrace('reasonNOTMergeClasses_C('),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtraceln(').'),
+    (logTrace -> (
+    not(dynFactNOTMergeClasses(Class1, Class2)),
+    logtrace('reasonNOTMergeClasses_C('),
+    logtrace(Class1), logtrace(', '),
+    logtrace(Class2), logtraceln(').'),
+    true); true),
     true.
 
 % Any two constructors that write _different_ vftables into the same offets in their objects
@@ -2349,10 +2498,12 @@ reasonNOTMergeClasses_E(Class1, Class2, Insn1, Method1, 0, VFTable1) :-
     not((factVFTableWrite(_Insn3, Method1, 0, VFTable2))),
     not((factVFTableWrite(_Insn4, Method2, 0, VFTable1))),
     % Debugging
-    %not(dynFactNOTMergeClasses(Class1, Class2)),
-    %logtrace('reasonNOTMergeClasses_E('),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtraceln(').'),
+    (logTrace -> (
+    not(dynFactNOTMergeClasses(Class1, Class2)),
+    logtrace('reasonNOTMergeClasses_E('),
+    logtrace(Class1), logtrace(', '),
+    logtrace(Class2), logtraceln(').'),
+    true); true),
     true.
 
 % The constructors are certain to not be on the exact same class.  The reasoning is the inverse
@@ -2369,13 +2520,15 @@ reasonNOTMergeClasses_F(Class1, Class2) :-
     Class1 < Class2,
     iso_dif(ObjectOffset1, ObjectOffset2),
     % Debugging
-    %not(dynFactNOTMergeClasses(Class1, Class2)),
-    %logtrace('reasonNOTMergeClasses_F('),
-    %logtrace(DerivedClass), logtrace(', '),
-    %logtrace(ObjectOffset1), logtrace(', '),
-    %logtrace(ObjectOffset2), logtrace(', '),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtraceln(').'),
+    (logTrace -> (
+    not(dynFactNOTMergeClasses(Class1, Class2)),
+    logtrace('reasonNOTMergeClasses_F('),
+    logtrace(DerivedClass), logtrace(', '),
+    logtrace(ObjectOffset1), logtrace(', '),
+    logtrace(ObjectOffset2), logtrace(', '),
+    logtrace(Class1), logtrace(', '),
+    logtrace(Class2), logtraceln(').'),
+    true); true),
     true.
 
 % The constructors are certain to not be on the exact same class.  The reasoning is that one
@@ -2390,10 +2543,12 @@ reasonNOTMergeClasses_G(Class1, Class2) :-
     % Handle the asymmetry of ObjectinObject so that this rule always returns Class1 < Class2.
     sort_tuple((A, B), (Class1, Class2)),
     % Debugging
-    %not(dynFactNOTMergeClasses(Class1, Class2)),
-    %logtrace('reasonNOTMergeClasses_G('),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtraceln(').'),
+    (logTrace -> (
+    not(dynFactNOTMergeClasses(Class1, Class2)),
+    logtrace('reasonNOTMergeClasses_G('),
+    logtrace(Class1), logtrace(', '),
+    logtrace(Class2), logtraceln(').'),
+    true); true),
     true.
 
 % PAPER: Merging-9
@@ -2422,12 +2577,14 @@ reasonNOTMergeClasses_I(Class1, Class2) :-
     % twice, but reduces the number of NOTMergeClass facts created by this rule.
     Class1 < Class2,
     % Debugging
-    %not(dynFactNOTMergeClasses(Class1, Class2)),
-    %logtrace('reasonNOTMergeClasses_I('),
-    %logtrace(TDA1), logtrace(', '),
-    %logtrace(TDA2), logtrace(', '),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtraceln(').'),
+    (logTrace -> (
+    not(dynFactNOTMergeClasses(Class1, Class2)),
+    logtrace('reasonNOTMergeClasses_I('),
+    logtrace(TDA1), logtrace(', '),
+    logtrace(TDA2), logtrace(', '),
+    logtrace(Class1), logtrace(', '),
+    logtrace(Class2), logtraceln(').'),
+    true); true),
     true.
 
 % PAPER: Merging-13
@@ -2437,10 +2594,12 @@ reasonNOTMergeClasses_J(Class1, Class2) :-
     % Handle asymmtery in reasonDerivedClassRelationship, so we always return Class1 < Class2.
     sort_tuple((A, B), (Class1, Class2)),
     % Debugging
-    %not(dynFactNOTMergeClasses(Class1, Class2)),
-    %logtrace('reasonNOTMergeClasses_J('),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtraceln(').'),
+    (logTrace -> (
+    not(dynFactNOTMergeClasses(Class1, Class2)),
+    logtrace('reasonNOTMergeClasses_J('),
+    logtrace(Class1), logtrace(', '),
+    logtrace(Class2), logtraceln(').'),
+    true); true),
     true.
 
 % Because symbols tell us so.
@@ -2457,10 +2616,12 @@ reasonNOTMergeClasses_K(Class1, Class2) :-
     % twice, but reduces the number of NOTMergeClass facts created by this rule.
     Class1 < Class2,
     % Debugging
-    %not(dynFactNOTMergeClasses(Class1, Class2)),
-    %logtrace('reasonNOTMergeClasses_K('),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtraceln(').'),
+    (logTrace -> (
+    not(dynFactNOTMergeClasses(Class1, Class2)),
+    logtrace('reasonNOTMergeClasses_K('),
+    logtrace(Class1), logtrace(', '),
+    logtrace(Class2), logtraceln(').'),
+    true); true),
     true.
 
 % Because both classes already have a real destructor.
@@ -2477,10 +2638,12 @@ reasonNOTMergeClasses_L(Class1, Class2) :-
     % twice, but reduces the number of NOTMergeClass facts created by this rule.
     Class1 < Class2,
     % Debugging
-    %not(dynFactNOTMergeClasses(Class1, Class2)),
-    %logtrace('reasonNOTMergeClasses_L('),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtraceln(').'),
+    (logTrace -> (
+    not(dynFactNOTMergeClasses(Class1, Class2)),
+    logtrace('reasonNOTMergeClasses_L('),
+    logtrace(Class1), logtrace(', '),
+    logtrace(Class2), logtraceln(').'),
+    true); true),
     true.
 
 % Because the sizes are incomaptible.
@@ -2495,12 +2658,14 @@ reasonNOTMergeClasses_M(Class1, Class2, GTESize, LTESize) :-
     Class1 < Class2,
     LTESize < GTESize,
     % Debugging
-    %not(dynFactNOTMergeClasses(Class1, Class2)),
-    %logtrace('reasonNOTMergeClasses_M('),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtrace(', '),
-    %logtrace(GTESize), logtrace(', '),
-    %logtrace(LTESize), logtraceln(').'),
+    (logTrace -> (
+    not(dynFactNOTMergeClasses(Class1, Class2)),
+    logtrace('reasonNOTMergeClasses_M('),
+    logtrace(Class1), logtrace(', '),
+    logtrace(Class2), logtrace(', '),
+    logtrace(GTESize), logtrace(', '),
+    logtrace(LTESize), logtraceln(').'),
+    true); true),
     true.
 
 % Because the sizes are incompatible.
@@ -2519,12 +2684,14 @@ reasonNOTMergeClasses_N(Class1, Class2, GTESize, LTESize) :-
     Class1 < Class2,
     GTESize > LTESize,
     % Debugging
-    %not(dynFactNOTMergeClasses(Class1, Class2)),
-    %logtrace('reasonNOTMergeClasses_N('),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtrace(', '),
-    %logtrace(GTESize), logtrace(', '),
-    %logtrace(LTESize), logtraceln(').'),
+    (logTrace -> (
+    not(dynFactNOTMergeClasses(Class1, Class2)),
+    logtrace('reasonNOTMergeClasses_N('),
+    logtrace(Class1), logtrace(', '),
+    logtrace(Class2), logtrace(', '),
+    logtrace(GTESize), logtrace(', '),
+    logtrace(LTESize), logtraceln(').'),
+    true); true),
     true.
 
 % Because the method accesses members that aren't there.
@@ -2545,12 +2712,14 @@ reasonNOTMergeClasses_O(Class1Sorted, Class2Sorted) :-
     Size2 is MemberSize + MemberOffset,
     Size2 > Size1,
     % Debugging
-    %not(dynFactNOTMergeClasses(Class1Sorted, Class2Sorted)),
-    %logtrace('reasonNOTMergeClasses_N('),
-    %logtrace(Size1), logtrace(', '),
-    %logtrace(Size2), logtrace(', '),
-    %logtrace(Class1Sorted), logtrace(', '),
-    %logtrace(Class2Sorted), logtraceln(').'),
+    (logTrace -> (
+    not(dynFactNOTMergeClasses(Class1Sorted, Class2Sorted)),
+    logtrace('reasonNOTMergeClasses_N('),
+    logtrace(Size1), logtrace(', '),
+    logtrace(Size2), logtrace(', '),
+    logtrace(Class1Sorted), logtrace(', '),
+    logtrace(Class2Sorted), logtraceln(').'),
+    true); true),
     true.
 
 % Because we call a constructor or destructor on part of our object.
@@ -2573,12 +2742,14 @@ reasonNOTMergeClasses_P(Class1Sorted, Class2Sorted) :-
     % Handle symmetry
     sort_tuple((Class1, Class2), (Class1Sorted, Class2Sorted)),
     % Debugging
-    %not(dynFactNOTMergeClasses(Class1Sorted, Class2Sorted)),
-    %logtrace('reasonNOTMergeClasses_P('),
-    %logtrace(Caller), logtrace(', '),
-    %logtrace(Method), logtrace(', '),
-    %logtrace(Class1Sorted), logtrace(', '),
-    %logtrace(Class2Sorted), logtraceln(').'),
+    (logTrace -> (
+    not(dynFactNOTMergeClasses(Class1Sorted, Class2Sorted)),
+    logtrace('reasonNOTMergeClasses_P('),
+    logtrace(Caller), logtrace(', '),
+    logtrace(Method), logtrace(', '),
+    logtrace(Class1Sorted), logtrace(', '),
+    logtrace(Class2Sorted), logtraceln(').'),
+    true); true),
     true.
 
 reasonNOTMergeClassesSet(Constructor, Set) :-
@@ -2709,9 +2880,12 @@ reasonClassSizeGTE_B(Class, 0) :-
     factMethod(Method),
     find(Method, Class),
     % Debugging
-    %not(factClassSizeGTE(Class, Size)),
-    %logtrace('reasonClassSizeGTE_B('),
-    %logtrace(Class), logtraceln(', 0).'),
+    (logTrace -> (
+    Size = 0,
+    not(factClassSizeGTE(Class, Size)),
+    logtrace('reasonClassSizeGTE_B('),
+    logtrace(Class), logtraceln(', 0).'),
+    true); true),
     true.
 
 % Because a derived class is always greater than or equal to the size of it's base class.
@@ -2722,11 +2896,13 @@ reasonClassSizeGTE_C(Class, Size) :-
     reasonDerivedClassRelationship(Class, BaseClass),
     factClassSizeGTE(BaseClass, Size),
     % Debugging
-    %not(factClassSizeGTE(Class, Size)),
-    %logtrace('reasonClassSizeGTE_C('),
-    %logtrace(BaseClass), logtrace(', '),
-    %logtrace(Class), logtrace(', '),
-    %logtrace(Size), logtraceln(').'),
+    (logTrace -> (
+    not(factClassSizeGTE(Class, Size)),
+    logtrace('reasonClassSizeGTE_C('),
+    logtrace(BaseClass), logtrace(', '),
+    logtrace(Class), logtrace(', '),
+    logtrace(Size), logtraceln(').'),
+    true); true),
     true.
 
 % The given class (associated with the constructor) is certain to be of this exact size.  The
@@ -2744,10 +2920,12 @@ reasonClassSizeGTE_D(Class, Size) :-
     Size \= 0,
     find(Constructor, Class),
     % Debugging
-    %not(factClassSizeGTE(Class, Size)),
-    %logtrace('reasonClassSizeGTE_D('),
-    %logtrace(Class), logtrace(', '),
-    %logtrace(Size), logtraceln(').'),
+    (logTrace -> (
+    not(factClassSizeGTE(Class, Size)),
+    logtrace('reasonClassSizeGTE_D('),
+    logtrace(Class), logtrace(', '),
+    logtrace(Size), logtraceln(').'),
+    true); true),
     true.
 
 % The given class is certain to be of this size or greater.  The reasoning for this rule is
@@ -2760,10 +2938,12 @@ reasonClassSizeGTE_E(Class, Size) :-
     validMethodMemberAccess(_Insn, Method, MemberOffset, MemberSize),
     Size is MemberOffset + MemberSize,
     % Debugging
-    %not(factClassSizeGTE(Class, Size)),
-    %logtrace('reasonClassSizeGTE_E('),
-    %logtrace(Class), logtrace(', '),
-    %logtrace(Size), logtraceln(').'),
+    (logTrace -> (
+    not(factClassSizeGTE(Class, Size)),
+    logtrace('reasonClassSizeGTE_E('),
+    logtrace(Class), logtrace(', '),
+    logtrace(Size), logtraceln(').'),
+    true); true),
     true.
 
 % The given class is certain to be of this size or greater.  The reasoning for this rule is the
@@ -2781,13 +2961,15 @@ reasonClassSizeGTE_F(Class, Size) :-
     factClassSizeGTE(InnerClass, InnerClassSize),
     Size is Offset + InnerClassSize,
     % Debugging
-    %not(factClassSizeGTE(Class, Size)),
-    %logtrace('reasonClassSizeGTE_F('),
-    %logtrace(InnerClass), logtrace(', '),
-    %logtrace(InnerClassSize), logtrace(', '),
-    %logtrace(Offset), logtrace(', '),
-    %logtrace(Class), logtrace(', '),
-    %logtrace(Size), logtraceln(').'),
+    (logTrace -> (
+    not(factClassSizeGTE(Class, Size)),
+    logtrace('reasonClassSizeGTE_F('),
+    logtrace(InnerClass), logtrace(', '),
+    logtrace(InnerClassSize), logtrace(', '),
+    logtrace(Offset), logtrace(', '),
+    logtrace(Class), logtrace(', '),
+    logtrace(Size), logtraceln(').'),
+    true); true),
     true.
 
 % Because a virtual function table is installed at a given offset in the object.
@@ -2797,18 +2979,22 @@ reasonClassSizeGTE_G(Class, Size) :-
     find(Method, Class),
     Size is ObjectOffset + 4,
     % Debugging
-    %not(factClassSizeGTE(Class, Size)),
-    %logtrace('reasonClassSizeGTE_G('),
-    %logtrace(Class), logtrace(', '),
-    %logtrace(Size), logtraceln(').'),
+    (logTrace -> (
+    not(factClassSizeGTE(Class, Size)),
+    logtrace('reasonClassSizeGTE_G('),
+    logtrace(Class), logtrace(', '),
+    logtrace(Size), logtraceln(').'),
+    true); true),
     true.
 
 reasonMinimumPossibleClassSize(Class, Size) :-
     setof(S, factClassSizeGTE(Class, S), Set),
     list_max(Set, Size),
-    %logtrace('reasonMinimumPossibleClassSize('),
-    %logtrace(Class), logtrace(', '),
-    %logtrace(Size), logtraceln(').'),
+    (logTrace -> (
+    logtrace('reasonMinimumPossibleClassSize('),
+    logtrace(Class), logtrace(', '),
+    logtrace(Size), logtraceln(').'),
+    true); true),
     true.
 
 % --------------------------------------------------------------------------------------------
@@ -2869,3 +3055,7 @@ reasonMaximumPossibleClassSize(Class, Size) :-
 % class.  In most rules it's easier to accumulate a set of non-revocable assertions about the
 % minimum and maximum sizes of the classes, but humans like to know just the most recent or
 % significant constraint.   Use list_min and list_max to make that prettier.
+
+%% Local Variables:
+%% mode: prolog
+%% End:

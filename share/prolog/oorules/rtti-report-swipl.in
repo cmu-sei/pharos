@@ -1,4 +1,3 @@
 #!/bin/bash
-STACK_LIMIT=${STACK_LIMIT:-20 000 000 000}
-TABLE_SPACE=${TABLE_SPACE:-20 000 000 000}
-@SWIPL_PROGRAM@ -g "asserta(library_directory('@CMAKE_CURRENT_SOURCE_DIR@')),['@CMAKE_CURRENT_SOURCE_DIR@/report.P'],assert(rTTIEnabled),rTTISolve('${1}'),halt."
+@SWIPL_HEADER@
+@SWIPL_PROGRAM@ -g "asserta(library_directory('$DIR')),['$DIR/report.P'],assert(rTTIEnabled),rTTISolve('${1}'),halt."

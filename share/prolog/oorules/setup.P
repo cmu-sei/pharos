@@ -4,6 +4,8 @@
 % Options.
 % ============================================================================================
 
+:- dynamic logTrace/0 as opaque.
+
 % A dynamically asserted option controlling whether guessing is enabled.
 :- dynamic guessingDisabled/0 as opaque.
 
@@ -168,6 +170,13 @@ classArgs(factClassSizeLTE/2, 1).
 % ============================================================================================
 
 :- include('util.P').
+% XSB uses logging_instrumentation.P at compile time, whereas SWI uses it at load time.  Since
+% logging_instrumentation.P includes logging.P, we don't want to include it twice.
+:- if(current_prolog_flag(version_data, xsb(_,_,_,_))).
+:- include('logging.P').
+:- else.
+:- include('logging_instrumentation.P').
+:- endif.
 :- include('initial.P').
 :- include('rtti.P').
 :- include('rules.P').
@@ -184,7 +193,7 @@ classArgs(factClassSizeLTE/2, 1).
 % XSB Specific code
 % --------------------------------------------------------------------------------------------
 :- if(current_prolog_flag(version_data, xsb(_,_,_,_))).
-:- include(index).
+:- include('index.P').
 
 :- use_module(increval, [incr_assert/1, incr_asserta/1, incr_retract/1]).
 :- use_module(swi, [maplist/3]).
