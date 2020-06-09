@@ -131,18 +131,29 @@ insanityEmbeddedObjectLarger :-
     logwarn(' I_Size='), logwarn(InnerSize),
     logwarnln('').
 
-% PAPER: Sanity-EmbeddedLoop
-:- table insanityEmbeddedObjectCycle/0 as incremental.
-insanityEmbeddedObjectCycle :-
-    factObjectInObject(OuterClass, InnerClass, _Offset),
-    find(OuterClass, SameClass),
-    find(InnerClass, SameClass),
+:- table insanityObjectCycle/0 as incremental.
+insanityObjectCycle :-
+    reasonClassRelationship(Class1, Class2),
+    reasonClassRelationship(Class2, Class1),
     logwarnln('Consistency checks failed.'),
-    logwarn('insanityEmbeddedObjectCycle failed:'),
-    logwarn(' Outer='), logwarn(OuterClass),
-    logwarn(' Inner='), logwarn(InnerClass),
-    logwarn(' Same='), logwarn(SameClass),
+    logwarn('insanityObjectCycle failed:'),
+    logwarn(' Class1='), logwarn(Class1),
+    logwarn(' Class2='), logwarn(Class2),
     logwarnln('').
+
+% PAPER: Sanity-EmbeddedLoop
+% ejs: This is superseded by insanityObjectCycle
+%% :- table insanityEmbeddedTrivialObjectCycle/0 as incremental.
+%% insanityEmbeddedTrivialObjectCycle :-
+%%     factObjectInObject(OuterClass, InnerClass, _Offset),
+%%     find(OuterClass, SameClass),
+%%     find(InnerClass, SameClass),
+%%     logwarnln('Consistency checks failed.'),
+%%     logwarn('insanityEmbeddedTrivialObjectCycle failed:'),
+%%     logwarn(' Outer='), logwarn(OuterClass),
+%%     logwarn(' Inner='), logwarn(InnerClass),
+%%     logwarn(' Same='), logwarn(SameClass),
+%%     logwarnln('').
 
 % A member may not extend past the end of the object.
 % PAPER: XXX Need to add member logic
@@ -249,7 +260,8 @@ sanityChecks :-
     not(insanityClassSizeInvalid),
     not(insanityVFTableSizeInvalid),
     not(insanityEmbeddedObjectLarger),
-    not(insanityEmbeddedObjectCycle),
+    not(insanityObjectCycle),
+    %% not(insanityEmbeddedTrivialObjectCycle),
     not(insanityMemberPastEndOfObject),
     not(insanityBaseVFTableLarger),
     not(insanityConstructorAndDeletingDestructor),

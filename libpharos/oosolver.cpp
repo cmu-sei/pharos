@@ -1212,7 +1212,7 @@ SolveMethodPropertyFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes)
           // offset
           for (OOVirtualFunctionTablePtr vftbl : cls->get_vftables()) {
 
-            OINFO << "Processing vftable " << addr_str(vftbl->get_address()) << LEND;
+            GDEBUG << "Processing vftable " << addr_str(vftbl->get_address()) << LEND;
 
             size_t arch_bytes = ds.get_arch_bytes();
             size_t table_size = vftbl->get_size() / ds.get_arch_bytes();
@@ -1226,16 +1226,16 @@ SolveMethodPropertyFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes)
               if (f) {
                 if (f->is_thunk()) faddr = f->get_jmp_addr();
 
-                OINFO << "faddr=" << addr_str(faddr)
-                      << ", meth->get_address()="
-                      << addr_str(meth->get_address()) << LEND;
+                GDEBUG << "faddr=" << addr_str(faddr)
+                       << ", meth->get_address()="
+                       << addr_str(meth->get_address()) << LEND;
 
                 if (faddr == meth->get_address() ) {
                   vftbl->add_virtual_function(OOVirtualFunctionTableEntry(offset, meth));
 
-                  OINFO << "Added virtual function " << addr_str(meth->get_address())
-                        << " to vftable " << addr_str(vftbl->get_address())
-                        << " @ " << offset << LEND;
+                  GDEBUG << "Added virtual function " << addr_str(meth->get_address())
+                          << " to vftable " << addr_str(vftbl->get_address())
+                          << " @ " << offset << LEND;
 
                   // Just because we found the method in a table doesn't mean that we can't
                   //find it again (even in the same table), so don't break here...

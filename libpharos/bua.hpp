@@ -40,7 +40,7 @@ class BottomUpAnalyzer {
   size_t processed_funcs = 0;
 
  protected:
-  // Override this method which is called at the beginning of analzye()
+  // Override this method which is called at the beginning of analyze()
   virtual void start();
 
   // Override this method which is called at the end of analyze()

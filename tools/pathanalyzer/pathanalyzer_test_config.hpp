@@ -129,7 +129,7 @@ class PATestAnalyzer : public BottomUpAnalyzer {
             if (func) {
               std::string name = func->get_name();
               //OINFO << "Found call to " << name << " at " << addr_str(insn->get_address()) << LEND;
-              if (name == "_Z10path_startv") {
+              if (name == "_Z10path_startv" || name == "path_start") {
                 OINFO << "Found path_start() call at " << addr_str(insn->get_address()) << LEND;
 
                 // If we've already seen a call to path_start(), mark the test invalid and return.
@@ -150,7 +150,7 @@ class PATestAnalyzer : public BottomUpAnalyzer {
                 // auto start = insn->get_address () + insn->get_size ();
                 config_->start = fd->get_address();
               }
-              if (name == "_Z9path_goalv") {
+              if (name == "_Z9path_goalv" || name == "path_goal") {
                 OINFO << "Found path_goal() call at " << addr_str(insn->get_address()) << LEND;
                 // If we've already seen a call to path_goal(), mark the test invalid and return.
                 if (config_->goal != INVALID_ADDRESS && config_->goal != target) {
@@ -161,7 +161,7 @@ class PATestAnalyzer : public BottomUpAnalyzer {
                 //config_->goal = insn->get_address();
                 config_->goal = target;
               }
-              if (name == "_Z12path_nongoalv") {
+              if (name == "_Z12path_nongoalv" || name == "path_nongoal") {
                 OINFO << "Found path_nongoal() call at " << addr_str(insn->get_address()) << LEND;
                 // If we've already seen a call to path_nongoal(), mark the test invalid and return.
                 if (config_->bad != INVALID_ADDRESS && config_->bad != target) {

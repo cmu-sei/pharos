@@ -161,7 +161,7 @@ def run_prolog_test(args):
 
     redirection = ">%s 2>%s" % (prolog_output_path, prolog_spew_path)
     prolog_cmd = "%s %s %s" % (os.path.join(rules_path, script), ground_facts_path, redirection)
-    
+
     if args.commands:
         print prolog_cmd
 

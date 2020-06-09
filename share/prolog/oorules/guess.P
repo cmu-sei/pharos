@@ -131,8 +131,8 @@ guessVirtualFunctionCall(Out) :-
           (likelyVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset),
            not(factNOTConstructor(Constructor)),
            doNotGuessHelper(
-               factVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset),
-               factNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset)))),
+                   factVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset),
+                   factNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset)))),
 
     Out = tryOrNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset).
 
@@ -178,10 +178,10 @@ guessVFTable(Out) :-
     % See the commentary at possibleVFTable for how this goal constrains our guesses (and
     % ordering).
     osetof(VFTable,
-          (possibleVFTable(VFTable),
-           doNotGuessHelper(factVFTable(VFTable),
-                            factNOTVFTable(VFTable))),
-          VFTableSet),
+           (possibleVFTable(VFTable),
+            doNotGuessHelper(factVFTable(VFTable),
+                             factNOTVFTable(VFTable))),
+           VFTableSet),
     Out = tryBinarySearch(tryVFTable, tryNOTVFTable, VFTableSet).
 
 tryOrNOTVFTable(VFTable) :-
@@ -286,14 +286,14 @@ guessVFTableEntry2(VFTable, Offset, Entry) :-
 
 guessVFTableEntry(Out) :-
     osetof((VFTable, Offset, Entry),
-          guessVFTableEntry1(VFTable, Offset, Entry),
-          TupleSet),
+           guessVFTableEntry1(VFTable, Offset, Entry),
+           TupleSet),
     Out = tryBinarySearch(tryVFTableEntry, tryNOTVFTableEntry, TupleSet).
 
 guessVFTableEntry(Out) :-
     osetof((VFTable, Offset, Entry),
-          guessVFTableEntry2(VFTable, Offset, Entry),
-          TupleSet),
+           guessVFTableEntry2(VFTable, Offset, Entry),
+           TupleSet),
     Out = tryBinarySearch(tryVFTableEntry, tryNOTVFTableEntry, TupleSet).
 
 tryVFTableEntry((VFTable, Offset, Entry)) :- tryVFTableEntry(VFTable, Offset, Entry).
@@ -333,8 +333,8 @@ guessDerivedClass(DerivedClass, BaseClass, Offset) :-
 
 guessDerivedClass(Out) :-
     osetof((DerivedClass, BaseClass, Offset),
-          guessDerivedClass(DerivedClass, BaseClass, Offset),
-          TupleSet),
+           guessDerivedClass(DerivedClass, BaseClass, Offset),
+           TupleSet),
     Out = tryBinarySearch(tryDerivedClass, tryEmbeddedObject, TupleSet).
 
 tryEmbeddedObject((OuterClass, InnerClass, Offset)) :-
@@ -404,11 +404,10 @@ guessMethodA(Method) :-
 
 guessMethod(Out) :-
     osetof(Method,
-          guessMethodA(Method),
-          MethodSet),
-    (logTrace -> (
-    logtrace('Proposing factMethod_A('), logtrace(MethodSet), logtraceln(').'),
-    true); true),
+           guessMethodA(Method),
+           MethodSet),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMethod_A('), logtrace(MethodSet), logtraceln(').'))),
     Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 guessMethodB(Method) :-
@@ -427,11 +426,10 @@ guessMethodB(Method) :-
 % literally true, but objects are commonly in other objects.
 guessMethod(Out) :-
     osetof(Method,
-          guessMethodB(Method),
-          MethodSet),
-    (logTrace -> (
-    logtrace('Proposing factMethod_B('), logtrace(MethodSet), logtraceln(').'),
-    true); true),
+           guessMethodB(Method),
+           MethodSet),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMethod_B('), logtrace(MethodSet), logtraceln(').'))),
     Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 % This guess is required (at least for our test suite) in cases where there's no certainty in
@@ -451,11 +449,10 @@ guessMethodC(Method) :-
 
 guessMethod(Out) :-
     osetof(Method,
-          guessMethodC(Method),
-          MethodSet),
-    (logTrace -> (
-    logtrace('Proposing factMethod_C('), logtrace(MethodSet), logtraceln(').'),
-    true); true),
+           guessMethodC(Method),
+           MethodSet),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMethod_C('), logtrace(MethodSet), logtraceln(').'))),
     Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 % More kludgy guessing rules. :-( This one is based on thre premise that a cluster of three or
@@ -477,11 +474,10 @@ guessMethodD(Method) :-
 
 guessMethod(Out) :-
     osetof(Method,
-          guessMethodD(Method),
-          MethodSet),
-    (logTrace -> (
-    logtrace('Proposing factMethod_D('), logtrace(MethodSet), logtraceln(').'),
-    true); true),
+           guessMethodD(Method),
+           MethodSet),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMethod_D('), logtrace(MethodSet), logtraceln(').'))),
     Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 % A variation of the previous rule using thisPtrUsage and passing around a this-pointer to
@@ -502,11 +498,10 @@ guessMethodE(Method) :-
 
 guessMethod(Out) :-
     osetof(Method,
-          guessMethodE(Method),
-          MethodSet),
-    (logTrace -> (
-    logtrace('Proposing factMethod_E('), logtrace(MethodSet), logtraceln(').'),
-    true); true),
+           guessMethodE(Method),
+           MethodSet),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMethod_E('), logtrace(MethodSet), logtraceln(').'))),
     Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 % Another case where we're trying to implement the reasoning that there's a lot of stuff
@@ -522,11 +517,10 @@ guessMethodF(Method) :-
 
 guessMethod(Out) :-
     osetof(Method,
-          guessMethodF(Method),
-          MethodSet),
-    (logTrace -> (
-    logtrace('Proposing factMethod_F('), logtrace(MethodSet), logtraceln(').'),
-    true); true),
+           guessMethodF(Method),
+           MethodSet),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMethod_F('), logtrace(MethodSet), logtraceln(').'))),
     Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 % Also guess possible constructors and destructors with calls from known methods.
@@ -540,11 +534,10 @@ guessMethodG(Method) :-
 
 guessMethod(Out) :-
     osetof(Method,
-          guessMethodG(Method),
-          MethodSet),
-    (logTrace -> (
-    logtrace('Proposing factMethod_G('), logtrace(MethodSet), logtraceln(').'),
-    true); true),
+           guessMethodG(Method),
+           MethodSet),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMethod_G('), logtrace(MethodSet), logtraceln(').'))),
     Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 tryMethodNOTMethod(Method):-
@@ -612,11 +605,10 @@ guessConstructor1(Method) :-
 
 guessConstructor(Out) :-
     osetof(Method,
-          guessConstructor1(Method),
-          MethodSet),
-    (logTrace -> (
-    logtrace('Proposing factConstructor1('), logtrace(MethodSet), logtraceln(').'),
-    true); true),
+           guessConstructor1(Method),
+           MethodSet),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factConstructor1('), logtrace(MethodSet), logtraceln(').'))),
     Out = tryBinarySearch(tryConstructor, tryNOTConstructor, MethodSet).
 
 % Likely virtual case, not in a vftable, writes a vftable, but has unitialized reads.
@@ -632,11 +624,10 @@ guessConstructor2(Method) :-
 
 guessConstructor(Out) :-
     osetof(Method,
-          guessConstructor2(Method),
-          MethodSet),
-    (logTrace -> (
-    logtrace('Proposing factConstructor2('), logtrace(MethodSet), logtraceln(').'),
-    true); true),
+           guessConstructor2(Method),
+           MethodSet),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factConstructor2('), logtrace(MethodSet), logtraceln(').'))),
     Out = tryBinarySearch(tryConstructor, tryNOTConstructor, MethodSet).
 
 % Normal non-virtual case, not in a vftable, doesn't write a vftable, and has no uninitialized
@@ -653,11 +644,10 @@ guessConstructor3(Method) :-
 
 guessConstructor(Out) :-
     osetof(Method,
-          guessConstructor3(Method),
-          MethodSet),
-    (logTrace -> (
-    logtrace('Proposing factConstructor3('), logtrace(MethodSet), logtraceln(').'),
-    true); true),
+           guessConstructor3(Method),
+           MethodSet),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factConstructor3('), logtrace(MethodSet), logtraceln(').'))),
     Out = tryBinarySearch(tryConstructor, tryNOTConstructor, MethodSet).
 
 % Unusual non-virtual case presumably with inheritance -- not in a vftable, doesn't write a
@@ -673,11 +663,10 @@ guessConstructor4(Method) :-
 
 guessUnlikelyConstructor(Out) :-
     osetof(Method,
-          guessConstructor4(Method),
-          MethodSet),
-    (logTrace -> (
-    logtrace('Proposing factConstructor4('), logtrace(MethodSet), logtraceln(').'),
-    true); true),
+           guessConstructor4(Method),
+           MethodSet),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factConstructor4('), logtrace(MethodSet), logtraceln(').'))),
     Out = tryBinarySearch(tryConstructor, tryNOTConstructor, MethodSet).
 
 tryConstructorNOTConstructor(Method) :-
@@ -726,11 +715,10 @@ guessClassHasNoBaseB(Class) :-
 
 guessClassHasNoBase(Out) :-
     osetof(Class,
-          guessClassHasNoBaseB(Class),
-          ClassSet),
-    (logTrace -> (
-    logtrace('Proposing ClassHasNoBase_B('), logtrace(ClassSet), logtraceln(').'),
-    true); true),
+           guessClassHasNoBaseB(Class),
+           ClassSet),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing ClassHasNoBase_B('), logtrace(ClassSet), logtraceln(').'))),
     Out = tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
 
 % Then guess classes regardless of their VFTable writes.
@@ -744,12 +732,11 @@ guessClassHasNoBaseC(Class) :-
 
 guessClassHasNoBase(Out) :-
     osetof(Class,
-          guessClassHasNoBaseC(Class),
-          ClassSet),
-    (logTrace -> (
-    logtrace('Proposing ClassHasNoBase_C('),
-    logtrace(ClassSet), logtraceln(').'),
-    true); true),
+           guessClassHasNoBaseC(Class),
+           ClassSet),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing ClassHasNoBase_C('),
+                  logtrace(ClassSet), logtraceln(').'))),
     Out = tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
 
 tryClassHasNoBase(Class) :-
@@ -784,9 +771,8 @@ guessCommitClassHasNoBase(Out) :-
     osetof(Class,
            guessClassHasNoBaseSpecial(Class),
            ClassSet),
-    (logTrace -> (
-    logtrace('Proposing CommitClassHasNoBase('), logtrace(ClassSet), logtraceln(').'),
-    true); true),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing CommitClassHasNoBase('), logtrace(ClassSet), logtraceln(').'))),
     Out = tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
 
 
@@ -833,8 +819,8 @@ guessNOTMergeClassesSymmetric(Class1, Class2) :-
 
 guessNOTMergeClasses(Out) :-
     osetof((OuterClass, InnerClass),
-          guessNOTMergeClassesSymmetric(OuterClass, InnerClass),
-          ClassPairSets),
+           guessNOTMergeClassesSymmetric(OuterClass, InnerClass),
+           ClassPairSets),
     Out = tryBinarySearch(tryNOTMergeClasses, tryMergeClasses, ClassPairSets).
 
 %% ejs: There is another definition of tryNOTMergeClasses later in the file!
@@ -869,11 +855,10 @@ guessMergeClassesA(Class1, MethodClass) :-
     % This rule is symmetric because Prolog will try binding the same method to Constructor2 on
     % one evluation, and Constructor1 on the next evaluation, so even though the rule is also
     % true for Constructor2, that case will be handled when it's bound to Constructor.
-    (logTrace -> (
-    logtrace('Proposing factMergeClasses_A('),
-    logtrace(Class1), logtrace(', '),
-    logtrace(Method), logtraceln(').'),
-    true); true),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMergeClasses_A('),
+                  logtrace(Class1), logtrace(', '),
+                  logtrace(Method), logtraceln(').'))),
     checkMergeClasses(Class1, MethodClass).
 
 guessMergeClasses(Out) :-
@@ -881,10 +866,9 @@ guessMergeClasses(Out) :-
           guessMergeClassesA(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
-    (logTrace -> (
-    logtrace('Proposing factMergeClasses_A('),
-    logtrace(OneTuple), logtraceln(').'),
-    true); true),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMergeClasses_A('),
+                  logtrace(OneTuple), logtraceln(').'))),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % Another good guessing heuristic is that if a virtual call was resolved through a specific
@@ -935,13 +919,12 @@ guessMergeClassesB(Class1, Class2) :-
     find(Method1, Class1),
 
 
-    (logTrace -> (
-    logtrace('Proposing factMergeClasses_B('),
-    logtrace(Method1), logtrace(', '),
-    logtrace(VFTable), logtrace(', '),
-    logtrace(Class1), logtrace(', '),
-    logtrace(Class2), logtraceln(').'),
-    true); true),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMergeClasses_B('),
+                  logtrace(Method1), logtrace(', '),
+                  logtrace(VFTable), logtrace(', '),
+                  logtrace(Class1), logtrace(', '),
+                  logtrace(Class2), logtraceln(').'))),
     checkMergeClasses(Class1, Class2).
 
 guessMergeClasses(Out) :-
@@ -949,10 +932,9 @@ guessMergeClasses(Out) :-
           guessMergeClassesB(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
-    (logTrace -> (
-    logtrace('Proposing factMergeClasses_B('),
-    logtrace(OneTuple), logtraceln(').'),
-    true); true),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMergeClasses_B('),
+                  logtrace(OneTuple), logtraceln(').'))),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 
@@ -970,10 +952,9 @@ guessMergeClassesC(Class1, Class2) :-
     not(purecall(Method)), % Never merge purecall methods into classes.
     factDerivedClass(Class1, _BaseClass, _Offset),
     find(Method, Class2),
-    (logTrace -> (
-    logtrace('Proposing factMergeClasses_C('), logtrace(Class1), logtrace(', '),
-    logtrace(Class2), logtraceln(').'),
-    true); true),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMergeClasses_C('), logtrace(Class1), logtrace(', '),
+                  logtrace(Class2), logtraceln(').'))),
     checkMergeClasses(Class1, Class2).
 
 guessMergeClasses(Out) :-
@@ -981,10 +962,9 @@ guessMergeClasses(Out) :-
           guessMergeClassesC(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
-    (logTrace -> (
-    logtrace('Proposing factMergeClasses_C('),
-    logtrace(OneTuple), logtraceln(').'),
-    true); true),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMergeClasses_C('),
+                  logtrace(OneTuple), logtraceln(').'))),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % If that didn't work, maybe the method belongs on the base instead.
@@ -994,10 +974,9 @@ guessMergeClassesD(Class1, Class2) :-
     not(purecall(Method)), % Never merge purecall methods into classes.
     factDerivedClass(_DerivedClass, Class1, _Offset),
     find(Method, Class2),
-    (logTrace -> (
-    logtrace('Proposing factMergeClasses_D('), logtrace(Class1), logtrace(', '),
-    logtrace(Class2), logtraceln(').'),
-    true); true),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMergeClasses_D('), logtrace(Class1), logtrace(', '),
+                  logtrace(Class2), logtraceln(').'))),
     checkMergeClasses(Class1, Class2).
 
 guessMergeClasses(Out) :-
@@ -1005,10 +984,9 @@ guessMergeClasses(Out) :-
           guessMergeClassesD(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
-    (logTrace -> (
-    logtrace('Proposing factMergeClasses_D('),
-    logtrace(OneTuple), logtraceln(').'),
-    true); true),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMergeClasses_D('),
+                  logtrace(OneTuple), logtraceln(').'))),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % And finally just guess regardless of derived class facts.
@@ -1019,10 +997,9 @@ guessMergeClassesE(Class1, Class2) :-
     % Same reasoning as in guessMergeClasses_B...
     not(symbolProperty(Method, virtual)),
     find(Method, Class2),
-    (logTrace -> (
-    logtrace('Proposing factMergeClasses_E('), logtrace(Class1), logtrace(', '),
-    logtrace(Class2), logtraceln(').'),
-    true); true),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMergeClasses_E('), logtrace(Class1), logtrace(', '),
+                  logtrace(Class2), logtraceln(').'))),
     checkMergeClasses(Class1, Class2).
 
 guessMergeClasses(Out) :-
@@ -1030,10 +1007,9 @@ guessMergeClasses(Out) :-
           guessMergeClassesE(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
-    (logTrace -> (
-    logtrace('Proposing factMergeClasses_E('),
-    logtrace(OneTuple), logtraceln(').'),
-    true); true),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMergeClasses_E('),
+                  logtrace(OneTuple), logtraceln(').'))),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % If we have VFTable that is NOT associated with a class because there's no factVFTableWrite,
@@ -1060,10 +1036,9 @@ guessMergeClassesF(Class, Method1) :-
     findall(Method1, [Method1]),
     % So go ahead and merge it into this class..
     find(Method2, Class),
-    (logTrace -> (
-    logtrace('Proposing factMergeClasses_F('), logtrace(Class), logtrace(', '),
-    logtrace(Method1), logtraceln(').'),
-    true); true),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMergeClasses_F('), logtrace(Class), logtrace(', '),
+                  logtrace(Method1), logtraceln(').'))),
     checkMergeClasses(Class, Method1).
 
 guessMergeClasses(Out) :-
@@ -1071,10 +1046,9 @@ guessMergeClasses(Out) :-
           guessMergeClassesF(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
-    (logTrace -> (
-    logtrace('Proposing factMergeClasses_F('),
-    logtrace(OneTuple), logtraceln(').'),
-    true); true),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMergeClasses_F('),
+                  logtrace(OneTuple), logtraceln(').'))),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % Try guessing that a VFTable belongs to a method.
@@ -1104,7 +1078,7 @@ guessMergeClassesG(Class1, Class2) :-
     % This guessing rule is only for destructors, because
     % VFTableOverwrite logic works for constructors (see
     % reasonVFTableBelongsToClass).
-    not(factNOTConstructor(Method)),
+    factNOTConstructor(Method),
 
     % Which other classes also install this VFTable
     setof(Class,
@@ -1120,6 +1094,7 @@ guessMergeClassesG(Class1, Class2) :-
 
     (ClassSet = [Class2]
      ->
+         checkMergeClasses(Class1, Class2),
          logdebug('guessMergeClassesG had one candidate class: '),
          logdebug(Class2),
          logdebugln('.')
@@ -1135,22 +1110,20 @@ guessMergeClassesG(Class1, Class2) :-
             (numberOfMethods(OtherClass, OtherClassSize),
              not(OtherClassSize > Class2Size))),
 
+     checkMergeClasses(Class1, Class2),
      logdebug('guessMergeClassesG had more than one candidate class.  Merging with the largest class '),
      logdebug(Class2),
      logdebugln('.')
-    ),
-
-    checkMergeClasses(Class1, Class2).
+    ).
 
 guessMergeClasses(Out) :-
     minof((Class1, Class2),
           guessMergeClassesG(Class1, Class2)),
     !,
     OneTuple=[(Class1, Class2)],
-    (logTrace -> (
-    logtrace('Proposing factMergeClasses_G('),
-    logtrace(OneTuple), logtraceln(').'),
-    true); true),
+    traceAtLevel('TRACE',
+                 (logtrace('Proposing factMergeClasses_G('),
+                  logtrace(OneTuple), logtraceln(').'))),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 
@@ -1164,9 +1137,9 @@ checkMergeClasses(Method1, Method2) :-
     doNotGuessHelper(factNOTMergeClasses(Class1, Class2),
                      factNOTMergeClasses(Class2, Class1)),
     % XXX: Check factMergeClasses?
-    % Now derived relationships between the classes are not allowed either.
-    not(reasonDerivedClassRelationship(Class1, Class2)),
-    not(reasonDerivedClassRelationship(Class2, Class1)).
+    % Now relationships between the classes are not allowed either.
+    not(reasonClassRelationship(Class1, Class2)),
+    not(reasonClassRelationship(Class2, Class1)).
 
 tryMergeClasses((Method1, Method2)) :- tryMergeClasses(Method1, Method2).
 % If we are merging classes that have already been merged, just ignore it.

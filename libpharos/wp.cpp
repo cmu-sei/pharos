@@ -148,8 +148,8 @@ IRExprPtr wp_stmt(const Stmt& s, const IRExprPtr& post, const Register& mem) {
     IRExprPtr operator()(const CallStmt &cs) {
       // Return false? It's not clear what the best thing to do here is.
       GWARN << "Encountered a non-rewritten Call statement " << cs
-            << ("to an import. This is treated as an unexecutable"
-                " statement and is probably not what you want.") << LEND;
+            << ". This is treated as an unexecutable statement "
+            <<  " and is probably not what you want." << LEND;
       return SymbolicExpr::makeBooleanConstant (false);
     }
     IRExprPtr operator()(UNUSED const InsnStmt &is) {

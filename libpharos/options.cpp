@@ -160,26 +160,6 @@ ProgOptDesc cert_standard_options() {
     ;
   ;
 
-  // Currently unused (but intended to be available and hidden).
-  ProgOptDesc certhiddenopt("CERT Hidden options");
-
-  // Don't forget to update the documentation if you change this list!
-  certhiddenopt.add_options()
-    ("maxmem", po::value<double>(),
-     "the old maximum-memory")
-    ("relmaxmem", po::value<double>(),
-     "the old per-function-maximum-memory")
-    ("ptimeout", po::value<double>(),
-     "the old partitioner-timeout")
-    ("blockcounterlimit", po::value<int>(),
-     "the old maximum-instructions-per-block")
-    ("funccounterlimit", po::value<int>(),
-     "the old maximum-iterations-per-function")
-    ("propagate-conditions",
-     "Flag to preserve and propagate conditions when analyzing basic blocks")
-    ;
-  ;
-
   // Don't forget to update the documentation if you change this list!
 
   // These are really partitioner options or maybe options that are mostly just passed along to
@@ -215,6 +195,31 @@ ProgOptDesc cert_standard_options() {
   return certopt;
 }
 
+static ProgOptDesc cert_hidden_options()
+{
+  namespace po = boost::program_options;
+
+  ProgOptDesc certhiddenopt("CERT Hidden options");
+
+  // Don't forget to update the documentation if you change this list!
+  certhiddenopt.add_options()
+    ("maxmem", po::value<double>(),
+     "the old maximum-memory")
+    ("relmaxmem", po::value<double>(),
+     "the old per-function-maximum-memory")
+    ("ptimeout", po::value<double>(),
+     "the old partitioner-timeout")
+    ("blockcounterlimit", po::value<int>(),
+     "the old maximum-instructions-per-block")
+    ("funccounterlimit", po::value<int>(),
+     "the old maximum-iterations-per-function")
+    ("propagate-conditions",
+     "Flag to preserve and propagate conditions when analyzing basic blocks")
+    ;
+  ;
+  return certhiddenopt;
+}
+
 ProgOptVarMap::ProgOptVarMap(int argc, char **argv)
 {
   std::copy_n(argv, argc, std::back_inserter(_args));
@@ -236,7 +241,7 @@ std::string ProgOptVarMap::command_line() const
 
 static ProgOptVarMap parse_cert_options_internal(
   int argc, char** argv,
-  ProgOptDesc od,
+  ProgOptDesc partial_desc,
   const std::string & proghelptext,
   boost::optional<ProgPosOptDesc> posopt,
   Sawyer::Message::UnformattedSinkPtr destination)
@@ -300,6 +305,10 @@ static ProgOptVarMap parse_cert_options_internal(
   // processing.
   glog.initStreams(get_logging_destination());
 
+  ProgOptDesc od;
+  od.add(partial_desc);
+  od.add(cert_hidden_options());
+
   po::store(po::command_line_parser(argc, argv).
             options(od).positional(*posopt).run(), vm);
 
@@ -350,7 +359,7 @@ static ProgOptVarMap parse_cert_options_internal(
     if (!proghelptext.empty()) {
       std::cout << proghelptext << "\n\n";
     }
-    std::cout << od;
+    std::cout << partial_desc;
     std::cout << "\nRevID: " << pharos::REVISION << std::endl;
     exit(3);
   }
