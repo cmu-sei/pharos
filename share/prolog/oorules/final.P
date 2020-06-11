@@ -36,7 +36,7 @@ classIdentifier(Method, ID) :-
     (
         % Must be the VFTable at offset zero to be the "master" table for the class.
         find(Method, Class),
-        reasonPrimaryVFTableForClass(VFTable, Class),
+        reasonPrimaryVFTableForClassFinal(VFTable, Class),
         %logwarn('setting classID from vftable'), logwarnln(Method),
         true
     )
@@ -407,3 +407,7 @@ generateResults :-
     (setof((C7, O7, S7, E7), finalMemberAccess(C7, O7, S7, E7), _Set7); true),
     (setof((M8, P8, C8), finalMethodProperty(M8, P8, C8), _Set8); true),
     writeln('% Object detection reporting complete.').
+
+%% Local Variables:
+%% mode: prolog
+%% End:

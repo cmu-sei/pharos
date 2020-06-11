@@ -1706,12 +1706,13 @@ public class OOAnalyzer {
                    .stream ()
                    .parallel ()
                    .filter (m -> m.getImported ())
-                   .findAny ()
-                   .map (m -> m.getName ())
+                   .findAny () // optional
+                   .map (m -> m.getName ()) // optional
                    // And then try to demangle it
-                   .map (m -> tryToDemangleUsingGhidra (m, true))
+                   .map (m -> tryToDemangleUsingGhidra (m, true)) // optional optional
                    // If not null, get the value
-                   .map (o -> o.get ()));
+                   // How do we convert optional optional to optional?
+                   .orElse (Optional.empty ()));
 
               if (ghidraDemanglerOutput.isPresent ()) {
                 // We were able to demangle something using Ghidra

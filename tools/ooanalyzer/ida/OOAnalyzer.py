@@ -681,7 +681,7 @@ class PyOOAnalyzer(object):
             print("Renaming %s to %s" % (idc.get_func_name(method.start_ea), method_name))
 
             idc.set_name(method.start_ea, method_name,
-                         ida_name.SN_NOCHECK)
+                         ida_name.SN_NOCHECK | ida_name.SN_FORCE)
         else:
             print("Not renaming the function at %#x %s because it is not a function in IDA!" % (method.start_ea, method_name))
 
