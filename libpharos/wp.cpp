@@ -430,6 +430,58 @@ IR rewrite_imported_calls (const DescriptorSet& ds, IR &ir, const ImportRewriteS
 
   return IR(ir, cfg);
 }
+
+void WPPathAnalyzer::setup_path_problem(rose_addr_t source, rose_addr_t target) {
+  using namespace ir;
+
+  IR ir = get_inlined_cfg (CG::get_cg (ds), source, target);
+  ir = rewrite_imported_calls (ds, ir, imports);
+  ir = init_stackpointer (ir);
+  ir = rm_undefined (ir);
+  ir = add_datablocks (ir);
+
+  IRExprPtr post;
+  std::tie (ir, post, std::ignore) = add_reached_postcondition (ir, {target});
+
+  IRExprPtr wp = expand_lets (wp_cfg (ir, post));
+
+  solver.memoization (false);
+  solver.insert (wp);
+  solver.z3Update ();
+  assert (solver.z3Assertions ().size () == 1);
+}
+
+std::ostream & WPPathAnalyzer::output_problem(std::ostream & stream) const
+{
+  solver.output_options(stream);
+  stream << ";; --- Z3 Start\n"
+         << *solver.z3Solver()
+         << ";; --- Z3 End\n"
+         << "(check-sat)\n"
+         << "(get_model)" << std::endl;
+  return stream;
+}
+
+z3::check_result WPPathAnalyzer::solve_path_problem()
+{
+  using Rose::BinaryAnalysis::SmtSolver;
+
+  auto result = solver.check();
+  switch (result) {
+   case SmtSolver::Satisfiable::SAT_YES:
+    return z3::sat;
+   case SmtSolver::Satisfiable::SAT_NO:
+    return z3::unsat;
+   default:
+    return z3::unknown;
+  }
+}
+
+std::ostream & WPPathAnalyzer::output_solution(std::ostream & stream) const
+{
+  return stream << ";; WPPathAnalyzer::output_solution not yet implemented" << std::endl;
+}
+
 }
 
 /* Local Variables:   */

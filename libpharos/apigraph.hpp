@@ -171,8 +171,8 @@ struct ApiParamMatchTableCompare {
 
 
 // Represents an invalid vertex and address
-const ApiCfgVertex NULL_VERTEX = boost::graph_traits < ApiCfg >::null_vertex();
-const rose_addr_t INVALID_ADDRESS = (rose_addr_t)(-1);
+extern const ApiCfgVertex NULL_VERTEX;
+constexpr rose_addr_t INVALID_ADDRESS = (rose_addr_t)(-1);
 
 // The search tree is a list of waypoints that were followed en route to a signature match
 // Each path is a set of information needed to recreate the search.

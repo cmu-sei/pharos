@@ -30,6 +30,8 @@ namespace pharos {
 
 using namespace Sawyer::Message::Common;
 
+const ApiCfgVertex NULL_VERTEX = boost::graph_traits < ApiCfg >::null_vertex();
+
 // ********************************************************************************************
 // * Utility/Debugging Functions
 // ********************************************************************************************

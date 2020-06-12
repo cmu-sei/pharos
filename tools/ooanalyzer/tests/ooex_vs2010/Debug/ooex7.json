@@ -97,8 +97,8 @@
                     "demangled_name": "",
                     "ea": "0x414390",
                     "import": false,
-                    "name": "virt_meth_0x414390",
-                    "type": "meth"
+                    "name": "virt_deldtor_0x414390",
+                    "type": "deldtor"
                 },
                 "0x41d3c8": {
                     "demangled_name": "_type_info_dtor_internal_method",
@@ -118,9 +118,9 @@
                             "demangled_name": "",
                             "ea": "0x414390",
                             "import": false,
-                            "name": "virt_meth_0x414390",
+                            "name": "virt_deldtor_0x414390",
                             "offset": 0,
-                            "type": "meth"
+                            "type": "deldtor"
                         }
                     },
                     "vftptr": "0x0"

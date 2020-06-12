@@ -359,10 +359,8 @@ class PyOOAnalyzer(object):
                 continue
 
             # valid member - create it
-            mem = PyClassMember()
+            mem = PyClassMember(cls, m['type'], m['count'])
             mem.cls = cls
-            mem.member_type = m['type']
-            mem.count = int(m['count'])
             mem.base = m['base']
 
             self.__parse_member_usages (cls, m['usages'])
@@ -1253,23 +1251,17 @@ class PyClassMember(object):
     Represents a class member
     '''
 
-    def __init__(self, cls=None, mem_type=None, count=None, mem_name=None, cls_mem=None):
+    def __init__(self, cls, mem_type, count): #, mem_name=None, cls_mem=None):
         '''
         initialize class member
         '''
-        self.__member_name = mem_name
-
-        self.__type = None
-        if mem_type != None:
-            self.set_type(mem_type)
-
-        self.__type_count = None
-        if count != None:
-            self.__type_count = int(count)
 
         self.__cls = cls
+        self.set_type(mem_type)
+        self.__type_count = int(count)
 
-        self.__class_mem = cls_mem
+        self.__member_name = None
+        self.__class_mem = None
 
         self.__id = idaapi.BADADDR
 
@@ -1306,7 +1298,7 @@ class PyClassMember(object):
 
     def set_class_member(self, value):
         self.__class_mem = value
-        if self.__type_size == None:
+        if self.__type_size == None and self.__class_mem != None:
             # ida_struct.get_struc_size(idc.GetStrucIdByName(self.value))
             self.__type_size = self.__class_mem.size()
 
@@ -1363,6 +1355,14 @@ class PyClassMember(object):
                     ida_struct.get_struc_id(self.cls.ida_name))
             else:
                 self.__type_size = idaapi.BADADDR
+        elif value == 'unknown':
+            print("WARNING: Unknown type, assuming FF_BYTE")
+            self.__type_size = 1
+            self.__type = ida_bytes.FF_BYTE
+        else:
+            print("WARNING: Unknown type %s" % value)
+            assert(False)
+
         return
 
     def set_cls(self, value):

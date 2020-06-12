@@ -54,9 +54,9 @@ macro(_fxsb_find_bindirs result curdir)
   set("${result}" "${_result}")
 endmacro(_fxsb_find_bindirs)
 
-# Try to find the xsb interpreter and gpp.  Search within ${XSB_ROOT} if that is set.
+# Try to find the xsb interpreter.  Search within ${XSB_ROOT} if that is set.
 set(_fxsb_hints)
-if(XSB_ROOT AND (NOT XSB_PROGRAM) OR (NOT GPP_PROGRAM))
+if(XSB_ROOT AND (NOT XSB_PROGRAM))
   set(_fxsb_hints HINTS "${XSB_ROOT}/bin")
   _fxsb_find_bindirs(xsb_bin_dirs "${XSB_ROOT}")
   foreach(dir ${xsb_bin_dirs})
@@ -66,7 +66,6 @@ if(XSB_ROOT AND (NOT XSB_PROGRAM) OR (NOT GPP_PROGRAM))
   endforeach()
 endif()
 find_program(XSB_PROGRAM xsb ${_fxsb_hints} DOC "XSB executable")
-find_program(GPP_PROGRAM gpp ${_fxsb_hints} DOC "GPP executable")
 
 if (XSB_PROGRAM)
   function(_fxsb_query_var var output)

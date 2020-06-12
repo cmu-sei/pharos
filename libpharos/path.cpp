@@ -33,7 +33,7 @@ PathFinder::generate_cfg_constraints(CallTraceDescriptorPtr call_trace_desc) {
   const FunctionDescriptor& fd = call_trace_desc->get_function();
   const CFG &cfg = fd.get_pharos_cfg();
 
-  z3::context* ctx = z3_.z3Context();
+  auto ctx = z3_->z3Context();
 
   // process edges and save edge information for this call trace
   // element, which is an entire function
@@ -47,7 +47,7 @@ PathFinder::generate_cfg_constraints(CallTraceDescriptorPtr call_trace_desc) {
 
     GWARN << "CFG for function " << addr_str(fd.get_address()) << " has no edges" << LEND;
 
-    CfgEdgeInfo ei(ctx);
+    CfgEdgeInfo ei(*ctx);
 
     auto vp = boost::vertices(cfg);
     CfgVertex v = *vp.first;
@@ -75,7 +75,7 @@ PathFinder::generate_cfg_constraints(CallTraceDescriptorPtr call_trace_desc) {
 
     BGL_FORALL_EDGES(edge, cfg, CFG) {
 
-      CfgEdgeInfo ei(ctx);
+      CfgEdgeInfo ei(*ctx);
 
       ei.edge = edge;
 
@@ -147,7 +147,7 @@ PathFinder::generate_cfg_constraints(CallTraceDescriptorPtr call_trace_desc) {
       for (auto prev : predecessors) {
         pred_exprs.push_back(prev.edge_expr);
       }
-      cfg_cond = z3::expr(ei.edge_expr == (ei.cond_expr && z3_.mk_or(pred_exprs)));
+      cfg_cond = z3::expr(ei.edge_expr == (ei.cond_expr && z3_->mk_or(pred_exprs)));
     }
     // single incoming edge
     else if (predecessors.size() == 1) {
@@ -194,7 +194,7 @@ PathFinder::generate_edge_conditions(CallTraceDescriptorPtr call_trace_desc,
   const FunctionDescriptor& func = call_trace_desc->get_function();
   const CFG &cfg = func.get_pharos_cfg();
 
-  z3::context* ctx = z3_.z3Context();
+  auto ctx = z3_->z3Context();
 
   BGL_FORALL_EDGES(edge, cfg, CFG)  {
 
@@ -240,7 +240,7 @@ PathFinder::generate_edge_conditions(CallTraceDescriptorPtr call_trace_desc,
 
       try {
 
-        z3::expr condition_expr = z3_.treenode_to_z3(condition_tnp).simplify();
+        z3::expr condition_expr = z3_->treenode_to_z3(condition_tnp).simplify();
 
         if (true_address == tgt_bb->get_address()) {
           edge_conditions.emplace(std::make_pair(edge, condition_expr));
@@ -248,7 +248,7 @@ PathFinder::generate_edge_conditions(CallTraceDescriptorPtr call_trace_desc,
         else if (false_address == tgt_bb->get_address()) {
           z3::expr not_condition_expr(*ctx);
           if (condition_expr.is_bool() == false) {
-            condition_expr = z3_.to_bool(condition_expr);
+            condition_expr = z3_->to_bool(condition_expr);
           }
           not_condition_expr = (!condition_expr).simplify();
 
@@ -302,7 +302,7 @@ void
 PathFinder::generate_chc() {
 
   std::vector<z3::func_decl> relations;
-  Z3FixedpointPtr fp = std::make_unique<z3::fixedpoint>(*z3_.z3Context());
+  Z3FixedpointPtr fp = std::make_unique<z3::fixedpoint>(*z3_->z3Context());
 
   /// For each call trace
   BGL_FORALL_VERTICES(v, call_trace_, CallTraceGraph) {
@@ -314,7 +314,7 @@ PathFinder::generate_chc() {
     boost::for_each(existing_constraints,
                     [this, trx, &fp] (const auto &x) {
 
-                      z3::context& ctx = *z3_.z3Context();
+                      z3::context& ctx = *z3_->z3Context();
                       CfgEdge cfg_edge = x.first;
                       z3::expr cond_expr = x.second;
 
@@ -367,7 +367,7 @@ PathFinder::generate_edge_constraints(CallTraceDescriptorPtr call_trace_desc) {
 
     z3::expr tnp_cond_expr = edge_cond.second;
     if (tnp_cond_expr.is_bool() == false) {
-      tnp_cond_expr = z3_.to_bool(tnp_cond_expr);
+      tnp_cond_expr = z3_->to_bool(tnp_cond_expr);
     }
 
     z3::expr edge_constraint_expr = z3::expr(new_edge_info.cond_expr == tnp_cond_expr);
@@ -407,7 +407,7 @@ PathFinder::generate_path_constraints(z3::expr& start_constraint,
   P2::BasicBlockPtr goal_bb = ds_.get_block(goal_address_);
   rose_addr_t goal_bb_addr = goal_bb->address();
 
-  z3::context* ctx = z3_.z3Context();
+  auto ctx = z3_->z3Context();
   z3::expr_vector goal_edge_constraints(*ctx);
   z3::expr_vector start_edge_constraints(*ctx);
 
@@ -455,7 +455,7 @@ PathFinder::generate_path_constraints(z3::expr& start_constraint,
   // that any of them can be viable.
 
   if (goal_edge_constraints.size() > 1) {
-    goal_constraint = z3_.mk_or(goal_edge_constraints);
+    goal_constraint = z3_->mk_or(goal_edge_constraints);
   }
   else if (goal_edge_constraints.size() == 1) {
     goal_constraint = goal_edge_constraints[0];
@@ -470,7 +470,7 @@ PathFinder::generate_path_constraints(z3::expr& start_constraint,
   // Not entirely sure, but the approach is the same
 
   if (start_edge_constraints.size() > 1) {
-    start_constraint = z3_.mk_or(start_edge_constraints);
+    start_constraint = z3_->mk_or(start_edge_constraints);
   }
   else if (start_edge_constraints.size() == 1) {
     start_constraint = start_edge_constraints[0];
@@ -534,10 +534,10 @@ PathFinder::propagate_edge_conditions(CallTraceDescriptorPtr call_trace_desc, Cf
                 z3::expr& x = ec_search->second;
 
                 if (x.is_bool() == false) {
-                  x = z3_.to_bool(x);
+                  x = z3_->to_bool(x);
                 }
                 if (cond_expr.is_bool() == false) {
-                  cond_expr = z3_.to_bool(cond_expr);
+                  cond_expr = z3_->to_bool(cond_expr);
                 }
                 edge_conditions.emplace(std::make_pair(in_edge, z3::expr(cond_expr || x)));
                 ec_search++;
@@ -554,43 +554,9 @@ PathFinder::propagate_edge_conditions(CallTraceDescriptorPtr call_trace_desc, Cf
 bool
 PathFinder::evaluate_path() {
 
+  z3::solver* solver = z3_->z3Solver();
+
   try {
-
-    z3::context* ctx = z3_.z3Context();
-
-    z3::expr start_constraint(*ctx);
-    z3::expr goal_constraint(*ctx);
-
-    if (!generate_path_constraints(start_constraint, goal_constraint)) {
-      GERROR << "Could not establish start/goal!" << LEND;
-      path_found_ = false;
-      return false;
-    }
-
-    // Load all the conditions into
-    z3::solver* solver = z3_.z3Solver();
-
-    BGL_FORALL_VERTICES(vtx, call_trace_, CallTraceGraph) {
-
-      calltrace_value_t trc_info = boost::get(boost::vertex_calltrace, call_trace_, vtx);
-
-      z3::expr_vector cfg_conds = trc_info->get_cfg_conditions();
-      for (unsigned c=0; c<cfg_conds.size(); c++) solver->add(cfg_conds[c]);
-
-      auto edge_constraint = trc_info->get_edge_constraints();
-      boost::for_each(edge_constraint | boost::adaptors::map_values,
-                      [solver](z3::expr edge_expr) { solver->add(edge_expr); });
-
-      // TODO Remove this if the above loop works
-      // for (unsigned e=0; e<edge_constraint.size(); e++) solver->add(edge_constraint[e]);
-
-      z3::expr_vector val_const = trc_info->get_value_constraints();
-      for (unsigned v=0; v<val_const.size(); v++)  solver->add(val_const[v]);
-    }
-
-    solver->add(start_constraint);
-    solver->add(goal_constraint);
-
     GDEBUG << "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-\n"
            << "Final representation:"
            <<  "\n---\n" << *solver << "\n---" << LEND;
@@ -631,7 +597,7 @@ PathFinder::evaluate_path() {
   // print out some statistics about how many resources the solver
   // used. This is mostly for informational/debugging purposes
   //
-  // z3_.report_statistics(OINFO);
+  // z3_->report_statistics(OINFO);
 
   return path_found_;
 }
@@ -649,7 +615,7 @@ PathFinder::analyze_path_solution() {
     // and values used. Doing this in three distinct loops keeps
     // things linear
 
-    z3::model model = z3_.z3Solver()->get_model();
+    z3::model model = z3_->z3Solver()->get_model();
 
     // This map will hold the values that are assigned to the
     ExprMap modelz3vals;
@@ -738,9 +704,9 @@ PathFinder::create_call_trace_element(CallTraceGraphVertex caller_vtx,
   OINFO << "*** Creating call trace descriptor for "
         << addr_str(fd->get_address()) << ":" << frame_index_ << LEND;
 
-  z3::context* ctx = z3_.z3Context();
+  auto ctx = z3_->z3Context();
   CallTraceDescriptorPtr call_trace_desc
-    = std::make_shared<CallTraceDescriptor>(*fd, cd, frame_index_, ctx);
+    = std::make_shared<CallTraceDescriptor>(*fd, cd, frame_index_, *ctx);
 
   if (!call_trace_desc) {
     return nullptr;
@@ -892,8 +858,8 @@ PathFinder::generate_value_constraints() {
 
               if (caller_tnp && callee_tnp) {
 
-                z3::expr par_caller_expr = path_finder->z3_.treenode_to_z3(caller_tnp);
-                z3::expr par_callee_expr = path_finder->z3_.treenode_to_z3(callee_tnp);
+                z3::expr par_caller_expr = path_finder->z3_->treenode_to_z3(caller_tnp);
+                z3::expr par_callee_expr = path_finder->z3_->treenode_to_z3(callee_tnp);
 
                 if (caller_tnp->nBits() != callee_tnp->nBits()) {
 
@@ -959,8 +925,8 @@ PathFinder::generate_value_constraints() {
 
           if (clr_tnp && cle_tnp) {
 
-            z3::expr ret_caller_expr = path_finder->z3_.treenode_to_z3(clr_tnp);
-            z3::expr ret_callee_expr = path_finder->z3_.treenode_to_z3(cle_tnp);
+            z3::expr ret_caller_expr = path_finder->z3_->treenode_to_z3(clr_tnp);
+            z3::expr ret_callee_expr = path_finder->z3_->treenode_to_z3(cle_tnp);
 
             z3::expr retval_expr = z3::implies(caller_edge_info->edge_expr, ret_caller_expr == ret_callee_expr);
 
@@ -1108,16 +1074,21 @@ PathFinder::evaluate_model_value(TreeNodePtr tn, const ExprMap& modelz3vals) {
   return TreeNodePtr();
 }
 
+
+PathFinder::PathFinder(const DescriptorSet& ds, PharosZ3Solver & solver)
+  : ds_(ds),
+    z3_(&solver, SolverDeleter{false})
+{}
+
 PathFinder::PathFinder(const DescriptorSet& ds)
   : ds_(ds),
-    path_found_(false),
-    frame_index_(0),
-    save_z3_output_(false),
-    goal_address_(INVALID_ADDRESS), start_address_(INVALID_ADDRESS) { }
+    z3_(new PharosZ3Solver, SolverDeleter{})
+{}
+
 
 PathFinder::~PathFinder() {
   // this is probably overkill
-  z3::solver* solver = z3_.z3Solver();
+  z3::solver* solver = z3_->z3Solver();
   solver->reset();
 }
 
@@ -1174,39 +1145,16 @@ PathFinder::find_path(rose_addr_t start_addr, rose_addr_t goal_addr) {
     return false;
   }
 
-  // save the ultimate start/goal addresses
-  start_address_ = start_addr;
-  goal_address_ = goal_addr;
-
-  OINFO << "Start address is: " << addr_str(start_address_)
-        << ", Goal address is: " << addr_str(goal_address_) << LEND;
-
-  const FunctionDescriptor* start_fd = ds_.get_func_containing_address(start_address_);
-  const FunctionDescriptor* goal_fd = ds_.get_func_containing_address(goal_address_);
-
-  if (start_fd && goal_fd) {
-
-    // if (detect_recursion()) {
-    //   GWARN << "Recursion not yet handled!" << LEND;
-    //   return false;
-    // }
-
-    std::vector<rose_addr_t> trace_stack;
-
-    // JSG is trying to turn this into a graph problem. The first step
-    // is to "unwind" the call relationships in to a trace.
-
-    generate_call_trace(NULL_CTG_VERTEX, start_fd, nullptr, trace_stack);
-
-    generate_chc();
-
-  }
-  else {
-    GERROR << "Could not find valid functions for start and/or goal" << LEND;
+  try {
+    setup_path_problem(start_addr, goal_addr);
+  } catch (FindPathError const & e) {
+    GERROR << e.what() << LEND;
+    return false;
+  } catch (z3::exception const & x3x) {
+    GERROR << "evaluate: Z3 Exception caught: " << x3x << LEND;
+    path_found_ = false;
     return false;
   }
-
-  generate_value_constraints();
 
   if (true == evaluate_path()) {
     if (true == analyze_path_solution()) {
@@ -1219,14 +1167,7 @@ PathFinder::find_path(rose_addr_t start_addr, rose_addr_t goal_addr) {
 
   if (save_z3_output_) {
     std::stringstream ss;
-
-    ss << ";; --- Z3 Start\n"
-       << *z3_.z3Solver()
-       << ";; --- End\n"
-      // convenience functions for checking the z3 model in output
-       << "(check-sat)\n"
-       << "(get-model)";
-
+    output_problem(ss);
     z3_output_.push_back(ss.str());
   }
   return path_found_;
@@ -1362,6 +1303,101 @@ PathFinder::detect_recursion() {
 
   return false;
 }
+
+void
+PathFinder::setup_path_problem(rose_addr_t source, rose_addr_t target)
+{
+  // save the ultimate start/goal addresses
+  start_address_ = source;
+  goal_address_ = target;
+
+  OINFO << "Start address is: " << addr_str(start_address_)
+        << ", Goal address is: " << addr_str(goal_address_) << LEND;
+
+  const FunctionDescriptor* start_fd = ds_.get_func_containing_address(start_address_);
+  const FunctionDescriptor* goal_fd = ds_.get_func_containing_address(goal_address_);
+
+  if (start_fd && goal_fd) {
+
+    // if (detect_recursion()) {
+    //   GWARN << "Recursion not yet handled!" << LEND;
+    //   return false;
+    // }
+
+    std::vector<rose_addr_t> trace_stack;
+
+    // JSG is trying to turn this into a graph problem. The first step
+    // is to "unwind" the call relationships in to a trace.
+
+    generate_call_trace(NULL_CTG_VERTEX, start_fd, nullptr, trace_stack);
+
+    generate_chc();
+
+  }
+  else {
+    throw FindPathError("Could not find valid functions for start and/or goal");
+  }
+
+  generate_value_constraints();
+
+  auto ctx = z3_->z3Context();
+
+  z3::expr start_constraint(*ctx);
+  z3::expr goal_constraint(*ctx);
+
+  if (!generate_path_constraints(start_constraint, goal_constraint)) {
+    path_found_ = false;
+    throw FindPathError("Could not establish start/goal!");
+  }
+
+  // Load all the conditions into
+  z3::solver* solver = z3_->z3Solver();
+
+  BGL_FORALL_VERTICES(vtx, call_trace_, CallTraceGraph) {
+
+    calltrace_value_t trc_info = boost::get(boost::vertex_calltrace, call_trace_, vtx);
+
+    z3::expr_vector cfg_conds = trc_info->get_cfg_conditions();
+    for (unsigned c=0; c<cfg_conds.size(); c++) solver->add(cfg_conds[c]);
+
+    auto edge_constraint = trc_info->get_edge_constraints();
+    boost::for_each(edge_constraint | boost::adaptors::map_values,
+                    [solver](z3::expr edge_expr) { solver->add(edge_expr); });
+
+    // TODO Remove this if the above loop works
+    // for (unsigned e=0; e<edge_constraint.size(); e++) solver->add(edge_constraint[e]);
+
+    z3::expr_vector val_const = trc_info->get_value_constraints();
+    for (unsigned v=0; v<val_const.size(); v++)  solver->add(val_const[v]);
+  }
+
+  solver->add(start_constraint);
+  solver->add(goal_constraint);
+}
+
+z3::check_result PathFinder::solve_path_problem()
+{
+  return z3_->z3Solver()->check();
+}
+
+std::ostream &
+PathFinder::output_problem(std::ostream & stream) const
+{
+  z3_->output_options(stream);
+  stream << ";; --- Z3 Start\n"
+         << *z3_->z3Solver()
+         << ";; --- Z3 End\n"
+         << "(check-sat)\n"
+         << "(get_model)" << std::endl;
+  return stream;
+}
+
+std::ostream &
+PathFinder::output_solution(std::ostream & stream) const
+{
+  return stream << ";; PathFinder::output_solution not yet implemented" << std::endl;
+}
+
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 // Beginning of CallTraceDescriptor methods
@@ -1778,6 +1814,8 @@ std::string
 vertex_str(CfgVertex v, const CFG& cfg) {
   return addr_str(vertex_addr(v, cfg));
 }
+
+
 
 
 } // end namespace pharos

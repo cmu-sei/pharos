@@ -13,7 +13,7 @@ add_executable(znode_test znode_test.cpp)
 target_link_libraries(znode_test pharos gtest)
 
 add_executable(pathanalyzer_test pathanalyzer_test.cpp)
-target_link_libraries(pathanalyzer_test pharos gtest)
+target_link_libraries(pathanalyzer_test pharos)
 
 build_pharos_pod(pathanalyzer-man pathanalyzer.pod 1)
 

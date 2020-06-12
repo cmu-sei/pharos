@@ -42,6 +42,7 @@ finalMethodProperty(0x411880, virtual, certain).
 finalMethodProperty(0x4118e0, virtual, certain).
 finalMethodProperty(0x411920, virtual, certain).
 finalMethodProperty(0x411c00, constructor, certain).
+finalMethodProperty(0x411c30, deletingDestructor, certain).
 finalMethodProperty(0x411c30, virtual, certain).
 finalResolvedVirtualCall(0x4114f3, 0x416754, 0x411920).
 finalResolvedVirtualCall(0x41150b, 0x416754, 0x411920).

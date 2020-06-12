@@ -1,265 +1,314 @@
-// Copyright 2018-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2020 Carnegie Mellon University.  See LICENSE file for terms.
 
-#include "pathanalyzer_test_config.hpp"
+#include <boost/filesystem.hpp>
+
+#include <libpharos/bua.hpp>
 #include <libpharos/spacer.hpp>
+#include <libpharos/wp.hpp>
+#include <libpharos/path.hpp>
 
 using namespace pharos;
 
-const DescriptorSet* global_ds = nullptr;
+ProgOptDesc pathanalyzer_test_options() {
+  namespace po = boost::program_options;
 
-// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-// Instantiate tests with parameters read from the configuration file
-INSTANTIATE_TEST_CASE_P(PathAnalyzerTestParameters, PATestFixture,
-                        ::testing::ValuesIn(test_config),
-                        PATestFixture::PrintToStringParamName());
+  ProgOptDesc ptopt("PathAnalyzer Test options");
+  ptopt.add_options()
+    ("seed,s", po::value<int>(), "The random seed for Z3")
+    ("smt-file", po::value<std::string>(),
+     "The name of the file to save goal SMT output")
+    ("method,m", po::value<std::string>()->required(),
+     "The analysis method to use (fs, wp or spacer)")
+    ("goal", "search for goal address")
+    ("nongoal", "search for non-goal address")
+    ;
 
-// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-// Start parameterized test cases for path finding
-
-bool fs_method(PATestConfiguration& test, rose_addr_t target, std::shared_ptr<std::ofstream> smt) {
-  // This path finder is automatic. It should be automatically recycled per test to avoid
-  // cross-test contamination
-  PathFinder path_finder(*global_ds);
-  // Turn on the saving of Z3 output.
-  path_finder.save_z3_output();
-
-  path_finder.find_path(test.start, target);
-
-  // Now actually save the Z3 output?
-  if (smt)
-    *smt << path_finder.get_z3_output();
-
-  return path_finder.path_found();
-  //OINFO << "Z3 representation:\n" << path_finder.get_z3_output();
+  return ptopt;
 }
 
-// Shared by wp and spacer.
-ImportRewriteSet get_imports () {
-  return {
-    // Because of in-lining, we may need to jump over a call to path_goal to reach the one we
-    // selected.  As a result we need to include time.
-    ImportCall ("bogus.so", "time"),
-    ImportCall ("bogus.so", "rand"),
-    ImportCall ("bogus.so", "random"),
-    ImportCall ("bogus.so", "_Znwm"),
-    ImportCall ("bogus.so", "_Znwj"),
-    ImportCall ("MSVCR100D.dll", "rand"),
-    ImportCall ("ucrtbased.dll", "rand")
-  };
-}
+using PathAnalyzer = std::unique_ptr<Z3PathAnalyzer>;
 
-bool wp_method(PATestConfiguration& test, rose_addr_t target, std::shared_ptr<std::ofstream> smt) {
-
-  using namespace pharos::ir;
-
-  IR ir = get_inlined_cfg (CG::get_cg (*global_ds), test.start, target);
-  ir = rewrite_imported_calls (*global_ds, ir, get_imports());
-  ir = init_stackpointer (ir);
-  ir = rm_undefined (ir);
-  ir = add_datablocks (ir);
-
-  IRExprPtr post;
-  std::tie (ir, post, std::ignore) = add_reached_postcondition (ir, {target});
-
-  //std::cout << ir << std::endl;
-
-  IRExprPtr wp = expand_lets (wp_cfg (ir, post));
+class PATestAnalyzer : public BottomUpAnalyzer {
+ private:
+  rose_addr_t start_addr = INVALID_ADDRESS;
+  rose_addr_t goal_addr = INVALID_ADDRESS;
+  rose_addr_t nongoal_addr = INVALID_ADDRESS;
 
   PharosZ3Solver solver;
-  solver.memoization (false);
-  solver.insert (wp);
-  solver.z3Update ();
+  PathAnalyzer analyzer;
+  std::string test_name;
 
-  assert (solver.z3Assertions ().size () == 1);
-  //std::cout << "Z3 WP: " << *solver.z3Solver() << std::endl;
-  //std::cout << "Calling Z3...." << std::endl;
+ public:
 
-  bool result = (solver.check() == Rose::BinaryAnalysis::SmtSolver::Satisfiable::SAT_YES);
+  PATestAnalyzer(DescriptorSet & ds_, ProgOptVarMap const & vm_);
 
-  if (smt)
-    *smt << *solver.z3Solver();
+  void start () override;
+  void visit(FunctionDescriptor *fd) override;
+  [[noreturn]] void finish () override;
 
-  // Save the contents of the solver (This was the WP way of doing it.
-  //if (smt_file != "") {
-  //  std::ofstream smt_stream(smt_file.c_str());
-  //  smt_stream << ";; --- Z3 Start\n"
-  //             << *solver.z3Solver()
-  //             << ";; --- End\n"
-  //    // convenience functions for checking the z3 model in output
-  //             << "(check-sat)\n"
-  //             << "(get-model)";
-  //  smt_stream.close();
-  //}
+};
 
-  return result;
+using AnalyzerMap = std::map<
+  std::string,
+  std::function<PathAnalyzer(DescriptorSet &, ProgOptVarMap const &, PharosZ3Solver &)>>;
+
+
+// Shared by wp and spacer.
+ImportRewriteSet const imports = {
+  // Because of in-lining, we may need to jump over a call to path_goal to reach the one we
+  // selected.  As a result we need to include time.
+  ImportCall{"bogus.so", "time"},
+  ImportCall{"bogus.so", "rand"},
+  ImportCall{"bogus.so", "random"},
+  ImportCall{"bogus.so", "_Znwm"},
+  ImportCall{"bogus.so", "_Znwj"},
+  ImportCall{"MSVCR100D.dll", "rand"},
+  ImportCall{"ucrtbased.dll", "rand"}
+};
+
+PathAnalyzer create_spacer_analyzer(
+  DescriptorSet const & ds, ProgOptVarMap const &vm, PharosZ3Solver & solver)
+{
+  if (vm.count("seed")) {
+    auto seed = vm["seed"].as<int>();
+    OINFO << "Setting seed to " << seed << LEND;
+    solver.set_seed(seed);
+  }
+
+  return make_unique<SpacerAnalyzer>(ds, solver, imports, "spacer");
 }
 
-bool spacer_method(PATestConfiguration& test, rose_addr_t target, std::shared_ptr<std::ofstream> smt) {
-
-  using namespace pharos::ir;
-
-  PharosZ3Solver z3;
-  // The timeout doesn't seem to be doing anything, and is inconsistent with other tests.
-  //z3.set_timeout(10000);
-  if (test.seed != 0) {
-    z3.set_seed(test.seed);
-  }
-
-  SpacerAnalyzer sa(*global_ds, z3, get_imports(), "spacer");
-
-  auto result = sa.find_path_hierarchical (test.start, target, smt);
-  bool zresult = std::get<0> (result) == z3::sat;
-
-#if 0
-  boost::optional<z3::expr> answer = std::get<1> (result);
-  if (answer) {
-    std::cout << "Answer: " << *answer << std::endl;
-  }
-#endif
-
-  // Disabled because we're pass the stream to find_path_hierarchical to print before the query.
-  //if (smt)
-  //  *smt << sa.to_string();
-
-  return zresult;
+PathAnalyzer create_wp_analyzer(
+  DescriptorSet const & ds, ProgOptVarMap const &, PharosZ3Solver & solver)
+{
+  return make_unique<WPPathAnalyzer>(ds, solver, imports);
 }
 
-TEST_P(PATestFixture, TestWP) {
-
-  PATestConfiguration test = GetParam();
-
-  // Rather than fail gracefully through gtest on bad configurations, we want to abort so
-  // that's it's easier to differentiate cases where compilation optimized away the
-  // path_nongoal() test.
-  if (test.name=="") {
-    GFATAL << "Improper configuration, no test name!";
-    abort();
-  }
-
-  if (test.start==INVALID_ADDRESS) {
-    GFATAL << "Improper configuration, no start address!";
-    abort();
-  }
-
-  if (test.goal==INVALID_ADDRESS) {
-    GFATAL << "Improper configuration, no goal address!";
-    abort();
-  }
-
-  if (test.bad==INVALID_ADDRESS) {
-    GFATAL << "Improper configuration, no bad address!";
-    abort();
-  }
-
-  std::function<bool(PATestConfiguration&, rose_addr_t, std::shared_ptr<std::ofstream>)> method_func;
-
-  if (test.method == "fs") method_func = fs_method;
-  else if (test.method == "wp") method_func = wp_method;
-  else if (test.method == "spacer") method_func = spacer_method;
-  else {
-    FAIL() << "Unrecognized method '" << test.method << "'.";
-    return;
-  }
-
-  // Run the goal test (reachable goal is expected to be satisfiable).
-  std::shared_ptr<std::ofstream> smt_stream;
-  if (test.goal_smt_file != "") {
-    smt_stream = make_unique<std::ofstream> (test.goal_smt_file);
-  }
-
-  bool goal_result = true;
-  if (test.goal!=INVALID_ADDRESS) {
-    auto timer = make_timer();
-    try {
-      goal_result = method_func(test, test.goal, smt_stream);
-    }
-    catch (const z3::exception &e) {
-      GERROR << "Z3 exception thrown: " << e.msg () << LEND;
-      // Re-throw as std exception so google test can print it
-      throw std::runtime_error (std::string ("Z3: ") + e.msg ());
-    }
-    catch (const std::exception &e) {
-      GERROR << "Exception thrown: " << e.what () << LEND;
-      throw;
-    }
-    timer.stop();
-    if (goal_result) {
-      OINFO << "Correctly found path to goal in " << timer << " seconds." << LEND;
-    }
-    else {
-      GERROR << "Could not find path to goal in " << timer << " seconds." << LEND;
-    }
-  }
-
-  if (smt_stream) {
-    smt_stream->close();
-  }
-
-  if (test.nongoal_smt_file != "") {
-    smt_stream = make_unique<std::ofstream>(test.nongoal_smt_file);
-  }
-
-  // Run the nongoal test (unreachable goal is expected to not be satisfiable).
-  bool nongoal_result = false;
-  if (test.bad!=INVALID_ADDRESS) {
-    auto timer = make_timer();
-    try {
-      nongoal_result = method_func(test, test.bad, smt_stream);
-    }
-    catch (const z3::exception &e) {
-      GERROR << "Z3 exception thrown: " << e.msg () << LEND;
-      // Re-throw as std exception so google test can print it
-      throw std::runtime_error (std::string ("Z3: ") + e.msg ());
-    }
-    catch (const std::exception &e) {
-      GERROR << "Exception thrown: " << e.what () << LEND;
-      throw;
-    }
-    timer.stop();
-    if (nongoal_result) {
-      GERROR << "Found invalid path to nongoal in " << timer << " seconds." << LEND;
-    }
-    else {
-      OINFO << "Path to nongoal was correctly unsatisfiable in " << timer << " seconds." << LEND;
-    }
-  }
-
-  if (smt_stream) {
-    smt_stream->close();
-  }
-
-  bool result = goal_result && !nongoal_result;
-
-  // This is a search for a goal
-  ASSERT_TRUE(result) << "Compound test failed!";
+PathAnalyzer create_fs_analyzer(
+  DescriptorSet const & ds, ProgOptVarMap const &, PharosZ3Solver & solver)
+{
+  return make_unique<PathFinder>(ds, solver);
 }
 
-// End parameterized test cases for path finding
-// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+// Map of method names to Z3PathAnalyzer creation functions
+AnalyzerMap analyzer_map = {
+  {"spacer", create_spacer_analyzer },
+  {"wp", create_wp_analyzer },
+  {"fs", create_fs_analyzer }
+};
 
+PATestAnalyzer::PATestAnalyzer(DescriptorSet& ds_, ProgOptVarMap const & vm_)
+  : BottomUpAnalyzer(ds_, vm_)
+{
+  if (vm.count("goal") && vm.count("nongoal")) {
+    OFATAL << "Only one of --goal or --non-goal may be specified" << LEND;
+    exit(EXIT_FAILURE);
+  }
+  if (!vm.count("goal") && !vm.count("nongoal")) {
+    OFATAL << "One of --goal or --non-goal must be specified" << LEND;
+    exit(EXIT_FAILURE);
+  }
+
+  {
+    using namespace boost::filesystem;
+    test_name = basename (path (vm["file"].as<std::string>()));
+  }
+
+  std::string method;
+  assert(vm.count("method") == 1);
+  method = vm["method"].as<std::string>();
+  auto found = analyzer_map.find(method);
+  if (found == analyzer_map.end()) {
+    OFATAL << "Unknown method: '" << method << '\'' << LEND;
+    exit(EXIT_FAILURE);
+  }
+  OINFO << "Analyzing '" << test_name << "' using method '" << method << '\'' << LEND;
+  analyzer = found->second(ds, vm, solver);
+}
+
+void PATestAnalyzer::visit(FunctionDescriptor *fd) {
+  fd->get_pdg();
+
+  // Ick.  This was much nicer back when we were calling fd->get_outgoing_calls(), but not
+  // all of the calls are actually CALL instructions in -O2 in g++, so we need an approach
+  // that works for finding all instructions and their control flow targets.  This is
+  // probably a sign that get_outgoing_calls() is broken and needs some work, but that's
+  // a bigger change.
+  const CFG& cfg = fd->get_rose_cfg();
+  for (auto vertex : fd->get_vertices_in_flow_order(cfg)) {
+    SgNode *n = get(boost::vertex_name, cfg, vertex);
+    SgAsmBlock *blk = isSgAsmBlock(n);
+    assert(blk != NULL);
+    for (SgAsmStatement *stmt : blk->get_statementList()) {
+      SgAsmInstruction *insn = isSgAsmInstruction(stmt);
+      SgAsmX86Instruction *xinsn = isSgAsmX86Instruction(stmt);
+      // We're only interested in calls and jumps.
+      if (!insn_is_call_or_jmp(xinsn)) continue;
+
+      bool complete;
+      for (rose_addr_t target : insn->getSuccessors(&complete)) {
+        //OINFO << "Call/Jump from " << addr_str(insn->get_address()) << " to " << addr_str(target) << LEND;
+        const FunctionDescriptor* tfd = ds.get_func(target);
+        if (tfd) {
+          const SgAsmFunction* func = tfd->get_func();
+          if (func) {
+            std::string name = func->get_name();
+            //OINFO << "Found call to " << name << " at " << addr_str(insn->get_address()) << LEND;
+            if (name == "_Z10path_startv") {
+              OINFO << "Found path_start() call at " << addr_str(insn->get_address()) << LEND;
+
+              // If we've already seen a call to path_start(), mark the test invalid and
+              // return.
+              if (start_addr != INVALID_ADDRESS) {
+                OINFO << "Found duplicate path_start() call at "
+                      << addr_str(insn->get_address()) << LEND;
+                start_addr = INVALID_ADDRESS;
+                return;
+              }
+
+              // We used to start at the instruction following the call to path_start().  That
+              // doesn't really work because if we're going to be using the stack, we'll need
+              // to have a proper setup of the RSP & RBP registers.  So instead, we're just
+              // going to use the path_start() call to mean that the start location is at the
+              // beginning of the current function!  Hopefully this retroactive redefinition
+              // won't cause too many problems, and if it does we may have to use something
+              // better defined like that path_start() is always main().
+
+              // auto start_addr = insn->get_address () + insn->get_size ();
+              start_addr = fd->get_address();
+            }
+            if (name == "_Z9path_goalv") {
+              OINFO << "Found path_goal() call at " << addr_str(insn->get_address()) << LEND;
+              // If we've already seen a call to path_goal(), mark the test invalid and
+              // return.
+              if (goal_addr != INVALID_ADDRESS && goal_addr != target) {
+                OINFO << "Found duplicate path_goal() call at "
+                      << addr_str(insn->get_address()) << LEND;
+                goal_addr = INVALID_ADDRESS;
+                return;
+              }
+              //config_->goal = insn->get_address();
+              goal_addr = target;
+            }
+            if (name == "_Z12path_nongoalv") {
+              OINFO << "Found path_nongoal() call at " << addr_str(insn->get_address()) << LEND;
+              // If we've already seen a call to path_nongoal(), mark the test invalid and
+              // return.
+              if (nongoal_addr != INVALID_ADDRESS && nongoal_addr != target) {
+                OINFO << "Found duplicate path_nongoal() call at "
+                      << addr_str(insn->get_address()) << LEND;
+                nongoal_addr = INVALID_ADDRESS;
+                return;
+              }
+              nongoal_addr = target;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void PATestAnalyzer::start()
+{
+  OINFO << "Analyzing '" << test_name << '\'' << LEND;
+}
+
+[[noreturn]]
+void PATestAnalyzer::finish()
+{
+  if (start_addr == INVALID_ADDRESS) {
+    OFATAL << "Unable to find a start address" << LEND;
+    exit(EXIT_FAILURE);
+  }
+
+  std::string goal_string;
+  rose_addr_t target;
+  if (vm.count("goal")) {
+    target = goal_addr;
+    goal_string = "goal";
+  } else {
+    target = nongoal_addr;
+    goal_string = "nongoal";
+  }
+
+  if (target == INVALID_ADDRESS) {
+    OFATAL << "Unable to find a " << goal_string << " address" << LEND;
+    exit(EXIT_FAILURE);
+  }
+
+  OINFO << "Searching for " << goal_string << " address " << addr_str(target)
+        << " from start address " << addr_str(start_addr) << LEND;
+
+  auto setup_timer = make_timer();
+  OINFO << "Setting up problem" << std::flush;
+  analyzer->setup_path_problem(start_addr, target);
+  OINFO << "...done" << LEND;
+  OINFO << "Setting up problem took " << setup_timer << " seconds." << LEND;
+
+  if (vm.count("smt-file")) {
+    auto filename = vm["smt-file"].as<std::string>();
+    OINFO << "Writing problem to " << filename << LEND;
+    std::ofstream out{filename};
+    analyzer->output_problem(out);
+  }
+
+  auto solve_timer = make_timer();
+  OINFO << "Finding path";
+  auto result = analyzer->solve_path_problem();
+  OINFO << "..done" << LEND;
+  OINFO << "Attempting to find the path took " << solve_timer << " seconds." << LEND;
+
+  if (target == goal_addr) {
+    switch (result) {
+     case z3::sat:
+      OINFO << "Correctly found path to goal." << LEND;
+      exit(EXIT_SUCCESS);
+     case z3::unsat:
+      OERROR << "Failed to find path to goal." << LEND;
+      exit(EXIT_FAILURE);
+     default:
+      OERROR << "Unexpected analyzer result: " << result << LEND;
+      exit(EXIT_FAILURE);
+    }
+  } else {
+    switch (result) {
+     case z3::sat:
+      OERROR << "Found invalid path to nongoal." << LEND;
+      exit(EXIT_FAILURE);
+     case z3::unsat:
+      OINFO << "Path to nongoal was correctly unsatisfiable." << LEND;
+      exit(EXIT_SUCCESS);
+     default:
+      OINFO << "Unexpected analyzer result: " << result << LEND;
+      exit(EXIT_FAILURE);
+    }
+  }
+}
+
+[[noreturn]]
 static int pathanalyzer_test_main(int argc, char **argv) {
 
   // Handle options
-  namespace po = boost::program_options;
   ProgOptDesc pathod = pathanalyzer_test_options();
   ProgOptDesc csod = cert_standard_options();
   pathod.add(csod);
   ProgOptVarMap ovm = parse_cert_options(argc, argv, pathod);
 
+  if (ovm.count("file") != 1) {
+    OFATAL << "Must produce a single executable to analyze" << LEND;
+    exit(EXIT_FAILURE);
+  }
+
   DescriptorSet ds(ovm);
   // Resolve imports, load API data, etc.
   ds.resolve_imports();
-  // Global for just this test program to make gtest happy.
-  global_ds = &ds;
 
   PATestAnalyzer pa(ds, ovm);
   pa.analyze();
 
-  configure_tests(pa, ovm);
-
-  ::testing::InitGoogleTest(&argc, argv);
-
-  return RUN_ALL_TESTS();
+  // Should never get here
+  abort();
 }
 
 int main(int argc, char **argv) {

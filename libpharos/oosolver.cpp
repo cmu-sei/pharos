@@ -988,29 +988,36 @@ SolveVFTableFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
 
           v->set_rtti(rtti_addr, read_RTTI(ds, rtti_addr));
 
-          // set the class name based on RTTI
-          if (rtti_name.size() > 0) {
-            GDEBUG << "Renaming " << cls->get_name() << " to " << rtti_name << LEND;
-            cls->set_name(rtti_name);
+          // If the class ID is not the vftable address, then either the vftable is not the
+          // primary one OR it is claimed by multiple classes and we should not use its name.
+          // Without this check we can get duplicate json keys.
+          if (cls->get_id() == v->get_address()) {
 
-            // Attempt to set the demangled name too
-            try {
-              auto dtype = demangle::visual_studio_demangle(rtti_name);
-              cls->set_demangled_name(dtype->get_class_name());
-            } catch (const demangle::Error &) {
-              GWARN << "Unable to demangle RTTI Class name" << LEND;
+            // set the class name based on RTTI
+            if (rtti_name.size() > 0) {
+              GDEBUG << "Renaming " << cls->get_name() << " to " << rtti_name << LEND;
+              cls->set_name(rtti_name);
+
+              // Attempt to set the demangled name too
+              try {
+                auto dtype = demangle::visual_studio_demangle(rtti_name);
+                cls->set_demangled_name(dtype->get_class_name());
+              } catch (const demangle::Error &) {
+                GWARN << "Unable to demangle RTTI Class name" << LEND;
+              }
+
+              GDEBUG << "Found RTTI name for "
+                     <<  addr_str(cls->get_id()) << " = " << cls->get_name() << LEND;
             }
-
-            GDEBUG << "Found RTTI name for "
-                   <<  addr_str(cls->get_id()) << " = " << cls->get_name() << LEND;
           }
+          // We won't find the same vftable twice in a class
           break;
         }
       }
     }
 
     if (!found) {
-      GERROR << "Unable to find VFTable " << addr_str(vft_addr) << " in imported classes." << LEND;
+      GDEBUG << "Unable to find VFTable " << addr_str(vft_addr) << " in imported classes." << LEND;
     }
 
     vft_query->next();

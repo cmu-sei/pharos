@@ -48,17 +48,17 @@ int pathfinder_main(int argc, char **argv) {
   PharosZ3Solver z3;
   SpacerAnalyzer sa(ds, z3, engine);
 
-  z3::check_result res;
-  boost::optional<z3::expr> ans;
+  sa.setup_path_problem(srcaddr, tgtaddr);
 
-  std::tie(res, ans) = sa.find_path_hierarchical(srcaddr, tgtaddr, std::shared_ptr<std::ofstream>());
+  OINFO << "The CHC encoding is:\n";
+  sa.output_problem(OINFO) << LEND;
 
-  OINFO << "The CHC encoding is:\n" << LEND;
-  std::cout << sa.to_string() << "\n";
+  z3::check_result res = sa.solve_path_problem();
 
   OINFO << "---\nThe result is '" << res << "'" << LEND;
   if (res!= z3::unknown) {
-    OINFO << "The answer is:\n" << ans << LEND;
+    OINFO << "The answer is:\n";
+    sa.output_solution(OINFO) << LEND;
   }
 
   return EXIT_SUCCESS;

@@ -80,12 +80,16 @@ set(CTEST_TEST_TIMEOUT 300)     # 5 minutes
 # Add pod building
 include(BuildPharosPod)
 
-# Individual tests (or groups of tests should add themselves as dependencies).
+# Turn on or off the building of executables that are used as inputs to the testing process.
+# Most of our tests run on pre-built executables that are comitted in the repository and do not
+# require building.  Having this variable be off will disable any tests that depend on the
+# non-prebuilt test programs.
 option(PHAROS_BUILD_TESTS "Builds optional test files" OFF)
+mark_as_advanced(PHAROS_BUILD_TESTS)
 if (PHAROS_BUILD_TESTS)
-  add_custom_target(tests ALL)
+  add_custom_target(built_tests ALL)
 else()
-  add_custom_target(tests)
+  add_custom_target(built_tests)
 endif()
 
 option(PHAROS_BROKEN_THREADS "Turns off multi-threding and mutexes" OFF)

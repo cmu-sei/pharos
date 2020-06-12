@@ -32,6 +32,7 @@ finalMemberAccess(0x408248, 0x4, 0x4, [0x402c3f, 0x402c4a, 0x402c79, 0x402ca2, 0
 finalMemberAccess(0x408248, 0x8, 0x1, [0x402c42, 0x402c8d, 0x402c9c, 0x402caf, 0x402d31]).
 finalMemberAccess(0x408268, 0, 0x4, [0x402d44]).
 finalMethodProperty(0x401000, constructor, certain).
+finalMethodProperty(0x401050, deletingDestructor, certain).
 finalMethodProperty(0x4011d4, deletingDestructor, certain).
 finalMethodProperty(0x4011d4, virtual, certain).
 finalMethodProperty(0x4011fb, constructor, certain).

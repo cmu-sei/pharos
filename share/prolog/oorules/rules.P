@@ -374,6 +374,7 @@ reasonRealDestructorSet(Set) :-
 :- table reasonNOTRealDestructor_E/1 as incremental.
 :- table reasonNOTRealDestructor_F/1 as incremental.
 :- table reasonNOTRealDestructor_G/1 as incremental.
+:- table reasonNOTRealDestructor_H/1 as incremental.
 
 reasonNOTRealDestructor(Method) :-
     %logwarnln('Recomputing reasonNOTRealDestructor...'),
@@ -383,7 +384,8 @@ reasonNOTRealDestructor(Method) :-
         reasonNOTRealDestructor_D(Method),
         reasonNOTRealDestructor_E(Method),
         reasonNOTRealDestructor_F(Method),
-        reasonNOTRealDestructor_G(Method)
+        reasonNOTRealDestructor_G(Method),
+        reasonNOTRealDestructor_H(Method)
       ]).
 
 % Because it is already known to NOT be a real destructor.
@@ -447,6 +449,19 @@ reasonNOTRealDestructor_G(Method) :-
                   logtrace(Caller), logtrace(', '),
                   logtrace(Method), logtraceln(').'))).
 
+
+% Real destructors cannot delete themselves.  This rule should help distinguish between real
+% destructors and deleting destructors.
+reasonNOTRealDestructor_H(Method) :-
+    % We should already know that Method is an OO method in general.
+    factMethod(Method),
+    % The method calls delete on ThisPtr.
+    insnCallsDelete(_Insn, Method, ThisPtr),
+    % And ThisPtr was literally "this" for the method.
+    funcParameter(Method, ecx, ThisPtr),
+    % The presumption about ECX also necessitates this restriction?
+    callingConvention(Method, '__thiscall').
+
 reasonNOTRealDestructorSet(Set) :-
     setof(Method, reasonNOTRealDestructor(Method), Set).
 
@@ -467,6 +482,22 @@ reasonDeletingDestructor(Method) :-
     factNOTConstructor(Method),
     factNOTRealDestructor(Method).
 
+% If a method deletes itself, it's almost certainly a deleting destructor.  There's a very
+% _rare_ situation in which ordinary methods can delete(this), but it's not clear that it's
+% worth worrying about.  We could block it here with certainConstructorOrDestructor(Method), or
+% we could make this rule a guess. This rule should help distinguish between real destructors
+% and deleting destructors.
+reasonDeletingDestructor(Method) :-
+    % If we're certain that we're a either a constructor or destructor.
+    % certainConstructorOrDestructor(Method),
+    factMethod(Method),
+    % The method calls delete on ThisPtr.
+    insnCallsDelete(_Insn, Method, ThisPtr),
+    % And ThisPtr was literally "this" for the method.
+    funcParameter(Method, ecx, ThisPtr),
+    % The presumption about ECX also necessitates this restriction?
+    callingConvention(Method, '__thiscall').
+
 % Because a symbol says so!
 reasonDeletingDestructor(Method) :-
     symbolProperty(Method, deletingDestructor).
@@ -480,6 +511,8 @@ reasonDeletingDestructor(Method) :-
 :- table reasonNOTDeletingDestructor_C/1 as incremental.
 :- table reasonNOTDeletingDestructor_D/1 as incremental.
 :- table reasonNOTDeletingDestructor_E/1 as incremental.
+:- table reasonNOTDeletingDestructor_F/1 as incremental.
+:- table reasonNOTDeletingDestructor_G/1 as incremental.
 
 reasonNOTDeletingDestructor(Method) :-
     %logwarnln('Recomputing reasonNOTDeletingDestructor...'),
@@ -487,7 +520,9 @@ reasonNOTDeletingDestructor(Method) :-
         reasonNOTDeletingDestructor_B(Method),
         reasonNOTDeletingDestructor_C(Method),
         reasonNOTDeletingDestructor_D(Method),
-        reasonNOTDeletingDestructor_E(Method)
+        reasonNOTDeletingDestructor_E(Method),
+        reasonNOTDeletingDestructor_F(Method),
+        reasonNOTDeletingDestructor_G(Method)
       ]).
 
 % Because it is already known to NOT be a deleting destructor.
@@ -525,6 +560,27 @@ reasonNOTDeletingDestructor_E(Method) :-
                  (logtrace('reasonNOTDeletingDestructor_E('),
                   logtrace(Method), logtrace(', '),
                   logtrace(Caller), logtraceln(').'))).
+
+% Because we identified at least one call to delete, and this method does not call delete.
+% Unfortunately, there could be multiple delete implementations, in which case we could falsely
+% conclude that a destructor is not a destructor.  We likely have several other rules that will
+% perform badly in this case, so we are leaving it for now.  But perhaps it should be relegated
+% to a guessing rule.
+reasonNOTDeletingDestructor_F(Method) :-
+    factMethod(Method),
+    % Someone calls delete
+    insnCallsDelete(_Insn, _Method, _Ptr),
+    % We use thiscall
+    callingConvention(Method, '__thiscall'),
+    funcParameter(Method, ecx, ThisPtr),
+    % But we don't call delete on ourself
+    not(insnCallsDelete(_Insn2, Method, ThisPtr)).
+
+% Deleting destructors are always virtual, so if we can't possibly be a virtual, then we can't
+% possibly be a deleting destructor.  The primary benefit of this rule compared to some others
+% is that is does not rely on the correct detection of delete() which is sometimes a problem.
+reasonNOTDeletingDestructor_G(Method) :-
+    not(possiblyVirtual(Method)).
 
 reasonNOTDeletingDestructorSet(Set) :-
     setof(Method, reasonNOTDeletingDestructor(Method), Set).

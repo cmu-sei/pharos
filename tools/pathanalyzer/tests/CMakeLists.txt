@@ -165,67 +165,55 @@ endforeach()
 
 add_custom_target(pathanalyzer_tests DEPENDS ${ALL_64BIT_TESTS} ${ALL_32BIT_TESTS})
 
-add_dependencies(tests pathanalyzer_tests)
+add_dependencies(built_tests pathanalyzer_tests)
 
-set(PHAROS_RUN_PATHANALYZER_TESTS "" CACHE BOOL "Run pathanalyzer tests (experimental)")
+include(CMakeDependentOption)
+cmake_dependent_option(PHAROS_RUN_PATHANALYZER_TESTS
+  "Run pathanalyzer tests (experimental)" ON
+  "PHAROS_BUILD_TESTS" OFF)
 mark_as_advanced(PHAROS_RUN_PATHANALYZER_TESTS)
+
 if (PHAROS_RUN_PATHANALYZER_TESTS)
-  foreach(test ${SPACER_PASSING_TESTS})
-    add_test(NAME pathanalyzer_spacer_${test}_64
-      COMMAND pathanalyzer_test --method=spacer --no-semantics --allow-64bit
-              --goal-smt=${test}_goal_spacer_64.smt
-              --nongoal-smt=${test}_nongoal_spacer_64.smt
-              --seed=42 ${PHAROS_TEST_OPS} ${test}_64)
-    set_tests_properties (pathanalyzer_spacer_${test}_64
-      PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS pathanalyzer)
-    if (PATHTEST_CROSS32BIT)
-      add_test(NAME pathanalyzer_spacer_${test}_32
-        COMMAND pathanalyzer_test --method=spacer --no-semantics
-                --goal-smt=${test}_goal_spacer_32.smt
-                --nongoal-smt=${test}_nongoal_spacer_32.smt
-                --seed=42 ${PHAROS_TEST_OPS} ${test}_32)
-      set_tests_properties (pathanalyzer_spacer_${test}_32
-        PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS pathanalyzer)
+  set(flavors "goal,64,--allow-64bit" "nongoal,64,--allow-64bit")
+  if (PATHTEST_CROSS32BIT)
+    list(APPEND flavors "goal,32" "nongoal,32")
+  endif()
+  foreach(flavor ${flavors})
+    string(REPLACE "," ";" flavor "${flavor}")
+    list(GET flavor 0 type)
+    list(GET flavor 1 bits)
+    list(LENGTH flavor len)
+    if(len GREATER 2)
+      list(GET flavor 2 args)
+    else()
+      set(args)
     endif()
-  endforeach()
-
-  foreach(test ${WP_PASSING_TESTS})
-    add_test(NAME pathanalyzer_wp_${test}_64
-      COMMAND pathanalyzer_test --method=wp --no-semantics --allow-64bit
-              --goal-smt=${test}_goal_wp_64.smt
-              --nongoal-smt=${test}_nongoal_wp_64.smt
-              --seed=42 ${PHAROS_TEST_OPS} ${test}_64)
-    set_tests_properties (pathanalyzer_wp_${test}_64
-      PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS pathanalyzer)
-    if (PATHTEST_CROSS32BIT)
-      add_test(NAME pathanalyzer_wp_${test}_32
-        COMMAND pathanalyzer_test --method=wp --no-semantics
-                --goal-smt=${test}_goal_wp_32.smt
-                --nongoal-smt=${test}_nongoal_wp_32.smt
-                --seed=42 ${PHAROS_TEST_OPS} ${test}_32)
-      set_tests_properties (pathanalyzer_wp_${test}_32
-        PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS pathanalyzer)
-    endif()
-  endforeach()
-
-  foreach(test ${FS_PASSING_TESTS})
-    add_test(NAME pathanalyzer_fs_${test}_64
-      COMMAND pathanalyzer_test --method=fs --no-semantics --allow-64bit
-              --propagate-conditions --maximum-nodes-per-condition=500000
-              --goal-smt=${test}_goal_fs_64.smt
-              --nongoal-smt=${test}_nongoal_fs_64.smt
-              --seed=42 ${PHAROS_TEST_OPS} ${test}_64)
-    set_tests_properties (pathanalyzer_fs_${test}_64
-      PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS pathanalyzer)
-    if (PATHTEST_CROSS32BIT)
-      add_test(NAME pathanalyzer_fs_${test}_32
-        COMMAND pathanalyzer_test --method=fs --no-semantics
-                --propagate-conditions --maximum-nodes-per-condition=500000
-                --goal-smt=${test}_goal_fs_32.smt
-                --nongoal-smt=${test}_nongoal_fs_32.smt
-                --seed=42 ${PHAROS_TEST_OPS} ${test}_32)
-      set_tests_properties (pathanalyzer_fs_${test}_32
-        PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS pathanalyzer)
-    endif()
+    foreach(test ${SPACER_PASSING_TESTS})
+      add_test(NAME pathanalyzer_spacer_${test}_${type}_${bits}
+               COMMAND pathanalyzer_test --method=spacer --no-semantics ${args}
+               --smt-file=${test}_spacer_${type}_${bits}.smt --${type}
+               --seed=42 ${PHAROS_TEST_OPS} ${test}_${bits})
+      set_tests_properties (pathanalyzer_spacer_${test}_${type}_${bits}
+        PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS
+        "pathanalyzer;pathanalyzer_${type};pathanalyzer_spacer;pathanalyzer_spacer_${type}")
+    endforeach()
+    foreach(test ${WP_PASSING_TESTS})
+      add_test(NAME pathanalyzer_wp_${test}_${type}_${bits}
+               COMMAND pathanalyzer_test --method=wp --no-semantics ${args}
+               --smt-file=${test}_wp_${type}_${bits}.smt --${type}
+               --seed=42 ${PHAROS_TEST_OPS} ${test}_${bits})
+      set_tests_properties (pathanalyzer_wp_${test}_${type}_${bits}
+        PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS
+        "pathanalyzer;pathanalyzer_${type};pathanalyzer_wp;pathanalyzer_wp_${type}")
+    endforeach()
+    foreach(test ${FS_PASSING_TESTS})
+      add_test(NAME pathanalyzer_fs_${test}_${type}_${bits}
+               COMMAND pathanalyzer_test --method=fs --no-semantics ${args}
+               --smt-file=${test}_fs_${type}_${bits}.smt --${type}
+               --seed=42 ${PHAROS_TEST_OPS} ${test}_${bits})
+      set_tests_properties (pathanalyzer_fs_${test}_${type}_${bits}
+        PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS
+        "pathanalyzer;pathanalyzer_${type};pathanalyzer_fs;pathanalyzer_fs_${type}")
+    endforeach()
   endforeach()
 endif()

@@ -2170,8 +2170,8 @@
                     "demangled_name": "",
                     "ea": "0x4021fd",
                     "import": false,
-                    "name": "virt_meth_0x4021fd",
-                    "type": "meth"
+                    "name": "virt_deldtor_0x4021fd",
+                    "type": "deldtor"
                 },
                 "0x402226": {
                     "demangled_name": "",
@@ -2191,9 +2191,9 @@
                             "demangled_name": "",
                             "ea": "0x4021fd",
                             "import": false,
-                            "name": "virt_meth_0x4021fd",
+                            "name": "virt_deldtor_0x4021fd",
                             "offset": 0,
-                            "type": "meth"
+                            "type": "deldtor"
                         }
                     },
                     "vftptr": "0x0"

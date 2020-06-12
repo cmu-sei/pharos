@@ -55,6 +55,7 @@ finalMethodProperty(0x411980, constructor, certain).
 finalMethodProperty(0x4120b0, constructor, certain).
 finalMethodProperty(0x412330, constructor, certain).
 finalMethodProperty(0x412780, constructor, certain).
+finalMethodProperty(0x4127b0, deletingDestructor, certain).
 finalMethodProperty(0x4127b0, virtual, certain).
 finalThunk(0x411005, 0x411820).
 finalThunk(0x411032, 0x411740).

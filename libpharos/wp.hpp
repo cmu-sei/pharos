@@ -4,6 +4,7 @@
 #define Pharos_Wp_H
 
 #include "ir.hpp"
+#include "znode.hpp"
 
 using namespace pharos::ir;
 
@@ -25,6 +26,22 @@ std::tuple<IR, IRExprPtr, std::set<IRCFGVertex>> add_reached_postcondition (
 // external functions and replaces them with a write of EAX with a
 // fresh symbolic variable.
 IR rewrite_imported_calls (const DescriptorSet& ds, IR& prog, const ImportRewriteSet& funcs);
+
+class WPPathAnalyzer : public Z3PathAnalyzer
+{
+  DescriptorSet const & ds;
+  PharosZ3Solver & solver;
+  ImportRewriteSet imports;
+ public:
+  WPPathAnalyzer(
+    DescriptorSet const & ds_, PharosZ3Solver & s, ImportRewriteSet const & i)
+    : ds(ds_), solver(s), imports(i) {}
+  void setup_path_problem(rose_addr_t source, rose_addr_t target) override;
+  std::ostream & output_problem(std::ostream & stream) const override;
+  z3::check_result solve_path_problem() override;
+  std::ostream & output_solution(std::ostream & stream) const override;
+};
+
 }
 
 #endif

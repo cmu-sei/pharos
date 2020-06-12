@@ -21,7 +21,14 @@ fn2hash --rose-version
 B<fn2hash> calculates various function hashes for the functions in a
 program and dumps the data to stdout in the following CSV format:
 
-  filemd5,fn_addr,num_basic_blocks,num_basic_blocks_in_cfg,num_instructions,num_bytes,exact_hash,pic_hash,composite_pic_hash,mnemonic_hash,mnemonic_count_hash,mnemonic_category_hash,mnemonic_category_counts_hash,mnemonic_count_string,mnemonic_category_count_string[,opt_basic_block_data,opt_bb_cfg]
+=over 4
+
+filemd5, fn_addr, num_basic_blocks, num_basic_blocks_in_cfg, num_instructions, num_bytes,
+exact_hash, pic_hash, composite_pic_hash, mnemonic_hash, mnemonic_count_hash,
+mnemonic_category_hash, mnemonic_category_counts_hash, mnemonic_count_string,
+mnemonic_category_count_string [,opt_basic_block_data, opt_bb_cfg]
+
+=back
 
 where those columns are:
 

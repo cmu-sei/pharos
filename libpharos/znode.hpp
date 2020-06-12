@@ -5,6 +5,7 @@
 #include <z3++.h>
 #include <rose.h>
 #include <boost/optional.hpp>
+#include <boost/variant.hpp>
 #include <BinaryZ3Solver.h>
 #include "misc.hpp"
 
@@ -22,28 +23,69 @@ using Z3QueryResult = std::tuple<z3::check_result, boost::optional<z3::expr>>;
 // Rose::BinaryAnalysis::Z3Solver and renamed it
 class PharosZ3Solver : public Rose::BinaryAnalysis::Z3Solver {
 
- private:
-  // a log file for the state of the z3 solver
-  std::ofstream log_file_;
-  std::string log_file_name_;
+  using paramval_t = boost::variant<bool, int, double, std::string>;
+  using option_map_t = std::map<std::string, paramval_t>;
+  option_map_t options;
+  friend class Fixedpoint;
 
  protected:
   uint64_t get_id_from_string(const std::string & id_str );
 
  public:
-  PharosZ3Solver()
-    : Rose::BinaryAnalysis::Z3Solver(Rose::BinaryAnalysis::SmtSolver::LM_LIBRARY) {
-
-    // The default
-    log_file_name_ = "znode.log";
-  }
-
-  ~PharosZ3Solver() {
-    if (log_file_.is_open()) {
-      log_file_.flush();
-      log_file_.close();
+  class Params {
+    friend class Fixedpoint;
+    friend class PharosZ3Solver;
+    z3::params params;
+    option_map_t map;
+    Params(z3::context & ctx) : params(ctx) {}
+   public:
+    template<typename T>
+    void set(char const *key, T value) {
+      params.set(key, value);
+      map.emplace(std::string{key}, value);
     }
-  }
+    void set(char const *key, char const * value) {
+      params.set(key, value);
+      map.emplace(std::string{key}, std::string{value});
+    }
+    void set(char const *key, std::string value) {
+      params.set(key, value.c_str());
+      map.emplace(std::string{key}, std::move(value));
+    }
+    operator z3::params &() { return params; }
+    operator z3::params const &() const { return params; }
+  };
+
+  class Context {
+    friend class PharosZ3Solver;
+    PharosZ3Solver & solver;
+    Context(PharosZ3Solver & s) : solver(s) {}
+   public:
+    z3::context & operator*() {
+      return *solver.Rose::BinaryAnalysis::Z3Solver::z3Context(); }
+    z3::context const & operator*() const {
+      return *solver.Rose::BinaryAnalysis::Z3Solver::z3Context(); }
+    explicit operator z3::context *() { return &**this;}
+    explicit operator z3::context const *() const { return &**this; }
+    z3::context *operator->() { return &**this; }
+    z3::context const *operator->() const { return &**this; }
+  };
+
+  class Fixedpoint : public z3::fixedpoint {
+    option_map_t & map;
+   public:
+    Fixedpoint(PharosZ3Solver & solver)
+      : z3::fixedpoint(*solver.z3Context()),
+        map(solver.options) {}
+    void set(Params const & p) {
+      z3::fixedpoint::set(p);
+      map.insert(p.map.begin(), p.map.end());
+    }
+  };
+
+  PharosZ3Solver()
+    : Rose::BinaryAnalysis::Z3Solver(Rose::BinaryAnalysis::SmtSolver::LM_LIBRARY)
+  {}
 
   void set_timeout(unsigned int to);
   void set_seed(int seed);
@@ -67,13 +109,34 @@ class PharosZ3Solver : public Rose::BinaryAnalysis::Z3Solver {
   z3::expr mk_true();
   z3::expr mk_false();
 
-  void set_log_name(std::string name);
-  void do_log(std::string msg);
-
   // Must expose the cast function to get everything in a uniform type
   z3::expr z3type_cast(z3::expr z3expr,
                        Rose::BinaryAnalysis::SmtSolver::Type from_type,
                        Rose::BinaryAnalysis::SmtSolver::Type to_type);
+
+  Params mk_params() {
+    return {*z3Context()};
+  }
+
+  Context z3Context() {
+    return {*this};
+  }
+
+  std::ostream & output_options(std::ostream & s) const;
+
+  template<typename T>
+  void set_param(char const *key, T value) {
+    z3::set_param(key, value);
+    options.emplace(std::string{key}, value);
+  }
+  void set_param(char const *key, char const * value) {
+    z3::set_param(key, value);
+    options.emplace(std::string{key}, std::string{value});
+  }
+  void set_param(char const *key, std::string value) {
+    z3::set_param(key, value.c_str());
+    options.emplace(std::string{key}, std::move(value));
+  }
 };
 
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -131,6 +194,15 @@ class PharosHornAnalyzer {
   Z3QueryResult query(const rose_addr_t goal);
 
   std::string to_string() const;
+};
+
+class Z3PathAnalyzer {
+ public:
+  virtual void setup_path_problem(rose_addr_t source, rose_addr_t target) = 0;
+  virtual std::ostream & output_problem(std::ostream & stream) const = 0;
+  virtual z3::check_result solve_path_problem() = 0;
+  virtual std::ostream & output_solution(std::ostream & stream) const = 0;
+  virtual ~Z3PathAnalyzer() = default;
 };
 
 } // End pharos

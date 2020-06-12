@@ -23,6 +23,9 @@
 
 makeClassName(ClassId, Out):-
     finalClass(ClassId, VFTable, _, _, _, _),
+    % Only use the VFTable as the name if finalClass did.  This is necessary to ensure we don't
+    % use the same name for multiple classes which causes an error
+    ClassId=VFTable,
     % If there's a VFTable for the address, and the VFTable has a non-null name, then use that
     % name, otherwise make a class name from the address.
     finalVFTable(VFTable, _, _, _, RTTIName),
@@ -335,19 +338,22 @@ makeOneClassJson(ClassId, Json):-
     finalClass(ClassId, VFTable, Size, _OtherSize, _RealDestructor, Methods),
 
     once(
-        (
-            finalDemangledName(VFTable, ClassName, DemangledName, _UnusedMethodName1)
-        ;
-        (member(Method, Methods),
-         % The MangledClassName field is NOT in fact a mangled class name.  It's a mangled
-         % _method_ name, but the old JSON exports the wrong thing here, and right now, I'm
-         % just trying to match.
-         finalDemangledName(Method, _MangledMethodName, DemangledName, _UnusedMethodName2),
-         makeClassName(ClassId, ClassName))
-        )
-    ;
-    (DemangledName = '', makeClassName(ClassId, ClassName))
-    ),
+            % This duplicates the code in makeClassName, but we do this to also get the
+            % DemangledName, which makeClassName doesn't provide.
+            (
+                ClassId=VFTable,
+                finalDemangledName(VFTable, ClassName, DemangledName, _UnusedMethodName1)
+                ;
+                (member(Method, Methods),
+                 % The MangledClassName field is NOT in fact a mangled class name.  It's a mangled
+                 % _method_ name, but the old JSON exports the wrong thing here, and right now, I'm
+                 % just trying to match.
+                 finalDemangledName(Method, _MangledMethodName, DemangledName, _UnusedMethodName2),
+                 makeClassName(ClassId, ClassName))
+            )
+            ;
+            (DemangledName = '', makeClassName(ClassId, ClassName))
+        ),
 
     %format(atom(SizeStr), '~d', Size),
 

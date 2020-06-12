@@ -367,6 +367,7 @@ finalMethodProperty(0x401cba, virtual, certain).
 finalMethodProperty(0x401fc7, constructor, certain).
 finalMethodProperty(0x40203e, constructor, certain).
 finalMethodProperty(0x40216c, constructor, certain).
+finalMethodProperty(0x4021fd, deletingDestructor, certain).
 finalMethodProperty(0x4021fd, virtual, certain).
 finalMethodProperty(0x402236, constructor, certain).
 finalMethodProperty(0x40226b, realDestructor, certain).

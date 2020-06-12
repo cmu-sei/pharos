@@ -2203,8 +2203,8 @@
                     "demangled_name": "",
                     "ea": "0x40229c",
                     "import": false,
-                    "name": "virt_meth_0x40229c",
-                    "type": "meth"
+                    "name": "virt_deldtor_0x40229c",
+                    "type": "deldtor"
                 }
             },
             "name": ".?AVios_base@std@@",
@@ -2217,9 +2217,9 @@
                             "demangled_name": "",
                             "ea": "0x40229c",
                             "import": false,
-                            "name": "virt_meth_0x40229c",
+                            "name": "virt_deldtor_0x40229c",
                             "offset": 0,
-                            "type": "meth"
+                            "type": "deldtor"
                         }
                     },
                     "vftptr": "0x0"

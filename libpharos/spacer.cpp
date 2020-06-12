@@ -19,14 +19,21 @@ namespace pharos {
 
 SpacerAnalyzer::SpacerAnalyzer(const DescriptorSet& ds,
                                PharosZ3Solver& z3,
-                               std::string engine) : ds_(ds), z3_(z3) {
+                               std::string const & engine) :
+  SpacerAnalyzer(ds, z3, ImportRewriteSet{}, engine)
+{}
 
+SpacerAnalyzer::SpacerAnalyzer(const DescriptorSet& ds,
+                               PharosZ3Solver& z3,
+                               ImportRewriteSet import_set,
+                               std::string const & engine)
+  :  ds_(ds), z3_(z3), import_set_(std::move(import_set))
+{
   // Set the fixed point engine to use spacer and CHC
-  z3::context& ctx = *z3_.z3Context ();
-  fp_ = std::make_unique<z3::fixedpoint> (ctx);
-  z3::params params(ctx);
+  fp_ = std::make_unique<PharosZ3Solver::Fixedpoint> (z3);
+  auto params = z3_.mk_params();
 
-  params.set(":engine", engine.c_str ());
+  params.set("fp.engine", engine.c_str ());
 
   // Optionally uncomment this out for slower
   // solving, but more readable output
@@ -39,13 +46,6 @@ SpacerAnalyzer::SpacerAnalyzer(const DescriptorSet& ds,
   params.set ("fp.spacer.use_euf_gen", true);
 
   fp_->set(params);
-}
-
-SpacerAnalyzer::SpacerAnalyzer(const DescriptorSet& ds,
-                               PharosZ3Solver& z3,
-                               ImportRewriteSet import_set,
-                               std::string engine) : SpacerAnalyzer(ds, z3, engine){
-  import_set_ = std::move(import_set);
 }
 
 std::tuple <std::map <Register, z3::expr>, z3::func_decl, z3::func_decl>
@@ -348,11 +348,8 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
 
 }
 
-SpacerResult
-SpacerAnalyzer::find_path_hierarchical(
-  rose_addr_t srcaddr, rose_addr_t tgtaddr,
-  std::shared_ptr<std::ofstream> smt_stream,
-  std::function<void(CG& cg, CGVertex from, CGVertex to)> cutf)
+void
+SpacerAnalyzer::setup_path_problem(rose_addr_t srcaddr, rose_addr_t tgtaddr)
 {
   CG cg = CG::get_cg (ds_);
   const CGG& cgg = cg.get_graph ();
@@ -367,11 +364,11 @@ SpacerAnalyzer::find_path_hierarchical(
   assert (fromcgv != boost::graph_traits<CGG>::null_vertex ());
   assert (tocgv != boost::graph_traits<CGG>::null_vertex ());
 
-  cutf (cg, fromcgv, tocgv);
+  cutf_ (cg, fromcgv, tocgv);
 
   // XXX: Add input state
-  z3::expr goal_expr = ctx.constant ("hierarchical goal", ctx.bool_sort ());
-  z3::func_decl goal_relation = goal_expr.decl ();
+  goal_expr_ = ctx.constant ("hierarchical goal", ctx.bool_sort ());
+  z3::func_decl goal_relation = goal_expr_->decl ();
   fp_->register_relation (goal_relation);
 
   // Save targetbbs so we know where to add short-circuits
@@ -650,7 +647,7 @@ SpacerAnalyzer::find_path_hierarchical(
   boost::for_each (
     func_to_ir,
     [&vertex_name_map, &z3post_input, &z3post_output, &func_to_relations,
-     &import_to_relations, &ctx, &goal_expr, &z3inputnodes, &z3outputnodes,
+     &import_to_relations, &ctx, &goal_expr = *goal_expr_, &z3inputnodes, &z3outputnodes,
      &regsvec, &cg, &fromcgv, &evin, &evboth, &vertices_to_short_circuit, this]
     (const decltype(func_to_ir)::value_type &v) {
 
@@ -833,28 +830,42 @@ SpacerAnalyzer::find_path_hierarchical(
       fp_->add_rule (rule, ctx.str_symbol (ss.str ().c_str ()));
 
     });
+}
 
-  // Write the problem out before making the query...
-  if (smt_stream) {
-    *smt_stream << "(set-option :fp.engine spacer)" << std::endl;
-    *smt_stream << to_string();
-    *smt_stream << "(query |hierarchical goal|)" << std::endl;
-  }
+std::ostream &
+SpacerAnalyzer::output_problem(std::ostream & stream) const
+{
+  z3_.output_options(stream);
+  stream << to_string();
+  stream << "(query |hierarchical goal|)" << std::endl;
+  return stream;
+}
 
-  z3::check_result result = fp_->query (goal_expr);
+z3::check_result
+SpacerAnalyzer::solve_path_problem()
+{
+  z3::check_result result = fp_->query (*goal_expr_);
 
   if (result == z3::sat) {
     Z3_ast a = Z3_fixedpoint_get_ground_sat_answer(*z3_.z3Context(), *fp_);
-    z3::expr sat_answer = z3::to_expr(*z3_.z3Context(), a);
-    return SpacerResult(result, sat_answer);
+    answer_ = z3::to_expr(*z3_.z3Context(), a);
+    return result;
   }
-  else if (result == z3::unsat) {
-    //std::cout << fp_->get_answer () << std::endl;
-    return SpacerResult(result, fp_->get_answer());
+  if (result == z3::unsat) {
+    answer_ = fp_->get_answer();
+    return result;
   }
+  answer_ = boost::none;
+  return z3::unknown;
+}
 
-  // fall through to unknown / no answer
-  return SpacerResult(z3::unknown, boost::optional<z3::expr>());
+std::ostream &
+SpacerAnalyzer::output_solution(std::ostream & stream) const
+{
+  if (answer_) {
+    stream << *answer_;
+  }
+  return stream;
 }
 
 // This needs to be rewritten if we're going to use it.  I've changed encode_cfg quite a bit

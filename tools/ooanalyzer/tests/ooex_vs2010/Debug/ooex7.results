@@ -95,6 +95,7 @@ finalMethodProperty(0x413c40, deletingDestructor, certain).
 finalMethodProperty(0x413c40, virtual, certain).
 finalMethodProperty(0x413d60, constructor, certain).
 finalMethodProperty(0x414360, constructor, certain).
+finalMethodProperty(0x414390, deletingDestructor, certain).
 finalMethodProperty(0x414390, virtual, certain).
 finalMethodProperty(0x41d370, constructor, certain).
 finalMethodProperty(0x41d374, realDestructor, certain).

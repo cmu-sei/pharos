@@ -104,7 +104,7 @@ const CallTraceGraphVertex NULL_CTG_VERTEX = boost::graph_traits <CallTraceGraph
 struct CfgEdgeInfo {
 
   // default stuff
-  CfgEdgeInfo(z3::context *ctx) : edge_expr(*ctx), cond_expr(*ctx) { }
+  CfgEdgeInfo(z3::context & ctx) : edge_expr(ctx), cond_expr(ctx) { }
 
   CfgEdge edge;
   unsigned index;
@@ -226,11 +226,11 @@ class CallTraceDescriptor {
  public:
 
   CallTraceDescriptor(const FunctionDescriptor& fd,
-                      const CallDescriptor* cd, unsigned i, z3::context* ctx)
+                      const CallDescriptor* cd, unsigned i, z3::context & ctx)
     : function_descriptor_(fd), call_descriptor_(cd), index_(i),
       // These z3 structures require a context
-      cfg_conditions_(*ctx),
-      value_constraints_(*ctx) {  }
+      cfg_conditions_(ctx),
+      value_constraints_(ctx) {  }
 
   // The call can be null, if it is the root of the trace (i.e. not
   // called). Otherwise it is the caller function
@@ -284,29 +284,38 @@ using PathPtr = std::shared_ptr<Path>;
 using PathPtrList = std::vector<PathPtr>;
 
 // This is the main traversal finding class
-class PathFinder {
+class PathFinder : public Z3PathAnalyzer {
 
  private:
 
   const DescriptorSet& ds_;
 
+  struct FindPathError : std::runtime_error {
+    using std::runtime_error::runtime_error;
+  };
+
+  struct SolverDeleter {
+    bool owned = true;
+    void operator()(PharosZ3Solver *s) const { if (owned) delete s; }
+  };
+
   // We will need Z3 for this analysis
-  PharosZ3Solver z3_;
+  std::unique_ptr<PharosZ3Solver, SolverDeleter> z3_;
 
   // Indicates that the traversal was found in it's entirety
-  bool path_found_;
+  bool path_found_ = false;
 
   // This value will be used to uniquely identify frames
-  unsigned frame_index_;
+  unsigned frame_index_ = 0;
 
   // Flag to save SMT
-  bool save_z3_output_;
+  bool save_z3_output_ = false;
 
   // The goal for the analysis.
-  rose_addr_t goal_address_;
+  rose_addr_t goal_address_ = INVALID_ADDRESS;
 
   // The start address of the analysis.
-  rose_addr_t start_address_;
+  rose_addr_t start_address_ = INVALID_ADDRESS;
 
   CallTraceGraph call_trace_;
 
@@ -362,6 +371,7 @@ class PathFinder {
  public:
 
   PathFinder(const DescriptorSet& ds);
+  PathFinder(const DescriptorSet& ds, PharosZ3Solver & solver);
   ~PathFinder();
   bool path_found() const;
   bool find_path(rose_addr_t start_addr,
@@ -376,6 +386,12 @@ class PathFinder {
   std::string get_z3_output();
   void save_call_trace(std::ostream& o);
   void print_call_trace();
+
+  // From Z3PathAnalyzer
+  void setup_path_problem(rose_addr_t source, rose_addr_t target) override;
+  std::ostream & output_problem(std::ostream & stream) const override;
+  z3::check_result solve_path_problem() override;
+  std::ostream & output_solution(std::ostream & stream) const override;
 };
 
 // These are utilities used by the pathfinder utility functions for
@@ -386,6 +402,8 @@ std::string edge_cond(CfgEdge e, const CFG& cfg);
 std::string vertex_str(CfgVertex e, const CFG& cfg);
 rose_addr_t vertex_addr(CfgVertex e, const CFG& cfg);
 rose_addr_t get_address_from_treenode(TreeNodePtr tnp);
+
+
 
 } // end namespace pharos
 

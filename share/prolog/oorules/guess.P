@@ -1268,6 +1268,26 @@ tryNOTRealDestructor(Method) :-
 
 % The criteria for guessing deleting destructors...
 
+% This rule guesses we're a destructor because we install a vftable and appear to be virtual.
+% We can't tell if we're a deleting or real destructor, but if we guess wrong we'll know
+% immediately because of reasonNOTRealDestructor_H and reasonNOTDeletingDestructor_XXX.
+likelyAVirtualDestructor(Method) :-
+    % Standard destructor requirement
+    noCallsAfter(Method),
+    % We install a vftable
+    certainConstructorOrDestructor(Method),
+    % And we're probably a virtual method
+    possiblyVirtual(Method).
+
+guessDeletingDestructor(Out) :-
+    setof(Method,
+          (likelyAVirtualDestructor(Method),
+           doNotGuessHelper(factDeletingDestructor(Method),
+                            factNOTDeletingDestructor(Method))),
+          MethodSet),
+    !,
+    Out = tryBinarySearch(tryDeletingDestructor, tryNOTDeletingDestructor, MethodSet).
+
 guessDeletingDestructor(Out) :-
     minof(Method,
           (likelyDeletingDestructor(Method, _RealDestructor),

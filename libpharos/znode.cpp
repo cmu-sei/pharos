@@ -18,35 +18,16 @@ debug_print_expr(const z3::expr& e) {
 void
 PharosZ3Solver::set_timeout(unsigned int to) {
   Z3_string timeout = "timeout";
-
-  std::ostringstream ss;
-  ss << to;
-  std::string str = ss.str();
-  Z3_global_param_set(timeout, str.c_str());
+  std::string value = std::to_string(to);
+  set_param(timeout, value.c_str());
 }
 
 void
 PharosZ3Solver::set_seed(int seed) {
-  Z3_string smt_seed_string = "smt.random_seed";
-  z3::set_param(smt_seed_string, seed);
   Z3_string sat_seed_string = "sat.random_seed";
-  z3::set_param(sat_seed_string, seed);
+  set_param(sat_seed_string, seed);
   Z3_string spacer_seed_string = "fp.spacer.random_seed";
-  z3::set_param(spacer_seed_string, seed);
-}
-
-void
-PharosZ3Solver::do_log(std::string msg) {
-
-  if (!log_file_.is_open()) {
-    log_file_.open(log_file_name_.c_str());
-  }
-  log_file_ << msg;
-}
-
-void
-PharosZ3Solver::set_log_name(std::string name) {
-  log_file_name_ = name;
+  set_param(spacer_seed_string, seed);
 }
 
 uint64_t
@@ -391,7 +372,7 @@ z3::expr
 PharosZ3Solver::simplify(const z3::expr& e) {
   z3::expr ret_expr = e;
   try {
-    z3::context* c = z3Context();
+    auto c = z3Context();
     z3::tactic t = z3::tactic(*c, "ctx-solver-simplify");
     z3::goal g(*c);
     g.add(to_bool(e)); // goal expressions must be boolean
@@ -488,6 +469,17 @@ PharosZ3Solver::z3type_cast(z3::expr z3expr,
   return tt.first;
 }
 
+std::ostream &
+PharosZ3Solver::output_options(std::ostream & s) const
+{
+  for (auto & kv : options) {
+    s << std::boolalpha
+      << "(set-option :" << kv.first << ' ' << kv.second << ")\n";
+  }
+  return s;
+}
+
+
 z3::expr
 PharosHornRule::body () const {return body_;}
 
@@ -528,7 +520,7 @@ PharosHornAnalyzer::PharosHornAnalyzer() : goal_name_("goal")
   // Set the fixed point engine to use spacer and CHC
   z3::context& ctx = *z3_.z3Context();
   fixedpoint_ = std::make_unique<z3::fixedpoint>(ctx);
-  z3::params params(ctx);
+  auto params = z3_.mk_params();
   params.set(":engine", "spacer");
 
   // Optionally disable pre-processing comment this out for faster

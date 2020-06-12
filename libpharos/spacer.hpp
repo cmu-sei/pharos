@@ -32,7 +32,6 @@ auto z3_vector_back_inserter(C & container) {
 
 namespace pharos {
 
-using SpacerResult = std::tuple<z3::check_result, boost::optional<z3::expr> >;
 using Z3RegMap = std::map <Register, z3::expr>;
 
 // This information is obtained from find_path_hierarchical
@@ -69,8 +68,8 @@ pharos::PartialConvertCallFun dummy_partial_convert_call =
 
 namespace pharos {
 
-class SpacerAnalyzer {
-  using Z3FixedpointPtr = std::unique_ptr<z3::fixedpoint>;
+class SpacerAnalyzer : public Z3PathAnalyzer {
+  using Z3FixedpointPtr = std::unique_ptr<PharosZ3Solver::Fixedpoint>;
   typedef struct {
     z3::func_decl before;
     z3::func_decl after;
@@ -83,6 +82,9 @@ class SpacerAnalyzer {
   PharosZ3Solver& z3_;
   Z3FixedpointPtr fp_;
   ImportRewriteSet import_set_;
+  std::function<void(CG& cg, CGVertex from, CGVertex to)> cutf_ = cut1_cg;
+  boost::optional<z3::expr> goal_expr_;
+  boost::optional<z3::expr> answer_;
 
  private:
 
@@ -110,24 +112,27 @@ class SpacerAnalyzer {
   // intra-block regstate (temporaries), the set of fresh variables,
   // and constraints.
   TupleState
-  subst_stmts (const Stmts& s, const Register& mem, const Z3RegMap &z3inputs, PartialConvertCallFun convert_call = dummy_partial_convert_call);
+  subst_stmts (const Stmts& s, const Register& mem, const Z3RegMap &z3inputs,
+               PartialConvertCallFun convert_call = dummy_partial_convert_call);
 
   TupleState
-  subst_stmt(const Stmt& s, const Register& mem, TupleState& state, PartialConvertCallFun convert_call = dummy_partial_convert_call);
+  subst_stmt(const Stmt& s, const Register& mem, TupleState& state,
+             PartialConvertCallFun convert_call = dummy_partial_convert_call);
 
  public:
-  SpacerAnalyzer(const DescriptorSet& ds, PharosZ3Solver& z3, ImportRewriteSet import_set, std::string engine="spacer");
+  SpacerAnalyzer(const DescriptorSet& ds, PharosZ3Solver& z3, ImportRewriteSet import_set,
+                 std::string const & engine="spacer");
 
-  SpacerAnalyzer(const DescriptorSet& ds, PharosZ3Solver& z3, std::string engine="spacer");
+  SpacerAnalyzer(const DescriptorSet& ds, PharosZ3Solver& z3,
+                 std::string const & engine="spacer");
 
   // break everything into discrete steps so we can evaluate each in
   // isolation.
 
-  SpacerResult find_path(rose_addr_t source_addrress, rose_addr_t target_address);
-
-  SpacerResult find_path_hierarchical(rose_addr_t source_addrress, rose_addr_t target_address,
-                                      std::shared_ptr<std::ofstream> smt_stream,
-                                      std::function<void(CG& cg, CGVertex from, CGVertex to)> cutf = cut1_cg);
+  void setup_path_problem(rose_addr_t source, rose_addr_t target) override;
+  std::ostream & output_problem(std::ostream & stream) const override;
+  z3::check_result solve_path_problem() override;
+  std::ostream & output_solution(std::ostream & stream) const override;
 
   // Dump the Fixedpoint
   std::string to_string() const;
