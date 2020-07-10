@@ -1,0 +1,138 @@
+parameters:
+  name: ""
+  chocoPackages: []
+  displayName: ""
+  cmakeGenName: ""
+  vmImage: "windows-latest"
+  # Default to 32-bit
+  cmakeAlwaysFlags: "-A win32"
+  variants:
+    - CXXFLAGS: "/D _CONSTRUCTOR_PRINT /D _DESTRUCTOR_PRINT /D _OPERATOR_DELETE_PRINT"
+      VARIANT: "dc1d1o1"
+      CMAKEFLAGS: "-D CMAKE_MSVC_STATIC=OFF"
+    - CXXFLAGS: "/D _DESTRUCTOR_PRINT /D _OPERATOR_DELETE_PRINT"
+      VARIANT: "dc0d1o1"
+      CMAKEFLAGS: "-D CMAKE_MSVC_STATIC=OFF"
+    - CXXFLAGS: "/D _CONSTRUCTOR_PRINT /D _OPERATOR_DELETE_PRINT"
+      VARIANT: "dc1d0o1"
+      CMAKEFLAGS: "-D CMAKE_MSVC_STATIC=OFF"
+    - CXXFLAGS: "/D _OPERATOR_DELETE_PRINT"
+      VARIANT: "dc0d0o1"
+      CMAKEFLAGS: "-D CMAKE_MSVC_STATIC=OFF"
+    - CXXFLAGS: "/D _CONSTRUCTOR_PRINT /D _DESTRUCTOR_PRINT"
+      VARIANT: "dc1d1o0"
+      CMAKEFLAGS: "-D CMAKE_MSVC_STATIC=OFF"
+    - CXXFLAGS: "/D _DESTRUCTOR_PRINT"
+      VARIANT: "dc0d1o0"
+      CMAKEFLAGS: "-D CMAKE_MSVC_STATIC=OFF"
+    - CXXFLAGS: "/D _CONSTRUCTOR_PRINT"
+      VARIANT: "dc1d0o0"
+      CMAKEFLAGS: "-D CMAKE_MSVC_STATIC=OFF"
+    - CXXFLAGS: ""
+      VARIANT: "dc0d0o0"
+      CMAKEFLAGS: "-D CMAKE_MSVC_STATIC=OFF"
+    - CXXFLAGS: "/D _CONSTRUCTOR_PRINT /D _DESTRUCTOR_PRINT /D _OPERATOR_DELETE_PRINT"
+      VARIANT: "sc1d1o1"
+      CMAKEFLAGS: "-D CMAKE_MSVC_STATIC=ON"
+    - CXXFLAGS: "/D _DESTRUCTOR_PRINT /D _OPERATOR_DELETE_PRINT"
+      VARIANT: "sc0d1o1"
+      CMAKEFLAGS: "-D CMAKE_MSVC_STATIC=ON"
+    - CXXFLAGS: "/D _CONSTRUCTOR_PRINT /D _OPERATOR_DELETE_PRINT"
+      VARIANT: "sc1d0o1"
+      CMAKEFLAGS: "-D CMAKE_MSVC_STATIC=ON"
+    - CXXFLAGS: "/D _OPERATOR_DELETE_PRINT"
+      VARIANT: "sc0d0o1"
+      CMAKEFLAGS: "-D CMAKE_MSVC_STATIC=ON"
+    - CXXFLAGS: "/D _CONSTRUCTOR_PRINT /D _DESTRUCTOR_PRINT"
+      VARIANT: "sc1d1o0"
+      CMAKEFLAGS: "-D CMAKE_MSVC_STATIC=ON"
+    - CXXFLAGS: "/D _DESTRUCTOR_PRINT"
+      VARIANT: "sc0d1o0"
+      CMAKEFLAGS: "-D CMAKE_MSVC_STATIC=ON"
+    - CXXFLAGS: "/D _CONSTRUCTOR_PRINT"
+      VARIANT: "sc1d0o0"
+      CMAKEFLAGS: "-D CMAKE_MSVC_STATIC=ON"
+    - CXXFLAGS: ""
+      VARIANT: "sc0d0o0"
+      CMAKEFLAGS: "-D CMAKE_MSVC_STATIC=ON"
+
+jobs:
+- job: Build_Exes_${{parameters.name}}
+  condition: and(succeeded(), variables.buildExes)
+  displayName: Build Exes using ${{parameters.displayName}}
+  pool:
+    vmImage: ${{ parameters.vmImage }}
+  variables:
+    PUBLISH_DIR: $(Pipeline.Workspace)/publish
+    DOWNLOAD_DIR: $(Pipeline.Workspace)/cvdump
+    CVDUMP_EXE: $(DOWNLOAD_DIR)/cvdump.exe
+    CVDUMP_URL: 'https://github.com/microsoft/microsoft-pdb/raw/master/cvdump/cvdump.exe'
+    PIP_CACHE_DIR: $(Pipeline.Workspace)/pipcache
+  steps:
+  - task: Cache@2
+    inputs:
+      key: 'choclatey | "$(Agent.OS)" | "${{ parameters.chocoPackage }}" '
+      # Even if we don't have a cache for chocoPackage, better to use _a_ cache since it should include cmake
+      restoreKeys: |
+        choclatey | "$(Agent.OS)"
+      path: $(CHOCLATEY_CACHE_DIR)
+    displayName: Choclatey cache
+  - script: choco config set cacheLocation "$(CHOCLATEY_CACHE_DIR)"
+    displayName: Set choclatey cache dir
+  - script: choco install -y cmake
+    displayName: Install cmake
+  - ${{ each p in parameters.chocoPackages }}:
+    - script: choco install -y ${{ p }}
+      displayName: Install ${{ parameters.displayName }} (${{ p }})
+  - ${{ each v in parameters.variants }}:
+    - script: |
+        @echo on
+        cd tests/src/oo
+        mkdir build-${{ v.VARIANT }}
+        cd build-${{ v.VARIANT }}
+        echo "##vso[task.prependpath]%ProgramFiles%\\cmake\\bin"
+        cmake.exe -E env CXXFLAGS="${{ v.CXXFLAGS }}" cmake.exe ${{ parameters.cmakeAlwaysFlags }} ${{ v.CMAKEFLAGS }} -G "${{ parameters.cmakeGenName }}" ..
+        cmake.exe --build . --verbose --config Debug
+        cmake.exe --build . --verbose --config Lite || VER>NUL
+        cmake.exe --build . --verbose --config RelWithDebInfo
+        mkdir "%variantDir%"
+        move Debug "%variantDir%"
+        move Lite "%variantDir%"
+        move RelWithDebInfo "%variantDir%"
+      displayName: Build variant ${{ v.VARIANT }}
+      env:
+        variantDir: "$(PUBLISH_DIR)\\${{ parameters.name }}\\${{ v.VARIANT }}"
+  # - task: Cache@2
+  #   inputs:
+  #     key: '"cvdump" | "boost"'
+  #     restoreKeys: |
+  #       "cvdump"
+  #       "boost"
+  #     path: $(DOWNLOAD_DIR)
+  #   displayName: Download cache
+  # - powershell: |
+  #     if (!(Test-Path $env:CVDUMP_EXE)) {
+  #       mkdir $env:DOWNLOAD_DIR
+  #       (new-object System.Net.WebClient).DownloadFile($env:CVDUMP_URL, $env:CVDUMP_EXE)
+  #     }
+  #   displayName: Download cvdump.exe (if needed)
+  # - task: Cache@2
+  #   inputs:
+  #     key: ' "pip" | "pefile" '
+  #     path: $(PIP_CACHE_DIR)
+  #   displayName: pip cache
+  # - script: python -m pip --cache-dir $(PIP_CACHE_DIR) install pefile
+  #   displayName: Install pefile
+  # - powershell: |
+  #     cd tests/src/oo
+  #     Get-ChildItem -Recurse -Filter '*.pdb' -Path $env:PUBLISH_DIR | ForEach-Object {
+  #       set CVDUMP_FILE ($_.DirectoryName + "/" + $_.BaseName + ".cvdump")
+  #       set EXE_FILE ($_.DirectoryName + "/" + $_.BaseName + ".exe")
+  #       set RELATION_FILE ($_.DirectoryName + "/" + $_.BaseName + ".relation")
+  #       set SYMBOLSPRE_FILE ($_.DirectoryName + "/" + $_.BaseName + ".symbolspre")
+  #       echo "Dumping $($_.FullName) to $CVDUMP_FILE"
+  #       & $env:CVDUMP_EXE $_.FullName > $CVDUMP_FILE
+  #       python parse-cvdump.py $CVDUMP_FILE $EXE_FILE --relation-file $RELATION_FILE 2>&1 > $SYMBOLSPRE_FILE
+  #     }
+  #   displayName: Cvdump exes
+  - publish: $(PUBLISH_DIR)

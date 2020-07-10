@@ -1,0 +1,1 @@
+static constexpr auto PROLOG_INSTALL_LOCATION = "${SWIPL_EXECUTABLE}";

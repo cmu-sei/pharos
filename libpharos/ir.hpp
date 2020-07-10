@@ -93,6 +93,10 @@ using Special = std::string;
 struct SpecialStmt : Special {
   explicit SpecialStmt (const std::string &s) : Special (s) {}
 };
+using Assert = IRExprPtr;
+struct AssertStmt : Assert {
+  explicit AssertStmt (const Assert &a) : Assert (a) {}
+};
 using CallStmtTuple  = std::tuple<IRExprPtr, Call, const CallDescriptor*>;
 struct CallStmt : CallStmtTuple {
   explicit CallStmt (const IRExprPtr &e, const Call &c, const CallDescriptor * const &cd)
@@ -105,7 +109,7 @@ struct CommentStmt : Comment {
   explicit CommentStmt (const std::string &s) : Comment (s) {}
 };
 
-using Stmt = boost::variant<RegWriteStmt, MemWriteStmt, InsnStmt, SpecialStmt, CallStmt, CommentStmt>;
+using Stmt = boost::variant<RegWriteStmt, MemWriteStmt, InsnStmt, SpecialStmt, AssertStmt, CallStmt, CommentStmt>;
 using Stmts = std::vector<Stmt>;
 using StmtsPtr = boost::shared_ptr<Stmts>;
 

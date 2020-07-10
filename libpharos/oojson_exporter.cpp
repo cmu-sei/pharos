@@ -213,6 +213,7 @@ void OOJsonExporter::generate_json(const std::vector<OOClassDescriptorPtr> &clas
 
       bool member_on_base = !elm_member->get_exactly ();
 
+      json_mbr->add ("size", elm_member->get_size());
       json_mbr->add ("base", member_on_base);
       auto mbr_offset = mpair.first;
 
@@ -316,31 +317,13 @@ void OOJsonExporter::generate_json(const std::vector<OOClassDescriptorPtr> &clas
         mbr_ss <<  elm_member->get_name() << "_0x" << std::hex << mbr_offset;
         json_mbr->add ("name", mbr_ss.str ());
 
-        std::string type;
-        switch (elm_member->get_type ()) {
-         case OOElementType::BYTE:
-          type = "byte";
-          break;
-         case OOElementType::WORD:
-          type = "word";
-          break;
-         case OOElementType::DWORD:
-          type = "dword";
-          break;
-         default:
-          GDEBUG << "Cannot determine size of member " << cls->get_name() << "::"
-                 << "Mem_" << mbr_offset << LEND; // elm_member->get_offset() << LEND;
-          type = "byte";
-          break;
-        }
-
-        json_mbr->add ("type", type);
+        // type of standard members is blank
+        json_mbr->add ("type", "");
       }
 
       // All members have an offset and a count of 1 (not array support)
       auto offset_str = intcat (mbr_offset, 16);
       json_mbr->add ("offset", offset_str);
-      json_mbr->add ("count", "1");
       json_mbr->add ("struc", "");
       json_mbr->add ("parent", false);
 
@@ -359,6 +342,7 @@ void OOJsonExporter::generate_json(const std::vector<OOClassDescriptorPtr> &clas
       ss << parent->get_name() << "_0x" << std::hex << parent_offset;
       auto offset_str = intcat (parent_offset, 16);
       parent_mbr->add ("name", ss.str());
+      parent_mbr->add ("size", parent->get_size());
       parent_mbr->add ("type", "struc");
       parent_mbr->add ("struc", parent->get_name());
       parent_mbr->add ("parent", true);
@@ -381,7 +365,6 @@ void OOJsonExporter::generate_json(const std::vector<OOClassDescriptorPtr> &clas
       }
 
       parent_mbr->add ("offset", intcat(parent_offset, 16));
-      parent_mbr->add ("count", "1");
 
       json_members->add (offset_str, std::move (parent_mbr));
     }
@@ -460,7 +443,7 @@ void OOJsonExporter::generate_json(const std::vector<OOClassDescriptorPtr> &clas
     }
   }
 
-  json->add("version", "2.0.1");
+  json->add("version", "2.1.0");
   json->add("filemd5", file_md5);
   json->add("filename", exe_filename);
   json->add("structures", std::move (json_structs));

@@ -55,7 +55,7 @@ BuildRequires:  vim
 # NOTE: we may need to require a specific version of z3?
 BuildRequires:  z3 >= 4.8
 BuildRequires:  z3-devel >= 4.8
-BuildRequires:  xsb-devel
+BuildRequires:  pl-devel >= 8.2.0
 BuildRequires:  zlib-devel
 BuildRequires:  libxml2-devel
 BuildRequires:  libpng-devel
@@ -72,7 +72,7 @@ BuildRequires:  pkgconfig
 Requires:       libncurses6
 Requires:       rose
 Requires:       z3 >= 4.8
-Requires:       xsb
+Requires:       pl
 
 %description
 The Pharos static binary analysis framework is a project of the Software Engineering Institute at Carnegie Mellon University. The framework is designed to facilitate the automated analysis of binary programs. It uses the ROSE compiler infrastructure developed by Lawrence Livermore National Laboratory for disassembly, control flow analysis, instruction semantics, and more.
@@ -182,7 +182,6 @@ This tool utilizes libpharos, the Pharos Static Binary Analysis Framework.
 %cmake \
   -DCMAKE_CXX_COMPILER=g++-8 \
   -DCMAKE_C_COMPILER=gcc-8 \
-  -DXSB_ROOT=/usr/lib64/xsb-3.8.0 \
   -DPATHTEST_CXX_FLAGS="-O1"
 #-DFIND_LIBRARY_USE_LIB64_PATHS=true
 

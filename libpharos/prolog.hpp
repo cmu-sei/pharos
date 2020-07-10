@@ -6,7 +6,7 @@
 #define Pharos_PROLOG_HPP
 
 #include "prologimpl.hpp"
-#include "descriptors.hpp"
+#include "options.hpp"
 #include <boost/filesystem.hpp>
 #include <Sawyer/Message.h>
 
@@ -15,12 +15,10 @@ namespace prolog {
 
 using Path = boost::filesystem::path;
 
-using impl::Functor;
-
 // Represents a prolog functor.  It has a name and a variable number of arguments.
 //
 // functor(name[, arg0[, arg1[, ...]]])
-using impl::functor;
+using detail::functor;
 
 // Represents a prolog list.  It has a variable number of arguments, and more arguments can be
 // pushed onto the back.
@@ -34,12 +32,12 @@ using impl::list;
 // will be filled by the query.
 //
 // var(arg)
-using impl::var;
+using detail::var;
 
 // Represents a prolog "don't care" variable '_' (underscore).
 //
 // any()
-using impl::any;
+using detail::any;
 
 // Represents a prolog query result.
 //
@@ -47,16 +45,20 @@ using impl::any;
 // for (; !query->done; query->next()) {
 //   ...
 // }
-using impl::Query;
+using detail::Query;
+
+// Represents arguments to a registered predicate
+using detail::Args;
+
+// Represents an argument to a registered predicate
+using detail::Arg;
 
 class Session {
  public:
   Session(const ProgOptVarMap & vm);
 
   Session(const ProgOptVarMap & vm, const std::string & rule_filename) : Session(vm) {
-    if (!consult(rule_filename)) {
-      throw Error("Could not load rules");
-    }
+    consult(rule_filename);
   }
 
   template <typename... T>
@@ -75,19 +77,15 @@ class Session {
 
   template <typename... T>
   static auto make_fact(T &&... t) {
-    return impl::Session::make_fact(std::forward<T>(t)...);
+    return detail::make_fact(std::forward<T>(t)...);
   }
 
   template <typename... T>
-  std::shared_ptr<Query> query(T &&... t) {
+  Query query(T &&... t) {
     return session->query(std::forward<T>(t)...);
   }
 
-  bool consult(const std::string & name);
-
-  const Path & get_default_rule_dir() const {
-    return default_rule_dir;
-  }
+  void consult(const std::string & name);
 
   std::ostream * get_debug_log() const {
     return session->get_debug_log();
@@ -98,36 +96,38 @@ class Session {
     return session->set_debug_log(std::forward<T>(t)...);
   }
 
-  template <typename Stream>
   std::size_t print_predicate(
-    Stream & stream, const std::string & predicate, std::size_t arity)
+    std::ostream & stream, const std::string & predicate, std::size_t arity)
   {
     return session->print_predicate(stream, predicate, arity);
   }
 
-  bool register_predicate(const std::string & predname, int arity, int (*cfun)(),
+  bool register_predicate(const std::string & predname, int arity,
+                          std::function<bool(Args)> fn,
                           const std::string & modname = prolog_default_module)
   {
-    return session->register_predicate(predname, arity, cfun, modname);
+    return session->register_predicate(predname, arity, fn, modname);
   }
 
-  bool register_cxx_predicate(const std::string & predname, int arity,
-                              std::function<int()> func,
-                              const std::string & modname = prolog_default_module)
+  template <typename T>
+  bool register_predicate(const std::string & predname, int arity,
+                          T & obj, bool (T::*fn)(Args),
+                          const std::string & modname = prolog_default_module)
   {
-    return session->register_cxx_predicate(predname, arity, func, modname);
+    return session->register_predicate(
+      predname, arity, [&obj, fn](Args args) { return (obj.*fn)(args); },
+      modname);
   }
 
  private:
-  static int prolog_log_base(bool newline);
-  static int prolog_log() {
-    return prolog_log_base(false);
+  static bool prolog_log_base(bool newline, Args args);
+  static bool prolog_log(Args args) {
+    return prolog_log_base(false, args);
   }
-  static int prolog_logln() {
-    return prolog_log_base(true);
+  static bool prolog_logln(Args args) {
+    return prolog_log_base(true, args);
   }
   std::shared_ptr<impl::Session> session;
-  Path default_rule_dir;
 };
 
 } // namespace prolog

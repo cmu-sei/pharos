@@ -1257,7 +1257,7 @@ DemangledTypePtr & VisualStudioDemangler::get_string(DemangledTypePtr & t) {
     }
     result = boost::locale::conv::utf_to_utf<char>(wide);
   }
-  if (result.back() == 0) {
+  if (!result.empty() && result.back() == 0) {
     result.pop_back();
   }
 

@@ -226,6 +226,24 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
     }
   }
 
+  SgAsmGenericHeader *hdr = interp->get_headers()->get_headers()[0];
+  // Does the tool only support Windows PE files (aka OOAnalzyer)?
+  boost::optional<bool> allow = vm.get<bool>("pharos.allow_non_pe");
+  if (allow && !(*allow)) {
+    // If so ensure that the input executable is of the correct file type.
+    SgAsmPEFileHeader *pehdr = isSgAsmPEFileHeader(hdr);
+    if (!pehdr) {
+      // If this message is preventing you from testing OOAnalyzer on Linux ELF executables,
+      // just remove this test.  OOAnalyzer _will_ do something on ELF executables produced by
+      // GCC, just not the "right" thing.  Since too many public users of the OOAnalyzer tool
+      // were not aware of this limitation, we felt that it would be better to disable the
+      // feature entirely unless you were motivated enough to remove this test. :-)
+      GFATAL << "This tool only suppports Windows Portable (PE) executable files." << LEND;
+      exit(1);
+    }
+  }
+
+
   // Create a partitioner that's tuned for a certain architecture, and then tune it even more
   // depending on our command-line.
   P2::Partitioner partitioner = engine->createPartitioner();
@@ -284,12 +302,13 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
         in.push(file);
         bar::binary_iarchive ia(in);
         std::string version;
-        ia >> version;
-        if (version != version_number()) {
+        bool semantics_were_disabled;
+        ia >> version >> semantics_were_disabled;
+        if (version != ROSE_PACKAGE_VERSION) {
           if (vm.count("ignore-serialize-version")) {
             GWARN << "Serialized data was from a different version of Rose."
                   << "  Loading anyway as requested." << LEND;
-            version = version_number();
+            version = ROSE_PACKAGE_VERSION;
           } else {
             GFATAL << "Serialized data was from a different version of Rose.  Exiting.\n"
                    << "If you want to overwrite the file, remove the file " << path << '\n'
@@ -297,6 +316,11 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
                    << LEND;
             exit(EXIT_FAILURE);
           }
+        }
+        if (disable_semantics != semantics_were_disabled) {
+          char const * onoff = disable_semantics ? "disabled" : "enabled";
+          GWARN << "Serialized data was generated with semantics " << onoff
+                << ", which is which is contrary to how this program was run." << LEND;
         }
         time_point start_ts = clock::now();
         ia >> partitioner;
@@ -324,7 +348,7 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
           out.push(bio::gzip_compressor());
           out.push(file);
           bar::binary_oarchive oa(out);
-          oa << version_number();
+          oa << std::string{ROSE_PACKAGE_VERSION} << disable_semantics;
           oa << partitioner;
           secs = clock::now() - start_ts;
           OINFO << "Writing serialized data took " << secs.count() << " seconds." << LEND;
@@ -366,7 +390,7 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
   // This test may have been added because buildAst failed when the function list was empty.
   // Since we're no longer returning the interpretation, but the engine instead, we can
   // probably return the engine anyway (no AST?) and not crash... Hopefully.
-  if (partitioner.functions().empty() && engine->startingVas().empty()) {
+  if (partitioner.functions().empty() && engine->functionStartingVas().empty()) {
     GERROR << "No starting points for recursive disassembly." << LEND;
     return partitioner;
   }
@@ -494,7 +518,7 @@ CERTEngine::consume_padding(P2::Partitioner& partitioner, bool top, bool bottom)
       //OINFO << "Evaluating gap for padding blocks: " << addr_str(least) << " - " << addr_str(greatest) << LEND;
 
       // Look for padding at the start of the block going forward...
-      if (top && not_pad_gaps.find(least) == not_pad_gaps.end()) {
+      if (top && !not_pad_gaps.exists(least)) {
         // Mark the end of this gap as having been analyzed, so we don't try again.
         P2::DataBlock::Ptr dblock = try_making_padding_block(partitioner, least);
         if (dblock) {
@@ -511,7 +535,7 @@ CERTEngine::consume_padding(P2::Partitioner& partitioner, bool top, bool bottom)
       // reflect both forward and backward searching.  That should be fine as long as we're only
       // doing one byte padding but if we started consuming NOP padding, we'd need two lists or a
       // more sophisticated approach.
-      if (bottom && not_pad_gaps.find(greatest) == not_pad_gaps.end()) {
+      if (bottom && !not_pad_gaps.exists(greatest)) {
         // Mark the end of this gap as having been analyzed, so we don't try again.
         P2::DataBlock::Ptr dblock = try_making_padding_block(partitioner, greatest, true);
         if (dblock) changed = true;
@@ -527,7 +551,7 @@ CERTEngine::try_making_thunk(P2::Partitioner& partitioner, rose_addr_t address) 
   // If we've looked for thunks at this exact address once before, either we've already made
   // code or we've decided not to.  Nothing from subsequent analysis is going to change that
   // conclusion, so we're done.
-  if (not_thunk_gaps.find(address) != not_thunk_gaps.end()) {
+  if (not_thunk_gaps.exists(address)) {
     return false;
   }
 
@@ -651,9 +675,9 @@ CERTEngine::bad_code(const P2::Partitioner& partitioner, const P2::BasicBlock::P
   // True if we know all of the successors for the instruction.
   bool complete;
   // Get the list of successor addresses.
-  auto successors = lastinsn->getSuccessors(&complete);
+  auto successors = lastinsn->getSuccessors(complete);
 
-  for (rose_addr_t successor : successors) {
+  for (rose_addr_t successor : successors.values()) {
     SgAsmX86Instruction* xinsn = non_overlapping_instruction(partitioner, successor);
     if (!xinsn) {
       //OINFO << "Bad code at " << addr_str(bb->address())
@@ -844,7 +868,7 @@ CERTEngine::create_arbitrary_code(P2::Partitioner& partitioner) {
       // If we've considered making code at this exact address once before, either we've already
       // made code or we've decided not to.  Nothing from subsequent analysis is going to change
       // that conclusion, so we're done.
-      if (not_code_gaps.find(least) != not_code_gaps.end()) {
+      if (not_code_gaps.exists(least)) {
         GDEBUG << "Arbitrary code gap: " << addr_str(least) << " - " << addr_str(greatest)
                << " -- previously analyzed." << LEND;
         continue;
@@ -1573,9 +1597,9 @@ SupersetEngine::runPartitioner(P2::Partitioner &partitioner) {
       // we need to create each instruction vertex in the graph before creating the edges, but
       // it's a start.
       bool complete;
-      std::set<rose_addr_t> successors = insn->getSuccessors(&complete);
+      auto successors = insn->getSuccessors(complete);
       if (successors.size() > 0) {
-        for (rose_addr_t saddr : successors) {
+        for (rose_addr_t saddr : successors.values()) {
           OINFO << addr_str(saddr) << " ";
         }
         OINFO << LEND;

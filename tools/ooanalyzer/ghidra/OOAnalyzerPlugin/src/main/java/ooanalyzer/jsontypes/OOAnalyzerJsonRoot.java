@@ -23,7 +23,7 @@ import ghidra.util.Msg;
  */
 public class OOAnalyzerJsonRoot {
 
-  public static final String EXPECTED_JSON_VERSION = "2.0.1";
+  public static final String EXPECTED_JSON_VERSION = "2.1.0";
 
   @SerializedName("filemd5")
   @Expose

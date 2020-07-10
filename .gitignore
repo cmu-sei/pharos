@@ -12,9 +12,6 @@ TAGS
 *.pyc
 *.xwam
 
-# SVN imports
-/scripts/XSB
-
 # generated files and binaries
 /libpharos/PHAROS_REVISION
 /libpharos/PHAROS_REVISION.ii

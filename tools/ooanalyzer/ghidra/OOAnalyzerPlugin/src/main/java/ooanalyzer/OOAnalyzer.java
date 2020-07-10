@@ -151,61 +151,6 @@ public class OOAnalyzer {
         return "struc";
       }
     },
-    ASCII {
-      @Override
-        public String jsonTypeName() {
-        return "ascii";
-      }
-
-      @Override
-        public String ghidraTypeName() {
-        return "string";
-      }
-    },
-    QWORD {
-      @Override
-        public String jsonTypeName() {
-        return "qword";
-      }
-
-      @Override
-        public String ghidraTypeName() {
-        return "/qword";
-      }
-    },
-    DWORD {
-      @Override
-        public String jsonTypeName() {
-        return "dword";
-      }
-
-      @Override
-        public String ghidraTypeName() {
-        return "/dword";
-      }
-    },
-    WORD {
-      @Override
-        public String jsonTypeName() {
-        return "word";
-      }
-
-      @Override
-        public String ghidraTypeName() {
-        return "/word";
-      }
-    },
-    BYTE {
-      @Override
-        public String jsonTypeName() {
-        return "byte";
-      }
-
-      @Override
-        public String ghidraTypeName() {
-        return "/byte";
-      }
-    },
     VFTPTR {
       @Override
         public String jsonTypeName() {
@@ -323,19 +268,25 @@ public class OOAnalyzer {
   }
 
   /**
-   * Find a data type by name.
+   * Find a data type by size
    *
-   * @param name the name to the type to find
+   * @param size the size to the type to find
    * @return the found data type or empty
    */
-  private Optional<DataType> findDataType(String name) {
+  private Optional<DataType> findDataType(int size) {
 
-    Iterable<DataType> itr = () -> dataTypeMgr.getAllDataTypes();
+    String t = null;
+    switch (size) {
+        case 1: t = "/byte"; break;
+        case 2: t = "/word"; break;
+        case 4: t = "/dword"; break;
+    }
 
-    // use the stream API to either find the type or return null. Note that
-    // this is not an exact match
-    return StreamSupport.stream(itr.spliterator(), true)
-      .filter(dt -> dt.getName().toUpperCase().indexOf(name.toUpperCase()) != -1).findAny();
+    if (t == null) {
+      return Optional.empty();
+    } else {
+      return Optional.ofNullable (dataTypeMgr.getDataType(t));
+    }
   }
 
   /**
@@ -1237,14 +1188,7 @@ public class OOAnalyzer {
 
       DataType mbrType = null;
 
-      if (MemberType.ASCII.jsonTypeName().equals(mbr.getType())) {
-
-        // Strings are represented as "ascii" in the JSON
-        // and
-        // translated acc
-        mbrType = findDataType(MemberType.ASCII.ghidraTypeName()).orElseGet(null);
-
-      } else if (MemberType.STRUC.jsonTypeName().equals(mbr.getType())) {
+      if (MemberType.STRUC.jsonTypeName().equals(mbr.getType())) {
 
         String strucName = mbr.getStruc().get();
 
@@ -1281,26 +1225,26 @@ public class OOAnalyzer {
           mbrType.setDescription("Component (member) class.");
         }
 
-      } else if (mbr.getName().indexOf(MemberType.VFTPTR.jsonTypeName()) != -1) {
+      } else if (mbr.getType().equals(MemberType.VFTPTR.jsonTypeName())) {
 
         // vftptrs are a little different in terms of type.
         // Also "vftptr_" will appear in the name
 
-        mbrType = analyzeVftptrType(ooaType, ghidraType, mbr).orElseGet(null);
+        mbrType = analyzeVftptrType(ooaType, ghidraType, mbr).orElse(null);
 
       } else {
 
         // qword/dword/word/byte are directly translated as
         // builtin types
 
-        mbrType = findDataType(mbr.getType()).orElseGet(null);
+        mbrType = findDataType(mbr.getSize()).orElse(null);
       }
+
       if (mbrType == null) {
 
-        // If the member is *still* null just make it an
-        // undefined
-        // 0-sized type
-        mbrType = Undefined.getUndefinedDataType(0);
+        // If the member is *still* null just make it an undefined type
+        Msg.warn (this, String.format ("Creating undefined type for type %s, member %s on class %s", mbr.getType(), mbr.getName(), ooaType.getName()));
+        mbrType = Undefined.getUndefinedDataType(ooaType.getSize());
       }
 
       // There is a chance that the json member type (found by

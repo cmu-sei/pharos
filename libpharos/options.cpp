@@ -118,6 +118,9 @@ ProgOptDesc cert_standard_options() {
     ("config,C",
      po::value<std::vector<std::string>>()->composing(),
      "pharos configuration file (can be specified multiple times)")
+    ("option",
+     po::value<std::vector<std::string>>()->composing(),
+     "configuration value specification, key1.key2=value, (can be specified multiple times)")
     ("dump-config",
      "display current active config parameters")
     ("no-user-file",
@@ -321,6 +324,11 @@ static ProgOptVarMap parse_cert_options_internal(
   if (vm.count("config")) {
     for (auto & filename : vm["config"].as<std::vector<std::string>>()) {
       vm.config().mergeFile(filename);
+    }
+  }
+  if (vm.count("option")) {
+    for (auto & kv : vm["option"].as<std::vector<std::string>>()) {
+      vm.config().mergeKeyValue(kv);
     }
   }
   if (vm.count("dump-config")) {

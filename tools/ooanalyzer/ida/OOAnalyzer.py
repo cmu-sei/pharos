@@ -18,7 +18,7 @@ python_version_2 = (sys.version_info[0] == 2)
 
 PLUGIN_VERSION = 2.0
 
-EXPECTED_JSON_VERSION = "2.0.1"
+EXPECTED_JSON_VERSION = "2.1.0"
 
 import json
 import copy
@@ -359,9 +359,10 @@ class PyOOAnalyzer(object):
                 continue
 
             # valid member - create it
-            mem = PyClassMember(cls, m['type'], m['count'])
+            mem = PyClassMember(cls, m['type'], m['size'])
             mem.cls = cls
             mem.base = m['base']
+            mem.member_name = m['name']
 
             self.__parse_member_usages (cls, m['usages'])
 
@@ -382,20 +383,14 @@ class PyOOAnalyzer(object):
                         # this is a parent
                         mem.is_parent = True
                         cls.add_parent(cls_mem, offset)
-                        mem.member_name = "base_%x" % offset
                         print("   - Found class parent, name: '%s', type: %s" %
                               (mem.member_name, mem.class_member.ida_name))
                     else:
-                        mem.member_name = "mbr_%x" % offset
                         print("   - Found class member, name: '%s', type: %s" %
                               (mem.member_name, mem.class_member.ida_name))
 
             else:
                 mem.class_member = None
-                if mem.is_vftptr:
-                    mem.member_name = "vftptr_%x" % offset
-                else:
-                    mem.member_name = "mbr_%x" % offset
                 print("   - Found member '%s' @ offset 0x%x" %
                       (mem.member_name, offset))
 
@@ -631,14 +626,14 @@ class PyOOAnalyzer(object):
                 print("Applying class member: %s" % str(mem.cls.ida_name))
 
             nbytes = ida_struct.get_struc_size(
-                ida_struct.get_struc(mem.cls.id)) * mem.count
+                ida_struct.get_struc(mem.cls.id))
             mem_type = ida_bytes.FF_STRUCT | ida_bytes.FF_DATA
 
             idc.add_struc_member(cls.id, mem.member_name,
                                  off, mem_type, mem.cls.id, nbytes)
         else:
             # non-struct member
-            nbytes = mem.size * mem.count
+            nbytes = mem.size
             idc.add_struc_member(cls.id, mem.member_name,
                                  off, mem.member_type, 0xffffffff, nbytes)
 
@@ -741,7 +736,7 @@ class PyOOAnalyzer(object):
             i += 1  # next vftable entry
 
         # add the vftptr :or rename existing member to vftptr
-        vptr_name = "vftptr_%s" % ida_hexify(off)
+        vptr_name = "vftptr_0x%s" % ida_hexify(off)
 
         if idc.get_member_name(cls.id, off) == None:
             # there is no member at this offset
@@ -753,7 +748,7 @@ class PyOOAnalyzer(object):
 
             if (idc.get_member_flag(cls.id, off) & ida_bytes.DT_TYPE) != ida_bytes.FF_STRUCT:
                 # there is already a member defined at this offset, change it to a vftptr
-                ida_struct.set_member_name(cls.ptr, off, vptr_name)
+                # ida_struct.set_member_name(cls.ptr, off, vptr_name)
                 idc.set_member_type(
                     cls.id, off, ida_bytes.FF_DWORD, 0xFFFFFFFF, 4)
 
@@ -1251,14 +1246,14 @@ class PyClassMember(object):
     Represents a class member
     '''
 
-    def __init__(self, cls, mem_type, count): #, mem_name=None, cls_mem=None):
+    def __init__(self, cls, mem_type, size):
         '''
         initialize class member
         '''
 
         self.__cls = cls
-        self.set_type(mem_type)
-        self.__type_count = int(count)
+        self.__type_size = size
+        self.set_type(mem_type, size)
 
         self.__member_name = None
         self.__class_mem = None
@@ -1287,9 +1282,6 @@ class PyClassMember(object):
     def get_type(self):
         return self.__type
 
-    def get_type_count(self):
-        return self.__type_count
-
     def get_cls(self):
         return self.__cls
 
@@ -1308,14 +1300,10 @@ class PyClassMember(object):
         self.__member_name = value
         return
 
-    def set_type_count(self, value):
-        self.__type_count = int(value)
-        return
-
     def get_type_size(self):
         return self.__type_size
 
-    def set_type(self, value):
+    def set_type(self, value, size):
         '''
         the ID for the struct member_type must be supplied
         the member_type can either by primitive :or a structure. If it is a struct :or
@@ -1325,40 +1313,20 @@ class PyClassMember(object):
         if value == 'vftptr':
             self.__is_vftptr = True
             self.__type = ida_bytes.FF_DWORD
-            self.__type_size = 4
-
-        # The amount to scale the type
-        elif value == 'dword':
-            self.__type = ida_bytes.FF_DWORD
-            self.__type_size = 4
-
-        elif value == 'word':
-            self.__type = ida_bytes.FF_WORD
-            self.__type_size = 2
-
-        elif value == 'byte':
-            self.__type_size = 1
-            self.__type = ida_bytes.FF_BYTE
-
-        elif value == 'asci':
-            self.__type_size = 1
-            self.__type = ida_bytes.FF_ASCI
-
-        elif value == 'qword':
-            self.__type_size = 8
-            self.__type = ida_bytes.FF_QWRD
 
         elif value == 'struc':
             self.__type = ida_bytes.FF_STRUCT
-            if self.cls != None:
-                self.__type_size = ida_struct.get_struc_size(
-                    ida_struct.get_struc_id(self.cls.ida_name))
-            else:
-                self.__type_size = idaapi.BADADDR
-        elif value == 'unknown':
-            print("WARNING: Unknown type, assuming FF_BYTE")
-            self.__type_size = 1
-            self.__type = ida_bytes.FF_BYTE
+
+        elif value == '':
+            d = {1: ida_bytes.FF_BYTE,
+                 2: ida_bytes.FF_WORD,
+                 4: ida_bytes.FF_DWORD}
+            self.__type = d.get(size, None)
+            if self.__type is None:
+                # XXX: We should really have a marker here so that in apply_member we create a
+                # dummy type of the appropriate size.
+                print("WARNING: Unknown type for size %d" % size)
+                self.__type = ida_bytes.FF_BYTE
         else:
             print("WARNING: Unknown type %s" % value)
             assert(False)
@@ -1409,7 +1377,6 @@ class PyClassMember(object):
     member_type = property(get_type, set_type, None, None)
     class_member = property(get_class_member, set_class_member, None, None)
     cls = property(get_cls, set_cls, None, None)
-    count = property(get_type_count, set_type_count, None, None)
     offset = property(get_member_offset, set_member_offset, None, None)
     size = property(get_type_size, None, None, None)
     id = property(get_id, set_id, None, None)

@@ -7,12 +7,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x411596",
                         "0x4115ed"
@@ -20,12 +20,12 @@
                 },
                 "0x4": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x4",
                     "offset": "0x4",
                     "parent": false,
+                    "size": 1,
                     "struc": "",
-                    "type": "byte",
+                    "type": "",
                     "usages": [
                         "0x41159f",
                         "0x4115e6"
@@ -57,12 +57,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4116e2",
                         "0x4117f1"
@@ -70,22 +70,22 @@
                 },
                 "0x4": {
                     "base": false,
-                    "count": "1",
                     "name": "cls_0x411570_0x4",
                     "offset": "0x4",
                     "parent": false,
+                    "size": 8,
                     "struc": "cls_0x411570",
                     "type": "struc",
                     "usages": []
                 },
                 "0xc": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0xc",
                     "offset": "0xc",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4116d1",
                         "0x411776",
@@ -122,5 +122,5 @@
         }
     },
     "vcalls": {},
-    "version": "2.0.1"
+    "version": "2.1.0"
 }

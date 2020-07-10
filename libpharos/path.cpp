@@ -1388,7 +1388,7 @@ PathFinder::output_problem(std::ostream & stream) const
          << *z3_->z3Solver()
          << ";; --- Z3 End\n"
          << "(check-sat)\n"
-         << "(get_model)" << std::endl;
+         << "(get-model)" << std::endl;
   return stream;
 }
 
@@ -1423,6 +1423,12 @@ CallTraceDescriptor::create_frame(CallFrameManager& valmgr) {
 
     // By convention parameters need to be a certain size (32b on
     // x86). There is a quasi-bug where pharos does not follow this
+    SymbolicValuePtr sv = par.get_value();
+    if (!sv) {
+      GERROR << "Parameter in function " << function_descriptor_.address_string()
+             << " was NULL.  Unused function parameter?" << LEND;
+      continue;
+    }
     TreeNodePtr old_var = par.get_value()->get_expression();
     if (old_var->nBits() != CONVENTION_PARAMETER_SIZE) {
       auto conv_var = SymbolicExpr::makeIntegerVariable(

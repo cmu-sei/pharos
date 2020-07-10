@@ -7,24 +7,24 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x411501"
                     ]
                 },
                 "0x4": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x4",
                     "offset": "0x4",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x411503"
                     ]
@@ -48,12 +48,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x411719",
                         "0x411766"
@@ -61,12 +61,12 @@
                 },
                 "0x4": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x4",
                     "offset": "0x4",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x411721",
                         "0x41176b"
@@ -141,5 +141,5 @@
         }
     },
     "vcalls": {},
-    "version": "2.0.1"
+    "version": "2.1.0"
 }

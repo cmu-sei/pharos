@@ -67,24 +67,60 @@ OOSolver::OOSolver(DescriptorSet & ds_, const ProgOptVarMap& vm) : ds(ds_)
     facts_filename = vm["prolog-facts"].as<std::string>();
   }
 
-  debug_sv_facts = false;
-  if (vm.count("prolog-debug-sv")) {
-    debug_sv_facts = true;
-  }
-
-  debugging_enabled = false;
-  if (vm.count("prolog-debug")) {
-    plog[Sawyer::Message::INFO].enable();
-  }
-
   tracing_enabled = false;
   if (vm.count("prolog-trace")) {
     tracing_enabled = true;
   }
 
-  low_level_tracing_enabled = false;
-  if (vm.count("prolog-low-level-tracing")) {
-    low_level_tracing_enabled = true;
+  int logging_level;
+  auto loglevel = vm.get<int>("prolog-loglevel", "prolog-loglevel");
+  if (loglevel) {
+    logging_level = *loglevel;
+    if (logging_level < 1 || logging_level > 7) {
+      OWARN << "Illegal prolog-loglevel, setting to 6" << LEND;
+      logging_level = 6;
+    }
+    switch (logging_level) {
+     case 7:
+      plog[Sawyer::Message::DEBUG].enable();
+      // fallthrough
+     case 6:
+      plog[Sawyer::Message::TRACE].enable();
+      // fallthrough
+     case 5:
+      plog[Sawyer::Message::WHERE].enable();
+      // fallthrough
+     case 4:
+      plog[Sawyer::Message::INFO].enable();
+      // fallthrough
+     case 3:
+      plog[Sawyer::Message::WARN].enable();
+      // fallthrough
+     case 2:
+      plog[Sawyer::Message::ERROR].enable();
+      // fallthrough
+     case 1:
+      plog[Sawyer::Message::FATAL].enable();
+      // fallthrough
+     default:
+      break;
+    }
+  } else {
+    if (plog[Sawyer::Message::DEBUG]) {
+      logging_level = 7;
+    } else if (plog[Sawyer::Message::TRACE]) {
+      logging_level = 6;
+    } else if (plog[Sawyer::Message::WHERE]) {
+      logging_level = 5;
+    } else if (plog[Sawyer::Message::INFO]) {
+      logging_level = 4;
+    } else if (plog[Sawyer::Message::WARN]) {
+      logging_level = 3;
+    } else if (plog[Sawyer::Message::ERROR]) {
+      logging_level = 2;
+    } else {
+      logging_level = 1;
+    }
   }
 
   ignore_rtti = false;
@@ -111,13 +147,15 @@ OOSolver::OOSolver(DescriptorSet & ds_, const ProgOptVarMap& vm) : ds(ds_)
     if (tracing_enabled) {
       session->set_debug_log(std::cout);
     }
-    if (low_level_tracing_enabled) {
-      session->command("debug_ctl(profile, on).");
-      session->command("debug_ctl(prompt, off).");
-      session->command("debug_ctl(leash, []).");
-      session->command("debug_ctl(hide, [rootint/2]).");
-      session->command("trace");
+    auto stack_limit = vm.get<std::size_t>("prolog_stack_limit");
+    if (stack_limit) {
+      session->command("set_prolog_flag", "stack_limit", *stack_limit);
     }
+    auto table_space = vm.get<std::size_t>("prolog_table_space");
+    if (table_space) {
+      session->command("set_prolog_flag", "table_space", *table_space);
+    }
+    session->add_fact("logLevel", logging_level);
     session->consult("oorules/progress_oosolver");
     session->consult("oorules/setup");
   } catch (const Error& error) {
@@ -138,11 +176,10 @@ OOSolver::~OOSolver()
   progress_bar.reset();
 }
 
-int OOSolver::progress()
+bool OOSolver::progress(Args args)
 {
   assert(progress_bar);
-  using pharos::prolog::impl::arg;
-  auto val = arg<size_t>(0);
+  auto val = args.as<size_t>(0);
   progress_bar->value(val);
   return true;
 }
@@ -153,9 +190,6 @@ bool
 OOSolver::add_facts(const OOAnalyzer& ooa) {
   if (!session) return false;
   try {
-    if (debugging_enabled) {
-      session->add_fact("debuggingEnabled");
-    }
     if (!ignore_rtti) {
       session->add_fact("rTTIEnabled");
     }
@@ -350,8 +384,14 @@ OOSolver::add_rtti_facts(const VirtualFunctionTable* vft)
 
   if (visited.find(rtti->pTypeDescriptor.value) == visited.end()) {
     std::string demangled_name;
-    demangle::DemangledTypePtr demangled =
-      demangle::visual_studio_demangle(rtti->type_desc.name.value);
+    demangle::DemangledTypePtr demangled;
+
+    try {
+      demangled = demangle::visual_studio_demangle(rtti->type_desc.name.value);
+    } catch (demangle::Error &e) {
+      GWARN << "Unable to demangle type " << rtti->type_desc.name.value << ": " << e.what () << LEND;
+    }
+
     if (demangled) {
       demangled_name = demangled->get_class_name();
     }
@@ -392,8 +432,14 @@ OOSolver::add_rtti_chd_facts(const rose_addr_t addr)
 
       if (visited.find(base.pTypeDescriptor.value) == visited.end()) {
         std::string demangled_name;
-        demangle::DemangledTypePtr demangled =
-          demangle::visual_studio_demangle(base.type_desc.name.value);
+        demangle::DemangledTypePtr demangled;
+
+        try {
+          demangled = demangle::visual_studio_demangle(base.type_desc.name.value);
+        } catch (demangle::Error &e) {
+          GWARN << "Unable to demangle type " << base.type_desc.name.value << ": " << e.what () << LEND;
+        }
+
         if (demangled) {
           demangled_name = demangled->get_class_name();
         }
@@ -504,9 +550,6 @@ OOSolver::add_call_facts(const OOAnalyzer& ooa)
         if (ooa.ds.get_global(*expr->toUnsigned()) == NULL) continue;
       }
       std::string term = "sv_" + std::to_string(expr->hash());
-      if (debug_sv_facts) {
-        session->add_fact("termDebug", term, to_string(*expr));
-      }
       if (cpd.is_reg()) {
         std::string regname = unparseX86Register(cpd.get_register(), NULL);
         session->add_fact("callParameter", cd.get_address(),
@@ -530,9 +573,6 @@ OOSolver::add_call_facts(const OOAnalyzer& ooa)
         if (ooa.ds.get_global(*expr->toUnsigned()) == NULL) continue;
       }
       std::string term = "sv_" + std::to_string(expr->hash());
-      if (debug_sv_facts) {
-        session->add_fact("termDebug", term, to_string(*expr));
-      }
       if (cpd.is_reg()) {
         std::string regname = unparseX86Register(cpd.get_register(), NULL);
         session->add_fact("callReturn", cd.get_address(), callfunc->get_address(), regname, term);
@@ -647,7 +687,18 @@ OOSolver::add_import_facts(const OOAnalyzer& ooa)
   const ImportDescriptorMap& idmap = ooa.ds.get_import_map();
   for (const ImportDescriptor& id : boost::adaptors::values(idmap)) {
     try {
-      auto dtype = demangle::visual_studio_demangle(id.get_name());
+      demangle::DemangledTypePtr dtype;
+
+      if (!id.get_name().empty()
+          && (id.get_name().front() == '?' || id.get_name().front() == '.'))
+      {
+        try {
+          dtype = demangle::visual_studio_demangle(id.get_name());
+        } catch (demangle::Error &e) {
+          GWARN << "Unable to demangle import " << id.get_name() << ": " << e.what () << LEND;
+        }
+      }
+
       if (!dtype) continue;
 
       // Emit something for imported global objects.  I don't know what to do with this yet,
@@ -1002,8 +1053,9 @@ SolveVFTableFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
               try {
                 auto dtype = demangle::visual_studio_demangle(rtti_name);
                 cls->set_demangled_name(dtype->get_class_name());
-              } catch (const demangle::Error &) {
-                GWARN << "Unable to demangle RTTI Class name" << LEND;
+              } catch (const demangle::Error &e) {
+                GWARN << "Unable to demangle RTTI Class name " << rtti_name
+                      << ": " << e.what () << LEND;
               }
 
               GDEBUG << "Found RTTI name for "
@@ -1181,6 +1233,7 @@ SolveEmbeddedObjFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
 
     if (outer && embedded) {
       OOElementPtr emb_elm = embedded;
+      emb_elm->set_size(embedded->get_size());
       outer->add_member(emb_off, emb_elm);
 
       GDEBUG << "Adding embedded object member " << emb_elm->get_name()
@@ -1337,11 +1390,12 @@ OOSolver::import_results() {
   if (!session) return false;
   try {
     GINFO << "Analyzing object oriented data structures..." << LEND;
-    auto query = session->query("solve");
-    if (query->done()) {
-      GERROR << "The solution found is not internally consistent and may have significant errors!" << LEND;
+    {
+      auto query = session->query("solve", "ooanalyzer_tool");
+      if (query->done()) {
+        GERROR << "The solution found is not internally consistent and may have significant errors!" << LEND;
+      }
     }
-
     // Populate the C++ data structures with the prolog results
     OOSolverAnalysisPassRunner runner(this);
 

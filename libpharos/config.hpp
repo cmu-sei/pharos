@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Config_H
 #define Config_H
@@ -332,7 +332,12 @@ class Config : public ConfigNode {
     return include<std::ifstream&>(s, name.empty() ? filename : name);
   }
 
-  /// Change this Config to represent the merged state of this Config and he YAML
+  /// Return a config representing an option modified from the command line of the form
+  /// "key1.key2. ... .keyn=value
+  Config
+  include(const std::string &option);
+
+  /// Change this Config to represent the merged state of this Config and the YAML
   /// representation identified by source with a given name.  Source may be a std::string, a
   /// const char *, or a std::istream &.  In all three cases, the contents are the YAML
   /// representation, not the name of a file.
@@ -340,6 +345,14 @@ class Config : public ConfigNode {
   Config &
   merge(Source &src, const std::string &name = empty_string) {
     *static_cast<ConfigNode *>(this) = include(src, name);
+    return *this;
+  }
+
+  /// Change this Config to represent the merged state of this Config and the key=value pait in
+  /// src.
+  Config &
+  mergeKeyValue(std::string const &src) {
+    *static_cast<ConfigNode *>(this) = include(src);
     return *this;
   }
 

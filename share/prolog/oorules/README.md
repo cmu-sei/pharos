@@ -3,11 +3,10 @@
 ## Background
 
 The Pharos OOAnalyzer tool uses the Prolog files in this directory to
-reason about the facts extracted from the executable.  Because XSB
-Prolog is linked into the OOAnalyzer executable, and the Prolog step is
-executed automatically, there is no reason for a typical user to concern
-themselves much with the contents of this directory and these files have
-been considered to be mostly for developers of OOAnalyzer.  Recently
+reason about the facts extracted from the executable.  Because the Prolog
+step is executed automatically, there is no reason for a typical user to
+concern themselves much with the contents of this directory and these files
+have been considered to be mostly for developers of OOAnalyzer.  Recently
 however, several users of OOAnalyzer have tried analyzing rather large
 object-oriented programs, and there are known deficiencies in the
 completely-automated one-step approach represented by simply running
@@ -19,14 +18,20 @@ failures, slightly reduced resource requirements, and most importantly,
 dramatically better performance in some cases.  One of the key
 differences is based on the recent development that SWI Prolog's tabling
 support is now sufficient to run the OOAnalyzer Prolog analysis stage,
-and that it performs much better in general than the XSB implementation.
-Unfortunately, we have not yet developed the infrastructure required to
-link SWI Prolog into the OOAnalyzer executable to fully integrate this
-improvement into the default usage of the OOAnalyzer tool.  Long term,
-it is obviously our intention to fully support very large files with
-link-time integration of SWI Prolog.  In the mean time, users facing
-problems associated with the analysis of large object-oriented
-executables are encouraged to follow the following procedure.
+and that it performs much better in general than the XSB implementation
+that was previously used.  Users facing problems associated with the
+analysis of large object-oriented executables are encouraged to use the
+following procedure because it breaks the entire process up into smaller
+steps, so that if one fails, you don't have to restart from the
+beginning.
+
+
+## Installation Requirements
+
+If you are building Pharos from source, make sure that you [install
+SWI Prolog and configure Pharos to use
+it](../../../INSTALL.md#swi-prolog-optional).  If you use our Docker
+image or build scripts, SWI should be available.
 
 ## Analyzing Large Executables
 
@@ -185,7 +190,7 @@ describing the object-oriented features of the program.
 We recommend that you run a command like this:
 
 ```
-ooanalyzer --serialize=ooprog.ser --maximum-memory 128000 --prolog-facts=ooprog-facts.P --threads=16 --per-function-timeout=60 ooprog.exe
+ooanalyzer --serialize=ooprog.ser --maximum-memory 128000 --prolog-facts=ooprog-facts.pl --threads=16 --per-function-timeout=60 ooprog.exe
 ```
 
 The `--serialize` option causes OOAnalyzer to read the previously
@@ -194,7 +199,7 @@ required because the deserialized partitioning results takes
 approximately the same amount of RAM as doing the partitioning.
 
 The `--prolog-facts` option instructs OOAnalyzer to only run the fact
-generation step, and to write the results out to `ooprog-facts.P`.
+generation step, and to write the results out to `ooprog-facts.pl`.
 
 This step is one of the few steps in the Pharos system that takes
 advantage of multi-threading, so if you have multiple processors, you
@@ -267,7 +272,7 @@ bode well for your ultimate results.
 It is normal for this phase to complete with the following messages.
 
 ```
-OOAN[INFO ]: Exported <xxxx> Prolog facts to 'ooprog-facts.P'.
+OOAN[INFO ]: Exported <xxxx> Prolog facts to 'ooprog-facts.pl'.
 OPTI[WARN ]: OOAnalyzer did not perform C++ class analysis.
 OPTI[INFO ]: OOAnalyzer analysis complete.
 ```
@@ -287,7 +292,7 @@ or that something went substantially wrong.
 For large files we recommend a command like:
 
 ```
-awk -F\( '{print $1}' ooprog-facts.P | sort | uniq -c
+awk -F\( '{print $1}' ooprog-facts.pl | sort | uniq -c
 ```
 
 This command will show the distribution of facts recovered from the
@@ -297,24 +302,25 @@ include `thisPtrOffset`, `thisPtrAllocation`, `thisPtrUsage`,
 `possibleVFTableWrite`, and `possibleVirtualFunctionCall`.
 
 If your fact generation failed, you may need to revisit the previous
-step, or OOAnalyzer may have failed on your input program.  If you have
-a reasonable set of facts, you can proceed with the Prolog phase of
-object-oriented analysis by running:
+step, or OOAnalyzer may have failed on your input program.  If you
+have a reasonable set of facts, you can proceed with the Prolog phase
+of object-oriented analysis by running the following command from your
+Pharos build or install directory:
 
 ```
-./share/prolog/oorules/oodebugrun-swipl ooprog-facts.P >ooprog.log
+./share/prolog/oorules/oodebugrun-swipl ooprog-facts.pl >ooprog.log
 ```
 
-This step is where analysis begins to diverge significantly from the
-traditional OOAnalyzer results.  Instead of invoking XSB prolog, which
-can consume a lot of RAM and sometimes take a very long time, this
-command runs the Prolog analysis phase in SWI Prolog, which is
-significantly more efficient.  Additionally, because the previous
-function analysis step has exited, we no longer have the partitioning
-results in RAM when starting a rather expensive new analysis step.  (It
-is difficult to free all the RAM required from partitioning, because we
-need some of it for later steps in the normal OOAnalyzer execution
-model.)
+If the `oodebugrun-swipl` script is missing, make sure that you
+[installed SWI Prolog and that Pharos found it at build
+time](../../../INSTALL.md#swi-prolog-optional).
+
+This command runs the Prolog analysis phase in SWI Prolog.  Additionally,
+because the previous function analysis step has exited, we no longer have
+the partitioning results in RAM when starting a rather expensive new
+analysis step.  (It is difficult to free all the RAM required from
+partitioning, because we need some of it for later steps in the normal
+OOAnalyzer execution model.)
 
 This step can be expensive and time consuming as well, and sometimes
 fails for a variety of reasons that may require restarting. In the
@@ -370,7 +376,7 @@ fact be classes at all).  Regardless, you should be able to extract the
 final results from the log with this command:
 
 ```
-grep ^final ooprog.log >ooprog-results.P
+grep ^final ooprog.log >ooprog-results.pl
 ```
 
 This command produces a file that should be be nearly identical to the
@@ -397,12 +403,12 @@ There is now a Prolog-based tool that will convert the Prolog results
 into the JSON format.  You can invoke this tool with this command:
 
 ```
-./share/prolog/oorules/oojson-swipl ooprog-results.P >ooprog.json
+./share/prolog/oorules/oojson-swipl ooprog-results.pl >ooprog.json
 ```
 
 In just a few seconds, this command should produce a JSON file that is
 identical to the one that would have been produced using the `--json`
-option of the OOAnalyzer command (and XSB Prolog as a consequence).
+option of the OOAnalyzer command.
 
 ### Step Five: Load the JSON into IDA Pro and/or Ghidra
 
@@ -431,19 +437,19 @@ Since this directory is really about the Prolog rules (and not
 explicitly about the manual OOAnalyzer process documented above), we
 should say a few words about the rules themselves.
 
-The `facts.P` file documents the facts generated during step two.  The
-`results.P` file documents the results generated in step three.  The
-`oojson.P` file implements the JSON generation that occurs in step four.
+The `facts.pl` file documents the facts generated during step two.  The
+`results.pl` file documents the results generated in step three.  The
+`oojson.pl` file implements the JSON generation that occurs in step four.
 The remaining files implement the Prolog reasoning in step three.
 
-The `rules.P` file implements the "forward" reasoning rules that reach
+The `rules.pl` file implements the "forward" reasoning rules that reach
 direct conclusions from existing facts about the input program.  This
 file is likely to be the most interesting to people wanting to learn
-more about step three.  The `guess.P` file implements the "guesses" that
-drive learning in the latter part of step three.  The `insanity.P` file
+more about step three.  The `guess.pl` file implements the "guesses" that
+drive learning in the latter part of step three.  The `insanity.pl` file
 implements consistency checks that determine whether a guess was
-consistent with the other facts.  The `forward.P` and `trigger.P` files
+consistent with the other facts.  The `forward.pl` and `trigger.pl` files
 implement logic related to improving performance of the Prolog phase by
-deferring the re-computation of certain conclusions.  The `final.P` file
+deferring the re-computation of certain conclusions.  The `final.pl` file
 handles final reporting, and the remaining files will mostly make sense
 in context once those parts of the system are better understood.

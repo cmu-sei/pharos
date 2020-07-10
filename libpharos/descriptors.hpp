@@ -108,6 +108,8 @@ class DescriptorSet
   // Ensure that all imports in import_descriptors are also in import_variables.
   ImportDescriptor *add_import(rose_addr_t addr, std::string dll, std::string name, size_t ord = 0);
 
+  DescriptorSet(const ProgOptVarMap& povm, std::vector<std::string> const & specimen_names,
+                bool partition_only);
 
  public:
   // Binary image
@@ -119,7 +121,8 @@ class DescriptorSet
   // This is the intended (standard) way to construct a descriptor set.
   DescriptorSet(const ProgOptVarMap& povm);
   // These are used if the filename(s) don't come from the program options
-  DescriptorSet(const ProgOptVarMap& povm, std::vector<std::string> const & specimen_names);
+  DescriptorSet(const ProgOptVarMap& povm, std::vector<std::string> const & filenames)
+    : DescriptorSet(povm, filenames, false) {}
   DescriptorSet(const ProgOptVarMap& povm, std::string const & specimen_name)
     : DescriptorSet(povm, std::vector<std::string>({specimen_name})) {}
   // Sadly tracesem.cpp wants to pass it in it's own engine and partitioner due to some
@@ -253,7 +256,11 @@ class DescriptorSet
     return get_concurrency_level(vm);
   }
   static unsigned int get_concurrency_level(ProgOptVarMap const & vm);
+
+  friend void partition(ProgOptVarMap const & vm);
 };
+
+void partition(ProgOptVarMap const & vm);
 
 extern size_t global_arch_bytes;
 

@@ -181,10 +181,10 @@ void CallDescriptor::validate(std::ostream &o, const FunctionDescriptorMap& fdma
   if (!insn)
     o << "Uninitialized call descriptor in set." << LEND;
   if (confidence == ConfidenceWrong) o << *this << LEND;
-  for (CallTargetSet::iterator tit = targets.begin(); tit != targets.end(); tit++) {
-    const FunctionDescriptor* fd = fdmap.get_func(*tit);
+  for (auto & tit : targets.values()) {
+    const FunctionDescriptor* fd = fdmap.get_func(tit);
     if (fd == NULL)  o << "No function description for call target "
-                       << std::hex << *tit << " at call instruction "
+                       << std::hex << tit << " at call instruction "
                        << get_address() << std::dec << LEND;
   }
 }
@@ -195,7 +195,7 @@ void CallDescriptor::validate(std::ostream &o, const FunctionDescriptorMap& fdma
 // state.
 void CallDescriptor::add_target(rose_addr_t taddr) {
   write_guard<decltype(mutex)> guard{mutex};
-  if (targets.find(taddr) == targets.end()) {
+  if (!targets.exists(taddr)) {
     targets.insert(taddr);
     _update_connections();
   }
@@ -206,7 +206,7 @@ bool CallDescriptor::get_never_returns() const {
   if (targets.size() == 0) return false;
 
   // For each call target, if that target returns, then the call returns.
-  for (rose_addr_t target : targets) {
+  for (rose_addr_t target : targets.values()) {
     const FunctionDescriptor* cfd = ds.get_func(target);
     if (cfd) {
       //OINFO << "Call " << address_string() << " calls " << cfd->address_string()
@@ -324,8 +324,7 @@ void CallDescriptor::_update_connections() {
 
   // Update the targets list and the function descriptor in both directions.
   if (targets.size() == 1) {
-    CallTargetSet::iterator target = targets.begin();
-    rose_addr_t target_addr = *target;
+    rose_addr_t target_addr = targets.least();
 
     // The target might be the import descriptor target, which doesn't really exist in the
     // function map, so we need to check that the function exists before overwriting the
@@ -362,7 +361,7 @@ void CallDescriptor::_update_connections() {
     owned_function_descriptor = std::make_unique<FunctionDescriptor>(ds);
     function_descriptor = owned_function_descriptor.get();
     // Now merge each of the call targets into the merged description.
-    for (rose_addr_t t : targets) {
+    for (rose_addr_t t : targets.values()) {
       // This might include bogus addresses for the import descriptors, but that's ok, the test
       // for NULL will cause us to do the right thing.
       const FunctionDescriptor* fd = ds.get_func(t);
@@ -370,7 +369,7 @@ void CallDescriptor::_update_connections() {
     }
     // Now propgate any discoveries made during merging back to each of the call targets.
     // Also update the function description to record that this call is one of their callers.
-    for (rose_addr_t t : targets) {
+    for (rose_addr_t t : targets.values()) {
       FunctionDescriptor* fd = ds.get_rw_func(t); // in update_connections()
       if (fd != NULL) {
         fd->propagate(function_descriptor);
@@ -422,8 +421,8 @@ void CallDescriptor::_print(std::ostream &o) const {
       << " " << function_descriptor->debug_deltas() << " ]";
   }
   o << " targets=[" << std::hex;
-  for (CallTargetSet::iterator it = targets.begin(); it != targets.end(); it++) {
-    o << " " << *it;
+  for (auto & t : targets.values()) {
+    o << " " << t;
   }
   o << " ]" << std::dec;
 }
@@ -433,7 +432,7 @@ void CallDescriptor::analyze() {
   address = insn->get_address();
   bool complete;
   CallTargetSet successors;
-  targets = insn->getSuccessors(&complete);
+  targets = insn->getSuccessors(complete);
   //GDEBUG << "CALL: " << debug_instruction(insn) << LEND;
 
   SgAsmOperandList *oplist = insn->get_operandList();

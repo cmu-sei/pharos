@@ -10,8 +10,7 @@ ooanalyzer --json=JSON_FILE [--new-method=ADDRESS] [--ignore-rtti]
   [...Pharos options...] EXECUTABLE_FILE
 
 ooanalyzer --prolog-facts=PROLOG_FILE --prolog-results=PROLOG_FILE
-  [--prolog-debug] [--prolog-trace] [--prolog-low-level-tracing]
-  [...Pharos options...] EXECUTABLE_FILE
+  [--prolog-loglevel={1-7}] [--prolog-trace] [...Pharos options...] EXECUTABLE_FILE
 
 ooanalyzer --help
 
@@ -115,18 +114,13 @@ format, but might more convenient for certain uses.  In particular,
 they can be correlated with the Prolog reasoning rules much more
 easily.
 
-=item B<--prolog-debug>
+=item B<--prolog-loglevel>=I<{1-7}>
 
-Enable a form of debugging that reports new conclusions reached by the
-Prolog rules as it reasons about the program.  This option can be very
-educational for understanding how OOAnalyzer reasons about the
-program, explores different possibilities, and handles contradictory
-data.
-
-=item B<--prolog-low-level-tracing>
-
-Enable debugging that is primarily used to troubleshoot problems in
-the XSB C interface.
+Change the logging level of the prolog solver.  Higher levels imply more
+logging.  The solver can report new conclusions reached by the Prolog
+rules as it reasons about the program.  This option can be very
+educational for understanding how OOAnalyzer reasons about the program,
+explores different possibilities, and handles contradictory data.
 
 =back
 

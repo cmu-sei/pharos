@@ -15,8 +15,7 @@ file(GLOB OOANALYZER_LITE_PREVIOUS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 
 set(OOANALYZER_TEST_PREVIOUS ${OOANALYZER_DEBUG_PREVIOUS} ${OOANALYZER_LITE_PREVIOUS})
 
-find_package(XSB REQUIRED)
-find_package(SWIPL)
+find_package(SWIPL REQUIRED)
 
 foreach(previous ${OOANALYZER_TEST_PREVIOUS})
   get_filename_component(basename "${previous}" NAME_WE)
@@ -31,21 +30,12 @@ foreach(previous ${OOANALYZER_TEST_PREVIOUS})
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_tests_properties("ooanalyzer_test_${und_name}" PROPERTIES LABELS ooanalyzer)
 
-  add_test(NAME "ooprolog_xsb_test_${und_name}"
+  add_test(NAME "ooprolog_swi_test_${und_name}"
     COMMAND ${CMAKE_CURRENT_BINARY_DIR}/tests/ooanalyzer-test.py
     "--build-dir" ${CMAKE_BINARY_DIR} "--git-dir" ${CMAKE_SOURCE_DIR}
-    "--xsb-path" "${XSB_PROGRAM}" -v -p ${tgt_name}
+    "--swi-path" "${SWIPL_PROGRAM}" -v -p -s ${tgt_name}
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  set_tests_properties("ooprolog_xsb_test_${und_name}" PROPERTIES LABELS ooprolog)
-
-  if(SWIPL_FOUND)
-    add_test(NAME "ooprolog_swi_test_${und_name}"
-      COMMAND ${CMAKE_CURRENT_BINARY_DIR}/tests/ooanalyzer-test.py
-      "--build-dir" ${CMAKE_BINARY_DIR} "--git-dir" ${CMAKE_SOURCE_DIR}
-      "--swi-path" "${SWIPL_PROGRAM}" -v -p -s ${tgt_name}
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-    set_tests_properties("ooprolog_swi_test_${und_name}" PROPERTIES LABELS ooprolog)
-  endif()
+  set_tests_properties("ooprolog_swi_test_${und_name}" PROPERTIES LABELS ooprolog)
 
 endforeach()
 
@@ -62,10 +52,10 @@ set_property(TEST ooanalyzer_test_ooex_vs2010_Lite_ooex7   PROPERTY COST 230.49)
 set_property(TEST ooanalyzer_test_ooex_vs2010_Lite_oo      PROPERTY COST 175.66)
 set_property(TEST ooanalyzer_test_ooex_vs2010_Lite_poly    PROPERTY COST 178.75)
 
-set_property(TEST ooprolog_xsb_test_ooex_vs2010_Lite_ooex7 PROPERTY COST 9.73)
-set_property(TEST ooprolog_xsb_test_ooex_vs2010_Lite_oo    PROPERTY COST 7.06)
-set_property(TEST ooprolog_xsb_test_ooex_vs2010_Lite_poly  PROPERTY COST 7.42)
+set_property(TEST ooprolog_swi_test_ooex_vs2010_Lite_ooex7 PROPERTY COST 9.73)
+set_property(TEST ooprolog_swi_test_ooex_vs2010_Lite_oo    PROPERTY COST 7.06)
+set_property(TEST ooprolog_swi_test_ooex_vs2010_Lite_poly  PROPERTY COST 7.42)
 
-set_property(TEST ooprolog_xsb_test_ooex_vs2010_Lite_ooex7 PROPERTY COST 5.64)
-set_property(TEST ooprolog_xsb_test_ooex_vs2010_Lite_oo    PROPERTY COST 3.64)
-set_property(TEST ooprolog_xsb_test_ooex_vs2010_Lite_poly  PROPERTY COST 3.70)
+set_property(TEST ooprolog_swi_test_ooex_vs2010_Lite_ooex7 PROPERTY COST 5.64)
+set_property(TEST ooprolog_swi_test_ooex_vs2010_Lite_oo    PROPERTY COST 3.64)
+set_property(TEST ooprolog_swi_test_ooex_vs2010_Lite_poly  PROPERTY COST 3.70)

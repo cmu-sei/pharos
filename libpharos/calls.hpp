@@ -172,7 +172,7 @@ class CallDescriptor : private Immobile {
   void add_target(rose_addr_t taddr);
   // Return the set of target addresses.
   auto get_targets() const {
-    return make_read_locked_range<const CallTargetSet>(targets, mutex);
+    return make_read_locked_range(targets, mutex);
   }
 
   std::string address_string() const {
@@ -209,7 +209,7 @@ class CallDescriptor : private Immobile {
   void add_virtual_resolution(VirtualFunctionCallInformation& vci, GenericConfidence conf);
   // Available only if object oriented analysis has been performed, empty otherwise.
   auto get_virtual_calls() const {
-    return make_read_locked_range<const VirtualFunctionCallVector>(virtual_calls, mutex);
+    return make_read_locked_range(virtual_calls, mutex);
   }
 
   CallType get_call_type() const  {
@@ -332,7 +332,7 @@ class CallDescMapPredicate {
 
     if (target_card != TargetSizeUnspecified) {
       if (target_card == TargetSizeZero) {
-        tc_match = c.second.targets.empty();
+        tc_match = c.second.targets.isEmpty();
       } else if (target_card == TargetSizeOne) {
         tc_match = (c.second.targets.size() == 1);
       } else if (target_card == TargetSizeMany) {

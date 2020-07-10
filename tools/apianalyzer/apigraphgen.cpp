@@ -1,31 +1,15 @@
 // Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <rose.h>
-#include <stdio.h>
-#include <iostream>
-#include <fstream>
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/graph_utility.hpp>
-#include <boost/graph/depth_first_search.hpp>
-#include <boost/ptr_container/ptr_vector.hpp>
-#include <boost/graph/dijkstra_shortest_paths.hpp>
-#include <boost/graph/connected_components.hpp>
 
-#include <libpharos/pdg.hpp>
-#include <libpharos/misc.hpp>
 #include <libpharos/descriptors.hpp>
-#include <libpharos/masm.hpp>
-#include <libpharos/defuse.hpp>
-#include <libpharos/sptrack.hpp>
 #include <libpharos/options.hpp>
+#include <libpharos/bua.hpp>
 
 #include <libpharos/apigraph.hpp>
 #include <libpharos/apisig.hpp>
 
 using namespace pharos;
-
-// The global CERT message facility.  This may change.
-Sawyer::Message::Facility glog("APIG");
 
 const std::string VERSION  = "1.01";
 
@@ -44,7 +28,7 @@ ProgOptDesc apianalyzer_options() {
 
 // Need to swtich this to use pharos_main.  Or better, make this functionality
 // simply be a cmd line arg to apianalyzer instead of a separate exec.
-int main(int argc, char* argv[]) {
+int apigraphgen_main(int argc, char* argv[]) {
 
   ProgOptDesc apiod = apianalyzer_options();
   ProgOptDesc csod = cert_standard_options();
@@ -59,19 +43,19 @@ int main(int argc, char* argv[]) {
   // end configuration, begin analysis
 
   // Find calls, functions, and imports.
-  DescriptorSet ds(&vm);
+  DescriptorSet ds(vm);
   // Resolve imports, load API data, etc.
   ds.resolve_imports();
 
   // Build PDGs
-  BottomUpAnalyzer bua(&ds, vm);
+  BottomUpAnalyzer bua(ds, vm);
   bua.analyze();
 
   // end analysis, start graph generation
 
   GINFO << "Starting API Graph generation" << LEND;
 
-  ApiGraph graph;
+  ApiGraph graph(ds);
   size_t num_components = graph.Build();
 
   OINFO << "Completed API Graph generation with " << num_components << " components" << LEND;
@@ -85,4 +69,8 @@ int main(int argc, char* argv[]) {
   global_rops.reset();
 
   return 0;
+}
+
+int main(int argc, char* argv[]) {
+  return pharos_main("APIG", apigraphgen_main, argc, argv);
 }

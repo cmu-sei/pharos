@@ -1,7 +1,7 @@
 Shared Pharos options:
   [--verbose=NUMBER] [--timing] [--batch] [--allow-64bit]
   [--include-func=ADDRESS] [--exclude-func=ADDRESS]
-  [--config=PHAROS_CONFIG_FILE]
+  [--config=PHAROS_CONFIG_FILE] [--option KEY=VALUE]
   [--dump-config] [--no-user-file] [--no-site-file]
   [--apidb=APIDB_FILE] [--library=CONFIG_DIR]
   [--timeout=TIMEOUT] [--per-function-timeout=TIMEOUT]

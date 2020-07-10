@@ -47,6 +47,7 @@ set(PHAROS_SOURCES
   sptrack.cpp
   state.cpp
   stkvar.cpp
+  swiimpl.cpp
   threads.cpp
   typedb.cpp
   types.cpp
@@ -55,7 +56,6 @@ set(PHAROS_SOURCES
   vcall.cpp
   vftable.cpp
   wp.cpp
-  xsb.cpp
   znode.cpp
 
   PHAROS_REVISION.ii
@@ -63,7 +63,7 @@ set(PHAROS_SOURCES
   )
 
 # Packages needed by libpharos
-find_package(XSB REQUIRED)
+find_package(SWIPL "8.2.0" REQUIRED)
 find_package(SQLite REQUIRED)
 set(CURSES_NEED_NCURSES true)
 find_package(Curses REQUIRED)
@@ -73,14 +73,13 @@ set(Boost_USE_MULTITHREADED on)
 find_package(Boost 1.60.0 REQUIRED
   COMPONENTS system chrono timer iostreams serialization)
 
-configure_file(xsb_types.hpp.in xsb_types.hpp)
-
 # Create pharos library
 add_library(pharos SHARED ${PHAROS_SOURCES})
 target_link_libraries(pharos PUBLIC
   Threads::Threads Boost::chrono Boost::timer Boost::iostreams Boost::serialization ${CMAKE_DL_LIBS}
   Rose::Rose SQLite::SQLite ${CURSES_LIBRARIES})
-target_link_libraries(pharos PRIVATE XSB::XSB SQLite::SQLite)
+target_link_libraries(pharos PRIVATE SQLite::SQLite)
+target_link_libraries(pharos PUBLIC swipl::libswipl)
 if(COMMAND target_precompile_headers)
   target_precompile_headers(pharos PRIVATE "<rose.h>")
 endif()
@@ -117,6 +116,7 @@ install(EXPORT libpharos DESTINATION lib/cmake/libpharos
   EXPORT_LINK_INTERFACE_LIBRARIES)
 
 # Create config.yaml
+get_filename_component(SWI_INSTALL_DIR "${SWIPL_EXECUTABLE}" DIRECTORY)
 configure_file(config.yaml.in config.yaml)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/config.yaml"
   DESTINATION etc

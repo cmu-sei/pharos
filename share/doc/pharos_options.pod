@@ -68,6 +68,12 @@ C<~/.pharos.yaml>.  This option can be specified multiple times.
 Documentation for the format of I<PHAROS_CONFIG_FILE> can be found at
 L<pharos.yaml(5)>.
 
+=item B<--option>=I<KEY>=I<VALUE>
+
+Set a pharos configuration file option from the command line.  The
+I<KEY> value should be a dotted set of names describing the tree
+structure to the value.  Example: C<--option pharos.timeout=900>
+
 =item B<--dump-config>
 
 After reading and merging configuration files, output the resulting
@@ -94,8 +100,7 @@ searched for relative to C<I<$PHAROS_ROOT>/share/pharos>.
 =item B<--library>=I<DIR>, B<-l>=I<DIR>
 
 Set the primary location that Pharos programs look for configuration
-and API data.  This option also controls the default location of the
-XSB installation.
+and API data.
 
 =item B<--timeout>=I<TIMEOUT>
 

@@ -24,10 +24,9 @@ PharosZ3Solver::set_timeout(unsigned int to) {
 
 void
 PharosZ3Solver::set_seed(int seed) {
-  Z3_string sat_seed_string = "sat.random_seed";
-  set_param(sat_seed_string, seed);
-  Z3_string spacer_seed_string = "fp.spacer.random_seed";
-  set_param(spacer_seed_string, seed);
+  set_param("sat.random_seed", seed);
+  set_param("fp.spacer.random_seed", seed);
+  set_param("smt.random_seed", seed);
 }
 
 uint64_t

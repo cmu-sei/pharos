@@ -19,4 +19,4 @@ PROG="[comparefacts],terms_compare('$arg1', '$arg2')"
 ERROR="writeln('Error running comparefacts'), halt(127)"
 
 cd @CMAKE_CURRENT_SOURCE_DIR@
-@XSB_PROGRAM@ --noprompt -e "catch((($PROG);true), E, ($ERROR)), halt."
+@SWIPL_EXECUTABLE@ -q -g "catch((($PROG);true), E, ($ERROR)), halt."

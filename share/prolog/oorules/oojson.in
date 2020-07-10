@@ -1,0 +1,3 @@
+#!/bin/bash
+@SWIPL_HEADER@
+@SWIPL_PROGRAM@ -g "['$DIR/oojson'],exportJSON('${1}'),halt."

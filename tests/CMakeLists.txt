@@ -4,7 +4,7 @@ set(TESTCONFIG_SWITCH --config "${testconfig_file}" PARENT_SCOPE)
 message(STATUS "Making ${testconfig_file}")
 configure_file(testconfig.yaml.in "${testconfig_file}")
 
-find_package(XSB REQUIRED)
+find_package(SWIPL REQUIRED)
 set(compare_facts "${CMAKE_CURRENT_BINARY_DIR}/comparefacts.sh")
 set(COMPARE_FACTS ${compare_facts} PARENT_SCOPE)
 message(STATUS "Making ${compare_facts}")

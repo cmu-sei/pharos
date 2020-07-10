@@ -110,7 +110,7 @@ class GlobalMemoryDescriptor : private Immobile {
   SymbolicValuePtr get_memory_address() const { return memory_address; }
 
   auto get_values() const {
-    return make_read_locked_range<const decltype(values)>(values, mutex);
+    return make_read_locked_range(values, mutex);
   }
 
   rose_addr_t get_address() const { return address; }
@@ -125,13 +125,13 @@ class GlobalMemoryDescriptor : private Immobile {
   std::string to_string() const;
 
   auto get_writes() const {
-    return make_read_locked_range<const InsnSet>(writes, mutex);
+    return make_read_locked_range(writes, mutex);
   }
   auto get_reads() const {
-    return make_read_locked_range<const InsnSet>(reads, mutex);
+    return make_read_locked_range(reads, mutex);
   }
   auto get_refs() const {
-    return make_read_locked_range<const InsnSet>(refs, mutex);
+    return make_read_locked_range(refs, mutex);
   }
 
   // Are all known memory accesses reads?

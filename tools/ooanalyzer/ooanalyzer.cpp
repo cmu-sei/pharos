@@ -39,12 +39,10 @@ ProgOptDesc digger_options() {
     ("prolog-results,R",
      po::value<std::string>(),
      "specify the Prolog results output file")
-    ("prolog-debug,d",
-     "enable debugging in the Prolog analysis")
+    ("prolog-loglevel", po::value<int>(),
+     "sets the prolog logging verbosity (1-7)")
     ("prolog-trace",
      "enable output of prolog commands, queries, and results")
-    ("prolog-low-level-tracing",
-     "enable prolog's low-level tracing")
     ;
   return digopt;
 }

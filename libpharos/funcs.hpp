@@ -66,7 +66,7 @@ using X86InsnVector = std::vector<SgAsmX86Instruction*>;
 using AddrSet = std::set<rose_addr_t>;
 
 // A set of ROSE addresses used in analyzing calls and functions.
-using CallTargetSet = std::set<rose_addr_t>;
+using CallTargetSet = Rose::BinaryAnalysis::AddressSet;
 // A set of token strings parsed from a config file.
 using TokenSet = std::vector<std::string>;
 

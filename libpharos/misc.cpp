@@ -310,7 +310,8 @@ rose_addr_t insn_get_fallthru(SgAsmInstruction* insn) {
 rose_addr_t insn_get_branch_target(SgAsmInstruction* insn) {
   bool complete;
   rose_addr_t fallthru = insn_get_fallthru(insn);
-  for (rose_addr_t target : insn->getSuccessors(&complete)) {
+  auto successors = insn->getSuccessors(complete);
+  for (rose_addr_t target : successors.values()) {
     //GDEBUG << "INSN successor: " << addr_str(target) << LEND;
     if (target == fallthru) continue;
     else return target;
@@ -846,8 +847,7 @@ rose_addr_t block_get_jmp_target(SgAsmBlock* bb) {
   if (!last) return 0;
   if (last->get_kind() != x86_jmp && last->get_kind() != x86_farjmp) return 0;
   bool ignored = false;
-  AddrSet successors = last->getSuccessors(&ignored);
-  return *(successors.begin());
+  return last->getSuccessors(ignored).least();
 }
 
 // For situations where the DescriptorSet isn't available.

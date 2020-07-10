@@ -184,6 +184,9 @@ IR rm_undefined (const IR& ir_) {
     Stmt operator()(SpecialStmt &ss) const {
       return ss;
     }
+    Stmt operator()(AssertStmt &as) const {
+      return AssertStmt (rm_undefined_in_exp (static_cast <IRExprPtr> (as)));
+    }
     Stmt operator()(CallStmt &cs) const {
       return CallStmt (rm_undefined_in_exp (std::get<0> (cs)),
                        std::get<1> (cs),
@@ -356,6 +359,9 @@ Stmts remove_unused_statements(Stmts &stmts_, std::vector<IRExprPtr> exps) {
         return true;
       }
       bool operator()(UNUSED SpecialStmt &ss) const {
+        return true;
+      }
+      bool operator()(UNUSED AssertStmt &as) const {
         return true;
       }
       bool operator()(UNUSED CallStmt &cs) const {
@@ -808,6 +814,10 @@ std::ostream& operator<<(std::ostream &out, const CallStmt &stmt) {
   out << "CallStmt(" << *std::get<0> (stmt) << ", " << std::get<1> (stmt) << ")";
   return out;
 }
+std::ostream& operator<<(std::ostream &out, const AssertStmt &stmt) {
+  out << "AssertStmt(" << *(IRExprPtr) (stmt) << ")";
+  return out;
+}
 std::ostream& operator<<(std::ostream &out, const CommentStmt &stmt) {
   out << "CommentStmt(" << std::string (stmt) << ")";
   return out;
@@ -843,6 +853,7 @@ std::set<IRExprPtr> expsFromStmt(const Stmt &stmt, bool includeWrites) {
     std::set<IRExprPtr> operator()(const MemWriteStmt &ms) const { return { ms.first, ms.second }; }
     std::set<IRExprPtr> operator()(UNUSED const InsnStmt &is) const { return {}; }
     std::set<IRExprPtr> operator()(UNUSED const SpecialStmt &ss) const { return {}; }
+    std::set<IRExprPtr> operator()(UNUSED const AssertStmt &as) const { return { static_cast<IRExprPtr> (as) }; }
     std::set<IRExprPtr> operator()(const CallStmt &cs) const { return { std::get<0> (cs) }; }
     std::set<IRExprPtr> operator()(UNUSED const CommentStmt &cs) const { return {}; }
   };

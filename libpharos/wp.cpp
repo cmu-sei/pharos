@@ -145,6 +145,10 @@ IRExprPtr wp_stmt(const Stmt& s, const IRExprPtr& post, const Register& mem) {
       // Return false? It's not clear what the best thing to do here is.
       return SymbolicExpr::makeBooleanConstant (false);
     }
+    IRExprPtr operator()(const AssertStmt &as) {
+      // post /\ e
+      return SymbolicExpr::makeAnd (post, static_cast<IRExprPtr> (as));
+    }
     IRExprPtr operator()(const CallStmt &cs) {
       // Return false? It's not clear what the best thing to do here is.
       GWARN << "Encountered a non-rewritten Call statement " << cs
@@ -375,15 +379,42 @@ struct HelperVisitor : public boost::static_visitor<boost::optional<Stmt>> {
       // Is it one of the targeted functions?
       auto i = std::find (funcs.begin (), funcs.end (), *ec);
       if (i != funcs.end ()) {
-        int nbits = ds.get_arch_bits ();
-        Register eax = ir.get_reg(ds.get_arch_reg("eax"));
-        std::stringstream vname;
-        vname << ec->first << "!" << ec->second << "@"
-              << addr_str (std::get<2> (cs)->get_address ()) << ":" << n;
-        IRExprPtr nv = SymbolicExpr::makeIntegerVariable (nbits, vname.str ());
         ignore = true;
         n++;
-        return (Stmt) (RegWriteStmt (eax, nv));
+        if (*ec == ImportCall ("bogus.so", "__assert_symbolic_dummy_import")) {
+          // __assert_symbolic_dummy_import(b) is an import that tells us we should rewrite to
+          // AssertStmt(b)
+          int nbits = ds.get_arch_bits ();
+          if (nbits == 64) {
+            // On amd64, the first argument goes into rdi
+            Register rdi = ir.get_reg(ds.get_arch_reg("rdi"));
+            IRExprPtr true_exp = SymbolicExpr::makeIntegerConstant (nbits,
+                                                                    1);
+            IRExprPtr condition = SymbolicExpr::makeEq (rdi, true_exp);
+            return (Stmt) (AssertStmt (condition));
+
+          } else {
+            // Normally the first argument would be at esp+4.  But we strip out the push of the
+            // return address, so it's at offset 0.
+            Register esp = ir.get_reg(ds.get_arch_reg("esp"));
+            IRExprPtr argument = SymbolicExpr::makeRead (ir.get_mem (),
+                                                         esp);
+            // Because SymbolicExpr only makes it easy to read one byte at a time, we'll just
+            // compare to the true byte
+            IRExprPtr true_exp = SymbolicExpr::makeIntegerConstant (8,
+                                                                    1);
+            IRExprPtr condition = SymbolicExpr::makeEq (argument, true_exp);
+            return (Stmt) (AssertStmt (condition));
+          }
+        } else {
+          int nbits = ds.get_arch_bits ();
+          Register eax = ir.get_reg(ds.get_arch_reg("eax"));
+          std::stringstream vname;
+          vname << ec->first << "!" << ec->second << "@"
+                << addr_str (std::get<2> (cs)->get_address ()) << ":" << n;
+          IRExprPtr nv = SymbolicExpr::makeIntegerVariable (nbits, vname.str ());
+          return (Stmt) (RegWriteStmt (eax, nv));
+        }
       }
     }
 
@@ -400,16 +431,17 @@ struct HelperVisitor : public boost::static_visitor<boost::optional<Stmt>> {
 }
 
 namespace pharos {
-IR rewrite_imported_calls (const DescriptorSet& ds, IR &ir, const ImportRewriteSet& funcs) {
+IR rewrite_imported_calls (IR &ir, const ImportRewriteSet& funcs) {
   int n = 0;
 
+  auto ds = ir.get_ds ();
   IRCFG cfg = ir.get_cfg ();
   auto ir_map = boost::get(boost::vertex_ir_t(), cfg);
 
   BGL_FORALL_VERTICES (v, cfg, IRCFG) {
     auto stmts = *ir_map [v];
     StmtsPtr newstmts (new Stmts ());
-    HelperVisitor vis (ds, ir, funcs, n);
+    HelperVisitor vis (*ds, ir, funcs, n);
     // Visit each stmt backwards.  If we see a call to a matching
     // callsite, we ignore any stmt until we see the InsnStmt which
     // marks the beginning of that instruction.  This is used to
@@ -435,7 +467,7 @@ void WPPathAnalyzer::setup_path_problem(rose_addr_t source, rose_addr_t target) 
   using namespace ir;
 
   IR ir = get_inlined_cfg (CG::get_cg (ds), source, target);
-  ir = rewrite_imported_calls (ds, ir, imports);
+  ir = rewrite_imported_calls (ir, imports);
   ir = init_stackpointer (ir);
   ir = rm_undefined (ir);
   ir = add_datablocks (ir);
@@ -458,7 +490,7 @@ std::ostream & WPPathAnalyzer::output_problem(std::ostream & stream) const
          << *solver.z3Solver()
          << ";; --- Z3 End\n"
          << "(check-sat)\n"
-         << "(get_model)" << std::endl;
+         << "(get-model)" << std::endl;
   return stream;
 }
 

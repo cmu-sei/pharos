@@ -470,7 +470,8 @@ AddrSet get_hinky_successors(SgAsmBlock *bb, SgAsmX86Instruction* insn, bool las
     }
   }
   else {
-    for (auto succ : insn->getSuccessors(&complete)) {
+    auto succesors = insn->getSuccessors(complete);
+    for (auto succ : succesors.values()) {
       result.insert(succ);
     }
   }

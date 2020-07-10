@@ -13,6 +13,7 @@
 #include "vcall.hpp"
 #include "oosolver.hpp"
 #include "masm.hpp"
+#include "known_hashes.hpp"
 
 namespace pharos {
 
@@ -320,6 +321,25 @@ OOAnalyzer::get_result_classes() {
 // set will eventually be, but it'll probably be managable regardless.  We should investigate
 // the variation some more and expand the list for real use.
 void OOAnalyzer::initialize_known_method_hashes() {
+
+  // We automatically collected a lot of hashes in known_hashes.hpp, and we need to add them
+  // here.
+  for (hashinfo hi : known_hashes) {
+    if (hi.classification.rfind("new", 0) == 0) {
+      GDEBUG << "Adding new method " << hi.demangled_name << " with hash " << hi.hash << LEND;
+      new_hashes.insert(hi.hash);
+    } else if (hi.classification.rfind("del", 0) == 0) {
+      GDEBUG << "Adding delete method " << hi.demangled_name << " with hash " << hi.hash << LEND;
+      delete_hashes.insert (hi.hash);
+    } else if (hi.classification.rfind("purecall", 0) == 0) {
+      GDEBUG << "Adding purecall method " << hi.demangled_name << " with hash " << hi.hash << LEND;
+      purecall_hashes.insert (hi.hash);
+    } else {
+      GFATAL << "Unknown hash clasification " << hi.classification << LEND;
+      exit (EXIT_FAILURE);
+    }
+  }
+
   // MSVC 12
   // operator new()
   new_hashes.insert("F826EF14E44F7C45D21EEE19865CF7B3");
@@ -327,9 +347,9 @@ void OOAnalyzer::initialize_known_method_hashes() {
   new_hashes.insert("272852A8B9C637A71D693D7D8D312ACE");
   // According to Udit Agarwal... (Thanks!)
   // MVSC 15, 17, & 19.
-  new_hashes.insert("BACD68267934497D17B3D6E22A7C8425");
+  // new_hashes.insert("BACD68267934497D17B3D6E22A7C8425");
   // MSVC 15 Lite builds
-  new_hashes.insert("76CECF37598DEFEE4EB5C788775AB032");
+  //new_hashes.insert("76CECF37598DEFEE4EB5C788775AB032");
   // MSVC 17 & 19 Lite builds
   new_hashes.insert("03B27C25F97ACD0EA0EFD996D9EF842C");
 
@@ -346,20 +366,20 @@ void OOAnalyzer::initialize_known_method_hashes() {
   // plt_hashes.insert("89047698F4380796A13F674942384C0D");
 
   // new() hashes from OO examples?
-  new_hashes.insert("9F377A6D9EDE41E4F1B43C475069EE28");
-  new_hashes.insert("443BABE6802D856C2EF32B80CD14B474");
+  //new_hashes.insert("9F377A6D9EDE41E4F1B43C475069EE28");
+  //new_hashes.insert("443BABE6802D856C2EF32B80CD14B474");
 
   // Notepad++5.6.8 ordinary new(), at 0x49FD6E
   new_hashes.insert("356087289F58C87C27410EFEDA931E4D");
   // Notepad++5.6.8 new_nothrow(), at 0x4A2C94
   // void *__cdecl operator new(size_t Size, const struct std::nothrow_t *)
-  new_hashes.insert("CC883629B7DB64E925D711EC971B8FCA");
+  //new_hashes.insert("CC883629B7DB64E925D711EC971B8FCA");
 
   // PIC hashes for delete...
   // This hash was taken from ooex2 and ooex8 test cases.
-  delete_hashes.insert("3D3F9E46688A1687E2AB372921A31394");
+  //delete_hashes.insert("3D3F9E46688A1687E2AB372921A31394");
   // This is an implementation of ??3@YAXPAXI@Z from prtscrpp at 406F9B.
-  delete_hashes.insert("3D01B1E1279476F6FFA9296C4E387579");
+  //delete_hashes.insert("3D01B1E1279476F6FFA9296C4E387579");
 
   // More delete hashes from Alina Weber
   // _ZdlPv : operator delete(void*)
@@ -382,10 +402,13 @@ void OOAnalyzer::initialize_known_method_hashes() {
 
   // PIC hashes for _purecall
   // This hash was taken from 2010/Lite/oo test case.
-  purecall_hashes.insert("0CF963B9B193252F2CDEC4159322921B");
+  //purecall_hashes.insert("0CF963B9B193252F2CDEC4159322921B");
 
   // _purecall from notepad++5.6.8, at 0x4A0FAA
   purecall_hashes.insert("3F464C9D7A17BBBB054583A48EE66661");
+
+  // purecall from cncm.exe at 0x8be3ef
+  purecall_hashes.insert("42E82ED5359E75A84005AE5BB0BF78C4");
 
   // __CxxThrowException@8 from ooex_vs2010/Lite test cases.
   nonreturn_hashes.insert("DD6F67B0A531EF4450EB8990F6FF3849");

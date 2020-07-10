@@ -212,9 +212,30 @@ DescriptorSet::DescriptorSet(const ProgOptVarMap& povm) :
                 : std::vector<std::string>())
 {}
 
+void partition(const ProgOptVarMap & vm)
+{
+  using namespace std::string_literals;
+  if (!vm.count("file")) {
+    OFATAL << "No file to partition" << LEND;
+    exit(EXIT_FAILURE);
+  }
+  auto file = vm["file"].as<std::string>();
+  if (!vm.count("serialize")) {
+    auto filename = boost::filesystem::path{file}.filename().native();
+    auto sername = filename + ".serialized";
+    auto vmcopy = vm;
+    vmcopy.emplace("serialize"s,
+                   boost::program_options::variable_value{boost::any{sername}, false});
+    DescriptorSet ds{vmcopy, {file}, true};
+  } else {
+    DescriptorSet ds{vm, {file}, true};
+  }
+}
 
-DescriptorSet::DescriptorSet(const ProgOptVarMap& povm,
-                             std::vector<std::string> const & specimens)
+DescriptorSet::DescriptorSet(
+  const ProgOptVarMap& povm,
+  std::vector<std::string> const & specimens,
+  bool partition_only)
   : vm(povm), specimen_names(specimens)
 {
   // Instantiate a partitioning engine as requested by the options/configuration.
@@ -250,8 +271,10 @@ DescriptorSet::DescriptorSet(const ProgOptVarMap& povm,
   // And then partition...
   partitioner = create_partitioner(vm, engine, specimen_names);
 
-  // Call communal init
-  init();
+  if (!partition_only) {
+    // Call communal init
+    init();
+  }
 }
 
 

@@ -1,5 +1,8 @@
 set(ALL_TESTS
   args_v1
+  assert_test_v1
+  assert_test_v2
+  assert_test_v3
   bound_loop_with_var
   call_trace_v1
   call_trace_v2
@@ -21,6 +24,9 @@ set(ALL_TESTS
   exclusive_ite
   exclusive_ite_goal_in_else
   explosive_conditions_v1
+  fishyxml_v1
+  fishyxml_v2
+  fishyxml_v3
   func_array
   global_var_v1
   global_var_v2
@@ -52,6 +58,10 @@ set(ALL_TESTS
   nested_loop
   oo_simple
   oo_virtual_func
+  outlaw_v1
+  outlaw_v2
+  outlaw_v3
+  outlaw_v4
   pointer_write
   recurse_v1
   recurse_v2
@@ -74,6 +84,8 @@ set(ALL_TESTS
   switch_v4
   switch_v5
   unbound_loop_with_var
+  unused_params_v1
+  unused_params_v2
   up_and_down_v1
   varargs
   var_values
@@ -155,15 +167,31 @@ mark_as_advanced(PATHTEST_TIMEOUT_SECS)
 
 foreach(test ${ALL_TESTS})
   add_executable(${test}_64 EXCLUDE_FROM_ALL ${test}.cpp)
-    list(APPEND ALL_64BIT_TESTS ${test}_64)
+  target_link_libraries(${test}_64 api_library_64 dummy_library_64)
+  list(APPEND ALL_64BIT_TESTS ${test}_64)
   if (PATHTEST_CROSS32BIT)
     add_executable(${test}_32 EXCLUDE_FROM_ALL ${test}.cpp)
+    target_link_libraries(${test}_32 api_library_32 dummy_library_32)
     list(APPEND ALL_32BIT_TESTS ${test}_32)
     set_target_properties(${test}_32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
   endif()
 endforeach()
 
 add_custom_target(pathanalyzer_tests DEPENDS ${ALL_64BIT_TESTS} ${ALL_32BIT_TESTS})
+
+# API dummy import library
+add_library(dummy_library_64 SHARED dummy.cpp)
+if (PATHTEST_CROSS32BIT)
+  add_library(dummy_library_32 SHARED dummy.cpp)
+  set_target_properties(dummy_library_32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
+endif()
+
+# Real API library
+add_library(api_library_64 STATIC apis.cpp)
+if (PATHTEST_CROSS32BIT)
+  add_library(api_library_32 STATIC apis.cpp)
+  set_target_properties(api_library_32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
+endif()
 
 add_dependencies(built_tests pathanalyzer_tests)
 
@@ -194,7 +222,8 @@ if (PHAROS_RUN_PATHANALYZER_TESTS)
                --smt-file=${test}_spacer_${type}_${bits}.smt --${type}
                --seed=42 ${PHAROS_TEST_OPS} ${test}_${bits})
       set_tests_properties (pathanalyzer_spacer_${test}_${type}_${bits}
-        PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS
+        PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS}
+        ENVIRONMENT "PHAROS_PASS_EXCEPTIONS=1" LABELS
         "pathanalyzer;pathanalyzer_${type};pathanalyzer_spacer;pathanalyzer_spacer_${type}")
     endforeach()
     foreach(test ${WP_PASSING_TESTS})
@@ -203,7 +232,8 @@ if (PHAROS_RUN_PATHANALYZER_TESTS)
                --smt-file=${test}_wp_${type}_${bits}.smt --${type}
                --seed=42 ${PHAROS_TEST_OPS} ${test}_${bits})
       set_tests_properties (pathanalyzer_wp_${test}_${type}_${bits}
-        PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS
+        PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS}
+        ENVIRONMENT "PHAROS_PASS_EXCEPTIONS=1" LABELS
         "pathanalyzer;pathanalyzer_${type};pathanalyzer_wp;pathanalyzer_wp_${type}")
     endforeach()
     foreach(test ${FS_PASSING_TESTS})
@@ -212,8 +242,13 @@ if (PHAROS_RUN_PATHANALYZER_TESTS)
                --smt-file=${test}_fs_${type}_${bits}.smt --${type}
                --seed=42 ${PHAROS_TEST_OPS} ${test}_${bits})
       set_tests_properties (pathanalyzer_fs_${test}_${type}_${bits}
-        PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS} LABELS
+        PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS}
+        ENVIRONMENT "PHAROS_PASS_EXCEPTIONS=1" LABELS
         "pathanalyzer;pathanalyzer_${type};pathanalyzer_fs;pathanalyzer_fs_${type}")
     endforeach()
   endforeach()
 endif()
+
+# Local Variables:
+# mode: cmake
+# End:

@@ -37,18 +37,18 @@ SpacerAnalyzer::SpacerAnalyzer(const DescriptorSet& ds,
 
   // Optionally uncomment this out for slower
   // solving, but more readable output
-  // params.set ("fp.xform.slice", true);
-  // params.set ("fp.xform.inline_eager", true);
-  // params.set ("fp.xform.inline_linear", true);
+  // params.set ("fp.xform.slice", false);
+  // params.set ("fp.xform.inline_eager", false);
+  // params.set ("fp.xform.inline_linear", false);
 
   // Arie suggested the following options may help us
-  // params.set ("fp.spacer.groun_pobs", false);
+  // params.set ("fp.spacer.ground_pobs", false);
   params.set ("fp.spacer.use_euf_gen", true);
 
   fp_->set(params);
 }
 
-std::tuple <std::map <Register, z3::expr>, z3::func_decl, z3::func_decl>
+std::tuple <Z3RegMap, z3::func_decl, z3::func_decl>
 SpacerAnalyzer::encode_cfg(const IR &ir,
                            const z3::expr &z3post_input,
                            const z3::expr &/*_z3post_output*/,
@@ -407,6 +407,12 @@ SpacerAnalyzer::setup_path_problem(rose_addr_t srcaddr, rose_addr_t tgtaddr)
                  // Add data blocks
                  ir = add_datablocks (ir);
 
+                 // In general we don't want to rewrite calls using rewrite_imported_calls.
+                 // But it was easier for Ed to also put the logic for rewriting calls to
+                 // __assert_symbolic_dummy_import into AssertStmt in that function.  So we
+                 // call that here, but only rewrite __assert_symbolic_dummy_import.
+                 ir = rewrite_imported_calls (ir, ImportRewriteSet {ImportCall{"bogus.so", "__assert_symbolic_dummy_import"}});
+
                  // Add reached variables
                  std::set<IRCFGVertex> vertices;
                  std::tie (ir, std::ignore, vertices) = add_reached_postcondition (
@@ -437,14 +443,14 @@ SpacerAnalyzer::setup_path_problem(rose_addr_t srcaddr, rose_addr_t tgtaddr)
   // program.  In this first implementation we will always use the
   // same type, but later we might omit inputs that are not relevant
   // at that location
-  std::map<Register, z3::expr> z3inputnodes;
+  Z3RegMap z3inputnodes;
   boost::copy (regs |
                boost::adaptors::transformed([this] (const Register &x) {
                  return std::make_pair (x, z3_.treenode_to_z3(x)); }),
                std::inserter (z3inputnodes, z3inputnodes.end ()));
 
   // We need an extra mapping so that we can represent input and output states
-  std::map<Register, z3::expr> z3outputnodes;
+  Z3RegMap z3outputnodes;
   boost::copy (z3inputnodes |
                boost::adaptors::transformed([] (const auto &x) {
                  Register r = x.first;
@@ -1023,6 +1029,18 @@ SpacerAnalyzer::subst_stmt(const Stmt& s, const Register& mem, TupleState &state
     auto operator()(UNUSED const SpecialStmt &ss) {
       // Return false? It's not clear what the best thing to do here is.
       return state;
+    }
+    auto operator()(const AssertStmt &as) {
+      auto & interregstate = std::get<0> (state);
+      auto & intraregstate = std::get<1> (state);
+      auto & fresh_vars = std::get<2> (state);
+      auto & constraints = std::get<3> (state);
+
+      auto e = static_cast<IRExprPtr> (as);
+      auto z3_e = z3_.to_bool (z3_.treenode_to_z3 (e));
+      auto new_constraints = z3_e && constraints;
+
+      return std::make_tuple (interregstate, intraregstate, fresh_vars, new_constraints);
     }
     auto operator()(UNUSED const CommentStmt &cs) {
       return state;

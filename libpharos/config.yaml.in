@@ -3,7 +3,7 @@ pharos:
   partitioner: "pharos"
   partitioner_semantics: true   # affects partioner version 2
   library:
-  prolog_dir: @XSB_INSTALL_DIR@
+  prolog_dir: @SWI_INSTALL_DIR@
   prolog_rules_dir:
   apidb: [ apidb/pharos-api-additions.json, apidb/pharos-apidb.sqlite ]
   timeout: 0.0
@@ -18,9 +18,16 @@ pharos:
   maximum_nodes_per_condition: 500
   typedb: [ typedb/types.json ]
   concurrency_level: 1
+  allow_non_pe: true
 
 # application specific overrides, based on the executable name
 application:
+  ooanalyzer:
+    prolog-loglevel:
+    prolog_stack_limit: 100000000000
+    prolog_table_space: 100000000000
+    pharos:
+      allow_non_pe: false
   apianalyzer:
     signature_file: "apianalyzer/sig.json"
   fn2yara:

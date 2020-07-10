@@ -9,10 +9,13 @@
 #include <utility>
 #include <list>
 #include <functional>
+#include <type_traits>
 
 #if __cplusplus >= 201402L
 # include <shared_mutex>
 #endif
+
+#include <boost/range/iterator_range_core.hpp>
 
 namespace pharos {
 
@@ -129,6 +132,12 @@ auto range_size(T & r) {
   return std::distance(r.begin(), r.end());
 }
 
+template <typename T, typename = void_t<>, typename = void_t<>>
+struct has_begin_end : std::false_type {};
+template <typename T>
+struct has_begin_end<T, void_t<decltype(std::declval<T&>().begin())>,
+                     void_t<decltype(std::declval<T&>().end())>> : std::true_type {};
+
 template <typename, typename = void_t<>>
 struct is_lockable : std::false_type {};
 template <typename T>
@@ -199,37 +208,62 @@ using read_guard = detail::shared_lock<M>;
 template <typename M>
 using write_guard = std::lock_guard<M>;
 
-template <typename T, typename M, typename L>
-class locked_range {
- private:
-  T & range;
+// Although the non-specialized version, this is the locked_range that is suitable for Sawyer
+// containers that don't have begin and end methods
+template <typename T, typename M, typename L, typename = void>
+class locked_range
+{
+  using range_t = decltype(std::declval<T>().values());
+  T const & collection;
+  range_t range;
   M & mutex;
  public:
-  using iterator = decltype(std::declval<T>().begin());
-  using const_iterator = decltype(std::declval<const T>().begin());
+  using iterator = typename range_t::iterator;
+  using const_iterator = typename range_t::const_iterator;
 
-  locked_range(T & t, M & m) : range(t), mutex(m) {
+  locked_range(T const & t, M & m) : collection{t}, range{t.values()}, mutex{m} {
     L::lock(mutex);
   }
   ~locked_range() {
     L::unlock(mutex);
   }
-  auto begin() { return range.begin(); }
-  auto begin() const { return const_cast<T const &>(range).begin(); }
-  auto end() { return range.end(); }
-  auto end() const { return const_cast<T const &>(range).end(); }
-  bool empty() const { return begin() == end(); }
-  auto size() const { return detail::range_size(range); }
+  auto begin() const { return range.begin(); }
+  auto end() const { return range.end(); }
+  bool empty() const { return collection.isEmpty(); }
+  auto size() const { return collection.size(); }
 };
 
+// The specialized version works for standard containers that have a begin/end
+template <typename T, typename M, typename L>
+class locked_range<T, M, L, std::enable_if_t<detail::has_begin_end<T>::value>>
+{
+  T const & collection;
+  M & mutex;
+ public:
+  using iterator = decltype(std::declval<T>().begin());
+  using const_iterator = decltype(std::declval<const T>().begin());
+
+  locked_range(T const & t, M & m) : collection(t), mutex(m) {
+    L::lock(mutex);
+  }
+  ~locked_range() {
+    L::unlock(mutex);
+  }
+  auto begin() const { return const_cast<T const &>(collection).begin(); }
+  auto end() const { return const_cast<T const &>(collection).end(); }
+  bool empty() const { return begin() == end(); }
+  auto size() const { return detail::range_size(collection); }
+};
+
+
 template <typename T, typename M>
-auto make_write_locked_range(T & t, M & m) {
-  return locked_range<T, M, detail::WriteLock>(t, m);
+auto make_write_locked_range(T && t, M & m) {
+  return locked_range<T, M, detail::WriteLock>(std::forward<T>(t), m);
 }
 
 template <typename T, typename M>
-auto make_read_locked_range(T & t, M & m) {
-  return locked_range<T, M, detail::ReadLock>(t, m);
+auto make_read_locked_range(T && t, M & m) {
+  return locked_range<T, M, detail::ReadLock>(std::forward<T>(t), m);
 }
 
 using detail::shared_mutex;

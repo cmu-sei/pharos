@@ -9,7 +9,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/sig.json)
     PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 endif()
 
-#add_executable(apigraphgen apigraphgen.cpp)
+add_executable(apigraphgen apigraphgen.cpp)
 
 set(APIANALYZER_TEST_DIR "${CMAKE_SOURCE_DIR}/tests/ApiAnalyzer")
 

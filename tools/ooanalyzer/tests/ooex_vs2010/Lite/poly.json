@@ -7,10 +7,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "vftptr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
                     "type": "vftptr",
                     "usages": [
@@ -23,12 +23,12 @@
                 },
                 "0x10": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x10",
                     "offset": "0x10",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x40271c",
                         "0x402790",
@@ -40,12 +40,12 @@
                 },
                 "0x14": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x14",
                     "offset": "0x14",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x40279e",
                         "0x40299d"
@@ -53,12 +53,12 @@
                 },
                 "0x18": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x18",
                     "offset": "0x18",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x40277b",
                         "0x4027b5"
@@ -66,12 +66,12 @@
                 },
                 "0x1c": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x1c",
                     "offset": "0x1c",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x402781",
                         "0x4027a6"
@@ -79,12 +79,12 @@
                 },
                 "0x20": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x20",
                     "offset": "0x20",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x40272f",
                         "0x40277e",
@@ -104,12 +104,12 @@
                 },
                 "0x24": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x24",
                     "offset": "0x24",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x402784",
                         "0x4027a3",
@@ -120,12 +120,12 @@
                 },
                 "0x28": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x28",
                     "offset": "0x28",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x402787",
                         "0x4027ba"
@@ -133,12 +133,12 @@
                 },
                 "0x2c": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x2c",
                     "offset": "0x2c",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x402793",
                         "0x4027ab"
@@ -146,12 +146,12 @@
                 },
                 "0x30": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x30",
                     "offset": "0x30",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x402734",
                         "0x40278a",
@@ -167,12 +167,12 @@
                 },
                 "0x34": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x34",
                     "offset": "0x34",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x402796",
                         "0x4027a8",
@@ -182,12 +182,12 @@
                 },
                 "0x3c": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x3c",
                     "offset": "0x3c",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x40272a",
                         "0x402b5b"
@@ -195,12 +195,12 @@
                 },
                 "0x40": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x40",
                     "offset": "0x40",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x402726",
                         "0x402b6a"
@@ -208,12 +208,12 @@
                 },
                 "0x44": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x44",
                     "offset": "0x44",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4029b7",
                         "0x402c35",
@@ -231,12 +231,12 @@
                 },
                 "0x48": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x48",
                     "offset": "0x48",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x40271f",
                         "0x402b54",
@@ -247,12 +247,12 @@
                 },
                 "0x49": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x49",
                     "offset": "0x49",
                     "parent": false,
+                    "size": 1,
                     "struc": "",
-                    "type": "byte",
+                    "type": "",
                     "usages": [
                         "0x402987",
                         "0x403143",
@@ -264,12 +264,12 @@
                 },
                 "0x4c": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x4c",
                     "offset": "0x4c",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4029bb",
                         "0x403075",
@@ -283,12 +283,12 @@
                 },
                 "0x50": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x50",
                     "offset": "0x50",
                     "parent": false,
+                    "size": 1,
                     "struc": "",
-                    "type": "byte",
+                    "type": "",
                     "usages": [
                         "0x402984",
                         "0x403519",
@@ -297,12 +297,12 @@
                 },
                 "0x54": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x54",
                     "offset": "0x54",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4029af",
                         "0x402ac5",
@@ -336,12 +336,12 @@
                 },
                 "0x8": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x8",
                     "offset": "0x8",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x40278d",
                         "0x4027b0"
@@ -349,12 +349,12 @@
                 },
                 "0xc": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0xc",
                     "offset": "0xc",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x40279b",
                         "0x4027a1"
@@ -615,10 +615,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "vftptr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
                     "type": "vftptr",
                     "usages": [
@@ -632,12 +632,12 @@
                 },
                 "0x8": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x8",
                     "offset": "0x8",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4023ef",
                         "0x402401",
@@ -692,10 +692,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "vftptr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
                     "type": "vftptr",
                     "usages": [
@@ -708,12 +708,12 @@
                 },
                 "0x20": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x20",
                     "offset": "0x20",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4024e4",
                         "0x40251f",
@@ -722,12 +722,12 @@
                 },
                 "0x24": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x24",
                     "offset": "0x24",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4025e8",
                         "0x402637"
@@ -735,12 +735,12 @@
                 },
                 "0x30": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x30",
                     "offset": "0x30",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4024df",
                         "0x402526",
@@ -749,12 +749,12 @@
                 },
                 "0x34": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x34",
                     "offset": "0x34",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4025ef",
                         "0x402623"
@@ -762,12 +762,12 @@
                 },
                 "0x38": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x38",
                     "offset": "0x38",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x402480",
                         "0x402965"
@@ -775,10 +775,10 @@
                 },
                 "0x4": {
                     "base": false,
-                    "count": "1",
                     "name": "cls_0x403e49_0x4",
                     "offset": "0x4",
                     "parent": false,
+                    "size": 4,
                     "struc": "cls_0x403e49",
                     "type": "struc",
                     "usages": [
@@ -1039,10 +1039,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "vftptr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
                     "type": "vftptr",
                     "usages": [
@@ -1053,12 +1053,12 @@
                 },
                 "0x10": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x10",
                     "offset": "0x10",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x402272",
                         "0x40227e"
@@ -1066,36 +1066,36 @@
                 },
                 "0x14": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x14",
                     "offset": "0x14",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x40226b"
                     ]
                 },
                 "0x4": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x4",
                     "offset": "0x4",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x402245"
                     ]
                 },
                 "0x8": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x8",
                     "offset": "0x8",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x402258",
                         "0x40225d",
@@ -1271,10 +1271,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": ".?AVShape@@_0x0",
                     "offset": "0x0",
                     "parent": true,
+                    "size": 4,
                     "struc": ".?AVShape@@",
                     "type": "struc",
                     "usages": [
@@ -1322,10 +1322,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": ".?AVShape@@_0x0",
                     "offset": "0x0",
                     "parent": true,
+                    "size": 4,
                     "struc": ".?AVShape@@",
                     "type": "struc",
                     "usages": [
@@ -1373,10 +1373,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "vftptr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
                     "type": "vftptr",
                     "usages": [
@@ -1408,10 +1408,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": ".?AVShape@@_0x0",
                     "offset": "0x0",
                     "parent": true,
+                    "size": 4,
                     "struc": ".?AVShape@@",
                     "type": "struc",
                     "usages": [
@@ -1459,10 +1459,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "vftptr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
                     "type": "vftptr",
                     "usages": [
@@ -1473,36 +1473,36 @@
                 },
                 "0x10": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x10",
                     "offset": "0x10",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x403ad0"
                     ]
                 },
                 "0x14": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x14",
                     "offset": "0x14",
                     "parent": false,
+                    "size": 1,
                     "struc": "",
-                    "type": "byte",
+                    "type": "",
                     "usages": [
                         "0x403ab7"
                     ]
                 },
                 "0x18": {
                     "base": true,
-                    "count": "1",
                     "name": "mbr_0x18",
                     "offset": "0x18",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x403aba",
                         "0x403ad8",
@@ -1512,48 +1512,48 @@
                 },
                 "0x1c": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x1c",
                     "offset": "0x1c",
                     "parent": false,
+                    "size": 1,
                     "struc": "",
-                    "type": "byte",
+                    "type": "",
                     "usages": [
                         "0x403ada"
                     ]
                 },
                 "0x4": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x4",
                     "offset": "0x4",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x403abd"
                     ]
                 },
                 "0x8": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x8",
                     "offset": "0x8",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x403aca"
                     ]
                 },
                 "0xc": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0xc",
                     "offset": "0xc",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x403acd"
                     ]
@@ -1606,10 +1606,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": ".?AVexception@std@@_0x0",
                     "offset": "0x0",
                     "parent": true,
+                    "size": 9,
                     "struc": ".?AVexception@std@@",
                     "type": "struc",
                     "usages": [
@@ -1666,10 +1666,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": ".?AVexception@std@@_0x0",
                     "offset": "0x0",
                     "parent": true,
+                    "size": 9,
                     "struc": ".?AVexception@std@@",
                     "type": "struc",
                     "usages": [
@@ -1709,10 +1709,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": ".?AVexception@std@@_0x0",
                     "offset": "0x0",
                     "parent": true,
+                    "size": 9,
                     "struc": ".?AVexception@std@@",
                     "type": "struc",
                     "usages": [
@@ -1769,10 +1769,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "vftptr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
                     "type": "vftptr",
                     "usages": [
@@ -1859,10 +1859,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "vftptr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
                     "type": "vftptr",
                     "usages": [
@@ -1875,12 +1875,12 @@
                 },
                 "0x4": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x4",
                     "offset": "0x4",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x403f59",
                         "0x403f64",
@@ -1894,12 +1894,12 @@
                 },
                 "0x8": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x8",
                     "offset": "0x8",
                     "parent": false,
+                    "size": 1,
                     "struc": "",
-                    "type": "byte",
+                    "type": "",
                     "usages": [
                         "0x403f5c",
                         "0x403fa7",
@@ -2007,10 +2007,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "vftptr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
                     "type": "vftptr",
                     "usages": [
@@ -2094,10 +2094,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": ".?AVsystem_error@std@@_0x0",
                     "offset": "0x0",
                     "parent": true,
+                    "size": 20,
                     "struc": ".?AVsystem_error@std@@",
                     "type": "struc",
                     "usages": [
@@ -2153,10 +2153,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "vftptr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
                     "type": "vftptr",
                     "usages": [
@@ -2205,10 +2205,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": ".?AVlogic_error@std@@_0x0",
                     "offset": "0x0",
                     "parent": true,
+                    "size": 9,
                     "struc": ".?AVlogic_error@std@@",
                     "type": "struc",
                     "usages": [
@@ -2240,10 +2240,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": ".?AVexception@std@@_0x0",
                     "offset": "0x0",
                     "parent": true,
+                    "size": 9,
                     "struc": ".?AVexception@std@@",
                     "type": "struc",
                     "usages": [
@@ -2291,10 +2291,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": ".?AVlogic_error@std@@_0x0",
                     "offset": "0x0",
                     "parent": true,
+                    "size": 9,
                     "struc": ".?AVlogic_error@std@@",
                     "type": "struc",
                     "usages": [
@@ -2326,10 +2326,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": ".?AVexception@std@@_0x0",
                     "offset": "0x0",
                     "parent": true,
+                    "size": 9,
                     "struc": ".?AVexception@std@@",
                     "type": "struc",
                     "usages": [
@@ -2385,10 +2385,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": ".?AVruntime_error@std@@_0x0",
                     "offset": "0x0",
                     "parent": true,
+                    "size": 9,
                     "struc": ".?AVruntime_error@std@@",
                     "type": "struc",
                     "usages": [
@@ -2398,12 +2398,12 @@
                 },
                 "0x10": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x10",
                     "offset": "0x10",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4012ee",
                         "0x401470"
@@ -2411,12 +2411,12 @@
                 },
                 "0xc": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0xc",
                     "offset": "0xc",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4012eb",
                         "0x401469"
@@ -2470,10 +2470,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "vftptr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
                     "type": "vftptr",
                     "usages": [
@@ -2521,24 +2521,24 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4010cb"
                     ]
                 },
                 "0x4": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x4",
                     "offset": "0x4",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4010cd"
                     ]
@@ -2562,12 +2562,12 @@
             "members": {
                 "0x10": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x10",
                     "offset": "0x10",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x40137c",
                         "0x4023ad"
@@ -2575,12 +2575,12 @@
                 },
                 "0x14": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x14",
                     "offset": "0x14",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x401140",
                         "0x4023b0"
@@ -2588,36 +2588,36 @@
                 },
                 "0x18": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x18",
                     "offset": "0x18",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4023b7"
                     ]
                 },
                 "0x1c": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x1c",
                     "offset": "0x1c",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4023be"
                     ]
                 },
                 "0x20": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x20",
                     "offset": "0x20",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x401150",
                         "0x401163",
@@ -2627,12 +2627,12 @@
                 },
                 "0x24": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x24",
                     "offset": "0x24",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x401153",
                         "0x401166",
@@ -2642,36 +2642,36 @@
                 },
                 "0x28": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x28",
                     "offset": "0x28",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4023c7"
                     ]
                 },
                 "0x2c": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x2c",
                     "offset": "0x2c",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4023ca"
                     ]
                 },
                 "0x30": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x30",
                     "offset": "0x30",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4023a7",
                         "0x4023ea"
@@ -2679,12 +2679,12 @@
                 },
                 "0x38": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x38",
                     "offset": "0x38",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x401190",
                         "0x401513",
@@ -2694,24 +2694,24 @@
                 },
                 "0x3c": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x3c",
                     "offset": "0x3c",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x402ed5"
                     ]
                 },
                 "0x40": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x40",
                     "offset": "0x40",
                     "parent": false,
+                    "size": 1,
                     "struc": "",
-                    "type": "byte",
+                    "type": "",
                     "usages": [
                         "0x401270",
                         "0x402ee9"
@@ -2719,24 +2719,24 @@
                 },
                 "0x8": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x8",
                     "offset": "0x8",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4023aa"
                     ]
                 },
                 "0xc": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0xc",
                     "offset": "0xc",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x401110",
                         "0x401379",
@@ -2832,12 +2832,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4011a0"
                     ]
@@ -2861,24 +2861,24 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x401560"
                     ]
                 },
                 "0x24": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x24",
                     "offset": "0x24",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4011b0",
                         "0x4011f5"
@@ -2886,12 +2886,12 @@
                 },
                 "0x34": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x34",
                     "offset": "0x34",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4011b8",
                         "0x4011f0"
@@ -2930,12 +2930,12 @@
             "members": {
                 "0x3c": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x3c",
                     "offset": "0x3c",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4011e0"
                     ]
@@ -2959,12 +2959,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x401209"
                     ]
@@ -2988,12 +2988,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x401286"
                     ]
@@ -3017,10 +3017,10 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "cls_0x401200_0x0",
                     "offset": "0x0",
                     "parent": true,
+                    "size": 4,
                     "struc": "cls_0x401200",
                     "type": "struc",
                     "usages": [
@@ -3030,12 +3030,12 @@
                 },
                 "0x4": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x4",
                     "offset": "0x4",
                     "parent": false,
+                    "size": 1,
                     "struc": "",
-                    "type": "byte",
+                    "type": "",
                     "usages": [
                         "0x4011d2",
                         "0x4016f2"
@@ -3081,12 +3081,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x401634",
                         "0x401661",
@@ -3128,24 +3128,24 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x401baf"
                     ]
                 },
                 "0x4": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x4",
                     "offset": "0x4",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x401ba4"
                     ]
@@ -3169,12 +3169,12 @@
             "members": {
                 "0x4": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x4",
                     "offset": "0x4",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x401c32"
                     ]
@@ -3198,12 +3198,12 @@
             "members": {
                 "0x8": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x8",
                     "offset": "0x8",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x401c36"
                     ]
@@ -3227,12 +3227,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x401cef",
                         "0x401cff",
@@ -3257,12 +3257,12 @@
                 },
                 "0x10": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x10",
                     "offset": "0x10",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x401d05",
                         "0x401d22",
@@ -3284,12 +3284,12 @@
                 },
                 "0x14": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x14",
                     "offset": "0x14",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x401ce7",
                         "0x401d45",
@@ -3401,12 +3401,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4020d0",
                         "0x4020df",
@@ -3433,12 +3433,12 @@
             "members": {
                 "0x4": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x4",
                     "offset": "0x4",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x402111",
                         "0x40211a"
@@ -3463,12 +3463,12 @@
             "members": {
                 "0x4": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x4",
                     "offset": "0x4",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x40213c",
                         "0x402149",
@@ -3494,12 +3494,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x402176"
                     ]
@@ -3523,12 +3523,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x402188"
                     ]
@@ -3552,12 +3552,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4021a5"
                     ]
@@ -3581,12 +3581,12 @@
             "members": {
                 "0x30": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x30",
                     "offset": "0x30",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4021e2"
                     ]
@@ -3610,12 +3610,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x402468",
                         "0x402475"
@@ -3640,34 +3640,34 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "cls_0x403841_0x0",
                     "offset": "0x0",
                     "parent": true,
+                    "size": 4,
                     "struc": "cls_0x403841",
                     "type": "struc",
                     "usages": []
                 },
                 "0x10": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x10",
                     "offset": "0x10",
                     "parent": false,
+                    "size": 1,
                     "struc": "",
-                    "type": "byte",
+                    "type": "",
                     "usages": [
                         "0x4027e2"
                     ]
                 },
                 "0x14": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x14",
                     "offset": "0x14",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4027e5",
                         "0x402868",
@@ -3676,24 +3676,24 @@
                 },
                 "0x18": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x18",
                     "offset": "0x18",
                     "parent": false,
+                    "size": 1,
                     "struc": "",
-                    "type": "byte",
+                    "type": "",
                     "usages": [
                         "0x4027e8"
                     ]
                 },
                 "0x1c": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x1c",
                     "offset": "0x1c",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4027eb",
                         "0x402855",
@@ -3702,24 +3702,24 @@
                 },
                 "0x20": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x20",
                     "offset": "0x20",
                     "parent": false,
+                    "size": 1,
                     "struc": "",
-                    "type": "byte",
+                    "type": "",
                     "usages": [
                         "0x4027ee"
                     ]
                 },
                 "0x4": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x4",
                     "offset": "0x4",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4027d9",
                         "0x40288c",
@@ -3728,24 +3728,24 @@
                 },
                 "0x8": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x8",
                     "offset": "0x8",
                     "parent": false,
+                    "size": 1,
                     "struc": "",
-                    "type": "byte",
+                    "type": "",
                     "usages": [
                         "0x4027dc"
                     ]
                 },
                 "0xc": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0xc",
                     "offset": "0xc",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x4027df",
                         "0x40287a",
@@ -3794,12 +3794,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x40384c",
                         "0x403869"
@@ -3831,12 +3831,12 @@
             "members": {
                 "0x4": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x4",
                     "offset": "0x4",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x403880"
                     ]
@@ -3860,12 +3860,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x403a0d",
                         "0x403a22",
@@ -3891,12 +3891,12 @@
             "members": {
                 "0x28": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x28",
                     "offset": "0x28",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x403c10",
                         "0x403c29"
@@ -3904,12 +3904,12 @@
                 },
                 "0x2c": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x2c",
                     "offset": "0x2c",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x403be5",
                         "0x403c26",
@@ -3942,12 +3942,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x403e56"
                     ]
@@ -3971,12 +3971,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x403e68",
                         "0x403e6f"
@@ -4001,12 +4001,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x403e7a"
                     ]
@@ -4030,12 +4030,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x403e83"
                     ]
@@ -4059,12 +4059,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x0",
                     "offset": "0x0",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x406ba2",
                         "0x406baa",
@@ -4074,12 +4074,12 @@
                 },
                 "0x4": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x4",
                     "offset": "0x4",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x406ba7",
                         "0x406bc6",
@@ -4089,12 +4089,12 @@
                 },
                 "0x8": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0x8",
                     "offset": "0x8",
                     "parent": false,
+                    "size": 4,
                     "struc": "",
-                    "type": "dword",
+                    "type": "",
                     "usages": [
                         "0x406b9c",
                         "0x406bd1",
@@ -4103,12 +4103,12 @@
                 },
                 "0xc": {
                     "base": false,
-                    "count": "1",
                     "name": "mbr_0xc",
                     "offset": "0xc",
                     "parent": false,
+                    "size": 1,
                     "struc": "",
-                    "type": "byte",
+                    "type": "",
                     "usages": [
                         "0x406b8f",
                         "0x406bf4"
@@ -4130,5 +4130,5 @@
         }
     },
     "vcalls": {},
-    "version": "2.0.1"
+    "version": "2.1.0"
 }

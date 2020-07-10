@@ -95,8 +95,8 @@ void ImportDescriptor::print(std::ostream &o) const {
     << function_descriptor.debug_deltas()
     << " callers=[" << std::hex;
   read_guard<decltype(mutex)> guard{mutex};
-  for (CallTargetSet::iterator cit = callers.begin(); cit != callers.end(); cit++) {
-    o << str(boost::format(" 0x%08X") % *cit);
+  for (auto & c : callers.values()) {
+    o << str(boost::format(" 0x%08X") % c);
   }
   o << " ]" << std::dec;
 }

@@ -40,8 +40,8 @@ public class Member {
   private String offset;
 
   @Expose
-  @SerializedName("count")
-  private String count;
+  @SerializedName("size")
+  private String size;
 
   public Optional<String> getStruc() {
     if (struc == null) return Optional.empty();
@@ -71,14 +71,14 @@ public class Member {
     return Integer.decode (offset);
   }
 
-  public Integer getCount() {
-    return Integer.decode (count);
+  public Integer getSize() {
+    return Integer.decode (size);
   }
 
   @Override
   public String toString() {
     return "[name=" + name + ", type=" + type + ", struc=" + struc
-      + ", parent=" + parent + ", offset=" + offset + ", count="
-      + count + "]";
+      + ", parent=" + parent + ", offset=" + offset + ", size="
+      + size + "]";
   }
 }

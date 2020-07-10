@@ -330,8 +330,8 @@ void FunctionDescriptor::print(std::ostream &o) const {
     o << " " << cc->get_name();
   }
   o << " callers=[";
-  for (CallTargetSet::iterator cit = callers.begin(); cit != callers.end(); cit++) {
-    o << str(boost::format(" 0x%08X") % *cit);
+  for (auto & c : callers.values()) {
+    o << str(boost::format(" 0x%08X") % c);
   }
   o << " ]";
 }
@@ -393,7 +393,7 @@ void FunctionDescriptor::update_target_address() {
 
   // Get the successors.  getSuccessors is apparently incorrectly(?) non-const... :-(
   bool ignored = false;
-  AddrSet successors = insn->getSuccessors(&ignored);
+  auto successors = insn->getSuccessors(ignored);
 
   // Because there's some difficulties surrounding the interpretation of imports, ROSE didn't
   // create control flow edges for the jumps to the dereferences of the import table.  Assuming
@@ -437,7 +437,7 @@ void FunctionDescriptor::update_target_address() {
   if (successors.size() != 1) return;
 
   // Set the target address to the destination of the jump instruction.
-  target_address = *(successors.begin());
+  target_address = successors.least();
 
   SDEBUG << "Function " << _address_string() << " is a thunk that jumps to "
          << addr_str(target_address) << "." << LEND;
@@ -579,7 +579,7 @@ void FunctionDescriptor::analyze() {
 
 void FunctionDescriptor::validate(std::ostream &o) const {
   read_guard<decltype(mutex)> guard{mutex};
-  if (callers.empty())
+  if (callers.isEmpty())
     o << "No callers for function " << _address_string() << LEND;
 }
 

@@ -82,13 +82,11 @@ Software subject to its own license:
 
    http://rosecompiler.org/ROSE_HTML_Reference/group__license.html
 
-2. XSB (http://xsb.sourceforge.net/)
+2. SWI-Prolog (https://swi-prolog.org/)
 
-   Copyright (C) The Research Foundation of SUNY, 1986, 1993-2013
+   Copyright (c) 2008-2020, University of Amsterdam, VU University Amsterdam
 
-   Copyright (C) ECRC, Germany, 1990
-
-   https://sourceforge.net/p/xsb/src/HEAD/tree/trunk/XSB/LICENSE
+   https://github.com/SWI-Prolog/swipl-devel/blob/master/LICENSE
 
 3. Z3 (https://github.com/Z3Prover/z3)
 

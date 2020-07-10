@@ -1,0 +1,11 @@
+:- dynamic match/2.
+:- table fullmatch/2.
+
+fullmatch(A, B) :- match(A, B), match(B, A).
+
+test_foreign(A, B) :- pharos:add_three(A, B).
+test_foreign_two(A, B) :- pharos:add_five(A, B).
+
+numbers([H|T], X) :- numbers(H,Hn), numbers(T, Tn), !, basics:append(Hn, Tn, X).
+numbers(X, [X]) :- number(X).
+numbers(_, []).

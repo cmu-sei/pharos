@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "config.hpp"
 #include <boost/filesystem.hpp>
@@ -183,6 +183,41 @@ ConfigNode::update_map(
   if (!n) {
     filemap_[item] = src;
   }
+}
+
+Config
+Config::include(const std::string &option) {
+  using namespace std::string_literals;
+  auto loc = option.find_first_of("=[{\""s);
+  if (loc == std::string::npos) {
+    throw std::runtime_error("No assignment in option string");
+  }
+  if (option[loc] != '=' || loc == 0) {
+    throw std::runtime_error("Illegal option key");
+  }
+
+  auto key = option.substr(0, loc);
+  std::istringstream is{key};
+  std::string item;
+  auto map = YAML::Node{YAML::NodeType::Map};
+  auto current = map["application"] = YAML::Node{YAML::NodeType::Map};
+  current.reset(current[appname] = YAML::Node{YAML::NodeType::Map});
+  while (std::getline(is, item, '.') && is.good()) {
+    current.reset(current[item] = YAML::Node{YAML::NodeType::Map});
+  }
+  if (item.empty()) {
+    throw std::runtime_error("Illegal option key");
+  }
+  try {
+    auto value = YAML::Load(option.substr(loc + 1));
+    current[item] = value;
+  } catch (YAML::Exception const &) {
+    throw std::runtime_error("Illegal option value");
+  }
+  YAML::Node nm = merge_nodes(*this, map);
+  Config r = new_node(nm);
+  r.update_map("<command line>", r);
+  return r;
 }
 
 Config

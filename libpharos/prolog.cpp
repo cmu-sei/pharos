@@ -25,7 +25,7 @@ Session::Session(const ProgOptVarMap& vm)
     }
   }
   session = impl::Session::get_session(absolute(prolog_dir).native());
-  default_rule_dir = libdir / "prolog";
+  auto default_rule_dir = libdir / "prolog";
   auto rdir = vm.config().path_get("pharos.prolog_rules_dir");
   if (rdir && ! rdir.Scalar().empty()) {
     default_rule_dir = rdir.Scalar();
@@ -43,34 +43,23 @@ Session::Session(const ProgOptVarMap& vm)
 
   register_predicate("log", 2, prolog_log, "pharos");
   register_predicate("logln", 2, prolog_logln, "pharos");
+  session->add_fact("file_search_path", "pharos", default_rule_dir.native());
 }
 
-bool Session::consult(const std::string & name)
+void Session::consult(const std::string & name)
 {
   boost::filesystem::path path = name;
   if (!path.has_root_path()) {
-    path = default_rule_dir;
-    path /= name;
-  }
-  const auto libdir = path.parent_path().native();
-  const auto pathfact = functor("library_directory", libdir);
-  try {
-    session->add_fact(pathfact);
+    session->consult("pharos", path.native());
+  } else {
     session->consult(path.native());
-    session->command("retract", pathfact);
-  } catch (const FileNotFound &) {
-    session->command("retract", pathfact);
-    return false;
   }
-  return true;
 }
 
-int Session::prolog_log_base(bool newline)
+bool Session::prolog_log_base(bool newline, Args args)
 {
-  using pharos::prolog::impl::arg;
-
   try {
-    std::string imp = arg<std::string>(0);
+    std::string imp = args.as<std::string>(0);
     auto level = importance_map.find(to_lower(imp));
     if (level == importance_map.end()) {
       return false;
@@ -78,11 +67,11 @@ int Session::prolog_log_base(bool newline)
     if (plog[level->second]) {
       try {
         // Assume a string argument
-        char const * message = arg<char const *>(1);
+        char const * message = args.as<char const *>(1);
         plog[level->second] << message;
       } catch (TypeMismatch &) {
         // Handle non-string arguments
-        std::string message = arg<void>(1);
+        std::string message = args.to_string(1);
         plog[level->second] << message;
       }
       if (newline) {

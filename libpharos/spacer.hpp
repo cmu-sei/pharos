@@ -29,10 +29,15 @@ auto z3_vector_back_inserter(C & container) {
   return back_inserter_iter<C>(container);
 }
 
-
 namespace pharos {
 
-using Z3RegMap = std::map <Register, z3::expr>;
+struct CompareRegisters {
+  bool operator()(Register const &a, Register const &b) const {
+    auto ah = a->hash(), bh = b->hash();
+    return (ah == bh) ? (a < b) : (ah < bh);
+  }
+};
+using Z3RegMap = std::map <Register, z3::expr, CompareRegisters>;
 
 // This information is obtained from find_path_hierarchical
 using PartialConvertCallFun = std::function<boost::optional<z3::func_decl>(const CallStmt &callstmt,

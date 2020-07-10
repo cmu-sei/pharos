@@ -45,6 +45,13 @@ def read_ctest_output(config):
 
         # The Exception line needs to be handled specially because there's a space after it.
         # 46/936 Test  #464: pathanalyzer_spacer_xxx_goal_64 ......***Exception: SegFault234.71 sec
+        # Actually I guess CTest is just horribly inconsistent:
+        # 6/8 Test #424: pathanalyzer_spacer_xxx_nongoal_64 ...Child aborted***Exception:  33.08 sec
+
+        # The 'S' in front of Aborted is just because I'm not sure I want the _spreadsheet_ to
+        # have separate categories for SegFault and aborted, since thgey're both supposed to be
+        # very rare.
+        line = line.replace('Child aborted', ' SAborted')
         line = line.replace('***Exception:', '  ')
         line = line.replace('SegFault', 'SegFault ')
         # This substitution create a space betwen the dots and the "Failed" keyword.
@@ -153,4 +160,8 @@ if __name__ == '__main__':
     else:
         tests = read_ctest_output(sys.argv[1])
         for test in tests:
-            print(test)
+            tstr = str(test)
+            # More _super_ hacky options parsing...
+            if len(sys.argv) > 2 and sys.argv[2] == '--time':
+                tstr = ','.join(tstr.split(',')[:6])
+            print(tstr)

@@ -21,35 +21,6 @@ then
    test "$1" = "-reclaim" && sudo rm -rf $DIR/boost
 fi
 
-# XSB
-cd $DIR
-test -d XSB && sudo rm -rf XSB
-
-# XSB frequently fails to clone, so try very hard to clone with reasonable timeouts in between
-svn checkout https://svn.code.sf.net/p/xsb/src/trunk/XSB XSB || true
-
-RETRY=100
-while (cd XSB && svn cleanup && svn update); status=$?; [ $status -ne 0 -a $RETRY -gt 0 ]
-do
-    RETRY=$(($RETRY-1))
-    echo SVN update failed.
-    sleep 5
-done
-
-# Pre-create the XSB install target and give the user write access.
-# Because the XSB build requires write access for configuration,
-# compile and install, the alternatives are to install someplace else
-# or to run each step with sudo.
-sudo mkdir -p $PREFIX/xsb-3.8.0 $PREFIX/site
-sudo chown $(whoami) $PREFIX/xsb-3.8.0 $PREFIX/site
-
-cd XSB/build
-./configure --prefix=$PREFIX
-# makexsb -j does not appear to be reliable
-./makexsb
-./makexsb install
-test "$1" = "-reclaim" && rm -rf $DIR/XSB
-
 # SWI
 if [ "$COMPILE_SWI" != "" ]
 then
@@ -82,7 +53,7 @@ test "$1" = "-reclaim" && rm -rf $DIR/z3
 cd $DIR
 test -d rose && rm -rf rose
 
-git clone --depth 1 -b v0.10.4.3 https://github.com/rose-compiler/rose rose
+git clone --depth 1 -b v0.10.7.16 https://github.com/rose-compiler/rose rose
 cd rose
 
 # See rose issue #52

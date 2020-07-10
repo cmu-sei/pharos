@@ -16,8 +16,8 @@ test -d build && rm -rf build
 mkdir build
 cd build
 cmake -GNinja -DCMAKE_INSTALL_PREFIX=$PREFIX -DROSE_ROOT=$PREFIX \
-      -DXSB_ROOT=$PREFIX/xsb-3.8.0 -DBOOST_ROOT=$PREFIX \
-      -DZ3_ROOT=$PREFIX -DYAML_CPP_ROOT=/usr ../..
+      -DBOOST_ROOT=$PREFIX -DZ3_ROOT=$PREFIX -DSWIPL_ROOT=$PREFIX \
+      -DYAML_CPP_ROOT=/usr ../..
 
 ninja -k $NCPU -j $NCPU || true
 ninja -j 1

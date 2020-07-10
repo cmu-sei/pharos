@@ -1,3 +1,0 @@
-#!/bin/bash
-@XSB_HEADER@
-@XSB_PROGRAM@ --noprompt -e "asserta(library_directory('$DIR')),[report],assert(logLevel(@PHAROS_OOLOGLEVEL@)),assert(profilingEnabled),assert(rTTIEnabled),psolve('${1}')."

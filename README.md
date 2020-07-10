@@ -29,14 +29,14 @@ may be unable to respond in a timely manner, but I will do my best.
 
 # Pharos Static Binary Analysis Tools
 
-## APIAnalyzer
+## [APIAnalyzer](tools/apianalyzer/apianalyzer.pod)
 
 ApiAnalyzer is a tool for finding sequences of API calls with the
 specified data and control relationships.  This capability is intended
 to be used to detect common operating system interaction paradigms
 like opening a file, writing to it, and the closing it.
 
-## OOAnalyzer
+## [OOAnalyzer](tools/ooanalyzer/ooanalyzer.pod)
 
 OOAnalyzer is a tool for the analysis and recovery of object oriented
 constructs. This tool was the subject of a paper titled ["Using Logic
@@ -51,7 +51,7 @@ object attributes.  For more detailed instructons on how to run
 OOAnalyzer on very large executables, see these
 [notes](share/prolog/oorules/README.md).
 
-## CallAnalyzer
+## [CallAnalyzer](tools/callanalyzer/callanalyzer.pod)
 
 CallAnalyzer is a tool for reporting the static parameters to API
 calls in a binary program.  It is largely a demonstration of our
@@ -59,20 +59,20 @@ current calling convention, parameter analysis, and type detection
 capabilities, although it also provides useful analysis of the code in
 a program.
 
-## FN2Yara
+## [FN2Yara](tools/fn2yara/fn2yara.pod)
 
 FN2Yara is a tool to generate YARA signatures for matching functions
 in an executable program.  Programs that share significant numbers of
 functions are are likely to have behavior in common.
 
-## FN2Hash
+## [FN2Hash](tools/fn2hash/fn2hash.pod)
 
 FN2Hash is tool for generating a variety of hashes and other
 descriptive properties for functions in an executable program.  Like
 FN2Yara it can be used to support binary similarity analysis, or
 provide features for machine learning algorithms.
 
-## DumpMASM
+## [DumpMASM](tools/dumpmasm/dumpmasm.pod)
 
 DumpMASM is a tool for dumping disassembly listings from an executable
 using the Pharos framework in the same style as the other tools.  It

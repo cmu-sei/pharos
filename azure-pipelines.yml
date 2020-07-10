@@ -1,15 +1,12 @@
-# C/C++ with GCC
-# Build your C/C++ project with GCC using make.
-# Add steps that publish test results, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/apps/c-cpp/gcc
-
 variables:
   CCACHE_DIR: $(Pipeline.Workspace)/cache
+  CHOCLATEY_CACHE_DIR: $(Pipeline.Workspace)/choclatey_cache
   PREFIX: /usr/local/pharos-build
   CXXFLAGS: -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1
 
 jobs:
 - job: Build_Prereqs
+  condition: and(succeeded(), variables.buildNormal)
   timeoutInMinutes: 660
   pool:
     vmImage: 'Ubuntu-16.04'
@@ -76,6 +73,7 @@ jobs:
     displayName: Build pharos
 
 - job: Build_OOAnalyzer_Ghidra_Plugin
+  condition: and(succeeded(), variables.buildNormal)
   variables:
     GRADLE_USER_HOME: $(Pipeline.Workspace)/.gradle
   strategy:
@@ -106,10 +104,11 @@ jobs:
   pool:
     vmImage: 'Ubuntu-18.04'
   steps:
+  - script: echo ok source version is $(Build.SourceVersion)
   - script: sudo update-alternatives --set javac /usr/lib/jvm/zulu-11-azure-amd64/bin/javac && sudo update-alternatives --set java /usr/lib/jvm/zulu-11-azure-amd64/bin/java && export JAVA_HOME=/usr/lib/jvm/zulu-11-azure-amd64
 
   - task: Cache@2
-    condition: ne(variables['ghidraUrl'], '')
+    condition: and(succeeded(), ne(variables['ghidraUrl'], ''))
     inputs:
       key: '"$(ghidraUrl)" | binary'
       path: $(Pipeline.Workspace)/zip
@@ -126,7 +125,7 @@ jobs:
       set -e
       test -d zip || (mkdir zip && cd zip && wget $URL)
       unzip zip/*.zip
-    condition: ne(variables['ghidraUrl'], '')
+    condition: and(succeeded(), ne(variables['ghidraUrl'], ''))
     workingDirectory: $(Pipeline.Workspace)
     displayName: Download Ghidra binary from $(ghidraUrl)
     env:
@@ -135,7 +134,7 @@ jobs:
       set -e
       sudo apt-get -y install bison flex xvfb
       git clone --depth 1 https://github.com/NationalSecurityAgency/ghidra
-    condition: eq(variables['ghidraUrl'], '')
+    condition: and(succeeded(), eq(variables['ghidraUrl'], ''))
     workingDirectory: $(Pipeline.Workspace)
     env:
       JAVA_HOME: /usr/lib/jvm/zulu-11-azure-amd64
@@ -146,7 +145,7 @@ jobs:
     inputs:
       key: 'gradle deps'
       path: $(Pipeline.Workspace)/ghidra/build/downloads
-    condition: eq(variables['ghidraUrl'], '')
+    condition: and(succeeded(), eq(variables['ghidraUrl'], ''))
 
   - bash: |
       set -e
@@ -157,7 +156,7 @@ jobs:
       cp build/dist/*.zip $WS/zip/
       cd $WS
       unzip zip/*.zip
-    condition: eq(variables['ghidraUrl'], '')
+    condition: and(succeeded(), eq(variables['ghidraUrl'], ''))
     workingDirectory: $(Pipeline.Workspace)
     env:
       JAVA_HOME: /usr/lib/jvm/zulu-11-azure-amd64
@@ -185,15 +184,37 @@ jobs:
   - script: gradle --stop
   - publish: tools/ooanalyzer/ghidra/OOAnalyzerPlugin/dist/
   - task: GitHubRelease@0
+    condition: and(succeeded(), eq(variables['Build.SourceBranchName'], 'master'))
     inputs:
       gitHubConnection: gh
       repositoryName: $(Build.Repository.Name)
       action: delete
-      target: $(Build.SourceVersion)
       tagSource: manual
       tag: ghidra-$(ghidraVersion)
     continueOnError: true
+  - task: DownloadSecureFile@1
+    condition: eq(variables['Build.SourceBranchName'], 'master')
+    name: deployKey
+    inputs:
+      secureFile: 'deploy.key'
+  - bash: |
+      mkdir -p ~/.ssh
+      ssh-keyscan github.com >> ~/.ssh/known_hosts
+      ssh-agent -a $SSH_AUTH_SOCK > /dev/null
+      chmod og-r $(deployKey.secureFilePath)
+      ssh-add $(deployKey.secureFilePath)
+      git config --global user.email "eschwartz@cert.org"
+      git config --global user.name "sei-eschwartz"
+      git remote add ssh-origin git@github.com:sei-eschwartz/pharos.git
+      git push --delete ssh-origin ghidra-$(ghidraVersion)
+      rm -f $(deployKey.secureFilePath)
+    condition: eq(variables['Build.SourceBranchName'], 'master')
+    env:
+      SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+    continueOnError: true
+    displayName: Delete old git tag ghidra-$(ghidraVersion)
   - task: GitHubRelease@0
+    condition: and(succeeded(), eq(variables['Build.SourceBranchName'], 'master'))
     inputs:
       gitHubConnection: gh
       repositoryName: $(Build.Repository.Name)
@@ -204,3 +225,59 @@ jobs:
       title: OOAnalyzer Ghidra Plugin for Ghidra $(ghidraVersion)
       assets: tools/ooanalyzer/ghidra/OOAnalyzerPlugin/dist/*.zip
       addChangeLog: false
+
+- template: azure-pipelines/Build_Exes.yaml
+  parameters:
+    name: "vs2008"
+    chocoPackages:
+    - "visualcplusplusexpress2008"
+    displayName: "Visual C++ Express 2008"
+    cmakeGenName: "Visual Studio 9 2008"
+
+- template: azure-pipelines/Build_Exes.yaml
+  parameters:
+    name: "vs2010"
+    chocoPackages:
+    - "vcexpress2010"
+    displayName: "Visual C++ Express 2010"
+    cmakeGenName: "Visual Studio 10 2010"
+
+- template: azure-pipelines/Build_Exes.yaml
+  parameters:
+    name: "vs2012"
+    chocoPackages:
+    - "visualstudio2012wdx"
+    displayName: "Visual C++ 2012"
+    cmakeGenName: "Visual Studio 11 2012"
+
+- template: azure-pipelines/Build_Exes.yaml
+  parameters:
+    name: "vs2013"
+    chocoPackages:
+    - "visualstudioexpress2013windowsdesktop"
+    displayName: "Visual C++ 2013"
+    cmakeGenName: "Visual Studio 12 2013"
+
+- template: azure-pipelines/Build_Exes.yaml
+  parameters:
+    name: "vs2015"
+    chocoPackages:
+    - "visualcppbuildtools"
+    displayName: "Visual C++ 2015"
+    cmakeGenName: "Visual Studio 14 2015"
+
+- template: azure-pipelines/Build_Exes.yaml
+  parameters:
+    name: "vs2017"
+    chocoPackages: []
+    displayName: "Visual C++ 2017"
+    cmakeGenName: "Visual Studio 15 2017"
+    vmImage: "vs2017-win2016"
+
+- template: azure-pipelines/Build_Exes.yaml
+  parameters:
+    name: "vs2019"
+    # A hack because VS2019 is already installed on these machines
+    chocoPackages: []
+    displayName: "Visual C++ 2019"
+    cmakeGenName: "Visual Studio 16 2019"

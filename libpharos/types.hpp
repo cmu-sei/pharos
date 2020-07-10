@@ -12,6 +12,8 @@
 #include "prolog.hpp"
 #include "options.hpp"
 #include "typedb.hpp"
+#include "funcs.hpp"
+#include "calls.hpp"
 
 namespace pharos {
 
@@ -156,6 +158,9 @@ class OperationStrategy {
 
   // operand name
   std::string op_name_;
+  std::size_t arity_;
+
+  OperationStrategy(char const * name, std::size_t arity) : op_name_{name}, arity_{arity} {}
 
  public:
 
@@ -167,10 +172,11 @@ class OperationStrategy {
   // prolog session.
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session)=0;
 
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream)=0;
+  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream)
+    const;
 
   // Must have a virtual destructor to ensure proper destructor called.
-  virtual ~OperationStrategy() { }
+  virtual ~OperationStrategy() = default;
 };
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
@@ -180,347 +186,265 @@ class OperationStrategy {
 
 class SextendStrategy : public OperationStrategy {
  public:
-  SextendStrategy() { op_name_ = "opSextend";  }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  SextendStrategy() : OperationStrategy{"opSextend", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~SextendStrategy() { }
 };
 
 class UextendStrategy : public OperationStrategy {
  public:
-  UextendStrategy() { op_name_ = "opUextend"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  UextendStrategy() : OperationStrategy{"opUextend", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~UextendStrategy() { }
 };
 
 class AddStrategy : public OperationStrategy {
  public:
-  AddStrategy() { op_name_ = "opAdd"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  AddStrategy() : OperationStrategy{"opAdd", 2} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~AddStrategy() { }
 };
 
 class BvAndStrategy : public OperationStrategy {
  public:
-  BvAndStrategy() { op_name_ = "opBvAnd"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  BvAndStrategy() : OperationStrategy{"opBvAnd", 2}  {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~BvAndStrategy() { }
 };
 
 class AndStrategy : public OperationStrategy {
  public:
-  AndStrategy() { op_name_= "opAnd"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  AndStrategy() : OperationStrategy{"opAnd", 2} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~AndStrategy() { }
 };
 
 class SmulStrategy : public OperationStrategy {
  public:
-  SmulStrategy() { op_name_ = "opSmul"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  SmulStrategy() : OperationStrategy{"opSmul", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~SmulStrategy() { }
 };
 
 class UmulStrategy : public OperationStrategy {
 
  public:
-  UmulStrategy() { op_name_ = "opUmul"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  UmulStrategy() : OperationStrategy{"opUmul", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~UmulStrategy() { }
 };
 
 class AsrStrategy : public OperationStrategy {
  public:
-  AsrStrategy() { op_name_ = "opAsr"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  AsrStrategy() : OperationStrategy{"opAsr", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~AsrStrategy() { }
 };
 
 class BvXorStrategy : public OperationStrategy {
  public:
-  BvXorStrategy() { op_name_ = "opBvXor"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  BvXorStrategy() : OperationStrategy{"opBvXor", 2} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~BvXorStrategy() { }
 };
 
 class ConcatStrategy : public OperationStrategy {
  public:
-  ConcatStrategy() { op_name_ = "opConcat"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  ConcatStrategy() : OperationStrategy{"opConcat", 2} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~ConcatStrategy() { }
 };
 
 class EqStrategy : public OperationStrategy {
  public:
-  EqStrategy() { op_name_ = "opEq"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  EqStrategy() : OperationStrategy{"opEq", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~EqStrategy() { }
 };
 
 class ExtractStrategy : public OperationStrategy {
  public:
-  ExtractStrategy() { op_name_ = "opExtract"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  ExtractStrategy() : OperationStrategy{"opExtract", 4} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~ExtractStrategy() { }
 };
 
 class InvertStrategy : public OperationStrategy {
  public:
-  InvertStrategy() { op_name_ = "opInvert"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  InvertStrategy() : OperationStrategy{"opInvert", 2} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~InvertStrategy() { }
 };
 
 class IteStrategy : public OperationStrategy {
  public:
-  IteStrategy() { op_name_ = "opIte"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  IteStrategy() : OperationStrategy{"opIte", 4} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~IteStrategy() { }
 };
 
 class LssbStrategy : public OperationStrategy {
  public:
-  LssbStrategy() { op_name_ = "opLssb"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  LssbStrategy() : OperationStrategy{"opLssb", 2} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~LssbStrategy() { }
 };
 
 class MssbStrategy : public OperationStrategy {
  public:
-  MssbStrategy() { op_name_ = "opMssb"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  MssbStrategy() : OperationStrategy{"opMssb", 2} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~MssbStrategy() { }
 };
 
 class NeStrategy : public OperationStrategy {
  public:
-  NeStrategy() { op_name_ = "opNe"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  NeStrategy() : OperationStrategy{"opNe", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~NeStrategy() { }
 };
 
 class NegateStrategy : public OperationStrategy {
  public:
-  NegateStrategy() { op_name_ = "opNegate"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  NegateStrategy() : OperationStrategy{"opNegate", 2} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~NegateStrategy() { }
 };
 
 class NoopStrategy : public OperationStrategy {
  public:
-  NoopStrategy() { op_name_ = "opNoop"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  NoopStrategy() : OperationStrategy{"opNoop", 0} {}
+  virtual void save_facts(
+    std::shared_ptr<prolog::Session> session, std::iostream& out_sstream) const;
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~NoopStrategy() { }
 };
 
 class BvOrStrategy : public OperationStrategy {
  public:
-  BvOrStrategy() { op_name_ = "opBvOr"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  BvOrStrategy() : OperationStrategy{"opBvOr", 2} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~BvOrStrategy() { }
 };
 
 class OrStrategy : public OperationStrategy {
  public:
-  OrStrategy() { op_name_ = "opOr"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  OrStrategy() : OperationStrategy{"opOr", 2} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~OrStrategy() { }
 };
 
 class ReadStrategy : public OperationStrategy {
  public:
-  ReadStrategy() { op_name_ = "opRead"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  ReadStrategy() : OperationStrategy{"opRead", 2} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~ReadStrategy() { }
 };
 
 class RolStrategy : public OperationStrategy {
  public:
-  RolStrategy() { op_name_ = "opRol"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  RolStrategy() : OperationStrategy{"opRol", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~RolStrategy() { }
 };
 
 class RorStrategy : public OperationStrategy {
  public:
-  RorStrategy() { op_name_ = "opRor"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  RorStrategy() : OperationStrategy{"opRor", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~RorStrategy() { }
 };
 
 class SdivStrategy : public OperationStrategy {
  public:
-  SdivStrategy() { op_name_ = "opSdiv"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  SdivStrategy() : OperationStrategy{"opSdiv", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~SdivStrategy() { }
 };
 
 class UdivStrategy : public OperationStrategy {
  public:
-  UdivStrategy() { op_name_ = "opUdiv"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  UdivStrategy() : OperationStrategy{"opUdiv", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~UdivStrategy() { }
 };
 
 class SetStrategy : public OperationStrategy {
  public:
-  SetStrategy() { op_name_ = "opSet"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  SetStrategy() : OperationStrategy{"opSet", 2} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~SetStrategy() { }
 };
 
 class SgeStrategy : public OperationStrategy {
  public:
-  SgeStrategy() { op_name_ = "opSge"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  SgeStrategy() : OperationStrategy{"opSge", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~SgeStrategy() { }
 };
 
 class SgtStrategy : public OperationStrategy {
  public:
-  SgtStrategy() { op_name_ = "opSgt"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  SgtStrategy() : OperationStrategy{"opSgt", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~SgtStrategy() { }
 };
 
 class Shl0Strategy : public OperationStrategy {
  public:
-  Shl0Strategy() { op_name_ = "opShl0"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  Shl0Strategy() : OperationStrategy{"opShl0", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~Shl0Strategy() { }
 };
 
 class Shl1Strategy : public OperationStrategy {
  public:
-  Shl1Strategy() { op_name_ = "opShl1"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  Shl1Strategy() : OperationStrategy{"opShl1", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~Shl1Strategy() { }
 };
 
 class Shr0Strategy : public OperationStrategy {
  public:
-  Shr0Strategy() { op_name_ = "opShr0"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  Shr0Strategy() : OperationStrategy{"opShr0", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~Shr0Strategy() { }
 };
 
 class Shr1Strategy : public OperationStrategy {
  public:
-  Shr1Strategy() { op_name_ = "opShr1"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  Shr1Strategy() : OperationStrategy{"opShr1", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~Shr1Strategy() { }
 };
 
 class SleStrategy : public OperationStrategy {
  public:
-  SleStrategy() { op_name_ = "opSle"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  SleStrategy() : OperationStrategy{"opSle", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~SleStrategy() { }
 };
 
 class SltStrategy : public OperationStrategy {
  public:
-  SltStrategy() { op_name_ = "opSlt"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  SltStrategy() : OperationStrategy{"opSlt", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~SltStrategy() { }
 };
 
 class SmodStrategy : public OperationStrategy {
  public:
-  SmodStrategy() { op_name_ = "opSmod"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  SmodStrategy() : OperationStrategy{"opSmod", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~SmodStrategy() { }
 };
 
 class UmodStrategy : public OperationStrategy {
  public:
-  UmodStrategy() { op_name_= "opUmod";  }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  UmodStrategy() : OperationStrategy{"opUmod", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~UmodStrategy() { }
 };
 
 class UgeStrategy : public OperationStrategy {
  public:
-  UgeStrategy() { op_name_ = "opUge"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  UgeStrategy() : OperationStrategy{"opUge", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~UgeStrategy() { }
 };
 
 class UgtStrategy : public OperationStrategy {
  public:
-  UgtStrategy() { op_name_ = "opUgt"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  UgtStrategy() : OperationStrategy{"opUgt", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~UgtStrategy() { }
 };
 
 class UleStrategy : public OperationStrategy {
  public:
-  UleStrategy() { op_name_ = "opUle"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  UleStrategy() : OperationStrategy{"opUle", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~UleStrategy() { }
 };
 
 class UltStrategy : public OperationStrategy {
  public:
-  UltStrategy() { op_name_ = "opUlt"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  UltStrategy() : OperationStrategy{"opUlt", 3} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~UltStrategy() { }
 };
 
 class WriteStrategy : public OperationStrategy {
  public:
-  WriteStrategy() { op_name_ = "opWrite"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  WriteStrategy() : OperationStrategy{"opWrite", 0} {}
+  virtual void save_facts(
+    std::shared_ptr<prolog::Session> session, std::iostream& out_sstream) const;
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~WriteStrategy() { }
 };
 
 class ZeropStrategy : public OperationStrategy {
  public:
-  ZeropStrategy() { op_name_ = "opZerop"; }
-  virtual void save_facts(std::shared_ptr<prolog::Session> session, std::iostream& out_sstream);
+  ZeropStrategy() : OperationStrategy{"opZerop", 2} {}
   virtual void assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session);
-  virtual ~ZeropStrategy() { }
 };
 
 // The context that sets the strategy for operation analysis. The context is used

@@ -166,9 +166,9 @@ class CERTEngine: public P2::Engine {
 
   MatchJmpToPrologue::Ptr jump_to_prologue_matcher;
   RefuseOverlappingCode::Ptr overlapping_code_detector;
-  RoseDisassembler::AddressSet not_pad_gaps;
-  RoseDisassembler::AddressSet not_thunk_gaps;
-  RoseDisassembler::AddressSet not_code_gaps;
+  Rose::BinaryAnalysis::AddressSet not_pad_gaps;
+  Rose::BinaryAnalysis::AddressSet not_thunk_gaps;
+  Rose::BinaryAnalysis::AddressSet not_code_gaps;
 
   // A helper for consume thunks.
   bool try_making_thunk(P2::Partitioner& partitioner, rose_addr_t address);

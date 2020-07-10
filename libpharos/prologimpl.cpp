@@ -17,182 +17,10 @@ std::string FileNotFound::build_msg(const std::string & filename)
   return os.str();
 }
 
-std::string term_type(impl::xsb_term pt) {
-  using namespace impl::xsb::impl;
-  if (is_string(pt)) {
-    return "string";
-  }
-  if (is_int(pt)) {
-    return "integer";
-  }
-  if (is_functor(pt)) {
-    std::ostringstream os;
-    os << "functor/" << p2c_arity(pt);
-    return  os.str();
-  }
-  if (is_list(pt)) {
-    return "list";
-  }
-  if (is_nil(pt)) {
-    return "nil";
-  }
-  if (is_float(pt)) {
-    return "float";
-  }
-  if (is_var(pt)) {
-    return "variable";
-  }
-  if (is_attv(pt)) {
-    return "attributed";
-  }
-  return "unknown";
-}
-
-std::string TypeMismatch::build_msg(xsb_term pt, const std::string & expected)
-{
-  std::ostringstream os;
-  os << errmsg << ": expected " << expected << ", got " << term_type(pt);
-  return os.str();
-}
-
-namespace impl {
-inline
-namespace xsb {
-
-std::ostream & output_atom(std::ostream & stream, const char * atom)
-{
-  const char *c;
-  if (std::islower(atom[0])) {
-    for (c = atom + 1; std::isalnum(*c) || *c == '_'; ++c);
-    if (*c == '\0') {
-      stream << atom;
-      return stream;
-    }
-  }
-  stream << '\'';
-  for (c = atom; *c; ++c) {
-    switch (*c) {
-     case '\\':
-      stream << "\\\\";
-      break;
-     case '\a':
-      stream << "\\a";
-      break;
-     case '\b':
-      stream << "\\b";
-      break;
-     case '\f':
-      stream << "\\f";
-      break;
-     case '\n':
-      stream << "\\n";
-      break;
-     case '\r':
-      stream << "\\r";
-      break;
-     case '\t':
-      stream << "\\t";
-      break;
-     case '\v':
-      stream << "\\v";
-      break;
-     case '\'':
-      stream << "''";
-      break;
-     default:
-      if (std::isprint(static_cast<unsigned char>(*c))) {
-        stream << *c;
-      } else {
-        stream << "\\x" << std::hex << static_cast<unsigned>(*c) << '\\';
-      }
-    }
-  }
-  stream <<  '\'';
-  return stream;
-}
-
-std::ostream & term_to_stream(std::ostream & stream, xsb_term pt)
-{
-  restore_flags flag_guard{stream};
-  if (impl::is_int(pt)) {
-    int64_t sint = int64_t(impl::p2c_int(pt));
-    if (sint < 0) {
-      stream << '-';
-      sint = -sint;
-    }
-    stream << std::hex << std::showbase << sint;
-  } else if (impl::is_string(pt)) {
-    output_atom(stream, impl::p2c_string(pt));
-  } else if (impl::is_functor(pt)) {
-    output_atom(stream, impl::p2c_functor(pt));
-    stream << '(';
-    auto nargs = impl::p2c_arity(pt);
-    for (decltype(nargs) i = 1; i <= nargs; ++i) {
-      if (i != 1) {
-        stream << ", ";
-      }
-      term_to_stream(stream, impl::p2p_arg(pt, i));
-    }
-    stream << ')';
-  } else if (impl::is_list(pt)) {
-    bool nil;
-    stream << '[';
-    do {
-      term_to_stream(stream, impl::p2p_car(pt));
-      pt = impl::p2p_cdr(pt);
-      if (!(nil = impl::is_nil(pt))) {
-        stream << ", ";
-      }
-    } while (!nil);
-    stream << ']';
-  } else if (impl::is_nil(pt)) {
-    stream << "[]";
-  } else if (impl::is_var(pt)) {
-    stream << "_Var(" << pt << ')';
-  } else {
-    stream << "<unknown>";
-  }
-  return stream;
-}
-
-std::ostream & print_term_t::operator()(List const & arg) {
-  stream << '[';
-  for (std::size_t i = 0; i < arg.list.size(); ++i) {
-    if (i) {
-      stream << ", ";
-    }
-    arg.list[i]->print(*this);
-  }
-  stream << ']';
-  return stream;
-}
-
-namespace {
-// static convenience functions for xsb interaction
-
-std::string generate_error_string()
-{
-  std::ostringstream os;
-  os << "XSB Error: " << impl::xsb_get_error_type()
-     << '/' << impl::xsb_get_error_message();
-  return os.str();
-}
-
-std::string generate_init_error_string()
-{
-  std::ostringstream os;
-  os << "XSB Initialization Error: " << impl::xsb_get_init_error_type()
-     << '/' << impl::xsb_get_init_error_message();
-  return os.str();
-}
-
-} // unnamed namespace
-
-XSBError::XSBError() : Error(generate_error_string())
+InitError::InitError() : Error("Error during prolog initialization")
 {}
 
-InitError::InitError() : XSBError(generate_init_error_string())
-{}
+namespace detail {
 
 std::shared_ptr<Session> Session::current_session;
 
@@ -200,50 +28,36 @@ Session::Session(const std::string & location)
 {
   std::vector<const char *> args = {
     location.c_str(),
-    "--nobanner",
-    "--quietload",
-    "--nofeedback"
+    "--quiet=true",
+    "--threads=false"
   };
-  auto rv = impl::xsb_init(args.size(), args.data());
-  if (rv == status::ERROR) {
+  auto rv = impl::prolog_init(args.size(), const_cast<char **>(args.data()));
+  if (!rv) {
     throw InitError();
   }
-  assert(rv == status::SUCCESS);
+  impl::init();
 }
 
-void Session::close_query()
-{
-  auto q = current_query.lock();
-  if (q) {
-    q->terminate();
-  }
-}
-
-Session::~Session()
-{
-  lock_guard lock(mutex);
-  close_query();
-  impl::xsb_close();
-}
-
-std::shared_ptr<Session> & Session::get_session(const std::string & location)
+std::shared_ptr<Session> &
+Session::get_session(std::string const & location)
 {
   if (current_session) {
-    lock_guard lock(current_session->mutex);
+    lock_guard lock{current_session->mutex};
     if (current_session.use_count() > 1) {
-      throw SessionError("Cannot generate a new XSB session until current one is destroyed.");
+      throw SessionError(
+        "Cannot generate a new Prolog session until current one is destroyed.");
     }
-    current_session->revert_state();
+    // Commented out for now, as there are problems automatically reverting user state
+    // current_session->revert_state();
     return current_session;
   } else {
-    current_session.reset(new Session(location));
-    current_session->save_state();
+    current_session.reset(new Session{location});
+    // current_session->save_state();
   }
   return current_session;
 }
 
-
-// save_state() and restore_state() do their best to try to make a single XSB prolog session
+// save_state() and restore_state() do their best to try to make a single Prolog session
 // behave like multiple concurrent sessions.  save_state() keeps track of what predicates exist
 // at a point in time.  restore_state() abolishes all predicates that exist that aren't noted
 // in the saved state.
@@ -257,32 +71,24 @@ std::shared_ptr<Session> & Session::get_session(const std::string & location)
 void Session::save_state()
 {
   saved_state.clear();
-  saved_modules.clear();
   std::string func;
   int arity;
-  auto qp = query("current_functor",
-                  functor(":", "usermod", functor("/", var(func), var(arity))));
+  auto qp = query("current_predicate",
+                  functor(":", "user", functor("/", var(func), var(arity))));
   for (; !qp->done(); qp->next()) {
     saved_state.emplace(std::move(func), arity);
-  }
-  std::string module;
-  auto qm = query("current_module", var(module));
-  for (; !qm->done(); qm->next()) {
-    saved_modules.emplace(std::move(module));
   }
 }
 
 void Session::revert_state()
 {
-  close_query();
-
   // Reset all tabled state
   command("abolish_all_tables");
 
   predspec_t ps;
   std::vector<predspec_t> new_preds;
   auto qp = query("current_predicate",
-                  functor(":", "usermod",
+                  functor(":", "user",
                           functor("/", var(std::get<0>(ps)), var(std::get<1>(ps)))));
   for (; !qp->done(); qp->next()) {
     if (saved_state.find(ps) == std::end(saved_state)) {
@@ -290,107 +96,46 @@ void Session::revert_state()
     }
   }
   for (auto & pred : new_preds) {
-    command("abolish", std::get<0>(pred), std::get<1>(pred));
-  }
-
-#if 0
-  std::string module;
-  std::vector<std::string> new_modules;
-  auto qm = query("current_module", var(module));
-  for (; !qm->done(); qm->next()) {
-    if (saved_modules.find(module) == std::end(saved_modules)) {
-      new_modules.emplace_back(std::move(module));
+    try {
+      command("abolish", std::get<0>(pred), std::get<1>(pred));
+    } catch (impl::Error const &) {
+      // SWIPL will pull system predicates into the user namespace at random points in time.
+      // We fail to abolish these.  Don't error out.
     }
   }
-
-  for (auto & m : new_modules) {
-    auto q = query("current_predicate",
-                   functor(":", m,
-                           functor("/", var(std::get<0>(ps)), var(std::get<1>(ps)))));
-    for (; !q->done(); q->next()) {
-      command("abolish", functor(":", m,
-                                 functor("/", std::get<0>(ps), std::get<1>(ps))));
-    }
-  }
-#endif
 }
 
-bool Session::run_command(const char *cmd)
+std::size_t Session::print_predicate(
+  std::ostream & stream,
+  std::string const & predicate,
+  std::size_t arity)
 {
-  static const char * const result = "Prolog command result: ";
-  bool debug = log && *log;
-  if (debug) {
-    *log << "Prolog command: ";
-    if (cmd) {
-      *log << cmd;
-    } else {
-      term_to_stream(*log, impl::reg_term(1));
-    }
-    *log << std::endl;
+  std::size_t n = 0;
+  auto q = query(predicate, AnyN{arity});
+  for (; !q->done(); q->next()) {
+    ++n;
+    q->debug_print(stream);
   }
-  auto rv = cmd ? impl::xsb_command_string(cmd) : impl::xsb_command();
-  switch (rv) {
-   case status::SUCCESS:
-    if (debug) {
-      *log << result << "success" << std::endl;
-    }
+  return n;
+}
+
+
+foreign_t Session::predicate_wrapper(pl_term args_, std::size_t arity_, void *)
+{
+  auto args = Args{args_, arity_};
+  pl_int idx;
+  args.get_value<pl_int>(0, idx);
+  if (current_session->registry.at(idx)(Args{args_ + 1, arity_ - 1})) {
     return true;
-   case status::FAILURE:
-    if (debug) {
-      *log << result << "failure" << std::endl;
-    }
+  } else {
     return false;
-   case status::ERROR:
-    if (debug) {
-      *log << result << "error" << std::endl;
-    }
-    throw XSBError();
-   default:
-    abort();
   }
 }
 
 bool Session::register_predicate(
-  const std::string & predname, int arity, int (*cfun)(), const std::string & modname)
-{
-  static const char * const result = "Registration result: ";
-  bool debug = log && *log;
-  if (debug) {
-    *log << "Registering C predicate: " << modname << ':' << predname << '/' << arity
-         << std::endl;
-  }
-  auto rv = impl::xsb_add_c_predicate(predname, arity, cfun, modname);
-  switch (rv) {
-   case status::SUCCESS:
-    if (debug) {
-      *log << result << "success" << std::endl;
-    }
-    return true;
-   case status::FAILURE:
-    if (debug) {
-      *log << result << "failure" << std::endl;
-    }
-    return false;
-   case status::ERROR:
-    if (debug) {
-      *log << result << "error" << std::endl;
-    }
-    throw XSBError();
-   default:
-    abort();
-  }
-}
-
-int Session::predicate_wrapper()
-{
-  auto idx = arg<std::size_t>(0);
-  return current_session->registry.at(idx)();
-}
-
-bool Session::register_cxx_predicate(
   const std::string & predname,
-  int arity,
-  std::function<int()> func,
+  std::size_t arity,
+  std::function<bool(Args)> func,
   const std::string & modname)
 {
   static const char * const result = "Registration result: ";
@@ -400,8 +145,9 @@ bool Session::register_cxx_predicate(
          << std::endl;
   }
   // Add a Prolog binding for predicate_wrapper if there isn't one already; once per arity
-  if (0 == registry_arity.count(arity)) {
-    if (register_predicate(wrapper_name, arity + 1, predicate_wrapper, prolog_default_module))
+  if (registry_arity.find(arity) == registry_arity.end()) {
+    if (impl::register_predicate(wrapper_name, arity + 1, predicate_wrapper,
+                                 prolog_default_module))
     {
       registry_arity.emplace(arity);
     } else {
@@ -412,29 +158,11 @@ bool Session::register_cxx_predicate(
     }
   }
 
-  // Build the command:
-  // assert((modname:predname(A1, A2, ...) :- pharos:registry_wrapper(<idx>, A1, A2, ...)))."
-  auto idx = registry.size();
-  auto pt = impl::reg_term(1);
-  // assert(...)
-  impl::c2p_functor("assert", 1, pt);
-  pt = impl::p2p_arg(pt, 1);
-  // ... :- ...
-  impl::c2p_functor(":-", 2, pt);
-  auto lhs = impl::p2p_arg(pt, 1);
-  auto rhs = impl::p2p_arg(pt, 2);
-  // modname:predname(...)
-  impl::c2p_functor(modname.c_str(), predname.c_str(), arity, lhs);
-  // pharos:registry_wrapper(...)
-  impl::c2p_functor(prolog_default_module, wrapper_name, arity + 1, rhs);
-  // pharos:registry_wrapper(<idx>, ...)
-  impl::c2p_int(idx, impl::p2p_arg(rhs, 1));
-  // unify A1 to A1, A2 to A2, etc.
-  for (int i = 0; i < arity; ++i) {
-    UNUSED bool check = impl::p2p_unify(impl::p2p_arg(lhs, i + 1), impl::p2p_arg(rhs, i + 2));
-    assert(check);
-  }
-  bool rv = run_command();
+  auto register_command =
+    functor("call",
+            functor(":", prolog_default_module,
+                    functor("register_predicate", modname, predname, arity, registry.size())));
+  bool rv = command(register_command);
   if (rv) {
     registry.push_back(func);
   }
@@ -444,76 +172,8 @@ bool Session::register_cxx_predicate(
   return rv;
 }
 
-bool Query::next()
-{
-  auto log = session->get_debug_log();
-  bool debug = log && *log;
-  switch (impl::xsb_next()) {
-   case status::SUCCESS:
-    if (debug) {
-      *log << "Prolog query result: ";
-      debug_print(*log);
-    }
-    break;
-   case status::FAILURE:
-    if (debug) {
-      *log << "Prolog query end of results" << std::endl;
-    }
-    finished = true;
-    return false;
-   case status::OXFLOW:
-    if (debug) {
-      *log << "Prolog query overflow" << std::endl;
-    }
-    throw OverflowError();
-   case status::ERROR:
-    if (debug) {
-      *log << "Prolog query error" << std::endl;
-    }
-    throw XSBError();
-   default:
-    abort();
-  }
-  apply_setters();
-  return done();
-}
-
-void Query::call_query()
-{
-  auto log = session->get_debug_log();
-  bool debug = log && *log;
-  static const char * const result = "Prolog query ";
-  if (debug) {
-    *log << "Prolog query: ";
-    debug_print(*log);
-  }
-  switch (impl::xsb_query()) {
-   case status::SUCCESS:
-    if (debug) {
-      *log << result << "succeeded" << std::endl;
-      *log << "Prolog query result: ";
-      debug_print(*log);
-    }
-    apply_setters();
-    break;
-   case status::FAILURE:
-    if (debug) {
-      *log << result << "failed" << std::endl;
-    }
-    finished = true;
-    break;
-   case status::ERROR:
-    if (debug) {
-      *log << result << "errored" << std::endl;
-    }
-    throw XSBError();
-   default:
-    abort();
-  }
-}
-
-} // namespace xsb
 } // namespace impl
+
 } // namespace prolog
 } // namespace pharos
 

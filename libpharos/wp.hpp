@@ -25,7 +25,7 @@ std::tuple<IR, IRExprPtr, std::set<IRCFGVertex>> add_reached_postcondition (
 // This is a helper function that identifies calls to selected
 // external functions and replaces them with a write of EAX with a
 // fresh symbolic variable.
-IR rewrite_imported_calls (const DescriptorSet& ds, IR& prog, const ImportRewriteSet& funcs);
+IR rewrite_imported_calls (IR& prog, const ImportRewriteSet& funcs);
 
 class WPPathAnalyzer : public Z3PathAnalyzer
 {

@@ -9,7 +9,6 @@ import shutil
 import errno
 import json
 
-default_xsb_program = "@XSB_PROGRAM@"
 default_swi_program = "@SWIPL_COMMAND@"
 
 def test_input_path(args):
@@ -148,8 +147,8 @@ def run_prolog_test(args):
 
     update_rules(args)
 
-    script = "oodebugrun-swipl" if args.swi else "oodebugrun"
-    tool = "swi" if args.swi else "xsb"
+    script = "oodebugrun"
+    tool = "swi"
 
     rules_path = os.path.join(args.build_dir, "share", "prolog", "oorules")
     os.chdir(rules_path)
@@ -184,7 +183,7 @@ def run_prolog_test(args):
         prolog_spew_path = test_output_path(args) + "." + tool + "prolog_json_error"
         redirection = ">%s 2>%s" % (prolog_json_path, prolog_spew_path)
 
-        prolog_cmd = "%s %s %s" % (os.path.join(rules_path, "oojson-swipl"), gen_results_path, redirection)
+        prolog_cmd = "%s %s %s" % (os.path.join(rules_path, "oojson"), gen_results_path, redirection)
 
         if args.commands:
             print prolog_cmd
@@ -218,7 +217,7 @@ def compare_json_answers(args, gen_json_path, pretty_json_path):
     fh.close()
 
     if args.commands:
-        cmd = "diff %s %s" % (ground_json_path, gen_json_path)
+        cmd = "diff %s %s" % (ground_json_path, pretty_json_path)
         print cmd
 
     if gen_pp_json != ground_pp_json:
@@ -436,9 +435,6 @@ if __name__ == "__main__":
     parser.add_argument("-w", "--swi-path",
                         type=str, default=default_swi_program,
                         help="The location of the swipl runtime")
-    parser.add_argument("-x", "--xsb-path",
-                        type=str, default=default_xsb_program,
-                        help="The location of the xsb runtime")
     args = parser.parse_args()
 
     if args.git_dir == "":

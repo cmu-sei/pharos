@@ -87,7 +87,7 @@ other important dependencies must be built or installed, including:
   * SQLite
   * Z3
   * ROSE
-  * XSB Prolog
+  * SWI Prolog
 
 ### Boost
 
@@ -217,10 +217,10 @@ $ cd rose
 This version has a reasonable chance of working or only having minor
 issues.  If you want to be conservative and use the version of ROSE
 that was known to compile with the latest major commit to the Pharos
-repository, you can checkout this commit (ROSE version 0.10.4.3):
+repository, you can checkout this commit (ROSE version v0.10.7.16):
 
 ```
-$ git checkout v0.10.4.3
+$ git checkout v0.10.7.16
 ```
 
 ROSE can be configured in a multitude of ways, and some attention to
@@ -258,36 +258,34 @@ To install ROSE, run:
 $ sudo make -j4 install
 ```
 
-### XSB
+### SWI Prolog
 
-XSB Prolog is the backbone of the object analyzer's reasoning system.
-It needs to be downloaded, built, and optionally installed for use by
-Pharos.
+SWI Prolog is the backbone of OOAnalyzer's reasoning system.  The Pharos
+build system currently depends on version 8.2.0 or greater.
 
-Assuming that you are installing XSB to $XSB_LOCATION, the build
-sequence follows.  Note: $XSB_LOCATION needs to be writable by the
-user during configuration, compilation, and installation.
+These commands will build and install this version to $SWIPL_LOCATION:
 
 ```
-$ svn checkout https://svn.code.sf.net/p/xsb/src/trunk/XSB
-$ cd XSB/build
-$ ./configure --prefix=$XSB_LOCATION
-$ ./makexsb
-$ ./makexsb install
+$ git clone --recursive -b V8.2.0 --depth 1 https://github.com/swi-prolog/swipl-devel
+$ cd swipl-devel
+$ mkdir build
+$ cd build
+$ cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DINSTALL_DOCUMENTATION=off ..
+$ make
+$ sudo make install
 ```
 
 ## Building Pharos
 
 If all of the dependencies have been built and properly installed,
 building Pharos should be pretty easy.  We use the standard CMake
-build approach listed below.  Please note that Pharos cannot find XSB
-reliably without a hint as to $XSB_LOCATION.
+build approach listed below.
 
 ```
 $ cd pharos
 $ mkdir build
 $ cd build
-$ cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DXSB_ROOT=$XSB_LOCATION ..
+$ cmake -DCMAKE_INSTALL_PREFIX=/usr/local 
 $ make -j4
 ```
 

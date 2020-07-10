@@ -21,6 +21,7 @@ ProgOptDesc pathanalyzer_test_options() {
      "The analysis method to use (fs, wp or spacer)")
     ("goal", "search for goal address")
     ("nongoal", "search for non-goal address")
+    ("z3-log", po::value<std::string>(), "z3 log file")
     ;
 
   return ptopt;
@@ -57,6 +58,7 @@ using AnalyzerMap = std::map<
 ImportRewriteSet const imports = {
   // Because of in-lining, we may need to jump over a call to path_goal to reach the one we
   // selected.  As a result we need to include time.
+  ImportCall{"bogus.so", "__assert_symbolic_dummy_import"},
   ImportCall{"bogus.so", "time"},
   ImportCall{"bogus.so", "rand"},
   ImportCall{"bogus.so", "random"},
@@ -114,6 +116,10 @@ PATestAnalyzer::PATestAnalyzer(DescriptorSet& ds_, ProgOptVarMap const & vm_)
     test_name = basename (path (vm["file"].as<std::string>()));
   }
 
+  if (vm.count("z3-log")) {
+    Z3_open_log(vm["z3-log"].as<std::string>().c_str());
+  }
+
   std::string method;
   assert(vm.count("method") == 1);
   method = vm["method"].as<std::string>();
@@ -146,7 +152,8 @@ void PATestAnalyzer::visit(FunctionDescriptor *fd) {
       if (!insn_is_call_or_jmp(xinsn)) continue;
 
       bool complete;
-      for (rose_addr_t target : insn->getSuccessors(&complete)) {
+      auto successors = insn->getSuccessors(complete);
+      for (rose_addr_t target : successors.values()) {
         //OINFO << "Call/Jump from " << addr_str(insn->get_address()) << " to " << addr_str(target) << LEND;
         const FunctionDescriptor* tfd = ds.get_func(target);
         if (tfd) {
@@ -154,7 +161,7 @@ void PATestAnalyzer::visit(FunctionDescriptor *fd) {
           if (func) {
             std::string name = func->get_name();
             //OINFO << "Found call to " << name << " at " << addr_str(insn->get_address()) << LEND;
-            if (name == "_Z10path_startv") {
+            if (name == "_Z10path_startv" || name == "path_start") {
               OINFO << "Found path_start() call at " << addr_str(insn->get_address()) << LEND;
 
               // If we've already seen a call to path_start(), mark the test invalid and
@@ -177,7 +184,7 @@ void PATestAnalyzer::visit(FunctionDescriptor *fd) {
               // auto start_addr = insn->get_address () + insn->get_size ();
               start_addr = fd->get_address();
             }
-            if (name == "_Z9path_goalv") {
+            if (name == "_Z9path_goalv" || name == "path_goal") {
               OINFO << "Found path_goal() call at " << addr_str(insn->get_address()) << LEND;
               // If we've already seen a call to path_goal(), mark the test invalid and
               // return.
@@ -190,7 +197,7 @@ void PATestAnalyzer::visit(FunctionDescriptor *fd) {
               //config_->goal = insn->get_address();
               goal_addr = target;
             }
-            if (name == "_Z12path_nongoalv") {
+            if (name == "_Z12path_nongoalv" || name == "path_nongoal") {
               OINFO << "Found path_nongoal() call at " << addr_str(insn->get_address()) << LEND;
               // If we've already seen a call to path_nongoal(), mark the test invalid and
               // return.

@@ -117,7 +117,7 @@ Graph::populate(const DescriptorSet& ds, const P2::Partitioner& p)
       // True if we know all of the successors for the instruction (handled last).
       bool complete;
       // Get the list of successor addresses.
-      auto successors = insn->getSuccessors(&complete);
+      auto successors = insn->getSuccessors(complete);
 
       // The edge type for the last instruction in the block is either E_RETURN or E_CALL based
       // on the instruction.  Blocks ending in CALL instructions will be marked E_CALL, while
@@ -147,7 +147,7 @@ Graph::populate(const DescriptorSet& ds, const P2::Partitioner& p)
       }
 
       // For each successor address...
-      for (rose_addr_t successor : successors) {
+      for (rose_addr_t successor : successors.values()) {
         SawyerPDG::VertexIterator tov = findVertexKey(successor);
         // We're not always able to find successors in the graph, when there is bad
         // disassembly.  This is really a partitioning problem, and should probably be correct

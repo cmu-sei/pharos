@@ -160,7 +160,7 @@ class OOSolver {
 
   using ProgressBar = Sawyer::ProgressBar<size_t, std::string>;
   static std::unique_ptr<ProgressBar> progress_bar;
-  static int progress();
+  static bool progress(prolog::Args args);
 
   // The Prolog session handle.
   std::shared_ptr<prolog::Session> session;
@@ -179,23 +179,14 @@ class OOSolver {
   // A list of addreses with exported facts (de-duplicates RTTI information).
   AddrSet visited;
 
-  // Did the user request Prolog mode debugging?
-  bool debugging_enabled;
-
   // Did the user request Prolog mode tracing?
   bool tracing_enabled;
-
-  // Did the user request Prolog mode low-level tracing?
-  bool low_level_tracing_enabled;
 
   // Did the user disable use of RTTI?
   bool ignore_rtti;
 
   // Did the user disable guessing?
   bool no_guessing;
-
-  // Are we emitting facts just for debugging?
-  bool debug_sv_facts;
 
   // This is a little hacky, but we need a way to disable the actual analysis for performance
   // reasons during testing.  So for now, if there's no output, then there's no analysis.
