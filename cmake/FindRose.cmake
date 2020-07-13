@@ -36,9 +36,18 @@ endforeach()
 
 mark_as_advanced(ROSE_LIBRARY ROSE_INCLUDE_DIR SAWYER_INCLUDE_DIR)
 
+if(ROSE_INCLUDE_DIR)
+  file(STRINGS "${ROSE_INCLUDE_DIR}/rosePublicConfig.h" _ver_line
+    REGEX "^#define ROSE_PACKAGE_VERSION  *\"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+\""
+    LIMIT_COUNT 1)
+  string(REGEX MATCH "[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+" ROSE_VERSION "${_ver_line}")
+  unset(_ver_line)
+endif()
+
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Rose
-  REQUIRED_VARS ROSE_INCLUDE_DIR SAWYER_INCLUDE_DIR ROSE_LIBRARY)
+  REQUIRED_VARS ROSE_INCLUDE_DIR SAWYER_INCLUDE_DIR ROSE_LIBRARY
+  VERSION_VAR ROSE_VERSION)
 
 if(ROSE_FOUND)
 
@@ -58,7 +67,7 @@ if(ROSE_FOUND)
       ${SAWYER_INCLUDE_DIR})
     set_property(TARGET Rose::Rose PROPERTY IMPORTED_LOCATION ${ROSE_LIBRARY})
     set_property(TARGET Rose::Rose PROPERTY INTERFACE_LINK_LIBRARIES
-      ${ROSE_STATIC_LIBS} ${Boost_LIBRARIES} ${Z3_LIBRARIES}
+      ${Boost_LIBRARIES} ${Z3_LIBRARIES}
       ${YAML_CPP_LIBRARY} ${CMAKE_DL_LIBS} Threads::Threads)
   endif()
 endif()

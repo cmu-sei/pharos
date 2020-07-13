@@ -308,11 +308,11 @@ of object-oriented analysis by running the following command from your
 Pharos build or install directory:
 
 ```
-./share/prolog/oorules/oodebugrun-swipl ooprog-facts.pl >ooprog.log
+./share/prolog/oorules/oodebugrun ooprog-facts.pl >ooprog.log
 ```
 
-If the `oodebugrun-swipl` script is missing, make sure that you
-[installed SWI Prolog and that Pharos found it at build
+If the `oodebugrun` script is missing, make sure that you [installed SWI
+Prolog and that Pharos found it at build
 time](../../../INSTALL.md#swi-prolog-optional).
 
 This command runs the Prolog analysis phase in SWI Prolog.  Additionally,
@@ -403,7 +403,7 @@ There is now a Prolog-based tool that will convert the Prolog results
 into the JSON format.  You can invoke this tool with this command:
 
 ```
-./share/prolog/oorules/oojson-swipl ooprog-results.pl >ooprog.json
+./share/prolog/oorules/oojson ooprog-results.pl >ooprog.json
 ```
 
 In just a few seconds, this command should produce a JSON file that is
@@ -453,3 +453,7 @@ implement logic related to improving performance of the Prolog phase by
 deferring the re-computation of certain conclusions.  The `final.pl` file
 handles final reporting, and the remaining files will mostly make sense
 in context once those parts of the system are better understood.
+
+[comment]: # ( Local Variables: )
+[comment]: # ( fill-column: 73  )
+[comment]: # ( End:             )

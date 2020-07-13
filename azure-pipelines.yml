@@ -1,3 +1,11 @@
+schedules:
+- cron: "0 12 * * 0"
+  displayName: Weekly Sunday build
+  branches:
+    include:
+    - master
+  always: true
+
 variables:
   CCACHE_DIR: $(Pipeline.Workspace)/cache
   CHOCLATEY_CACHE_DIR: $(Pipeline.Workspace)/choclatey_cache
@@ -104,9 +112,11 @@ jobs:
   pool:
     vmImage: 'Ubuntu-18.04'
   steps:
-  - script: echo ok source version is $(Build.SourceVersion)
-  - script: sudo update-alternatives --set javac /usr/lib/jvm/zulu-11-azure-amd64/bin/javac && sudo update-alternatives --set java /usr/lib/jvm/zulu-11-azure-amd64/bin/java && export JAVA_HOME=/usr/lib/jvm/zulu-11-azure-amd64
 
+  - script: |
+      echo "##vso[task.setvariable variable=JAVA_HOME]$(JAVA_HOME_11_X64)"
+      echo "##vso[task.setvariable variable=PATH]$(JAVA_HOME_11_X64)/bin:$(PATH)"
+    displayName: "Set java version"
   - task: Cache@2
     condition: and(succeeded(), ne(variables['ghidraUrl'], ''))
     inputs:
@@ -137,7 +147,6 @@ jobs:
     condition: and(succeeded(), eq(variables['ghidraUrl'], ''))
     workingDirectory: $(Pipeline.Workspace)
     env:
-      JAVA_HOME: /usr/lib/jvm/zulu-11-azure-amd64
       WS: $(Pipeline.Workspace)
     displayName: Download and build Ghidra from git part 1
 
@@ -159,7 +168,6 @@ jobs:
     condition: and(succeeded(), eq(variables['ghidraUrl'], ''))
     workingDirectory: $(Pipeline.Workspace)
     env:
-      JAVA_HOME: /usr/lib/jvm/zulu-11-azure-amd64
       WS: $(Pipeline.Workspace)
     displayName: Download and build Ghidra from git part 2
   - bash: |
@@ -168,7 +176,6 @@ jobs:
     displayName: Build Ghidra plugin
     workingDirectory: tools/ooanalyzer/ghidra/OOAnalyzerPlugin
     env:
-      JAVA_HOME: /usr/lib/jvm/zulu-11-azure-amd64
       WS: $(Pipeline.Workspace)
   - bash: |
       set -e
@@ -179,7 +186,6 @@ jobs:
     displayName: Run tests
     workingDirectory: tools/ooanalyzer/ghidra/OOAnalyzerPlugin
     env:
-      JAVA_HOME: /usr/lib/jvm/zulu-11-azure-amd64
       WS: $(Pipeline.Workspace)
   - script: gradle --stop
   - publish: tools/ooanalyzer/ghidra/OOAnalyzerPlugin/dist/
