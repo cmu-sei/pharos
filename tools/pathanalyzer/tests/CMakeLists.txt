@@ -33,8 +33,12 @@ set(ALL_TESTS
   global_var_v3
   independent_ite
   independent_ite_param
-  input_inside_bound_loop
-  input_inside_bound_loop_mod
+  input_inside_bound_loop_v1
+  input_inside_bound_loop_v2
+  input_inside_bound_loop_v3
+  input_inside_bound_loop_v4
+  input_inside_bound_loop_v5
+  input_inside_bound_loop_v6
   inter_func_narrow_to_wide_constraint
   inter_func_param
   inter_func_wide_to_narrow_constraint
