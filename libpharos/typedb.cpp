@@ -1,4 +1,4 @@
-// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2020 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "typedb.hpp"
 #include "descriptors.hpp"
@@ -170,9 +170,9 @@ DB DB::create_standard(const ProgOptVarMap &vm, handle_error_t handle)
 {
   auto db = DB();
 
-  if (vm.count("apidb")) {
+  if (vm.count("typedb")) {
     // If it's listed on the command line, use that.
-    for (auto & filename : vm["apidb"].as<std::vector<std::string>>()) {
+    for (auto & filename : vm["typedb"].as<std::vector<std::string>>()) {
       handle_node(db, YAML::Node(filename), THROW);
     }
   }
