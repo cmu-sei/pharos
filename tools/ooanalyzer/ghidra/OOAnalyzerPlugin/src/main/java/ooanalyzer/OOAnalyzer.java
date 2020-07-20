@@ -29,6 +29,7 @@ import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.Stream;
+import java.util.stream.IntStream;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -886,7 +887,17 @@ public class OOAnalyzer {
             updateTypeManager(vftableStruct, true);
 
             try {
-              flatApi.removeDataAt(vtableAddr);
+              // Try to remove any data inside the vtable
+              IntStream.range(0, vftableStruct.getLength ()).forEach(offset -> {
+                  Address addr = vtableAddr.add (offset);
+                  Data data = flatApi.getDataAt (addr);
+                  if (data != null)
+                    try {
+                      flatApi.removeData(data);
+                    } catch (Exception e) {
+                      Msg.warn(this, "Error removing data inside virtual function table at " + vftHexAddr + " (offset " + offset + "): " + e.toString ());
+                    }
+                });
               flatApi.createData(vtableAddr, vftableStruct);
             } catch (Exception e) {
               Msg.warn(this, "Could not create virtual function table at " + vftHexAddr + ": " + e.toString ());
