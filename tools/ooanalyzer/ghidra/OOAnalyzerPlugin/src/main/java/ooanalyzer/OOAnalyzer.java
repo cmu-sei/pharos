@@ -1397,10 +1397,17 @@ public class OOAnalyzer {
         } catch (DuplicateNameException e) {
         }
       }
-      int tid = dataTypeMgr.startTransaction("T");
-      dataTypeMgr.addDataType(dt, DataTypeConflictHandler.REPLACE_HANDLER);
-      dataTypeMgr.flushEvents();
-      dataTypeMgr.endTransaction(tid, true);
+
+      int tid = dataTypeMgr.startTransaction("Update type manager: add one type");
+
+      try {
+        dataTypeMgr.addDataType(dt, DataTypeConflictHandler.REPLACE_HANDLER);
+        dataTypeMgr.flushEvents();
+        dataTypeMgr.endTransaction(tid, true);
+      } catch (IllegalArgumentException iex) {
+        Msg.warn(this, "Unable to add data type " + dt.toString() + ": " + iex.toString ());
+        dataTypeMgr.endTransaction(tid, false);
+      }
     }
   }
 
@@ -1412,22 +1419,14 @@ public class OOAnalyzer {
    */
   private void updateTypeManager(final DataType[] dTypes, boolean useOOAnalyzerPath) {
 
-    int tid = dataTypeMgr.startTransaction("T");
+    int tid = dataTypeMgr.startTransaction("Update type manager: add multiple types");
     for (var dt : dTypes) {
       allowSwingToProcessEvents ();
       if (monitor.isCancelled ()) {
         dataTypeMgr.endTransaction(tid, false);
         return;
       }
-      else if (useOOAnalyzerPath) {
-        try {
-          if (dt.getCategoryPath().compareTo(ooanalyzerCategory) != 0) {
-            dt.setCategoryPath(ooanalyzerCategory);
-          }
-        } catch (DuplicateNameException e) {
-        }
-      }
-      dataTypeMgr.addDataType(dt, DataTypeConflictHandler.REPLACE_HANDLER);
+      updateTypeManager(dt, useOOAnalyzerPath);
     }
     dataTypeMgr.flushEvents();
     dataTypeMgr.endTransaction(tid, true);
