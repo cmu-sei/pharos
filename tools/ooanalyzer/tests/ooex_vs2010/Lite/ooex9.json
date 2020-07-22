@@ -62,6 +62,7 @@
                             "type": "meth"
                         }
                     },
+                    "length": 1,
                     "vftptr": "0x0"
                 }
             }
@@ -135,6 +136,7 @@
                 "0x406150": {
                     "ea": "0x406150",
                     "entries": {},
+                    "length": 1,
                     "vftptr": "0x0"
                 }
             }
@@ -225,6 +227,7 @@
                             "type": "meth"
                         }
                     },
+                    "length": 1,
                     "vftptr": "0x0"
                 }
             }
@@ -331,6 +334,7 @@
                 "0x406178": {
                     "ea": "0x406178",
                     "entries": {},
+                    "length": 1,
                     "vftptr": "0xc"
                 },
                 "0x406180": {
@@ -345,6 +349,7 @@
                             "type": "meth"
                         }
                     },
+                    "length": 2,
                     "vftptr": "0x0"
                 }
             }
@@ -405,6 +410,7 @@
                             "type": "deldtor"
                         }
                     },
+                    "length": 2,
                     "vftptr": "0x0"
                 }
             }
@@ -543,6 +549,7 @@
                             "type": "meth"
                         }
                     },
+                    "length": 2,
                     "vftptr": "0x0"
                 }
             }
@@ -594,6 +601,7 @@
                             "type": "deldtor"
                         }
                     },
+                    "length": 1,
                     "vftptr": "0x0"
                 }
             }
@@ -690,5 +698,5 @@
             ]
         }
     },
-    "version": "2.1.0"
+    "version": "2.2.0"
 }

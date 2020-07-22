@@ -44,6 +44,10 @@ class OOVirtualFunctionTable {
 
   size_t size_;
 
+  // Stored here so that we can convert the size (in bytes) to a length (number of entries) in
+  // the JSON exporter, which does not have access to the architecture bytes.
+  size_t arch_bytes_;
+
   // RTTI information is stored directly above the virtual function
   // table. It can be saved here for later usage (if it is
   // present). Both the address and the COL are stored. The COL is the
@@ -66,12 +70,12 @@ class OOVirtualFunctionTable {
 
  public:
 
-  OOVirtualFunctionTable() : address_(INVALID), size_(0), rtti_address_(INVALID),rtti_col_(nullptr) { }
+  OOVirtualFunctionTable() : address_(INVALID), size_(0), arch_bytes_(4), rtti_address_(INVALID),rtti_col_(nullptr) { }
 
-  OOVirtualFunctionTable(rose_addr_t a, size_t s, rose_addr_t ra,
+  OOVirtualFunctionTable(rose_addr_t a, size_t s, size_t b, rose_addr_t ra,
                          TypeRTTICompleteObjectLocatorPtr rc);
 
-  OOVirtualFunctionTable(rose_addr_t a);
+  OOVirtualFunctionTable(rose_addr_t a, size_t b);
 
   ~OOVirtualFunctionTable();
 
@@ -88,6 +92,8 @@ class OOVirtualFunctionTable {
   size_t get_size() const;
 
   void set_size(size_t s);
+
+  size_t get_length() const { return size_ / arch_bytes_; };
 
   void add_virtual_call(const CallDescriptor *vcd, rose_addr_t target);
 

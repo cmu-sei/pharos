@@ -18,7 +18,7 @@ python_version_2 = (sys.version_info[0] == 2)
 
 PLUGIN_VERSION = 2.0
 
-EXPECTED_JSON_VERSION = "2.1.0"
+EXPECTED_JSON_VERSION = "2.2.0"
 
 import json
 import copy
@@ -183,6 +183,13 @@ class PyOOAnalyzer(object):
 
     def get_classes(self):
         return self.__classes
+
+    def find_name(self, ea):
+        for cls in self.__classes:
+            for method in cls.methods:
+                if method.start_ea == ea:
+                    return method.method_name
+        return None
 
     def get_json_filename(self):
         return self.__json_filename
@@ -454,6 +461,7 @@ class PyOOAnalyzer(object):
 
             has_name = is_func \
                        and ida_bytes.has_name (flags) \
+                       and ida_bytes.has_user_name (flags) \
                        and idc.get_func_name(meth.start_ea) != ""
             # Does IDA have a name for this function?
             if has_name:
@@ -489,6 +497,7 @@ class PyOOAnalyzer(object):
 
             vft = PyClassVftable()
             vft.cls = cls
+            vft.length = int(v['length'])
             vft.start_ea = int(v['ea'], 16)
 
             for entry in v['entries'].values ():
@@ -712,28 +721,49 @@ class PyOOAnalyzer(object):
         ida_struct.set_struc_cmt(
             vftid, vft.cls.ida_name + " virtual function table", 1)
 
-        i = 0
-        for vf_off, vf in vft.virtual_functions.items():
+        print ("VFtable length = %d" % vft.length)
 
-            # attempt to preserve vftable inheritance
-            print("Found virtual function: %s" % vf)
 
-            ida_bytes.create_data(vft.start_ea + vf_off,
+        for vt_index in range(0, vft.length):
+            vt_off = vt_index * 4
+
+            # Where the entry points to
+            ea = idc.get_wide_dword(vft.start_ea + vt_off)
+
+            # Look up the name in the virtual function table entries.  This only contains
+            # functions believed to be defined on the current class, and will probably be
+            # removed.
+            if vt_index in vft.virtual_functions:
+                name = vft.virtual_functions[vt_index].method_name
+            else:
+                name = self.find_name(ea)
+                if name is None:
+                    # Last resort: Use whatever name IDA has
+                    name = idc.get_func_name(ea)
+
+            # print("Virtual function entry index %d using name %s" % (vt_index, name))
+
+            # Mark the entry as a dword
+            ida_bytes.create_data(vft.start_ea + vt_off,
                                   ida_bytes.FF_DWORD, 4, idaapi.BADADDR)
 
-            # check to see if the name is repeated in the vftable - this happens in the case of
-            # pure virtual functions
-
-            res = idc.add_struc_member(vft.id, str(
-                vf.method_name), (4 * vf_off), ida_bytes.FF_DWORD, 0xffffffff, 4)
+            res = idc.add_struc_member(vft.id,
+                                       str(name),
+                                       vt_off,
+                                       ida_bytes.FF_DWORD,
+                                       0xffffffff,
+                                       4)
             if res == ida_struct.STRUC_ERROR_MEMBER_NAME:
-                idc.add_struc_member(vft.id, "%s_%d" % (
-                    str(vf.method_name), i), (4 * vf_off), ida_bytes.FF_DWORD, 0xffffffff, 4)
+                name = "%s_%d" % (name, vt_index)
+                res = idc.add_struc_member(vft.id,
+                                           str(name),
+                                           vt_off,
+                                           ida_bytes.FF_DWORD,
+                                           0xffffffff,
+                                           4)
 
-            ea = idc.get_wide_dword(vft.start_ea + (4 * vf_off))
-            idc.set_member_cmt(vftid, (4 * vf_off), ida_hexify(ea), 1)
-
-            i += 1  # next vftable entry
+            # Add comment with the original value
+            idc.set_member_cmt(vftid, vt_off, ida_hexify(ea), 1)
 
         # add the vftptr :or rename existing member to vftptr
         vptr_name = "vftptr_0x%s" % ida_hexify(off)

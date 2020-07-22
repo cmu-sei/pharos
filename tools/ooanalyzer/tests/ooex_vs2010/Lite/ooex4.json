@@ -106,6 +106,7 @@
                             "type": "meth"
                         }
                     },
+                    "length": 3,
                     "vftptr": "0x0"
                 }
             }
@@ -171,6 +172,7 @@
                             "type": "meth"
                         }
                     },
+                    "length": 3,
                     "vftptr": "0x0"
                 }
             }
@@ -231,6 +233,7 @@
                             "type": "deldtor"
                         }
                     },
+                    "length": 2,
                     "vftptr": "0x0"
                 }
             }
@@ -369,6 +372,7 @@
                             "type": "meth"
                         }
                     },
+                    "length": 2,
                     "vftptr": "0x0"
                 }
             }
@@ -420,6 +424,7 @@
                             "type": "deldtor"
                         }
                     },
+                    "length": 1,
                     "vftptr": "0x0"
                 }
             }
@@ -506,5 +511,5 @@
             ]
         }
     },
-    "version": "2.1.0"
+    "version": "2.2.0"
 }

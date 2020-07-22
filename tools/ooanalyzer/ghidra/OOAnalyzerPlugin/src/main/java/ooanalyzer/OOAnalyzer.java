@@ -720,11 +720,9 @@ public class OOAnalyzer {
    */
   private void analyzeVftables(final Structure ghidraClassType, final Collection<Vftable> vftables) {
 
-    Map<Function, Vfentry> functionToVfentryMap = new HashMap<>();
-
     // These are the accumulated virtual function tables.
-    Map<Address, List<Function>> ooaVirtualFunctionTables = new ConcurrentHashMap<>();
-    Map<Address, List<Function>> ghdVirtualFunctionTables = new ConcurrentHashMap<>();
+    Map<Address, List<Optional<Function>>> ooaVirtualFunctionTables = new ConcurrentHashMap<>();
+    Map<Address, List<Optional<Function>>> ghdVirtualFunctionTables = new ConcurrentHashMap<>();
 
     // First, consider what OOAnalyzer says about vftables
 
@@ -737,7 +735,7 @@ public class OOAnalyzer {
 
         Address ooaVftAddr = null;
 
-        Map<Function, Vfentry> localFunctionToVfentryMap = new HashMap<Function, Vfentry> ();
+        List<Optional<Function>> vftableEntries = new ArrayList<Optional<Function>> ();
 
         try {
           // Convert the vftable from a list of VfEntry classes to a list of Ghidra Functions.
@@ -745,41 +743,33 @@ public class OOAnalyzer {
           ooaVftAddr = flatApi.toAddr(ooaVftable.getEa());
 
           // The entry list may be null
-          Collection<Vfentry> ooaVfEntryList = ooaVftable.getEntries();
-          if (!ooaVfEntryList.isEmpty()) {
-
-            localFunctionToVfentryMap = ooaVfEntryList.stream()
-              // We want functions
-              .map(entry -> new AbstractMap.SimpleEntry<Function, Vfentry> (flatApi.getFunctionAt(flatApi.toAddr(entry.getEa())), entry))
-              // It's possible for a function to appear in a vftable once.  Because of who
-              // consumes this data, it is OK to have each function map to only one entry.
-              .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey,
-                                        AbstractMap.SimpleEntry::getValue,
-                                        (entry1, entry2) -> entry1));
-
-            // Save the mapping of Function to VfEtnry
-            // because there is more information in
-            // the VfEntry
-            // for (Vfentry vfe : ooaVfEntryList) {
-            //   functionToVfentryMap.putIfAbsent
-            // }
-            // for (int i = 0; i < ooaVfEntryList.size(); i++) {
-            //   functionToVfentryMap.putIfAbsent(ooaVfFuncList.get(i), ooaVfEntryList.get(i));
-            // }
-          }
+          vftableEntries = IntStream.range(0, ooaVftable.getLength())
+            .map(n -> 4*n)
+            // Compute address of vftable entry
+            .mapToLong(n -> n + ooaVftable.getEa ())
+            .boxed ()
+            // Read pointer from entry
+            .map (addr -> {
+                try {
+                  return Optional.of (flatApi.getInt (flatApi.toAddr (addr)));
+                } catch (ghidra.program.model.mem.MemoryAccessException e) {
+                  Msg.warn (this, "Unable to read vftable entry at " + addr);
+                  return Optional.empty ();
+                }
+              })
+            // What if there is no function?
+            .map (addropt -> addropt.map(addr -> flatApi.getFunctionAt(flatApi.toAddr ((Integer) addr))))
+            .collect(Collectors.toList ());
         } catch (Exception e) {
           // Just move on to the next entry
           Msg.warn (this, "Something bad happened when processing vftable entries: " + e.toString ());
         }
 
-        if (ooaVftAddr != null && !localFunctionToVfentryMap.isEmpty()) {
+        if (ooaVftAddr != null && !vftableEntries.isEmpty()) {
           ooaVirtualFunctionTables.put(ooaVftAddr,
-                                       new ArrayList<Function> (localFunctionToVfentryMap
-                                                                .keySet ()));
+                                       vftableEntries);
         }
 
-        // Populate functionToVfentryMap
-        functionToVfentryMap.putAll (localFunctionToVfentryMap);
       }
     }
 
@@ -808,6 +798,7 @@ public class OOAnalyzer {
         .collect(Collectors.toList());
 
       // If virtual function tables found, accumulate the methods therein
+      // XXX: Rewrite me.  Do we need to know anything other than the size of the vftable?
       if (vftableSymbols != null && !vftableSymbols.isEmpty()) {
         for (Symbol vft : vftableSymbols) {
 
@@ -818,7 +809,7 @@ public class OOAnalyzer {
             continue;
           }
 
-          List<Function> ghidraVfList = new ArrayList<>(ghidraVft.getNumComponents());
+          List<Optional<Function>> ghidraVfList = new ArrayList<>(ghidraVft.getNumComponents());
 
           for (int offset = 0; offset < ghidraVft.getNumComponents(); offset++) {
             Data vfuncPtr = ghidraVft.getComponent(offset);
@@ -829,8 +820,7 @@ public class OOAnalyzer {
               if (addr != null) {
                 Function vf = flatApi.getFunctionAt(addr);
                 if (vf != null) {
-                  ghidraVfList.add(vf);
-                  functionToVfentryMap.putIfAbsent(vf, null);
+                  ghidraVfList.add(Optional.of(vf));
                 }
               }
             }
@@ -840,21 +830,28 @@ public class OOAnalyzer {
         }
       }
 
-      // The following iterates over the entries of the ghidra virtual
-      // function table. For each entry, merge (key, value, remapper) is called on
-      // on the OOA virtual function tables creating the entry under the key and
-      // value if the key didn't exist or it will invoke the given remapping function
-      // if they already existed. This function takes the 2 lists to merge, which in
-      // this case, are first added to a TreeSet to ensure both unique and sorted
-      // elements and converted back into a list. In other words, add the Ghidra
-      // entries to the OOA entries only if the OOA entries don't exist or are
-      // different
+      // The followin code merges the vftable information that comes from OOAnalyzer and
+      // Ghidra.
 
       ghdVirtualFunctionTables.entrySet().parallelStream()
-        .forEach(e -> ooaVirtualFunctionTables.merge(e.getKey(), e.getValue(), (v1, v2) -> {
-              Set<Function> set = new HashSet<>(v1);
-              set.addAll(v2);
-              return new ArrayList<Function>(set);
+        .forEach(e -> ooaVirtualFunctionTables.merge(e.getKey(), e.getValue(), (ooaEntries, ghdEntries) -> {
+              // If we got here, there are vftable entries from both OOAnalyzer and Ghidra.  I
+              // don't think these should differ in any way except size, so we simply choose
+              // the longest list here.
+
+              if (ooaEntries.size () != ghdEntries.size ()) {
+                Msg.debug (this, "Merge for vftable " + e.getKey ());
+
+                for (Optional<Function> ent : ooaEntries) {
+                  Msg.debug (this, "OOA Entry: " + ent.toString ());
+                }
+
+                for (Optional<Function> ent : ghdEntries) {
+                  Msg.debug (this, "GHD Entry: " + ent.toString ());
+                }
+              }
+
+              return ooaEntries.size() >= ghdEntries.size() ? ooaEntries : ghdEntries;
             }));
 
       // There are virtual functions, but no vftable_X symbol defined
@@ -873,8 +870,6 @@ public class OOAnalyzer {
           }
         }
       }
-
-      applyVirtualFunctions(ghidraClassType, functionToVfentryMap);
 
       ooaVirtualFunctionTables.forEach((vtableAddr, vfuncList) -> {
 
@@ -1074,7 +1069,7 @@ public class OOAnalyzer {
    * @param vfuncs          the list of functions to add
    * @return
    */
-  private void populateVftable(Structure vftableStruct, List<Function> vfuncs) {
+  private void populateVftable(Structure vftableStruct, List<Optional<Function>> vfuncs) {
 
     Integer pointerSize = null;
     if (dataTypeMgr != null) {
@@ -1084,8 +1079,16 @@ public class OOAnalyzer {
     }
 
     int offset = 0;
-    for (Function vf : vfuncs) {
-      if (vf != null) {
+
+    for (Optional<Function> vfo : vfuncs) {
+
+      if (vfo.isEmpty ()) {
+        // If we can't find the exact function, just use a pointer data type
+        PointerDataType pdt = new PointerDataType ();
+        vftableStruct.insertAtOffset(offset, pdt, pdt.getLength(),
+                                     String.valueOf(offset), "virtual function table entry.");
+      } else {
+        Function vf = vfo.get ();
         FunctionDefinitionDataType vfDef = new FunctionDefinitionDataType(ooanalyzerVirtualFunctionsCategory,
                                                                           vf.getName(), vf.getSignature());
         Pointer pvfDt = PointerDataType.getPointer(vfDef, dataTypeMgr);

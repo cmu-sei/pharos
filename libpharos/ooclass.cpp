@@ -58,7 +58,7 @@ OOClassDescriptor::OOClassDescriptor(rose_addr_t cid,
 
   if (vft!=0) {
     // Add the nearly empty primary vftable, which is at offset 0
-    primary_vftable_ = std::make_shared<OOVirtualFunctionTable>(vft);
+    primary_vftable_ = std::make_shared<OOVirtualFunctionTable>(vft, ds.get_arch_bytes());
     add_vftable(0, primary_vftable_);
   }
 }
@@ -112,7 +112,7 @@ void
 OOClassDescriptor::add_vftable(size_t off, rose_addr_t vftable_addr) {
 
   // Add the nearly empty primary vftable
-  add_vftable(off, std::make_shared<OOVirtualFunctionTable>(vftable_addr));
+  add_vftable(off, std::make_shared<OOVirtualFunctionTable>(vftable_addr, ds.get_arch_bytes()));
 }
 
 void
@@ -121,7 +121,7 @@ OOClassDescriptor::add_vftable(size_t off, OOVirtualFunctionTablePtr v) {
   vftables_.push_back(v);
 
   // add the virtual function table pointer at offset 0 for the primary vftable
-  std::shared_ptr<OOElement> vfptr = std::make_shared<OOVfptr>(global_arch_bytes, v);
+  std::shared_ptr<OOElement> vfptr = std::make_shared<OOVfptr>(ds.get_arch_bytes(), v);
   add_member(off, vfptr);
 }
 

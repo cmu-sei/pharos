@@ -291,6 +291,7 @@ void OOJsonExporter::generate_json(const std::vector<OOClassDescriptorPtr> &clas
             json_vft_entries->add (intcat(vf_offset, 10), std::move (json_vf)); // add the new vf
           }
 
+          json_vft->add ("length", vtab->get_length());
           json_vft->add ("entries", std::move (json_vft_entries));
           json_vftables->add (addr2str (vtab->get_address ()), std::move (json_vft));
 
@@ -443,7 +444,7 @@ void OOJsonExporter::generate_json(const std::vector<OOClassDescriptorPtr> &clas
     }
   }
 
-  json->add("version", "2.1.0");
+  json->add("version", "2.2.0");
   json->add("filemd5", file_md5);
   json->add("filename", exe_filename);
   json->add("structures", std::move (json_structs));

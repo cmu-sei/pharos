@@ -22,6 +22,10 @@ public class Vftable {
   private String ea;
 
   @Expose
+  @SerializedName("length")
+  private Integer length;
+  
+  @Expose
   @SerializedName("vftptr")
   private String vftptr;
 
@@ -31,6 +35,10 @@ public class Vftable {
 
   public Long getEa() {
     return Long.decode (ea);
+  }
+
+  public Integer getLength() {
+    return length;
   }
 
   public Integer getVftptr() {

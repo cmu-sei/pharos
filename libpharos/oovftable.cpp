@@ -16,10 +16,11 @@ OOVirtualFunctionTable::set_address(rose_addr_t a) {
   address_ = a;
 }
 
-OOVirtualFunctionTable::OOVirtualFunctionTable(rose_addr_t a, size_t s, rose_addr_t ra,
+OOVirtualFunctionTable::OOVirtualFunctionTable(rose_addr_t a, size_t s, size_t b, rose_addr_t ra,
                                                TypeRTTICompleteObjectLocatorPtr rc)
 {
   address_ = a;
+  arch_bytes_ = b;
   size_ = s;
   rtti_address_ = ra;
   rtti_col_ = rc;
@@ -48,8 +49,9 @@ read_RTTI(const DescriptorSet& ds, rose_addr_t addr)
   return nullptr;
 }
 
-OOVirtualFunctionTable::OOVirtualFunctionTable(rose_addr_t a) {
+OOVirtualFunctionTable::OOVirtualFunctionTable(rose_addr_t a, size_t b) {
   address_ = a;
+  arch_bytes_ = b;
   size_ = 0;
   rtti_address_ = INVALID;
 }

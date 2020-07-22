@@ -284,9 +284,11 @@ findEntries(ClassId, VFTable, VFTableEntriesJson):-
 
 makeVFTableJson(ClassId, VFTable, Offset, AddrStr, Out):-
     hexAddr(VFTable, AddrStr),
+    finalVFTable(VFTable, Size, _, _, _),
+    Length is Size // 4,
     hexAddr(Offset, OffsetStr),
     findEntries(ClassId, VFTable, VFTableEntries),
-    Out = vftable{'ea': AddrStr, 'vftptr': OffsetStr, 'entries': VFTableEntries }.
+    Out = vftable{'ea': AddrStr, 'vftptr': OffsetStr, 'entries': VFTableEntries, 'length': Length }.
 
 % Return true if the method is a virtual method on the class.
 :- table virtualMethodOnClass/2.
@@ -390,7 +392,7 @@ exportJSON(ResultsFile) :-
      VcallsJson = vcalls{}),
     finalFileInfo(FileMD5, FileName),
     json_write_dict(current_output,
-                    root{'structures': ClassJson, 'vcalls':VcallsJson, 'version': '2.1.0',
+                    root{'structures': ClassJson, 'vcalls':VcallsJson, 'version': '2.2.0',
                          'filemd5': FileMD5, 'filename': FileName}),
     writeln('').
 
