@@ -31,7 +31,7 @@ psolve(X) :- psolve_no_halt(X), halt.
 % This definition of progress is for when we're NOT running from within OOAnalyzer, which is
 % probably the same circumstances where we want this reporting module.
 progress(N) :-
-  loginfo('There are '), loginfo(N), loginfoln(' known facts.').
+  loginfo('There are '), format(atom(NStr), '~D', N), loginfo(NStr), loginfoln(' known facts.').
 
 % In the OOAnalyzer binary, these are passed to a proper Pharos logging stream.
 log(Importance, Message) :-

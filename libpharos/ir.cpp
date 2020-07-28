@@ -998,7 +998,7 @@ IR IR::get_ir(const FunctionDescriptor* fd) {
       };
 
       if (boost::optional<std::string> import_name = elf_import_hack ()) {
-        call = ImportCall ("bogus.so", *import_name);
+        call = ImportCall ("ELF", *import_name);
       } else if (cd.get_target_location () == CallInternal) {
         call = InternalCall ();
       } else if (cd.get_target_location () == CallExternal) {

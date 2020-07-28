@@ -402,7 +402,23 @@ void OOJsonExporter::generate_json(const std::vector<OOClassDescriptorPtr> &clas
     json_cls->add ("vftables", std::move (json_vftables));
 
     num_structs ++;
-    json_structs->add (cls_name, std::move (json_cls));
+
+    // Per #116, the class name since they may not be unique.  Try to use the name, but if
+    // another class uses the same name, then fall back to the ID.
+
+    auto cls_id = cls->get_id ();
+    std::string cls_key = cls_name;
+    auto other_cls_it = std::find_if (sorted_classes.begin (),
+                                      sorted_classes.end (),
+                                      [&cls_name, &cls_id] (const OOClassDescriptorPtr & other_cls) {
+                                        return other_cls->get_name () == cls_name && other_cls->get_id () != cls_id;
+                                      });
+
+    // There was another class with the same name
+    if (other_cls_it != sorted_classes.end ())
+      cls_key = addr2str(cls_id);
+
+    json_structs->add (cls_key, std::move (json_cls));
 
     GDEBUG << "Class complete" << LEND;
 

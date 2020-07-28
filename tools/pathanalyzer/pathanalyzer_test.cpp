@@ -58,14 +58,19 @@ using AnalyzerMap = std::map<
 ImportRewriteSet const imports = {
   // Because of in-lining, we may need to jump over a call to path_goal to reach the one we
   // selected.  As a result we need to include time.
-  ImportCall{"bogus.so", "__assert_symbolic_dummy_import"},
-  ImportCall{"bogus.so", "time"},
-  ImportCall{"bogus.so", "rand"},
-  ImportCall{"bogus.so", "random"},
-  ImportCall{"bogus.so", "_Znwm"},
-  ImportCall{"bogus.so", "_Znwj"},
+  ImportCall{"ELF", "__assert_symbolic_dummy_import"},
+  ImportCall{"ELF", "time"},
+  ImportCall{"ELF", "rand"},
+  ImportCall{"ELF", "random"},
+  ImportCall{"ELF", "_Znwm"},
+  ImportCall{"ELF", "_Znwj"},
   ImportCall{"MSVCR100D.dll", "rand"},
-  ImportCall{"ucrtbased.dll", "rand"}
+  ImportCall{"ucrtbased.dll", "rand"},
+  // Additions for cyber grand challenge tests.
+  ImportCall{"ELF", "cgc__terminate"},
+  ImportCall{"ELF", "cgc_transmit"},
+  ImportCall{"ELF", "cgc_random"},
+  ImportCall{"ELF", "cgc_receive"},
 };
 
 PathAnalyzer create_spacer_analyzer(

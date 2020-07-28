@@ -449,8 +449,8 @@ reasoningLoop :-
 % no idea how to reason through this properly, so he's just going to take some notes.
 guess :-
         get_flag(guesses, Guesses),
-        logdebug('Starting guess. There are currently '),
-        logdebug(Guesses), logdebugln(' guesses.'),
+        logdebug('Starting guess. There are currently '), format(atom(GuessStr), '~D', Guesses),
+        logdebug(GuessStr), logdebugln(' guesses.'),
         % These three guesses are first on the principle that guesing them has lots of
         % consequences, and that they're probably not wrong, so there's little harm in guessing
         % them first.
@@ -549,7 +549,7 @@ initialSanityChecks :-
 % The Source should either be ooanalyzer_tool or ooscript, and is only used right now to pick
 % the relevant error message when we run out of table or stack space.
 solve(Source) :-
-    catch(solve_internal, E, ( 
+    catch(solve_internal, E, (
                                % Handle the different exceptions
                                ( E = error(resource_error(private_table_space), _) -> complain_table_space(Source)
                                ; E = error(resource_error(stack), _) -> complain_stack_size(Source)
@@ -592,6 +592,7 @@ solve_internal :-
     guessingDisabled,
     !,
     (loginfoln('Reasoning about object oriented constructs based on known facts ...'),
+    reportRTTIResults,
     reportStage('Initial reasoning'),
     reasonForwardAsManyTimesAsPossible,
     reportStage('Initial reasoning complete'),
@@ -604,6 +605,7 @@ solve_internal :-
 solve_internal :-
     !,
     (loginfoln('Reasoning about object oriented constructs based on known facts ...'),
+    reportRTTIResults,
     reportStage('Initial reasoning'),
     reasonForwardAsManyTimesAsPossible,
     reportStage('Initial reasoning complete'),

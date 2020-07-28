@@ -1403,13 +1403,15 @@ public class OOAnalyzer {
 
       int tid = dataTypeMgr.startTransaction("Update type manager: add one type");
 
+      Boolean commit = false;
       try {
         dataTypeMgr.addDataType(dt, DataTypeConflictHandler.REPLACE_HANDLER);
         dataTypeMgr.flushEvents();
-        dataTypeMgr.endTransaction(tid, true);
+        commit = true;
       } catch (IllegalArgumentException iex) {
         Msg.warn(this, "Unable to add data type " + dt.toString() + ": " + iex.toString ());
-        dataTypeMgr.endTransaction(tid, false);
+      } finally {
+        dataTypeMgr.endTransaction(tid, commit);
       }
     }
   }

@@ -381,7 +381,7 @@ struct HelperVisitor : public boost::static_visitor<boost::optional<Stmt>> {
       if (i != funcs.end ()) {
         ignore = true;
         n++;
-        if (*ec == ImportCall ("bogus.so", "__assert_symbolic_dummy_import")) {
+        if (*ec == ImportCall ("ELF", "__assert_symbolic_dummy_import")) {
           // __assert_symbolic_dummy_import(b) is an import that tells us we should rewrite to
           // AssertStmt(b)
           int nbits = ds.get_arch_bits ();

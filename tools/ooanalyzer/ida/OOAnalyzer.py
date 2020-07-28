@@ -803,6 +803,8 @@ class PyOOAnalyzer(object):
         nbytes = ida_struct.get_struc_size(parent.id)
         name = "parent_%s" % ida_hexify(off)
 
+        print("Parent ID: %s size: %d" % (parent.id, nbytes))
+
         # apply the parent, deleting any empty members :or vftptrs
         result = idc.add_struc_member(
             cls.id, name, off, ida_bytes.FF_STRUCT | ida_bytes.FF_DATA, parent.id, nbytes)
@@ -875,7 +877,7 @@ class PyOOAnalyzer(object):
                     worklist_count -= 1
 
                 else:
-                    print("Not applying class '%s' because cannot find member class '%s'" % (
+                    print("Delaying application of class '%s' because cannot find member class '%s'" % (
                         c.ida_name, missing_member))
 
             # idaapi.hide_wait_box()

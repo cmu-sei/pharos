@@ -411,7 +411,7 @@ SpacerAnalyzer::setup_path_problem(rose_addr_t srcaddr, rose_addr_t tgtaddr)
                  // But it was easier for Ed to also put the logic for rewriting calls to
                  // __assert_symbolic_dummy_import into AssertStmt in that function.  So we
                  // call that here, but only rewrite __assert_symbolic_dummy_import.
-                 ir = rewrite_imported_calls (ir, ImportRewriteSet {ImportCall{"bogus.so", "__assert_symbolic_dummy_import"}});
+                 ir = rewrite_imported_calls (ir, ImportRewriteSet {ImportCall{"ELF", "__assert_symbolic_dummy_import"}});
 
                  // Add reached variables
                  std::set<IRCFGVertex> vertices;

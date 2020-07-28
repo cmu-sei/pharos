@@ -7,26 +7,26 @@ logfatal(X) :- log('FATAL', X).
 logerror(X) :- log('ERROR', X).
 logwarn(X) :- log('WARN', X).
 loginfo(X) :- log('INFO', X).
-logwhere(X) :- log('WHERE', X).
-logdebug(X) :- log('TRACE', X).
-logtrace(X) :- log('DEBUG', X).
+logdebug(X) :- log('DEBUG', X).
+logtrace(X) :- log('TRACE', X).
+logcrazy(X) :- log('CRAZY', X).
 
 logfatalln(X) :- logln('FATAL', X).
 logerrorln(X) :- logln('ERROR', X).
 logwarnln(X) :- logln('WARN', X).
 loginfoln(X) :- logln('INFO', X).
-logwhereln(X) :- logln('WHERE', X).
-logdebugln(X) :- logln('TRACE', X).
-logtraceln(X) :- logln('DEBUG', X).
+logdebugln(X) :- logln('DEBUG', X).
+logtraceln(X) :- logln('TRACE', X).
+logcrazyln(X) :- logln('CRAZY', X).
 
 % Associate log level strings with numbers.  Perhaps we should alter the C++ API?
 numericLogLevel('FATAL', 1).
 numericLogLevel('ERROR', 2).
 numericLogLevel('WARN', 3).
 numericLogLevel('INFO', 4).
-numericLogLevel('WHERE', 5).
-numericLogLevel('DEBUG', 6).
-numericLogLevel('TRACE', 7).
+numericLogLevel('DEBUG', 5).
+numericLogLevel('TRACE', 6).
+numericLogLevel('CRAZY', 7).
 
 % This is a default implementation of traceAtLevel which should never be used because the code
 % in logging_instrumentation.pl should replace it at compile time.

@@ -365,16 +365,25 @@ makeOneClassJson(ClassId, Json):-
                    'size': Size, 'members': MemberJson,
                    'methods': MethodJson, 'vftables': VFTableJson}.
 
-makeOneClassInOrder(List, NameKey, Json):-
+makeOneClassInOrder(List, SortedClassNames, NameKey, Json):-
     member(C, List),
     makeOneClassJson(C, Json),
-    atom_string(NameKey, Json.name).
+    % The class name is not necessarily unique because there can be multiple vftables that
+    % contain the same name.  If it is unique, we will use that.  If not, we'll use the class
+    % ID instead.
+    ((nth0(I1, SortedClassNames, Json.name), nth0(I2, SortedClassNames, Json.name), iso_dif(I1, I2))
+     ->
+         hexAddr(C, ClassIdStr)
+     ;
+     ClassIdStr = Json.name),
+    atom_string(NameKey, ClassIdStr).
 
 makeAllStructuresJson(Json):-
     % Get a list of Class IDs and sort them by the class ID.
     findall(ClsId, finalClass(ClsId, _, _, _, _, _), ClassIDList),
     sort(0, @=<, ClassIDList, SortedClassIDList),
-    bagof(NameKey:ClsJson, makeOneClassInOrder(SortedClassIDList, NameKey, ClsJson), KVPairs),
+    maplist(makeClassName, SortedClassIDList, SortedClassNameList),
+    bagof(NameKey:ClsJson, makeOneClassInOrder(SortedClassIDList, SortedClassNameList, NameKey, ClsJson), KVPairs),
     dict_create(Json, structures, KVPairs).
 
 makeOneVcallUsageJson(Insn, Key, Out):-
@@ -384,8 +393,8 @@ makeOneVcallUsageJson(Insn, Key, Out):-
     atom_string(Key, HexAddr),
     Out = vcall{'targets': TargetJsons}.
 
-exportJSON(ResultsFile) :-
-    loadResults(ResultsFile),
+
+exportJSON :-
     makeAllStructuresJson(ClassJson),
     (bagof(Key:Out, Insn^makeOneVcallUsageJson(Insn, Key, Out), KVPairs) ->
          dict_create(VcallsJson, vcalls, KVPairs);
@@ -395,6 +404,10 @@ exportJSON(ResultsFile) :-
                     root{'structures': ClassJson, 'vcalls':VcallsJson, 'version': '2.2.0',
                          'filemd5': FileMD5, 'filename': FileName}),
     writeln('').
+
+exportJSON(ResultsFile) :-
+    loadResults(ResultsFile),
+    exportJSON.
 
 /* Local Variables:   */
 /* mode: prolog       */

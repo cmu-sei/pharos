@@ -158,8 +158,8 @@ void DescriptorSet::init()
             if (rel->get_type() == SgAsmElfRelocEntry::R_X86_64_JUMP_SLOT ||
                 rel->get_type() == SgAsmElfRelocEntry::R_386_JMP_SLOT) {
               rose_addr_t raddr = rel->get_r_offset();
-              // We should get the correct shared object name from the ELF header...
-              std::string dll("unknown");
+              // ELF files don't say explicltly which files contain which symbols.  They're
+              std::string dll("ELF");
               // Start with a NULL name.  The import descriptor constructor will change it to
               // '*INVALID*' if we're unable to find the symbol.
               std::string name;

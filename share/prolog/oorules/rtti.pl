@@ -324,57 +324,57 @@ reportRTTIInvalidity :-
     true.
 
 reportNoBase((A)) :-
-    write('rTTINoBaseName('),
-    writeHex(A), write(', '),
+    logdebug('rTTINoBaseName('),
+    logdebug(A), logdebug(', '),
     rTTIName(A, AName),
-    write('\''), writeHex(AName), write('\''), writeln(').').
+    logdebug('\''), logdebug(AName), logdebug('\''), logdebugln(').').
 reportNoBase :-
     setof((A), rTTINoBase(A), Set),
     maplist(reportNoBase, Set).
 reportNoBase :- true.
 
 reportAncestorOf((D, A)) :-
-    write('rTTIAncestorOfName('),
-    writeHex(D), write(', '),
-    writeHex(A), write(', '),
+    logdebug('rTTIAncestorOfName('),
+    logdebug(D), logdebug(', '),
+    logdebug(A), logdebug(', '),
     rTTIName(D, DName),
     rTTIName(A, AName),
-    write('\''), writeHex(DName), write('\''), write(', '),
-    write('\''), writeHex(AName), write('\''), writeln(').').
+    logdebug('\''), logdebug(DName), logdebug('\''), logdebug(', '),
+    logdebug('\''), logdebug(AName), logdebug('\''), logdebugln(').').
 reportAncestorOf :-
     setof((D, A), rTTIAncestorOf(D, A), Set),
     maplist(reportAncestorOf, Set).
 reportAncestorOf :- true.
 
 reportInheritsDirectlyFrom((D, A, H, M, P, V)) :-
-    write('rTTIInheritsDirectlyFromName('),
-    writeHex(D), write(', '),
-    writeHex(A), write(', '),
-    writeHex(H), write(', '),
-    writeHex(M), write(', '),
-    writeHex(P), write(', '),
-    writeHex(V), write(', '),
+    logdebug('rTTIInheritsDirectlyFromName('),
+    logdebug(D), logdebug(', '),
+    logdebug(A), logdebug(', '),
+    logdebug(H), logdebug(', '),
+    logdebug(M), logdebug(', '),
+    logdebug(P), logdebug(', '),
+    logdebug(V), logdebug(', '),
     rTTIName(D, DName),
     rTTIName(A, AName),
-    write('\''), writeHex(DName), write('\''), write(', '),
-    write('\''), writeHex(AName), write('\''), writeln('). ').
+    logdebug('\''), logdebug(DName), logdebug('\''), logdebug(', '),
+    logdebug('\''), logdebug(AName), logdebug('\''), logdebugln('). ').
 reportInheritsDirectlyFrom :-
     setof((D, A, H, M, P, V), rTTIInheritsDirectlyFrom(D, A, H, M, P, V), Set),
     maplist(reportInheritsDirectlyFrom, Set).
 reportInheritsDirectlyFrom :- true.
 
 reportInheritsVirtuallyFrom((D, A, H, M, P, V)) :-
-    write('rTTIInheritsVirtuallyFromName('),
-    writeHex(D), write(', '),
-    writeHex(A), write(', '),
-    writeHex(H), write(', '),
-    writeHex(M), write(', '),
-    writeHex(P), write(', '),
-    writeHex(V), write(', '),
+    logdebug('rTTIInheritsVirtuallyFromName('),
+    logdebug(D), logdebug(', '),
+    logdebug(A), logdebug(', '),
+    logdebug(H), logdebug(', '),
+    logdebug(M), logdebug(', '),
+    logdebug(P), logdebug(', '),
+    logdebug(V), logdebug(', '),
     rTTIName(D, DName),
     rTTIName(A, AName),
-    write('\''), writeHex(DName), write('\''), write(', '),
-    write('\''), writeHex(AName), write('\''), writeln('). ').
+    logdebug('\''), logdebug(DName), logdebug('\''), logdebug(', '),
+    logdebug('\''), logdebug(AName), logdebug('\''), logdebugln('). ').
 reportInheritsVirtuallyFrom :-
     setof((D, A, H, M, P, V), rTTIInheritsVirtuallyFrom(D, A, H, M, P, V), Set),
     maplist(reportInheritsVirtuallyFrom, Set).
@@ -382,13 +382,13 @@ reportInheritsVirtuallyFrom :- true.
 
 
 reportSelfRef((T, L, C, B, V, N)) :-
-    write('rTTISelfRef('),
-    writeHex(T), write(', '),
-    writeHex(L), write(', '),
-    writeHex(C), write(', '),
-    writeHex(B), write(', '),
-    writeHex(V), write(', '),
-    write('\''), writeHex(N), write('\''), writeln('). ').
+    logdebug('rTTISelfRef('),
+    logdebug(T), logdebug(', '),
+    logdebug(L), logdebug(', '),
+    logdebug(C), logdebug(', '),
+    logdebug(B), logdebug(', '),
+    logdebug(V), logdebug(', '),
+    logdebug('\''), logdebug(N), logdebug('\''), logdebugln('). ').
 reportSelfRef :-
     setof((T, L, C, B, V, N), rTTISelfRef(T, L, C, B, V, N), Set),
     maplist(reportSelfRef, Set).
@@ -398,16 +398,36 @@ rTTISolve(X) :-
     loadInitialFacts(X),
     reportRTTIResults.
 
+rTTIPresent(Count) :-
+    aggregate_all(count, rTTITypeDescriptor(_, _, _, _), Count1),
+    aggregate_all(count, rTTICompleteObjectLocator(_, _, _, _, _, _), Count2),
+    aggregate_all(count, rTTIBaseClassDescriptor(_, _, _, _, _, _, _, _), Count3),
+    aggregate_all(count, rTTIClassHierarchyDescriptor(_, _, _), Count4),
+    Count is Count1 + Count2 + Count3 + Count4.
+
 reportRTTIResults :-
     % Always enable RTTI before attempting to report on it.
-    assert(rTTIEnabled),
-    (rTTIValid -> writeln('RTTI was valid.') ; writeln('RTTI was invalid.')),
-    reportNoBase,
-    reportSelfRef,
-    reportAncestorOf,
-    reportInheritsDirectlyFrom,
-    reportInheritsVirtuallyFrom,
-    writeln('Report complete.').
+    % assert(rTTIEnabled),
+
+    % First determine whether RTTI was present or not.
+    rTTIPresent(Count),
+    (Count > 0 ->
+         % If RTTI facts were present, always report that.
+         (loginfo('RTTI was present, found '), format(atom(CountStr), '~D', Count),
+          loginfo(CountStr), loginfoln(' predicates.'),
+          (rTTIValid -> loginfoln('RTTI was valid.') ; logerrorln('RTTI was invalid.')),
+          ((logLevel(Level), Level > 4) ->
+               (reportNoBase,
+                reportSelfRef,
+                reportAncestorOf,
+                reportInheritsDirectlyFrom,
+                reportInheritsVirtuallyFrom,
+                loginfoln('RTTI report complete.')
+               ); true)
+         )
+     ;
+     loginfoln('RTTI was not present.')
+    ).
 
 /* Local Variables:   */
 /* mode: prolog       */

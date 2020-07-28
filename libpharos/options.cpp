@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <algorithm>
 #include <iterator>
@@ -560,7 +560,7 @@ ProgOptVarMap parse_cert_options(
   Sawyer::Message::UnformattedSinkPtr destination) {
   try {
     return parse_cert_options_internal(argc, argv, od, proghelptext, posopt, destination);
-  } catch (boost::program_options::unknown_option &e) {
+  } catch (boost::program_options::error const &e) {
     OFATAL << "Error parsing arguments: " << e.what() << LEND;
     exit (EXIT_FAILURE);
   }
