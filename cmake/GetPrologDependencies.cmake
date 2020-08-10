@@ -11,7 +11,7 @@ function(get_prolog_dependencies result)
     get_filename_component(realfile "${file}" ABSOLUTE)
     execute_process(
       COMMAND
-      grep -E [=[^ *(:- *|#)include *[("]]=] ${file}
+      grep -E [=[^ *(:- *|#)(include|ensure_loaded) *[("]]=] ${file}
       INPUT_FILE ${file}
       OUTPUT_VARIABLE raw_includes
       ERROR_QUIET

@@ -1,4 +1,4 @@
-% Copyright 2017 Carnegie Mellon University.
+% Copyright 2017-2020 Carnegie Mellon University.
 % ============================================================================================
 % Driver rules for forward reasoning
 % ============================================================================================
@@ -34,14 +34,15 @@
 %    % constraints that are always required here instead of in each reasoning rule?
 %
 %    % Report what we're doing for debugging.
-%    loginfo('Concluding factXXX('),
-%    loginfo(Parameters), loginfoln(').'),
+%    loginfoln('Concluding ~Q.', factXXX(Parameters)),
 %
 %    % Then return the assertion in the Out Parameters, so that the caller can call() it to
 %    % assert the fact.  Asserting the fact in our caller allows us to backtrack properly, while
 %    % making the assertion here directly did not. Also the concludeMergeClasses() rule is a
 %    % special case in that it does more than just call try_assert().
 %    Out = try_assert(factXXX(Parameters)).
+
+:- use_module(library(apply), [maplist/2, maplist/3]).
 
 % --------------------------------------------------------------------------------------------
 % Make a singleton class for any method in Set.
@@ -87,8 +88,7 @@ concludeMethod(Out) :-
           (reasonMethod(Method),
            not(factMethod(Method)),
            not(factNOTMethod(Method)),
-           loginfo('Concluding factMethod('),
-           loginfo(Method), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factMethod(Method))),
           MethodSets),
     maplist(try_assert_builder(factMethod), MethodSets, ActionSets),
     % Note: After we create the factMethod facts, we call makeNewObjects to ensure the proper
@@ -102,8 +102,7 @@ concludeConstructor(Out) :-
           (reasonConstructor(Method),
            not(factConstructor(Method)),
            not(factNOTConstructor(Method)),
-           loginfo('Concluding factConstructor('),
-           loginfo(Method), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factConstructor(Method))),
           MethodSets),
     maplist(try_assert_builder(factConstructor), MethodSets, ActionSets),
     Out = all(ActionSets).
@@ -114,8 +113,7 @@ concludeNOTConstructor(Out) :-
           (reasonNOTConstructor(Method),
            not(factNOTConstructor(Method)),
            not(factConstructor(Method)),
-           loginfo('Concluding factNOTConstructor('),
-           loginfo(Method), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factNOTConstructor(Method))),
           MethodSets),
     maplist(try_assert_builder(factNOTConstructor), MethodSets, ActionSets),
     Out = all(ActionSets).
@@ -126,8 +124,7 @@ concludeRealDestructor(Out) :-
           (reasonRealDestructor(Method),
            not(factRealDestructor(Method)),
            not(factNOTRealDestructor(Method)),
-           loginfo('Concluding factRealDestructor('),
-           loginfo(Method), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factRealDestructor(Method))),
           MethodSets),
     maplist(try_assert_builder(factRealDestructor), MethodSets, ActionSets),
     Out = all(ActionSets).
@@ -138,8 +135,7 @@ concludeNOTRealDestructor(Out) :-
           (reasonNOTRealDestructor(Method),
            not(factRealDestructor(Method)),
            not(factNOTRealDestructor(Method)),
-           loginfo('Concluding factNOTRealDestructor('),
-           loginfo(Method), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factNOTRealDestructor(Method))),
           MethodSets),
     maplist(try_assert_builder(factNOTRealDestructor), MethodSets, ActionSets),
     Out = all(ActionSets).
@@ -150,8 +146,7 @@ concludeDeletingDestructor(Out) :-
           (reasonDeletingDestructor(Method),
            not(factDeletingDestructor(Method)),
            not(factNOTDeletingDestructor(Method)),
-           loginfo('Concluding factDeletingDestructor('),
-           loginfo(Method), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factDeletingDestructor(Method))),
           MethodSets),
     maplist(try_assert_builder(factDeletingDestructor), MethodSets, ActionSets),
     Out = all(ActionSets).
@@ -161,8 +156,7 @@ concludeNOTDeletingDestructor(Out) :-
           (reasonNOTDeletingDestructor(Method),
            not(factDeletingDestructor(Method)),
            not(factNOTDeletingDestructor(Method)),
-           loginfo('Concluding factNOTDeletingDestructor('),
-           loginfo(Method), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factNOTDeletingDestructor(Method))),
           MethodSets),
     maplist(try_assert_builder(factNOTDeletingDestructor), MethodSets, ActionSets),
     Out = all(ActionSets).
@@ -175,10 +169,7 @@ concludeObjectInObject(Out) :-
            iso_dif(OuterClass, InnerClass),
            not(factObjectInObject(OuterClass, InnerClass, Offset)),
            % There's no factNOTObjectInObject, since most things aren't in most other things.
-           loginfo('Concluding factObjectInObject('),
-           loginfo(OuterClass), loginfo(', '),
-           loginfo(InnerClass), loginfo(', '),
-           loginfo(Offset), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factObjectInObject(OuterClass, InnerClass, Offset))),
           TupleSets),
     maplist(try_assert_builder(factObjectInObject), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -190,10 +181,8 @@ concludeDerivedClass(Out) :-
            iso_dif(DerivedClass, BaseClass),
            not(factDerivedClass(DerivedClass, BaseClass, ObjectOffset)),
            not(factNOTDerivedClass(DerivedClass, BaseClass, ObjectOffset)),
-           loginfo('Concluding factDerivedClass('),
-           loginfo(DerivedClass), loginfo(', '),
-           loginfo(BaseClass), loginfo(', '),
-           loginfo(ObjectOffset), loginfoln(').')),
+           loginfoln('Concluding ~Q.',
+                     factDerivedClass(DerivedClass, BaseClass, ObjectOffset))),
           TupleSets),
     maplist(try_assert_builder(factDerivedClass), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -205,10 +194,8 @@ concludeNOTDerivedClass(Out) :-
            iso_dif(DerivedClass, BaseClass),
            not(factDerivedClass(DerivedClass, BaseClass, ObjectOffset)),
            not(factNOTDerivedClass(DerivedClass, BaseClass, ObjectOffset)),
-           loginfo('Concluding factNOTDerivedClass('),
-           loginfo(DerivedClass), loginfo(', '),
-           loginfo(BaseClass), loginfo(', '),
-           loginfo(ObjectOffset), loginfoln(').')),
+           loginfoln('Concluding ~Q.',
+                     factNOTDerivedClass(DerivedClass, BaseClass, ObjectOffset))),
           TupleSets),
     maplist(try_assert_builder(factNOTDerivedClass), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -220,10 +207,8 @@ concludeEmbeddedObject(Out) :-
            iso_dif(OuterClass, InnerClass),
            not(factEmbeddedObject(OuterClass, InnerClass, ObjectOffset)),
            not(factNOTEmbeddedObject(OuterClass, InnerClass, ObjectOffset)),
-           loginfo('Concluding factEmbeddedObject('),
-           loginfo(OuterClass), loginfo(', '),
-           loginfo(InnerClass), loginfo(', '),
-           loginfo(ObjectOffset), loginfoln(').')),
+           loginfoln('Concluding ~Q.',
+                     factEmbeddedObject(OuterClass, InnerClass, ObjectOffset))),
           TupleSets),
     maplist(try_assert_builder(factEmbeddedObject), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -235,10 +220,8 @@ concludeNOTEmbeddedObject(Out) :-
            iso_dif(OuterClass, InnerClass),
            not(factEmbeddedObject(OuterClass, InnerClass, ObjectOffset)),
            not(factNOTEmbeddedObject(OuterClass, InnerClass, ObjectOffset)),
-           loginfo('Concluding factNOTEmbeddedObject('),
-           loginfo(OuterClass), loginfo(', '),
-           loginfo(InnerClass), loginfo(', '),
-           loginfo(ObjectOffset), loginfoln(').')),
+           loginfoln('Concluding ~Q.',
+                     factNOTEmbeddedObject(OuterClass, InnerClass, ObjectOffset))),
           TupleSets),
     maplist(try_assert_builder(factNOTEmbeddedObject), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -251,7 +234,7 @@ concludeVFTable(Out) :-
           (reasonVFTable(VFTable),
            not(factVFTable(VFTable)),
            not(factNOTVFTable(VFTable)),
-           loginfo('Concluding factVFTable('), loginfo(VFTable), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factVFTable(VFTable))),
           VFTableSets),
     maplist(try_assert_builder(factVFTable), VFTableSets, ActionSets),
     Out = all(ActionSets).
@@ -265,11 +248,7 @@ concludeVFTableWrite(Out) :-
           (reasonVFTableWrite(Insn, Method, Offset, VFTable),
            not(factVFTableWrite(Insn, Method, Offset, VFTable)),
            %not(reasonNOTVFTableWrite(Insn, Method, Offset, VFTable)),
-           loginfo('Concluding factVFTableWrite('),
-           loginfo(Insn), loginfo(', '),
-           loginfo(Method), loginfo(', '),
-           loginfo(Offset), loginfo(', '),
-           loginfo(VFTable), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factVFTableWrite(Insn, Method, Offset, VFTable))),
           TupleSets),
     maplist(try_assert_builder(factVFTableWrite), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -280,11 +259,8 @@ concludeVFTableOverwrite(Out) :-
           (reasonVFTableOverwrite(Method, VFTable1, VFTable2, Offset),
            not(factVFTableOverwrite(Method, VFTable1, VFTable2, Offset)),
            %not(reasonNOTVFTableOverwrite(Method, VFTable1, VFTable2, Offset)),
-           loginfo('Concluding factVFTableOverwrite('),
-           loginfo(Method), loginfo(', '),
-           loginfo(VFTable1), loginfo(', '),
-           loginfo(VFTable2), loginfo(', '),
-           loginfo(Offset), loginfoln(').')),
+           loginfoln('Concluding ~Q.',
+                     factVFTableOverwrite(Method, VFTable1, VFTable2, Offset))),
           TupleSets),
     maplist(try_assert_builder(factVFTableOverwrite), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -295,10 +271,8 @@ concludeVFTableEntry(Out) :-
           (reasonVFTableEntry(VFTable, VFTableOffset, Address),
            not(factVFTableEntry(VFTable, VFTableOffset, Address)),
            not(factNOTVFTableEntry(VFTable, VFTableOffset, Address)),
-           loginfo('Concluding factVFTableEntry('),
-           loginfo(VFTable), loginfo(', '),
-           loginfo(VFTableOffset), loginfo(', '),
-           loginfo(Address), loginfoln(').')),
+           loginfoln('Concluding ~Q.',
+                     factVFTableEntry(VFTable, VFTableOffset, Address))),
           TupleSets),
     maplist(try_assert_builder(factVFTableEntry), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -309,10 +283,8 @@ concludeNOTVFTableEntry(Out) :-
           (reasonNOTVFTableEntry(VFTable, VFTableOffset, Address),
            not(factVFTableEntry(VFTable, VFTableOffset, Address)),
            not(factNOTVFTableEntry(VFTable, VFTableOffset, Address)),
-           loginfo('Concluding factNOTVFTableEntry('),
-           loginfo(VFTable), loginfo(', '),
-           loginfo(VFTableOffset), loginfo(', '),
-           loginfo(Address), loginfoln(').')),
+           loginfoln('Concluding ~Q.',
+                     factNOTVFTableEntry(VFTable, VFTableOffset, Address))),
           TupleSets),
     maplist(try_assert_builder(factNOTVFTableEntry), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -322,9 +294,8 @@ concludeVFTableSizeGTE(Out) :-
     setof((VFTable, Size),
           (reasonVFTableSizeGTE(VFTable, Size),
            not((factVFTableSizeGTE(VFTable, KnownSize), KnownSize >= Size)),
-           loginfo('Concluding factVFTableSizeGTE('),
-           loginfo(VFTable), loginfo(', '),
-           loginfo(Size), loginfoln(').')),
+           loginfoln('Concluding ~Q.',
+                     factVFTableSizeGTE(VFTable, Size))),
           TupleSets),
     maplist(try_assert_builder(factVFTableSizeGTE), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -334,9 +305,8 @@ concludeVFTableSizeLTE(Out) :-
     setof((VFTable, Size),
           (reasonVFTableSizeLTE(VFTable, Size),
            not((factVFTableSizeLTE(VFTable, KnownSize), KnownSize >= Size)),
-           loginfo('Concluding factVFTableSizeLTE('),
-           loginfo(VFTable), loginfo(', '),
-           loginfo(Size), loginfoln(').')),
+           loginfoln('Concluding ~Q.',
+                     factVFTableSizeLTE(VFTable, Size))),
           TupleSets),
     maplist(try_assert_builder(factVFTableSizeLTE), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -346,12 +316,8 @@ concludeVirtualFunctionCall(Out) :-
           (reasonVirtualFunctionCall(Insn, Method, OOffset, VFTable, TOffset),
            not(factVirtualFunctionCall(Insn, Method, OOffset, VFTable, TOffset)),
            not(factNOTVirtualFunctionCall(Insn, Method, OOffset, VFTable, TOffset)),
-           loginfo('Concluding factVirtualFunctonCall('),
-           loginfo(Insn), loginfo(', '),
-           loginfo(Method), loginfo(', '),
-           loginfo(OOffset), loginfo(', '),
-           loginfo(VFTable), loginfo(', '),
-           loginfo(TOffset), loginfoln(').')),
+           loginfoln('Concluding ~Q.',
+                     factVirtualFunctonCall(Insn, Method, OOffset, VFTable, TOffset))),
           TupleSets),
     maplist(try_assert_builder(factVirtualFunctionCall), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -364,7 +330,7 @@ concludeVBTable(Out) :-
           (reasonVBTable(VBTable),
            not(factVBTable(VBTable)),
            not(factNOTVBTable(VBTable)),
-           loginfo('Concluding factVBTable('), loginfo(VBTable), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factVBTable(VBTable))),
           VBTableSets),
     maplist(try_assert_builder(factVBTable), VBTableSets, ActionSets),
     Out = all(ActionSets).
@@ -377,11 +343,8 @@ concludeVBTableWrite(Out) :-
           (reasonVBTableWrite(Insn, Method, Offset, VBTable),
            not(factVBTableWrite(Insn, Method, Offset, VBTable)),
            %not(reasonNOTVBTableWrite(Insn, Method, Offset, VBTable)),
-           loginfo('Concluding factVBTableWrite('),
-           loginfo(Insn), loginfo(', '),
-           loginfo(Method), loginfo(', '),
-           loginfo(Offset), loginfo(', '),
-           loginfo(VBTable), loginfoln(').')),
+           loginfoln('Concluding ~Q.',
+                     factVBTableWrite(Insn, Method, Offset, VBTable))),
           TupleSets),
     maplist(try_assert_builder(factVBTableWrite), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -394,10 +357,8 @@ concludeVBTableEntry(Out) :-
           (reasonVBTableEntry(VBTable, VBTableOffset, Value),
            not(factVBTableEntry(VBTable, VBTableOffset, Value)),
            not(factNOTVBTableEntry(VBTable, VBTableOffset, Value)),
-           loginfo('Concluding factVBTableEntry('),
-           loginfo(VBTable), loginfo(', '),
-           loginfo(VBTableOffset), loginfo(', '),
-           loginfo(Value), loginfoln(').')),
+           loginfoln('Concluding ~Q.',
+                     factVBTableEntry(VBTable, VBTableOffset, Value))),
           TupleSets),
     maplist(try_assert_builder(factVBTableEntry), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -411,9 +372,8 @@ concludeClassSizeGTE(Out) :-
     setof((Class, Size),
           (reasonClassSizeGTE(Class, Size),
            not((factClassSizeGTE(Class, KnownSize), KnownSize >= Size)),
-           loginfo('Concluding factClassSizeGTE('),
-           loginfo(Class), loginfo(', '),
-           loginfo(Size), loginfoln(').')),
+           loginfoln('Concluding ~Q.',
+                     factClassSizeGTE(Class, Size))),
           TupleSets),
     maplist(try_assert_builder(class_size_remove_redundant, factClassSizeGTE), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -423,9 +383,8 @@ concludeClassSizeLTE(Out) :-
     setof((Class, Size),
           (reasonClassSizeLTE(Class, Size),
            not((factClassSizeLTE(Class, KnownSize), KnownSize =< Size)),
-           loginfo('Concluding factClassSizeLTE('),
-           loginfo(Class), loginfo(', '),
-           loginfo(Size), loginfoln(').')),
+           loginfoln('Concluding ~Q.',
+                     factClassSizeLTE(Class, Size))),
           TupleSets),
     maplist(try_assert_builder(class_size_remove_redundant, factClassSizeLTE), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -436,7 +395,7 @@ concludeClassHasNoBase(Out) :-
           (reasonClassHasNoBase(Class),
            not(factClassHasNoBase(Class)),
            not(factClassHasUnknownBase(Class)),
-           loginfo('Concluding factClassHasNoBase('), loginfo(Class), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factClassHasNoBase(Class))),
           ClassSets),
     maplist(try_assert_builder(factClassHasNoBase), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -447,7 +406,7 @@ concludeClassHasUnknownBase(Out) :-
           (reasonClassHasUnknownBase(Class),
            not(factClassHasUnknownBase(Class)),
            not(factClassHasNoBase(Class)),
-           loginfo('Concluding factClassHasUnknownBase('), loginfo(Class), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factClassHasUnknownBase(Class))),
           ClassSets),
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -461,8 +420,8 @@ concludeClassCallsMethod(Out) :-
            iso_dif(Class, ExistingClass),
            not(factClassCallsMethod(Class, Method)),
            %not(factNOTClassCallsMethod(Class, Method)),
-           loginfo('Concluding factClassCallsMethod('), loginfo(Class), loginfo(', '),
-           loginfo(Method), loginfoln(').')),
+           loginfoln('Concluding ~Q.',
+                     factClassCallsMethod(Class, Method))),
           TupleSets),
     maplist(try_assert_builder(factClassCallsMethod), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -473,8 +432,8 @@ concludeNOTMergeClasses(Out) :-
           (reasonNOTMergeClasses_new(Class1, Class2),
            iso_dif(Class1, Class2),
            not(dynFactNOTMergeClasses(Class1, Class2)),
-           loginfo('Concluding factNOTMergeClasses('), loginfo(Class1), loginfo(', '),
-           loginfo(Class2), loginfoln(').')),
+           loginfoln('Concluding ~Q.',
+                     factNOTMergeClasses(Class1, Class2))),
           ClassSets),
     maplist(try_assert_builder(factNOTMergeClasses), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -483,9 +442,7 @@ concludeMergeClasses(Out) :-
     reportFirstSeen('concludeMergeClasses'),
     reasonMergeClasses(Class1, Class2),
     not(dynFactNOTMergeClasses(Class1, Class2)),
-    loginfo('Concluding mergeClasses('),
-    loginfo(Class1), loginfo(', '),
-    loginfo(Class2), loginfoln(').'),
+    loginfoln('Concluding ~Q.', mergeClasses(Class1, Class2)),
     Out = mergeClasses(Class1, Class2).
 
 /* Local Variables:   */

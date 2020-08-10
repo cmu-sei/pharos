@@ -2,6 +2,9 @@
 % Triggers.
 % ============================================================================================
 
+:- use_module(library(apply), [maplist/3]).
+:- use_module(library(lists), [member/2]).
+
 % New facts that may explicitly trigger some expensive rules.
 :- dynamic trigger_fact/1.
 
@@ -46,7 +49,7 @@ dispatchTrigger(factVFTableEntry(VFTable, Offset, Entry), Out) :-
     setof((VFTable, Offset, Method),
           (reasonMethodInVFTable(VFTable, Offset, Method, Entry),
            not(factMethodInVFTable(VFTable, Offset, Method)),
-           loginfo('Concluding factMethodInVFTable('), loginfo(VFTable), loginfo(', '), loginfo(Offset), loginfo(', '), loginfo(Method), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factMethodInVFTable(VFTable, Offset, Method))),
           TupleSets),
     maplist(try_assert_builder(factMethodInVFTable), TupleSets, ActionSets),
     Out = all(ActionSets).
@@ -59,7 +62,7 @@ dispatchTrigger(factVFTableEntry(VFTable, _Offset, Entry), Out) :-
                                                  reasonClassHasUnknownBase_C1(DerivedClass, AncestorVFTable, DerivedVFTable, Entry),
                                                  not(factClassHasUnknownBase(Class)),
                                                  not(factClassHasNoBase(Class)),
-                                                 loginfo('Concluding factClassHasUnknownBase_C('), loginfo(Class), loginfoln(').')),
+                                                 loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(Class))),
           ClassSets),
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -72,7 +75,7 @@ dispatchTrigger(findint(FindMethod, FindClass), Out) :-
                                                                                                      reasonClassHasUnknownBase_C2(DerivedClass, Method, AncestorConstructor, AncestorClass, AncestorVFTable),
                                                                                                      not(factClassHasUnknownBase(Class)),
                                                                                                      not(factClassHasNoBase(Class)),
-                                                                                                     loginfo('Concluding factClassHasUnknownBase_C('), loginfo(Class), loginfoln(').')),
+                                                                                                     loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(Class))),
           ClassSets),
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -83,7 +86,7 @@ dispatchTrigger(findint(DerivedConstructor, DerivedClass), Out) :-
           DerivedVFTable^(reasonClassHasUnknownBase_C3(DerivedClass, DerivedConstructor, DerivedVFTable),
             not(factClassHasUnknownBase(Class)),
             not(factClassHasNoBase(Class)),
-            loginfo('Concluding factClassHasUnknownBase_C('), loginfo(Class), loginfoln(').')),
+            loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(Class))),
           ClassSets),
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -94,7 +97,7 @@ dispatchTrigger(factConstructor(AncestorConstructor), Out) :-
           Method^AncestorClass^AncestorVFTable^(reasonClassHasUnknownBase_C2(DerivedClass, Method, AncestorConstructor, AncestorClass, AncestorVFTable),
            not(factClassHasUnknownBase(Class)),
            not(factClassHasNoBase(Class)),
-           loginfo('Concluding factClassHasUnknownBase_C('), loginfo(Class), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(Class))),
           ClassSets),
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -105,7 +108,7 @@ dispatchTrigger(factConstructor(DerivedConstructor), Out) :-
           DerivedVFTable^(reasonClassHasUnknownBase_C3(DerivedClass, DerivedConstructor, DerivedVFTable),
            not(factClassHasUnknownBase(Class)),
            not(factClassHasNoBase(Class)),
-           loginfo('Concluding factClassHasUnknownBase_C('), loginfo(Class), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(Class))),
           ClassSets),
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -116,7 +119,7 @@ dispatchTrigger(factVFTableWrite(_Insn, AncestorConstructor, _Offset, AncestorVF
           Method^AncestorClass^(reasonClassHasUnknownBase_C2(DerivedClass, Method, AncestorConstructor, AncestorClass, AncestorVFTable),
             not(factClassHasUnknownBase(Class)),
             not(factClassHasNoBase(Class)),
-            loginfo('Concluding factClassHasUnknownBase_C('), loginfo(Class), loginfoln(').')),
+            loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(Class))),
           ClassSets),
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -127,7 +130,7 @@ dispatchTrigger(factVFTableWrite(_Insn, DerivedConstructor, _Offset, DerivedVFTa
           (reasonClassHasUnknownBase_C3(DerivedClass, DerivedConstructor, DerivedVFTable),
            not(factClassHasUnknownBase(Class)),
            not(factClassHasNoBase(Class)),
-           loginfo('Concluding factClassHasUnknownBase_C('), loginfo(Class), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(Class))),
           ClassSets),
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -140,7 +143,7 @@ dispatchTrigger(factClassCallsMethod(Class, Method), Out) :-
           MethodClass^(reasonClassHasUnknownBase_E(Class, Method, MethodClass),
            not(factClassHasUnknownBase(Class)),
            not(factClassHasNoBase(Class)),
-           loginfo('Concluding factClassHasUnknownBase('), loginfo(Class), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factClassHasUnknownBase(Class))),
           ClassSets),
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -149,7 +152,7 @@ dispatchTrigger(factNOTMergeClasses(Class, MethodClass), Out) :-
           Method^(reasonClassHasUnknownBase_E(Class, Method, MethodClass),
            not(factClassHasUnknownBase(Class)),
            not(factClassHasNoBase(Class)),
-           loginfo('Concluding factClassHasUnknownBase('), loginfo(Class), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factClassHasUnknownBase(Class))),
           ClassSets),
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -161,8 +164,7 @@ dispatchTrigger(factVFTableWrite(A,Method1,C,D), Out) :-
           (reasonNOTMergeClasses_E(Class1, Class2, A, Method1, C, D),
            iso_dif(Class1, Class2),
            not(dynFactNOTMergeClasses(Class1, Class2)),
-           loginfo('Concluding factNOTMergeClasses('), loginfo(Class1), loginfo(', '),
-           loginfo(Class2), loginfoln(').')),
+           loginfoln('Concluding ~Q.', factNOTMergeClasses(Class1, Class2))),
           ClassSets),
     maplist(try_assert_builder(factNOTMergeClasses), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -173,8 +175,7 @@ dispatchTrigger(factClassSizeLTE(Class1,LTESize), Out) :-
                               reasonNOTMergeClasses_N(Class1, Class2, GTESize2, LTESize)),
                              iso_dif(Class1, Class2),
                              not(dynFactNOTMergeClasses(Class1, Class2)),
-                             loginfo('Concluding factNOTMergeClasses('), loginfo(Class1), loginfo(', '),
-                             loginfo(Class2), loginfoln(').')),
+                             loginfoln('Concluding ~Q.', factNOTMergeClasses(Class1, Class2))),
           ClassSets),
     maplist(try_assert_builder(factNOTMergeClasses), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -185,8 +186,7 @@ dispatchTrigger(factClassSizeGTE(Class1,GTESize), Out) :-
                               reasonNOTMergeClasses_N(Class1, Class2, GTESize, LTESize2)),
                              iso_dif(Class1, Class2),
                              not(dynFactNOTMergeClasses(Class1, Class2)),
-                             loginfo('Concluding factNOTMergeClasses('), loginfo(Class1), loginfo(', '),
-                             loginfo(Class2), loginfoln(').')),
+                             loginfoln('Concluding ~Q.', factNOTMergeClasses(Class1, Class2))),
           ClassSets),
     maplist(try_assert_builder(factNOTMergeClasses), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -199,7 +199,7 @@ concludeTrigger(Out) :-
           % https://github.com/cmu-sei/pharos/issues/114
           atmost(
               (retract(trigger_fact(X)),
-               logtrace('Processing trigger fact... '), logtraceln(X)),
+               logtraceln('Processing trigger fact... ~Q', X)),
               100),
           Facts),
     !,

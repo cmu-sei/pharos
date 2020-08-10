@@ -178,7 +178,7 @@ public class OOAnalyzerGhidraPlugin extends ProgramPlugin {
             throw new IllegalStateException("OOAnalyzer could not find any classes");
         }
       } finally {
-        OOAnalyzerGhidraPlugin.this.currentProgram.endTransaction(tid, (result > 0));
+        OOAnalyzerGhidraPlugin.this.currentProgram.endTransaction(tid, result > 0);
       }
     }
   }

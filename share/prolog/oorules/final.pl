@@ -1,7 +1,9 @@
-% Copyright 2017 Carnegie Mellon University.
+% Copyright 2017-2020 Carnegie Mellon University.
 % ============================================================================================
 % Final reporting API.
 % ============================================================================================
+
+:- use_module(library(lists), [member/2]).
 
 % Long ago, Ed wrote: A solution is <list of classes, a mapping of classes to methods, a
 % mapping of classes to members, a mapping of each class to its immediate parents and offset, a
@@ -33,7 +35,7 @@ classIdentifier(Method, ID) :-
         % Must be the VFTable at offset zero to be the "master" table for the class.
         find(Method, Class),
         reasonPrimaryVFTableForClassFinal(VFTable, Class),
-        %logwarn('setting classID from vftable'), logwarnln(Method),
+        %logwarnln('setting classID from vftable ~Q', Method),
         true
     )
     ->
@@ -43,7 +45,7 @@ classIdentifier(Method, ID) :-
         find(Method, Class),
         find(RealDestructor, Class),
         factRealDestructor(RealDestructor),
-        %logwarn('setting classID from real destructuor for'), logwarnln(Method),
+        %logwarnln('setting classID from real destructuor for ~Q', Method),
         true
     )
     ->
@@ -52,11 +54,11 @@ classIdentifier(Method, ID) :-
     (
         findall(Method, MethodSet),
         %logwarnln('trying to pick class ID from method set1 ...'),
-        %logwarn('picking class ID from method set:'), logwarnln(MethodSet),
+        %logwarnln('picking class ID from method set: ~Q', MethodSet),
         setof(C, (member(C, MethodSet), factConstructor(C)), ConstructorSet),
-        %logwarn('constructor set was:'), logwarnln(ConstructorSet),
+        %logwarnln('constructor set was: ~Q', ConstructorSet),
         list_min(ConstructorSet, MinimumConstructor),
-        %logwarn('picked class ID:'), logwarnln(MinimumConstructor),
+        %logwarnln('picked class ID: ~Q', MinimumConstructor),
         true
     )
     -> ID is MinimumConstructor
@@ -64,9 +66,9 @@ classIdentifier(Method, ID) :-
     (
         findall(Method, MethodSet),
         %logwarnln('trying to pick class ID from method set2 ...'),
-        %logwarn('picking class ID from method set:'), logwarnln(MethodSet),
+        %logwarnln('picking class ID from method set: ~Q', MethodSet),
         list_min(MethodSet, MinimumMethod),
-        %logwarn('picked class ID:'), logwarnln(MinimumMethod),
+        %logwarnln('picked class ID: ~Q', MinimumMethod),
         true
     )
     -> ID is MinimumMethod.
@@ -120,7 +122,7 @@ worthlessClass(Class) :-
     !,
 
     classIdentifier(Class, ClassID),
-    logdebug('Rejecting worthless finalClass '), logdebugln(ClassID).
+    logdebugln('Rejecting worthless finalClass ~Q', ClassID).
 
 worthlessClass(Class) :-
     purecall(PurecallMethod),
@@ -128,7 +130,7 @@ worthlessClass(Class) :-
     !,
 
     classIdentifier(Class, ClassID),
-    logdebug('Rejecting worthless finalClass '), logdebugln(ClassID).
+    logdebugln('Rejecting worthless finalClass ~Q', ClassID).
 
 finalFileInfo(FileMD5, Filename) :-
    fileInfo(FileMD5, Filename).

@@ -375,26 +375,28 @@ class PyOOAnalyzer(object):
 
             if mem.member_type == ida_bytes.FF_STRUCT:
 
-                class_member_name = m['struc']  # This could be mangled
+                mem.class_member_name = m['struc']  # This could be mangled
+
+                # Search for the parsed class information
                 cls_mem = None
                 for c in self.__classes:
-                    if class_member_name == c.name:
+                    if mem.class_member_name == c.name:
                         cls_mem = c
                         break
 
-                if cls_mem != None:
+                assert cls_mem is not None, "Unable to find class member struct %s" % mem.class_member_name
 
-                    mem.class_member = cls_mem
+                mem.class_member = cls_mem
 
-                    if m['parent']:
-                        # this is a parent
-                        mem.is_parent = True
-                        cls.add_parent(cls_mem, offset)
-                        print("   - Found class parent, name: '%s', type: %s" %
-                              (mem.member_name, mem.class_member.ida_name))
-                    else:
-                        print("   - Found class member, name: '%s', type: %s" %
-                              (mem.member_name, mem.class_member.ida_name))
+                if m['parent']:
+                    # this is a parent
+                    mem.is_parent = True
+                    cls.add_parent(cls_mem, offset)
+                    print("   - Found class parent, name: '%s', type: %s" %
+                          (mem.member_name, mem.class_member.ida_name))
+                else:
+                    print("   - Found class member, name: '%s', type: %s" %
+                          (mem.member_name, mem.class_member.ida_name))
 
             else:
                 mem.class_member = None
@@ -630,24 +632,27 @@ class PyOOAnalyzer(object):
 
         nbytes = idaapi.BADADDR
         if mem.member_type == ida_bytes.FF_STRUCT:
-            if mem.cls.ida_name not in self.__applied_classes:
-                self.__apply_class(mem.cls)
-                print("Applying class member: %s" % str(mem.cls.ida_name))
+            if mem.class_member.ida_name not in self.__applied_classes:
+                self.__apply_class(mem.class_member)
+                print("Applying class member: %s" % str(mem.class_member.ida_name))
 
             nbytes = ida_struct.get_struc_size(
-                ida_struct.get_struc(mem.cls.id))
+                ida_struct.get_struc(mem.class_member.id))
             mem_type = ida_bytes.FF_STRUCT | ida_bytes.FF_DATA
 
             idc.add_struc_member(cls.id, mem.member_name,
-                                 off, mem_type, mem.cls.id, nbytes)
+                                 off, mem_type, mem.class_member.id, nbytes)
+
         else:
             # non-struct member
             nbytes = mem.size
             idc.add_struc_member(cls.id, mem.member_name,
-                                 off, mem.member_type, 0xffffffff, nbytes)
+                                       off, mem.member_type, 0xffffffff, nbytes)
 
         # save the member ID
         mem.id = idc.get_member_id(cls.id, off)
+        if mem.id == -1:
+            print("WARNING: Adding member at offset %d to %s failed" % (off, cls.ida_name))
 
         return
 

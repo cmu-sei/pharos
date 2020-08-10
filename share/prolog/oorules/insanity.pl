@@ -1,4 +1,4 @@
-% Copyright 2017 Carnegie Mellon University.
+% Copyright 2017-2020 Carnegie Mellon University.
 % ============================================================================================
 % Sanity checking rules
 % ============================================================================================
@@ -26,10 +26,9 @@ insanityVFTableOnTwoClasses :-
     iso_dif(Class1, Class2),
     logwarnln('Consistency checks failed.'),
     logwarn('insanityVFTableOnTwoClasses failed:'),
-    logwarn(' VFTable='), logwarn(VFTable),
-    logwarn(' Method1='), logwarn(Method1),
-    logwarn(' Method2='), logwarn(Method2),
-    logwarnln('').
+    logwarn(' VFTable=~Q', VFTable),
+    logwarn(' Method1=~Q', Method1),
+    logwarnln(' Method2=~Q', Method2).
 
 % A constructor may not be virtual.
 % PAPER: Sanity-VirtualConstructor
@@ -39,11 +38,10 @@ insanityConstructorInVFTable :-
     dethunk(Entry, Constructor),
     factConstructor(Constructor),
     logwarnln('Consistency checks failed.'),
-    logwarnln('A constructor may not be virtual:'),
-    logwarn(' VFTable='), logwarn(VFTable),
-    logwarn(' Offset='), logwarn(Offset),
-    logwarn(' Ctor='), logwarn(Constructor),
-    logwarnln('').
+    logwarn('A constructor may not be virtual:'),
+    logwarn(' VFTable=~Q', VFTable),
+    logwarn(' Offset=~Q', Offset),
+    logwarnln(' Ctor=~Q', Constructor).
 
 % A class may not be derived from itself (even with intermediate classes).
 % PAPER: Sanity-InheritanceLoop
@@ -52,10 +50,9 @@ insanityInheritanceLoop :-
     reasonDerivedClassRelationship(DerivedClass, BaseClass),
     reasonDerivedClassRelationship(BaseClass, DerivedClass),
     logwarnln('Consistency checks failed.'),
-    logwarnln('A class may not be derived from itself:'),
-    logwarn(' Class1='), logwarn(BaseClass),
-    logwarn(' Class2='), logwarn(DerivedClass),
-    logwarnln('').
+    logwarn('A class may not be derived from itself:'),
+    logwarn(' Class1=~Q', BaseClass),
+    logwarnln(' Class2=~Q', DerivedClass).
 
 % Classes may not have an invalid size.
 % Perhaps this rule replaces all other size rules?
@@ -67,10 +64,9 @@ insanityClassSizeInvalid :-
     LTESize < GTESize,
     logwarnln('Consistency checks failed.'),
     logwarn('insanityClassSizeInvalid failed:'),
-    logwarn(' Class='), logwarn(Class),
-    logwarn(' LTESize='), logwarn(LTESize),
-    logwarn(' GTESize='), logwarn(GTESize),
-    logwarnln('').
+    logwarn(' Class=~Q', Class),
+    logwarn(' LTESize=~Q', LTESize),
+    logwarnln(' GTESize=~Q', GTESize).
 
 % Roughly speaking, inheritance can only occur in an object when it is at offset zero, or there
 % are inhertance objects that preceed it in the object layout.  It turns out that this rule was
@@ -90,10 +86,9 @@ insanityInheritanceAfterNonInheritance :-
     ),
     logwarnln('Consistency checks failed.'),
     logwarn('insanityInheritanceAfterInheritance failed:'),
-    logwarn(' DerivedClass='), logwarn(DerivedClass),
-    logwarn(' BaseClass='), logwarn(BaseClass),
-    logwarn(' Offset='), logwarn(Offset),
-    logwarnln('').
+    logwarn(' DerivedClass=~Q', DerivedClass),
+    logwarn(' BaseClass=~Q', BaseClass),
+    logwarnln(' Offset=~Q', Offset).
 
 % VFTables may not have an invalid size.
 % Perhaps this rule replaces all other size rules?
@@ -106,10 +101,9 @@ insanityVFTableSizeInvalid :-
     LTESize < GTESize,
     logwarnln('Consistency checks failed.'),
     logwarn('insanityVFTableSizeInvalid failed:'),
-    logwarn(' VFTable='), logwarn(VFTable),
-    logwarn(' LTESize='), logwarn(LTESize),
-    logwarn(' GTESize='), logwarn(GTESize),
-    logwarnln('').
+    logwarn(' VFTable=~Q', VFTable),
+    logwarn(' LTESize=~Q', LTESize),
+    logwarnln(' GTESize=~Q', GTESize).
 
 % The size of an embdded class may not exceed the size of the class it's in.
 % PAPER: NA.  Handled by constraint system.
@@ -124,12 +118,11 @@ insanityEmbeddedObjectLarger :-
     OuterSize < ComputedSize,
     logwarnln('Consistency checks failed.'),
     logwarn('insanityEmbeddedObjectLarger failed:'),
-    logwarn(' O_Class='), logwarn(OuterClass),
-    logwarn(' O_Offset='), logwarn(Offset),
-    logwarn(' O_Size='), logwarn(OuterSize),
-    logwarn(' I_Class='), logwarn(InnerClass),
-    logwarn(' I_Size='), logwarn(InnerSize),
-    logwarnln('').
+    logwarn(' O_Class=~Q', OuterClass),
+    logwarn(' O_Offset=~Q', Offset),
+    logwarn(' O_Size=~Q', OuterSize),
+    logwarn(' I_Class=~Q', InnerClass),
+    logwarnln(' I_Size=~Q', InnerSize).
 
 :- table insanityObjectCycle/0 as incremental.
 insanityObjectCycle :-
@@ -137,9 +130,8 @@ insanityObjectCycle :-
     reasonClassRelationship(Class2, Class1),
     logwarnln('Consistency checks failed.'),
     logwarn('insanityObjectCycle failed:'),
-    logwarn(' Class1='), logwarn(Class1),
-    logwarn(' Class2='), logwarn(Class2),
-    logwarnln('').
+    logwarn(' Class1=~Q', Class1),
+    logwarnln(' Class2=~Q', Class2).
 
 % PAPER: Sanity-EmbeddedLoop
 % ejs: This is superseded by insanityObjectCycle
@@ -150,10 +142,9 @@ insanityObjectCycle :-
 %%     find(InnerClass, SameClass),
 %%     logwarnln('Consistency checks failed.'),
 %%     logwarn('insanityEmbeddedTrivialObjectCycle failed:'),
-%%     logwarn(' Outer='), logwarn(OuterClass),
-%%     logwarn(' Inner='), logwarn(InnerClass),
-%%     logwarn(' Same='), logwarn(SameClass),
-%%     logwarnln('').
+%%     logwarn(' Outer=~Q', OuterClass),
+%%     logwarn(' Inner=~Q', InnerClass),
+%%     logwarnln(' Same=~Q', SameClass).
 
 % A member may not extend past the end of the object.
 % PAPER: XXX Need to add member logic
@@ -165,11 +156,10 @@ insanityMemberPastEndOfObject :-
     ComputedSize > ObjectSize,
     logwarnln('Consistency checks failed.'),
     logwarn('insanityMemberPastEndObject failed:'),
-    logwarn(' Class='), logwarn(Class),
-    logwarn(' Offset='), logwarn(Offset),
-    logwarn(' Size='), logwarn(Size),
-    logwarn(' ObjectSize='), logwarn(ObjectSize),
-    logwarnln('').
+    logwarn(' Class=~Q', Class),
+    logwarn(' Offset=~Q', Offset),
+    logwarn(' Size=~Q', Size),
+    logwarnln(' ObjectSize=~Q', ObjectSize).
 
 % The size of the virtual function table on a derived class may not be less than the size of
 % the virtual function table on the base class.
@@ -186,8 +176,7 @@ insanityBaseVFTableLarger :-
     factVFTableSizeGTE(BaseVFTable, BaseSize),
     DerivedSize < BaseSize,
     logwarnln('Consistency checks failed.'),
-    logwarn('insanityBaseVFTableLarger failed:'),
-    logwarnln('').
+    logwarnln('insanityBaseVFTableLarger failed:').
 
 % A method may not be both a constructor and a real destructor.
 % PAPER: Sanity-DoubleDuty
@@ -197,8 +186,8 @@ insanityConstructorAndRealDestructor :-
     factRealDestructor(Method),
     logwarnln('Consistency checks failed.'),
     logwarnln('A method may not be a constructor and real destructor:'),
-    logwarn(' Method='), logwarn(Method),
-    logwarnln('').
+    logwarnln(' Method=~Q', Method).
+
 
 % A method may not be both a constructor and a deleting destructor.
 % PAPER: Sanity-DoubleDuty
@@ -208,8 +197,7 @@ insanityConstructorAndDeletingDestructor :-
     factDeletingDestructor(Method),
     logwarnln('Consistency checks failed.'),
     logwarnln('A method may not be a constructor and deleting destructor:'),
-    logwarn(' Method='), logwarn(Method),
-    logwarnln('').
+    logwarnln(' Method=~Q', Method).
 
 % A class may not have two real destructors.
 % PAPER: Sanity-MultipleRealDestructors
@@ -222,10 +210,9 @@ insanityTwoRealDestructorsOnClass :-
     find(Destructor2, Class),
     logwarnln('Consistency checks failed.'),
     logwarnln('A class may not have more than one real destructor:'),
-    logwarn(' Class='), logwarn(Class),
-    logwarn(' Dtor1='), logwarn(Destructor1),
-    logwarn(' Dtor2='), logwarn(Destructor2),
-    logwarnln('').
+    logwarn(' Class=~Q', Class),
+    logwarn(' Dtor1=~Q', Destructor1),
+    logwarnln(' Dtor2=~Q', Destructor2).
 
 % A method cannot be both merged and not merged into a class.
 :- table insanityContradictoryMerges/0 as incremental.
@@ -235,21 +222,16 @@ insanityContradictoryMerges :-
     logwarnln('failed.'),
     logwarnln('Consistency checks failed.'),
     logwarn('Contradictory information about merging classes:'),
-    logwarn(' Method1='), logwarn(Method1),
-    logwarn(' Method2='), logwarnln(Method2).
+    logwarn(' Method1=~Q', Method1),
+    logwarnln(' Method2=~Q', Method2).
 
 :- table insanityEmbeddedAndNot/0 as incremental.
 insanityEmbeddedAndNot :-
     factEmbeddedObject(A, B, C),
     factNOTEmbeddedObject(A, B, C),
     logwarnln('Consistency checks failed.'),
-    logwarn('Contradictory information about embedded objects: factEmbeddedObject('),
-    logwarn(A),
-    logwarn(', '),
-    logwarn(B),
-    logwarn(', '),
-    logwarn(C),
-    logwarnln(')').
+    logwarnln('Contradictory information about embedded objects: ~Q',
+              factEmbeddedObject(A, B, C)).
 
 :- table sanityChecks/0 as incremental.
 sanityChecks :-

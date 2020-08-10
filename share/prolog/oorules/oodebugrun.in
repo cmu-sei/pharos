@@ -1,4 +1,0 @@
-#!/bin/bash
-@SWIPL_HEADER@
-@SWIPL_PROGRAM@ -g "set_prolog_flag(stack_limit, $STACK_LIMIT),set_prolog_flag(table_space, $TABLE_SPACE),asserta(library_directory('$DIR')),assert(logLevel(@PHAROS_OOLOGLEVEL@)),['$DIR/report'],assert(rTTIEnabled),psolve('${1}')."
-

@@ -1,5 +1,7 @@
 % Copyright 2017-2020 Carnegie Mellon University.
 
+:- use_module(library(apply), [maplist/3]).
+
 % ============================================================================================
 % Options.
 % ============================================================================================
@@ -28,7 +30,7 @@
 % Facts produced by the C++ component are all optional.  These facts are never asserted or
 % change in any way during execution.
 
-:- include(facts).
+:- ensure_loaded(facts).
 
 % For Debugging, not for rules!
 %:- dynamic termDebug/2 as incremental.
@@ -170,21 +172,21 @@ classArgs(factClassSizeLTE/2, 1).
 % Other modules.
 % ============================================================================================
 
-:- include(util).
-:- include(logging_instrumentation).
-:- include(webstat_helper).
-:- include(initial).
-:- include(rtti).
-:- include(rules).
-:- include(guess).
-:- include(forward).
-:- include(insanity).
-:- include(complete).
-:- include(final).
-:- include(softcut).
-:- include(class).
-:- include(trigger).
-:- include(swihelp).
+:- ensure_loaded(util).
+:- ensure_loaded(logging).
+:- ensure_loaded(webstat_helper).
+:- ensure_loaded(initial).
+:- ensure_loaded(rtti).
+:- ensure_loaded(rules).
+:- ensure_loaded(guess).
+:- ensure_loaded(forward).
+:- ensure_loaded(insanity).
+:- ensure_loaded(complete).
+:- ensure_loaded(final).
+:- ensure_loaded(softcut).
+:- ensure_loaded(class).
+:- ensure_loaded(trigger).
+:- ensure_loaded(swihelp).
 
 % These predicates are just named differently in SWI Prolog.
 incr_assert(T)  :- assertz(T).
@@ -227,7 +229,7 @@ try_assert_real(X) :- delta_con(numfacts, 1), trigger_hook(X), assert_helper(X).
 % reason about the errant trigger which is no longer true.  We do need to fail to avoid creating a choice point when backtracking.
 try_assert_real(X) :- X = trigger_fact(_), !, fail.
 try_assert_real(X) :-
-    logtrace('Fail-Retracting '), logtrace(X), logtraceln('...'),
+    logtraceln('Fail-Retracting ~Q...', X),
     delta_con(numfacts, -1),
     retract_helper(X),
     fail.
@@ -236,7 +238,7 @@ try_retract(X) :- not(X), !.
 try_retract(X) :- try_retract_real(X).
 try_retract_real(X) :- delta_con(numfacts, -1), retract_helper(X).
 try_retract_real(X) :-
-    logtrace('Fail-Asserting '), logtrace(X), logtraceln('...'),
+    logtrace('Fail-Asserting ~Q...', X),
     delta_con(numfacts, 1),
     assert_helper(X),
     fail.
@@ -257,31 +259,26 @@ fixupClasses(From, To, OldTerm, NewTerm) :-
      % OR we have a trigger fact that we haven't processed yet
      (trigger_fact(IntermediateOldTerm), Trigger=true)),
 
-    %logtrace('Considering class fact '), logtrace(Pred), logtrace('/'), logtrace(Arity),
-    %logtrace(' index '), logtrace(Index),
-    %logtrace(' from '), logtrace(From), logtrace(' to '), logtrace(To),
-    %logtrace(' in predicate '), logtraceln(IntermediateOldTerm),
+    %logtraceln('Considering class fact ~Q/~Q index ~Q from ~Q to ~Q in predicate ~Q',
+    %           [Pred, Arity, Index, From, To, IntermediateOldTerm]),
 
-
-    %logtrace('Fixing up '), logtrace(Pred), logtrace('/'), logtrace(Arity),
-    %logtrace(' index '), logtrace(Index),
-    %logtrace(' from '), logtrace(From), logtrace(' to '), logtrace(To),
-    %logtrace(' in predicate '), logtraceln(IntermediateOldTerm),
+    %logtraceln('Fixing up ~Q/~Q index ~Q from ~Q to ~Q in predicate ~Q',
+    %           [Pred, Arity, Index, From, To, IntermediateOldTerm]),
 
     % Now we'll break it apart.
     IntermediateOldTerm =.. IntermediateOldTermElements,
     ListIndex is Index + 1,
 
     % Report what the terms list looks like before replacement
-    %logtrace('Fixing up position '), logtrace(ListIndex),
-    %logtrace(' in old elements: '), logtraceln(IntermediateOldTermElements),
+    %logtraceln('Fixing up position ~Q in old elements: ~Q'),
+    %           [ListIndex, IntermediateOldTermElements]),
 
     % Replace From in IntermediateOldTermElements at ListIndex offset, with To, and return IntermediateNewTermElements.
     replace_ith(IntermediateOldTermElements, ListIndex, From, To, IntermediateNewTermElements),
 
     % Report what the terms list looks like after replacement
-    %logtrace('Fixing up position '), logtrace(ListIndex),
-    %logtrace(' resulted in new elements: '), logtraceln(IntermediateNewTermElements),
+    %logtraceln('Fixing up position ~Q resulted in new elements: ~Q',
+    %           [ListIndex, IntermediateNewTermElements]),
 
     % Combine NetTermElements back into a predicate that we can assert.
     IntermediateNewTerm =.. IntermediateNewTermElements,
@@ -296,17 +293,15 @@ logtraceClasses :-
     arg(Index, OldTerm, From),
     find(From, From2),
     (From = From2 -> fail;
-     (logerror(From), logerror(' should be a class representative in '),
-      logerror(OldTerm), logerror(' argument '), logerror(Index),
-      logerror(' but '), logerror(From2), logerrorln(' is the rep.'))).
+     logerrln('~Q should be a class representative in ~Q argument ~Q but ~Q is the rep.',
+              [From, OldTerm, Index, From2])).
 
 % This is a helper predicate used by mergeClasses(M1, M2).  The messages are logged at the
 % logtrace level, because there's quite a lot of them, but this is a fairly important set of
 % messages, and it might really belong at the info level.
 mergeClassBuilder((OldTerm,NewTerm), Out) :-
     Out =
-    (logdebug('Retracting '), logdebug(OldTerm),
-     logdebug(' and asserting '), logdebug(NewTerm), logdebugln(' ...'),
+    (logdebugln('Retracting ~Q and asserting ~Q ...', [OldTerm, NewTerm]),
      try_retract(OldTerm),
      try_assert(NewTerm)).
 
@@ -335,7 +330,7 @@ mergeClasses(M1, M2) :-
     % Note: We must be able to backtrack through this to restore classes on failure.
     union(NewRep, OldRep),
 
-    loginfo('Merging class '), loginfo(OldRep), loginfo(' into '), loginfo(NewRep), loginfoln(' ...'),
+    loginfoln('Merging class ~Q into ~Q ...', [OldRep, NewRep]),
 
     setof((OldTerm, NewTerm),
           fixupClasses(OldRep, NewRep, OldTerm, NewTerm),
@@ -448,9 +443,8 @@ reasoningLoop :-
 % well justified, but rather a hodge-podge of experimental results and gut feelings.  Cory has
 % no idea how to reason through this properly, so he's just going to take some notes.
 guess :-
-        get_flag(guesses, Guesses),
-        logdebug('Starting guess. There are currently '), format(atom(GuessStr), '~D', Guesses),
-        logdebug(GuessStr), logdebugln(' guesses.'),
+        logdebugln('~@Starting guess. There are currently ~D guesses.',
+                   [get_flag(guesses, Guesses), Guesses]),
         % These three guesses are first on the principle that guesing them has lots of
         % consequences, and that they're probably not wrong, so there's little harm in guessing
         % them first.
@@ -519,8 +513,7 @@ guess :-
 
         (
             call(Out);
-            (logdebug('guess: We have back-tracked to the call of '),
-             logdebugln(Out),
+            (logdebugln('guess: We have back-tracked to the call of ~Q', Out),
              fail)
         ).
 
@@ -537,7 +530,7 @@ setDefaultLogLevel :-
     logLevel(_) -> true ;
     (numericLogLevel('WARN', N),
      assert(logLevel(N)),
-     loginfo('Setting default log level to '), loginfoln(N)
+     loginfoln('Setting default log level to ~d', N)
     ).
 
 initialSanityChecks :-
@@ -568,10 +561,10 @@ complain_table_space(ooanalyzer_tool) :-
 
 complain_table_space(ooscript) :-
     logfatalln('Ran out of private table space.  Re-run, increasing the table'),
-    logfatalln('size by setting the TABLE_SPACE environment variable,  using'),
-    logfatalln('a value that is greater than the default (200 000 000 000).').
+    logfatalln('size by passing a larger value for --table-space.').
 
-complain_table_space(_) :-
+complain_table_space(X) :-
+    logfatalln('Ran out of private table space when running unknown ''~p''.', [X]),
     logfatalln('Something went terribly wrong.  File a bug.').
 
 complain_stack_size(ooanalyzer_tool) :-
@@ -579,12 +572,13 @@ complain_stack_size(ooanalyzer_tool) :-
     logfatalln('size with the option `--option prolog_stack_limit=<value>`, using'),
     logfatalln('a value that is greater than that reported by `--dump-config`.').
 
-complain_stack_space(ooscript) :-
+complain_stack_size(ooscript) :-
     logfatalln('Ran out of Prolog stack space.  Re-run, increasing the stack'),
-    logfatalln('size by setting the STACK_LIMIT environment variable,  using'),
-    logfatalln('a value that is greater than the default (200 000 000 000).').
+    logfatalln('size by passing a larger value for --stack-limit.').
 
-complain_stack_space(X) :- complain_table_space(X).
+complain_stack_size(X) :-
+    logfatalln('Ran out of Prolog stack space when running unknown ''~p''.', [X]),
+    logfatalln('Something went terribly wrong.  File a bug.').
 
 % Solve when guessing is disabled
 solve_internal :-
@@ -597,7 +591,7 @@ solve_internal :-
     reasonForwardAsManyTimesAsPossible,
     reportStage('Initial reasoning complete'),
     initialSanityChecks,
-    loginfoln('No plausible guesses remain, finalizing answer.')
+    loginfoln('Guessing was disabled, finalizing answer.')
     ;
     logfatalln('No complete solution was found!')).
 

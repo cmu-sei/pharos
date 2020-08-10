@@ -1,7 +1,10 @@
-% Copyright 2017 Carnegie Mellon University.
+% Copyright 2017-2020 Carnegie Mellon University.
 % ============================================================================================
 % Guessing rules.
 % ============================================================================================
+
+:- use_module(library(apply), [maplist/2]).
+:- use_module(library(lists), [member/2, append/3]).
 
 take(N, List, Prefix) :-
     length(Prefix, N),
@@ -31,25 +34,22 @@ tryBinarySearchInt(_PosPred, _NegPred, []) :-
 tryBinarySearchInt(PosPred, NegPred, L) :-
     length(L, 1),
     member(X, L),
-    logtrace('tryBinarySearch on '), logtrace(PosPred), logtraceln(L),
+    logtraceln('tryBinarySearch on ~Q~Q', [PosPred, L]),
     !,
     (call(PosPred, X);
-     logtrace('The guess '), logtrace(PosPred), logtrace('('), logtrace(X),
-     logtraceln(') was inconsistent with a valid solution.'),
-     logtrace('Guessing '), logtrace(NegPred), logtrace('('), logtrace(X),
-     logtraceln(') instead.'),
+     logtraceln('The guess ~Q(~Q) was inconsistent with a valid solution.', [PosPred, X]),
+     logtraceln('Guessing ~Q(~Q) instead.', [NegPred, X]),
      call(NegPred, X)).
 
 tryBinarySearchInt(PosPred, NegPred, List) :-
-    length(List, ListLen),
-    logtrace('tryBinarySearch on '), logtrace(PosPred), logtrace(': '), logtraceln(ListLen),
+    logtraceln('~@tryBinarySearch on ~Q: ~Q', [length(List, ListLen), PosPred, ListLen]),
     logtraceln(List),
     % First try the positive guess on everything. If that fails, we want to retract all the
     % guesses and recurse on a subproblem.
     maplist(PosPred, List);
 
     % We failed! Recurse on first half of the list
-    logtrace('We failed! tryBinarySearch on '), logtraceln(List),
+    logtraceln('We failed! tryBinarySearch on ~Q', List),
     %(sanityChecks -> true;
     %(logerrorln('sanityChecks failed after retracting guesses; this should never happen'),
     % halt)),
@@ -61,7 +61,7 @@ tryBinarySearchInt(PosPred, NegPred, List) :-
     tryBinarySearchInt(PosPred, NegPred, NewList).
 
 tryBinarySearchInt(_PP, _NP, L) :-
-    logtrace('tryBinarySearch completely failed on '), logtrace(L),
+    logtrace('tryBinarySearch completely failed on ~Q', L),
     logtraceln(' and will now backtrack to fix an upstream problem.'),
     fail.
 
@@ -86,7 +86,7 @@ trySetGroup(NewN) :-
     assert(numGroup(NewN)).
 
 trySetGroup(NewN) :-
-    logtrace('setting numGroup to '), logtrace(NewN), logtraceln('failed so setting to 1'),
+    logtraceln('setting numGroup to ~Q failed so setting to 1', NewN),
     % We're backtracking!  Crap.
     retract(numGroup(NewN)),
     assert(numGroup(1)),
@@ -94,15 +94,15 @@ trySetGroup(NewN) :-
 
 tryBinarySearch(PP, NP, L) :-
     numGroup(NG),
-    logtrace('Old numGroup is '), logtraceln(NG),
+    logtraceln('Old numGroup is ~Q', NG),
     !,
     tryBinarySearch(PP, NP, L, NG),
     % We're successful.  Adjust numgroup.  We need to query again to see if NG changed.
     numGroup(NGagain),
-    logtrace('Old numGroup is (again) '), logtraceln(NGagain),
+    logtraceln('Old numGroup is (again) ~Q', NGagain),
     length(L, ListLength),
     NGp is max(NGagain, min(ListLength, NGagain*2)),
-    logtrace('New numGroup is '), logtraceln(NGp),
+    logtraceln('New numGroup is ~Q', NGp),
     trySetGroup(NGp).
 
 % Do not guess if either fact is already true, or if doNotGuess(Fact) exists.
@@ -140,28 +140,19 @@ tryOrNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset) :-
         countGuess,
         tryVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset);
         tryNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset);
-        logwarn('Something is wrong upstream: invalidVirtualFunctionCall('),
-        logwarn(Insn), logwarnln(').'),
+        logwarnln('Something is wrong upstream: ~Q.', invalidVirtualFunctionCall(Insn)),
         fail
     ).
 
 tryVirtualFunctionCall(Insn, Method, OOffset, VFTable, VOffset) :-
-    loginfo('Guessing factVirtualFunctionCall('),
-    loginfo(Insn), loginfo(', '),
-    loginfo(Method), loginfo(', '),
-    loginfo(OOffset), loginfo(', '),
-    loginfo(VFTable), loginfo(', '),
-    loginfo(VOffset), loginfoln(').'),
+    loginfoln('Guessing ~Q.',
+              factVirtualFunctionCall(Insn, Method, OOffset, VFTable, VOffset)),
     try_assert(factVirtualFunctionCall(Insn, Method, OOffset, VFTable, VOffset)),
     try_assert(guessedVirtualFunctionCall(Insn, Method, OOffset, VFTable, VOffset)).
 
 tryNOTVirtualFunctionCall(Insn, Method, OOffset, VFTable, VOffset) :-
-    loginfo('Guessing factNOTVirtualFunctionCall('),
-    loginfo(Insn), loginfo(', '),
-    loginfo(Method), loginfo(', '),
-    loginfo(OOffset), loginfo(', '),
-    loginfo(VFTable), loginfo(', '),
-    loginfo(VOffset), loginfoln(').'),
+    loginfoln('Guessing ~Q.',
+              factNOTVirtualFunctionCall(Insn, Method, OOffset, VFTable, VOffset)),
     try_assert(factNOTVirtualFunctionCall(Insn, Method, OOffset, VFTable, VOffset)),
     try_assert(guessedNOTVirtualFunctionCall(Insn, Method, OOffset, VFTable, VOffset)).
 
@@ -183,19 +174,18 @@ guessVFTable(Out) :-
 tryOrNOTVFTable(VFTable) :-
     tryVFTable(VFTable);
     tryNOTVFTable(VFTable);
-    logwarn('Something is wrong upstream: invalidVFTable('),
-    logwarn(VFTable), logwarnln(').'),
+    logwarnln('Something is wrong upstream: ~Q.', invalidVFTable(VFTable)),
     fail.
 
 tryVFTable(VFTable) :-
     countGuess,
-    loginfo('Guessing factVFTable('), loginfo(VFTable), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factVFTable(VFTable)),
     try_assert(factVFTable(VFTable)),
     try_assert(guessedVFTable(VFTable)).
 
 tryNOTVFTable(VFTable) :-
     countGuess,
-    loginfo('Guessing factNOTVFTable('), loginfo(VFTable), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factNOTVFTable(VFTable)),
     try_assert(factNOTVFTable(VFTable)),
     try_assert(guessedNOTVFTable(VFTable)).
 
@@ -213,18 +203,17 @@ guessVBTable(Out) :-
         countGuess,
         tryVBTable(VBTable);
         tryNOTVBTable(VBTable);
-        logwarn('Something is wrong upstream: invalidVBTable('),
-        logwarn(VBTable), logwarnln(').'),
+        logwarnln('Something is wrong upstream: ~Q.', invalidVBTable(VBTable)),
         fail
     ).
 
 tryVBTable(VBTable) :-
-    loginfo('Guessing factVBTable('), loginfo(VBTable), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factVBTable(VBTable)),
     try_assert(factVBTable(VBTable)),
     try_assert(guessedVBTable(VBTable)).
 
 tryNOTVBTable(VBTable) :-
-    loginfo('Guessing factNOTVBTable('), loginfo(VBTable), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factNOTVBTable(VBTable)),
     try_assert(factNOTVBTable(VBTable)),
     try_assert(guessedNOTVBTable(VBTable)).
 
@@ -291,20 +280,14 @@ guessVFTableEntry(Out) :-
 tryVFTableEntry((VFTable, Offset, Entry)) :- tryVFTableEntry(VFTable, Offset, Entry).
 tryVFTableEntry(VFTable, Offset, Entry) :-
     countGuess,
-    loginfo('Guessing factVFTableEntry('),
-    loginfo(VFTable), loginfo(', '),
-    loginfo(Offset), loginfo(', '),
-    loginfo(Entry), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factVFTableEntry(VFTable, Offset, Entry)),
     try_assert(factVFTableEntry(VFTable, Offset, Entry)),
     try_assert(guessedVFTableEntry(VFTable, Offset, Entry)).
 
 tryNOTVFTableEntry((VFTable, Offset, Entry)) :- tryNOTVFTableEntry(VFTable, Offset, Entry).
 tryNOTVFTableEntry(VFTable, Offset, Entry) :-
     countGuess,
-    loginfo('Guessing factNOTVFTableEntry('),
-    loginfo(VFTable), loginfo(', '),
-    loginfo(Offset), loginfo(', '),
-    loginfo(Entry), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factNOTVFTableEntry(VFTable, Offset, Entry)),
     try_assert(factNOTVFTableEntry(VFTable, Offset, Entry)),
     try_assert(guessedNOTVFTableEntry(VFTable, Offset, Entry)).
 
@@ -334,20 +317,14 @@ tryEmbeddedObject((OuterClass, InnerClass, Offset)) :-
     tryEmbeddedObject(OuterClass, InnerClass, Offset).
 tryEmbeddedObject(OuterClass, InnerClass, Offset) :-
     countGuess,
-    loginfo('Guessing factEmbeddedObject('),
-    loginfo(OuterClass), loginfo(', '),
-    loginfo(InnerClass), loginfo(', '),
-    loginfo(Offset), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factEmbeddedObject(OuterClass, InnerClass, Offset)),
     try_assert(factEmbeddedObject(OuterClass, InnerClass, Offset)),
     try_assert(guessedEmbeddedObject(OuterClass, InnerClass, Offset)).
 
 tryDerivedClass((DerivedClass, BaseClass, Offset)) :- tryDerivedClass(DerivedClass, BaseClass, Offset).
 tryDerivedClass(DerivedClass, BaseClass, Offset) :-
     countGuess,
-    loginfo('Guessing factDerivedClass('),
-    loginfo(DerivedClass), loginfo(', '),
-    loginfo(BaseClass), loginfo(', '),
-    loginfo(Offset), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factDerivedClass(DerivedClass, BaseClass, Offset)),
     try_assert(factDerivedClass(DerivedClass, BaseClass, Offset)),
     try_assert(guessedDerivedClass(DerivedClass, BaseClass, Offset)).
 
@@ -361,10 +338,8 @@ tryDerivedClass(DerivedClass, BaseClass, Offset) :-
 %%         % Only here we're guessing embedded object first!
 %%         tryEmbeddedObject(DerivedClass, BaseClass, Offset);
 %%         tryDerivedClass(DerivedClass, BaseClass, Offset);
-%%         logwarn('Something is wrong upstream: invalidEmbeddedObject('),
-%%         logwarn(DerivedClass), logwarn(', '),
-%%         logwarn(BaseClass), logwarn(', '),
-%%         logwarn(Offset), logwarnln(').'),
+%%         logwarnln('Something is wrong upstream: ~Q.',
+%%                   invalidEmbeddedObject(DerivedClass, BaseClass, Offset)),
 %%         fail
 %%     ).
 
@@ -400,8 +375,7 @@ guessMethod(Out) :-
     osetof(Method,
            guessMethodA(Method),
            MethodSet),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMethod_A('), logtrace(MethodSet), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMethod_A(MethodSet)),
     Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 guessMethodB(Method) :-
@@ -422,8 +396,7 @@ guessMethod(Out) :-
     osetof(Method,
            guessMethodB(Method),
            MethodSet),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMethod_B('), logtrace(MethodSet), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMethod_B(MethodSet)),
     Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 % This guess is required (at least for our test suite) in cases where there's no certainty in
@@ -445,8 +418,7 @@ guessMethod(Out) :-
     osetof(Method,
            guessMethodC(Method),
            MethodSet),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMethod_C('), logtrace(MethodSet), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMethod_C(MethodSet)),
     Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 % More kludgy guessing rules. :-( This one is based on thre premise that a cluster of three or
@@ -470,8 +442,7 @@ guessMethod(Out) :-
     osetof(Method,
            guessMethodD(Method),
            MethodSet),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMethod_D('), logtrace(MethodSet), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMethod_D(MethodSet)),
     Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 % A variation of the previous rule using thisPtrUsage and passing around a this-pointer to
@@ -494,8 +465,7 @@ guessMethod(Out) :-
     osetof(Method,
            guessMethodE(Method),
            MethodSet),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMethod_E('), logtrace(MethodSet), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMethod_E(MethodSet)),
     Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 % Another case where we're trying to implement the reasoning that there's a lot of stuff
@@ -513,8 +483,7 @@ guessMethod(Out) :-
     osetof(Method,
            guessMethodF(Method),
            MethodSet),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMethod_F('), logtrace(MethodSet), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMethod_F(MethodSet)),
     Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 % Also guess possible constructors and destructors with calls from known methods.
@@ -530,8 +499,7 @@ guessMethod(Out) :-
     osetof(Method,
            guessMethodG(Method),
            MethodSet),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMethod_G('), logtrace(MethodSet), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMethod_G(MethodSet)),
     Out = tryBinarySearch(tryMethod, tryNOTMethod, MethodSet).
 
 tryMethodNOTMethod(Method):-
@@ -540,21 +508,20 @@ tryMethodNOTMethod(Method):-
     (
         tryMethod(Method);
         tryNOTMethod(Method);
-        logwarn('Something is wrong upstream: invalidMethod('),
-        logwarn(Method), logwarnln(').'),
+        logwarnln('Something is wrong upstream: ~Q.', invalidMethod(Method)),
         fail
     ).
 
 tryMethod(Method) :-
     countGuess,
-    loginfo('Guessing factMethod('), loginfo(Method), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factMethod(Method)),
     try_assert(factMethod(Method)),
     try_assert(guessedMethod(Method)),
     make(Method).
 
 tryNOTMethod(Method) :-
     countGuess,
-    loginfo('Guessing factNOTMethod('), loginfo(Method), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factNOTMethod(Method)),
     try_assert(factNOTMethod(Method)),
     try_assert(guessedNOTMethod(Method)).
 
@@ -602,8 +569,7 @@ guessConstructor(Out) :-
     osetof(Method,
            guessConstructor1(Method),
            MethodSet),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factConstructor1('), logtrace(MethodSet), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factConstructor1(MethodSet)),
     Out = tryBinarySearch(tryConstructor, tryNOTConstructor, MethodSet).
 
 % Likely virtual case, not in a vftable, writes a vftable, but has unitialized reads.
@@ -621,8 +587,7 @@ guessConstructor(Out) :-
     osetof(Method,
            guessConstructor2(Method),
            MethodSet),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factConstructor2('), logtrace(MethodSet), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factConstructor2(MethodSet)),
     Out = tryBinarySearch(tryConstructor, tryNOTConstructor, MethodSet).
 
 % Normal non-virtual case, not in a vftable, doesn't write a vftable, and has no uninitialized
@@ -641,8 +606,7 @@ guessConstructor(Out) :-
     osetof(Method,
            guessConstructor3(Method),
            MethodSet),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factConstructor3('), logtrace(MethodSet), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factConstructor3(MethodSet)),
     Out = tryBinarySearch(tryConstructor, tryNOTConstructor, MethodSet).
 
 % Unusual non-virtual case presumably with inheritance -- not in a vftable, doesn't write a
@@ -661,8 +625,7 @@ guessUnlikelyConstructor(Out) :-
     osetof(Method,
            guessConstructor4(Method),
            MethodSet),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factConstructor4('), logtrace(MethodSet), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factConstructor4(MethodSet)),
     Out = tryBinarySearch(tryConstructor, tryNOTConstructor, MethodSet).
 
 tryConstructorNOTConstructor(Method) :-
@@ -671,20 +634,19 @@ tryConstructorNOTConstructor(Method) :-
     (
         tryConstructor(Method);
         tryNOTConstructor(Method);
-        logwarn('Something is wrong upstream: invalidConstructor('),
-        logwarn(Method), logwarnln(').'),
+        logwarnln('Something is wrong upstream: ~Q.', invalidConstructor(Method)),
         fail
     ).
 
 tryConstructor(Method) :-
     countGuess,
-    loginfo('Guessing factConstructor('), loginfo(Method), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factConstructor(Method)),
     try_assert(factConstructor(Method)),
     try_assert(guessedConstructor(Method)).
 
 tryNOTConstructor(Method) :-
     countGuess,
-    loginfo('Guessing factNOTConstructor('), loginfo(Method), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factNOTConstructor(Method)),
     try_assert(factNOTConstructor(Method)),
     try_assert(guessedNOTConstructor(Method)).
 
@@ -714,8 +676,7 @@ guessClassHasNoBase(Out) :-
     osetof(Class,
            guessClassHasNoBaseB(Class),
            ClassSet),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing ClassHasNoBase_B('), logtrace(ClassSet), logtraceln(').'))),
+    logtraceln('Proposing ~P.', 'ClassHasNoBase_B'(ClassSet)),
     Out = tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
 
 % Then guess classes regardless of their VFTable writes.
@@ -731,20 +692,18 @@ guessClassHasNoBase(Out) :-
     osetof(Class,
            guessClassHasNoBaseC(Class),
            ClassSet),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing ClassHasNoBase_C('),
-                  logtrace(ClassSet), logtraceln(').'))),
+    logtraceln('Proposing ~P.', 'ClassHasNoBase_C'(ClassSet)),
     Out = tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
 
 tryClassHasNoBase(Class) :-
     countGuess,
-    loginfo('Guessing factClassHasNoBase('), loginfo(Class), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factClassHasNoBase(Class)),
     try_assert(factClassHasNoBase(Class)),
     try_assert(guessedClassHasNoBase(Class)).
 
 tryClassHasUnknownBase(Class) :-
     countGuess,
-    loginfo('Guessing factClassHasUnknownBase('), loginfo(Class), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factClassHasUnknownBase(Class)),
     try_assert(factClassHasUnknownBase(Class)),
     try_assert(guessedClassHasUnknownBase(Class)).
 
@@ -769,8 +728,7 @@ guessCommitClassHasNoBase(Out) :-
     osetof(Class,
            guessClassHasNoBaseSpecial(Class),
            ClassSet),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing CommitClassHasNoBase('), logtrace(ClassSet), logtraceln(').'))),
+    logtraceln('Proposing ~P.', 'CommitClassHasNoBase'(ClassSet)),
     Out = tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
 
 
@@ -811,9 +769,7 @@ guessNOTMergeClassesSymmetric(Class1, Class2) :-
     guessNOTMergeClasses(A, B),
     sort_tuple((A, B), (Class1, Class2)),
     % Debugging.
-    %logtrace('guessNOTMergeClasses('),
-    %logtrace(Class1), logtrace(', '),
-    %logtrace(Class2), logtraceln(').'),
+    %logtraceln('~Q.', guessNOTMergeClasses(Class1, Class2)),
     true.
 
 guessNOTMergeClasses(Out) :-
@@ -845,10 +801,7 @@ guessMergeClassesA(Class1, MethodClass) :-
     % This rule is symmetric because Prolog will try binding the same method to Constructor2 on
     % one evluation, and Constructor1 on the next evaluation, so even though the rule is also
     % true for Constructor2, that case will be handled when it's bound to Constructor.
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMergeClasses_A('),
-                  logtrace(Class1), logtrace(', '),
-                  logtrace(Method), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMergeClasses_A(Class1, Method)),
     checkMergeClasses(Class1, MethodClass).
 
 guessMergeClasses(Out) :-
@@ -857,9 +810,7 @@ guessMergeClasses(Out) :-
           guessMergeClassesA(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMergeClasses_A('),
-                  logtrace(OneTuple), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMergeClasses_A(OneTuple)),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % Another good guessing heuristic is that if a virtual call was resolved through a specific
@@ -909,13 +860,7 @@ guessMergeClassesB(Class1, Class2) :-
 
     find(Method1, Class1),
 
-
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMergeClasses_B('),
-                  logtrace(Method1), logtrace(', '),
-                  logtrace(VFTable), logtrace(', '),
-                  logtrace(Class1), logtrace(', '),
-                  logtrace(Class2), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMergeClasses_B(Method1, VFTable, Class1, Class2)),
     checkMergeClasses(Class1, Class2).
 
 guessMergeClasses(Out) :-
@@ -924,9 +869,7 @@ guessMergeClasses(Out) :-
           guessMergeClassesB(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMergeClasses_B('),
-                  logtrace(OneTuple), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMergeClasses_B(OneTuple)),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 
@@ -944,9 +887,7 @@ guessMergeClassesC(Class1, Class2) :-
     not(purecall(Method)), % Never merge purecall methods into classes.
     factDerivedClass(Class1, _BaseClass, _Offset),
     find(Method, Class2),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMergeClasses_C('), logtrace(Class1), logtrace(', '),
-                  logtrace(Class2), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMergeClasses_C(Class1, Class2)),
     checkMergeClasses(Class1, Class2).
 
 guessMergeClasses(Out) :-
@@ -955,9 +896,7 @@ guessMergeClasses(Out) :-
           guessMergeClassesC(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMergeClasses_C('),
-                  logtrace(OneTuple), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMergeClasses_C(OneTuple)),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % If that didn't work, maybe the method belongs on the base instead.
@@ -967,9 +906,7 @@ guessMergeClassesD(Class1, Class2) :-
     not(purecall(Method)), % Never merge purecall methods into classes.
     factDerivedClass(_DerivedClass, Class1, _Offset),
     find(Method, Class2),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMergeClasses_D('), logtrace(Class1), logtrace(', '),
-                  logtrace(Class2), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMergeClasses_D(Class1, Class2)),
     checkMergeClasses(Class1, Class2).
 
 guessMergeClasses(Out) :-
@@ -978,9 +915,7 @@ guessMergeClasses(Out) :-
           guessMergeClassesD(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMergeClasses_D('),
-                  logtrace(OneTuple), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMergeClasses_D(OneTuple)),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % And finally just guess regardless of derived class facts.
@@ -991,9 +926,7 @@ guessMergeClassesE(Class1, Class2) :-
     % Same reasoning as in guessMergeClasses_B...
     not(symbolProperty(Method, virtual)),
     find(Method, Class2),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMergeClasses_E('), logtrace(Class1), logtrace(', '),
-                  logtrace(Class2), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMergeClasses_E(Class1, Class2)),
     checkMergeClasses(Class1, Class2).
 
 guessMergeClasses(Out) :-
@@ -1002,9 +935,7 @@ guessMergeClasses(Out) :-
           guessMergeClassesE(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMergeClasses_E('),
-                  logtrace(OneTuple), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMergeClasses_E(OneTuple)),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % If we have VFTable that is NOT associated with a class because there's no factVFTableWrite,
@@ -1028,9 +959,7 @@ guessMergeClassesF(Class, Method1) :-
 
     % So go ahead and merge it into this class..
     find(Method2, Class),
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMergeClasses_F('), logtrace(Class), logtrace(', '),
-                  logtrace(Method1), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMergeClasses_F(Class, Method1)),
     checkMergeClasses(Class, Method1).
 
 guessMergeClasses(Out) :-
@@ -1039,9 +968,7 @@ guessMergeClasses(Out) :-
           guessMergeClassesF(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMergeClasses_F('),
-                  logtrace(OneTuple), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMergeClasses_F(OneTuple)),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % Try guessing that a VFTable belongs to a method.
@@ -1082,15 +1009,13 @@ guessMergeClassesG(Class1, Class2) :-
               iso_dif(Class1, Class)),
           ClassSet),
 
-    logdebugln([factVFTableWrite(Method, Offset, VFTable),
-                'is installed by destructor', Method, 'and these other classes', ClassSet]),
+    logdebugln('~Q is installed by destructor ~Q and these other classes: ~Q',
+               [factVFTableWrite(Method, Offset, VFTable), Method, ClassSet]),
 
     (ClassSet = [Class2]
      ->
          checkMergeClasses(Class1, Class2),
-         logdebug('guessMergeClassesG had one candidate class: '),
-         logdebug(Class2),
-         logdebugln('.')
+         logdebugln('guessMergeClassesG had one candidate class: ~Q.', Class2)
      ;
      % We will merge with the largest class
      % XXX: This could be implemented more efficiently using a maplist/2 and a sort.
@@ -1104,9 +1029,7 @@ guessMergeClassesG(Class1, Class2) :-
              not(OtherClassSize > Class2Size))),
 
      checkMergeClasses(Class1, Class2),
-     logdebug('guessMergeClassesG had more than one candidate class.  Merging with the largest class '),
-     logdebug(Class2),
-     logdebugln('.')
+     logdebugln('guessMergeClassesG had more than one candidate class.  Merging with the largest class ~Q.', Class2)
     ).
 
 guessMergeClasses(Out) :-
@@ -1115,9 +1038,7 @@ guessMergeClasses(Out) :-
           guessMergeClassesG(Class1, Class2)),
     !,
     OneTuple=[(Class1, Class2)],
-    traceAtLevel('TRACE',
-                 (logtrace('Proposing factMergeClasses_G('),
-                  logtrace(OneTuple), logtraceln(').'))),
+    logtraceln('Proposing ~Q.', factMergeClasses_G(OneTuple)),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 
@@ -1146,9 +1067,7 @@ tryMergeClasses(Method1, Method2) :-
     countGuess,
     find(Method1, Class1),
     find(Method2, Class2),
-    loginfo('Guessing mergeClasses('),
-    loginfo(Class1), loginfo(', '),
-    loginfo(Class2), loginfoln(').'),
+    loginfoln('Guessing ~Q.', mergeClasses(Class1, Class2)),
     mergeClasses(Class1, Class2),
     try_assert(guessedMergeClasses(Class1, Class2)).
 
@@ -1157,9 +1076,7 @@ tryNOTMergeClasses(Method1, Method2) :-
     countGuess,
     find(Method1, Class1),
     find(Method2, Class2),
-    loginfo('Guessing factNOTMergeClasses('),
-    loginfo(Class1), loginfo(', '),
-    loginfo(Class2), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factNOTMergeClasses(Class1, Class2)),
     try_assert(factNOTMergeClasses(Class1, Class2)),
     try_assert(guessedNOTMergeClasses(Class1, Class2)).
 
@@ -1243,17 +1160,16 @@ tryOrNOTRealDestructor(Method) :-
     countGuess,
     tryRealDestructor(Method);
     tryNOTRealDestructor(Method);
-    logwarn('Something is wrong upstream: invalidRealDestructor('),
-    logwarn(Method), logwarnln(').'),
+    logwarnln('Something is wrong upstream: ~Q.', invalidRealDestructor(Method)),
     fail.
 
 tryRealDestructor(Method) :-
-    loginfo('Guessing factRealDestructor('), loginfo(Method), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factRealDestructor(Method)),
     try_assert(factRealDestructor(Method)),
     try_assert(guessedRealDestructor(Method)).
 
 tryNOTRealDestructor(Method) :-
-    loginfo('Guessing factNOTRealDestructor('), loginfo(Method), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factNOTRealDestructor(Method)),
     try_assert(factNOTRealDestructor(Method)),
     try_assert(guessedNOTRealDestructor(Method)).
 
@@ -1300,8 +1216,7 @@ tryOrNOTDeletingDestructor(Method) :-
     (
         tryDeletingDestructor(Method);
         tryNOTDeletingDestructor(Method);
-        logwarn('Something is wrong upstream: invalidDeletingDestructor('),
-        logwarn(Method), logwarnln(').'),
+        logwarnln('Something is wrong upstream: ~Q.', invalidDeletingDestructor(Method)),
         fail
     ).
 
@@ -1356,12 +1271,12 @@ guessFinalDeletingDestructor(Out) :-
     Out = tryOrNOTDeletingDestructor(Method).
 
 tryDeletingDestructor(Method) :-
-    loginfo('Guessing factDeletingDestructor('), loginfo(Method), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factDeletingDestructor(Method)),
     try_assert(factDeletingDestructor(Method)),
     try_assert(guessedDeletingDestructor(Method)).
 
 tryNOTDeletingDestructor(Method) :-
-    loginfo('Guessing factDeletingDestructor('), loginfo(Method), loginfoln(').'),
+    loginfoln('Guessing ~Q.', factDeletingDestructor(Method)),
     try_assert(factNOTDeletingDestructor(Method)),
     try_assert(guessedNOTDeletingDestructor(Method)).
 

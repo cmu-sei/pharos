@@ -1,4 +1,4 @@
-% Copyright 2017 Carnegie Mellon University.
+% Copyright 2017-2020 Carnegie Mellon University.
 % ============================================================================================
 % Forward reasoning from given facts.
 % ============================================================================================
@@ -123,8 +123,7 @@ validVBTableEntry(VBTable, Entry, Offset) :-
     possibleConstructor(DerivedConstructor),
     % And the method invoked at the computed offset will be the base constructor.
     ObjectOffset is BaseOffset + Offset,
-    %logtrace('Object Offset for '), logtrace(VBTable), logtrace(' entry '),
-    %logtrace(Entry), logtrace(' is '), logtraceln(ObjectOffset),
+    %logtraceln('Object Offset for ~Q entry ~Q is ~Q', [VBTable, Entry, ObjectOffset]),
 
     % Intentionally NOT a validFuncOffset because we're speculating fairly widely here.  A
     % validFuncOffset might be more correct, but that would require that we already know that
@@ -165,11 +164,7 @@ validVBTableWrite(Insn, Method, Offset, VBTable) :-
     validVBTableEntry(VBTable, Entry2, _Value2),
     iso_dif(Entry1, Entry2),
     % Debugging
-    %logtrace('validVBTableWrite('),
-    %logtrace(Insn), logtrace(', '),
-    %logtrace(Method), logtrace(', '),
-    %logtrace(Offset), logtrace(', '),
-    %logtrace(VBTable), logtraceln(').'),
+    %logtrace('~Q.', validVBTableWrite(Insn, Method, Offset, VBTable)),
     true.
 
 % --------------------------------------------------------------------------------------------

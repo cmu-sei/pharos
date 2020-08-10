@@ -432,7 +432,7 @@ public class OOAnalyzer {
       .toArray(DataType[]::new);
     if (monitor.isCancelled ()) return 0;
     allowSwingToProcessEvents();
-    updateTypeManager(ghidraTypeArray, true);
+    updateTypeManager(ghidraTypeArray, useOOAnalyzerNamespace);
     if (monitor.isCancelled ()) return 0;
     Msg.info(this, "Type manager updated.");
     monitor.initialize(classTypeMap.size ());
@@ -879,7 +879,7 @@ public class OOAnalyzer {
 
             Structure vftableStruct = vftableMap.get(vtableAddr);
             populateVftable(vftableStruct, vfuncList);
-            updateTypeManager(vftableStruct, true);
+            updateTypeManager(vftableStruct, useOOAnalyzerNamespace);
 
             try {
               // Try to remove any data inside the vtable
@@ -928,15 +928,50 @@ public class OOAnalyzer {
       .filter (sym -> sym.getName (true).equalsIgnoreCase (ooaType.getBestName ()))
       .findAny ();
 
-    // If that doesn't work, we'll try matching on just the symbol name without the namespace.
-    // It's unclear if this is actually a good idea, but this is what the original code
-    // effectively did.
+    // If that doesn't work, we'll try to find the class in either the OOAnalyzer namespace or
+    // in an imported DLL.
 
     if (!symbol.isPresent ()) {
-      Msg.debug (this, "Couldn't find exact match for " + ooaType.getBestName () + ", so trying inexact match.");
+      Msg.debug (this, "Couldn't find exact match for " + ooaType.getBestName () + ", so looking in OOAnalyzer and imported DLL namespaces.");
       symbol = getSymbolStream.get ()
         .filter (sym -> sym.getSymbolType () == SymbolType.CLASS)
+        // Check the class name without the namespace as a precondition
         .filter (sym -> sym.toString ().equalsIgnoreCase (ghidraClassType.getName ()))
+        // Now check the namespace
+        .filter (sym -> {
+
+            var path = sym.getPath ();
+
+            var name_without_first_ns = Arrays.stream (path)
+            .skip (1) // Skip the initial namespace
+            .collect (Collectors.joining ("::"));
+
+            if (!name_without_first_ns.equals(ooaType.getBestName ()))
+              return false;
+
+            var first_ns_opt = Stream.iterate (sym.getParentNamespace (),
+                                           ns -> ns != null && ns.getParentNamespace () != null,
+                                           ns -> ns.getParentNamespace ())
+            .findAny ();
+
+            // If there is no parent namespace, we should have matched exactly
+            if (!first_ns_opt.isPresent ())
+              return false;
+
+            var first_ns = first_ns_opt.get ();
+            if (first_ns == null)
+              return false;
+
+            if (first_ns.equals(ooanalyzerNamespace))
+              return true;
+
+            if (first_ns.isExternal ())
+              return true;
+
+            // Default: fail
+            return false;
+
+          })
         .findAny ();
     }
 
@@ -968,16 +1003,31 @@ public class OOAnalyzer {
           if (inOOAnalyzerNamespace) {
             Msg.debug (this, "Not moving " + sym.getName (true) + " since it is already in the OOAnalyzer namespace");
           } else {
-            Namespace ns;
+            Namespace ns = null;
+
+            // If ns is an imported namespace, don't attempt to move it
+            boolean isExternal =
+              Stream.iterate (parentNs,
+                              nst -> nst != null,
+                              nst -> nst.getParentNamespace ())
+              .filter (nst -> nst.isExternal ())
+              .findAny ()
+              .isPresent ();
+
             if (parentNs.isGlobal ()) {
               // If there is no parent namespace, ns becomes Global instead of
               // ooanalyzerNamespace.  Seems like a bug to me.
               ns = this.ooanalyzerNamespace;
-            } else {
+            } else if (!isExternal) {
               ns = NamespaceUtils.createNamespaceHierarchy (parentNs.getName (true), this.ooanalyzerNamespace, program, SourceType.ANALYSIS);
             }
-            Msg.debug (this, "Moving " + sym.getName (true) + " to the OOAnalyzer namespace " + ns.getName (true));
-            sym.setNamespace(ns);
+
+            if (ns == null) {
+              Msg.debug (this, "Not moving " + sym.getName (true) + " to the OOAnalyzer namespace because it is imported and Ghidra will not allow it to be moved.");
+            } else {
+              Msg.debug (this, "Moving " + sym.getName (true) + " to the OOAnalyzer namespace " + ns.getName (true));
+              sym.setNamespace(ns);
+            }
           }
         } catch (NullPointerException | DuplicateNameException | InvalidInputException
                  | CircularDependencyException e) {
@@ -991,10 +1041,20 @@ public class OOAnalyzer {
       try {
         Msg.debug(this, "Symbol for class " + ghidraClassType.getName () + " not found.  Creating new one.");
 
-        String className = SymbolUtilities.replaceInvalidChars (ghidraClassType.getDisplayName (), true);
+        // Recreate namespace hierarchy
+        Optional<String> optNamespace = ooaType.getNamespace ();
 
-        GhidraClass newSymCls = symbolTable.createClass(this.ooanalyzerNamespace,
-                                                        className, SourceType.USER_DEFINED);
+        String className = SymbolUtilities.replaceInvalidChars (ooaType.getNameWithoutNamespace (), true);
+
+        // Msg.debug (this, "D1 " + optNamespace + " " + className + " " + ooaType.getNamespace () + " " + ooaType.getDemangledName ());
+
+        Namespace ns = NamespaceUtils.createNamespaceHierarchy (optNamespace.orElse (null), this.ooanalyzerNamespace, program, SourceType.ANALYSIS);
+
+        // Msg.debug (this, "D2 Namespace " + ns + " Class name " + className);
+
+        GhidraClass newSymCls = symbolTable.createClass(ns,
+                                                        className,
+                                                        SourceType.USER_DEFINED);
 
         classSymbolMap.put(ghidraClassType, newSymCls.getSymbol());
         Msg.debug(this, "Symbol for class " + ghidraClassType.getName () + ": " + newSymCls);
@@ -1134,7 +1194,7 @@ public class OOAnalyzer {
 
     var ea = flatApi.toAddr (vftable.getEa ());
     if (!vftableMap.containsKey (ea)) {
-      Structure vftableStruct = new StructureDataType(ooanalyzerCategory,
+      Structure vftableStruct = new StructureDataType(ghidraClassType.getCategoryPath (),
                                                       ghidraClassType.getName() + "::vftable_" + Long.toHexString(vftable.getEa()).toLowerCase(), 0);
 
       vftableMap.put(ea, vftableStruct);
@@ -1360,7 +1420,9 @@ public class OOAnalyzer {
     // everything correctly
 
     Parameter thisPtr = null;
+    // XXX: Set category path of the pointer type
     DataType thisPtrType = PointerDataType.getPointer(ooClass, dataTypeMgr);
+    thisPtrType.setCategoryPath (ooClass.getCategoryPath ());
     updateTypeManager(thisPtrType, true);
 
     // if a this pointer already exists in the form of a 0th param, then update it
@@ -1385,7 +1447,7 @@ public class OOAnalyzer {
   }
 
   /**
-   * Transactionally add a data type.
+   * Add a data type.
    *
    * @param dt                the data type to commit.
    * @param useOOAnalyzerPath Flag for where to add the type
@@ -1394,47 +1456,39 @@ public class OOAnalyzer {
     if (!dataTypeMgr.contains(dt)) {
       if (useOOAnalyzerPath) {
         try {
-          if (dt.getCategoryPath().compareTo(ooanalyzerCategory) != 0) {
-            dt.setCategoryPath(ooanalyzerCategory);
+          if (!dt.getCategoryPath().isAncestorOrSelf(ooanalyzerCategory)) {
+            CategoryPath cp = new CategoryPath(ooanalyzerCategory, dt.getCategoryPath().getPath ());
+            dt.setCategoryPath(cp);
           }
         } catch (DuplicateNameException e) {
         }
       }
 
-      int tid = dataTypeMgr.startTransaction("Update type manager: add one type");
-
-      Boolean commit = false;
       try {
         dataTypeMgr.addDataType(dt, DataTypeConflictHandler.REPLACE_HANDLER);
         dataTypeMgr.flushEvents();
-        commit = true;
-      } catch (IllegalArgumentException iex) {
-        Msg.warn(this, "Unable to add data type " + dt.toString() + ": " + iex.toString ());
-      } finally {
-        dataTypeMgr.endTransaction(tid, commit);
+      } catch (Exception e) {
+        Msg.warn(this, "Unable to add data type " + dt.toString() + ": " + e.toString ());
       }
     }
   }
 
   /**
-   * /** Transactionally add an array of data types.
+   * /** Add an array of data types.
    *
    * @param dTypes            The list of data types to commit.
    * @param useOOAnalyzerPath Flag for where to add the type
    */
   private void updateTypeManager(final DataType[] dTypes, boolean useOOAnalyzerPath) {
 
-    int tid = dataTypeMgr.startTransaction("Update type manager: add multiple types");
     for (var dt : dTypes) {
       allowSwingToProcessEvents ();
       if (monitor.isCancelled ()) {
-        dataTypeMgr.endTransaction(tid, false);
         return;
       }
       updateTypeManager(dt, useOOAnalyzerPath);
     }
     dataTypeMgr.flushEvents();
-    dataTypeMgr.endTransaction(tid, true);
   }
 
   /**
@@ -1565,12 +1619,16 @@ public class OOAnalyzer {
         Msg.debug (OOAnalyzer.class, "Ghidra demangled " + mangledName + " to " + demangledName);
 
         // Now get the namespace
-        String namespaceType;
+        String namespaceType = null;
         if (isMethodName) {
           // method -> class -> namespace
-          namespaceType = demangledObj.getNamespace ().getNamespace ().toString ();
+          var tmpNamespace = demangledObj.getNamespace ().getNamespace ();
+          if (tmpNamespace != null)
+            namespaceType = demangledObj.getNamespace ().getNamespace ().toString ();
         } else {
-          namespaceType = demangledObj.getNamespace ().toString ();
+          var tmpNamespace = demangledObj.getNamespace ();
+          if (tmpNamespace != null)
+            namespaceType = demangledObj.getNamespace ().toString ();
         }
         if (namespaceType != null) {
           namespace = namespaceType;

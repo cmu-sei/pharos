@@ -2,6 +2,10 @@
 % Runtime type information reasoning.
 % ============================================================================================
 
+:- use_module(library(aggregate), [aggregate_all/3]).
+:- use_module(library(apply), [maplist/2]).
+:- use_module(library(lists), [member/2]).
+
 bogusName('MISSING').
 
 % Given a TypeDescriptor address, return Name.  Return a "bogus" nbame if needed to prevent
@@ -55,8 +59,7 @@ rTTISelfRef(TDA, COLA, CHDA, BCDA, VFTable, Name) :-
     rTTIClassHierarchyDescriptor(CHDA, _HierarchyAttributes, Bases),
     member(BCDA, Bases),
 
-    %logtrace('Evaluating TDA='), logtrace(TDA), logtrace(' COLA='), logtrace(COLA),
-    %logtrace(' CHDA='), logtrace(CHDA), logtrace(' BCDA='), logtraceln(BCDA),
+    %logtraceln('Evaluating TDA=~Q COLA=~Q CHDA=~Q BCDA=~Q', [TDA, COLA, CHDA, BCDA]),
 
     % Silly Prolog thinks unsigned numbers don't exist.  That's so 1978!
     Big is 0x7fffffff,
@@ -69,18 +72,11 @@ rTTISelfRef(TDA, COLA, CHDA, BCDA, VFTable, Name) :-
     bcd_has_CHD_pointer(BitMask),
     (bitmask_check(BaseAttributes, BitMask) -> BCHDA is CHDA; true),
 
-    %logtrace('Case: '), logtrace(BaseAttributes), logtrace(' BHCDA: '), logtrace(BCHDA),
-    %logtrace(' TDA: '), logtrace(TDA), logtrace(' CHDA: '), logtrace(CHDA),
-    %logtrace(' BCDA: '), logtraceln(BCDA),
+    %logtraceln('Case:  BHCDA: ~Q TDA: ~Q CHDA: ~Q BCDA: ~Q',
+    %           [BaseAttributes, BCHDA, TDA, CHDA, BCDA]),
 
     % Debugging.
-    %logtrace('debug-rTTISelfRef('),
-    %logtrace(TDA), logtrace(', '),
-    %logtrace(COLA), logtrace(', '),
-    %logtrace(CHDA), logtrace(', '),
-    %logtrace(BCDA), logtrace(', '),
-    %logtrace(VFTable), logtrace(', '),
-    %logtrace('\''), logtrace(Name), logtrace('\''), logtraceln(').'),
+    %logtraceln('debug-~Q.', rTTISelfRef(TDA, COLA, CHDA, BCDA, VFTable, Name)),
     true.
 
 :- table rTTINoBase/1 as opaque.
@@ -118,14 +114,8 @@ rTTIInheritsDirectlyFrom(DerivedTDA, AncestorTDA, Attributes, M, P, V) :-
     % algorithm miss the direct base if it's also a base of a base?
     not(rTTIInheritsIndirectlyFrom(DerivedTDA, AncestorTDA)),
 
-    %logtrace('debug-rTTIInheritsDirectlyFrom('),
-    %logtrace(DerivedTDA), logtrace(', '),
-    %logtrace(AncestorTDA), logtrace(', '),
-    %logtrace(Attributes), logtrace(', '),
-    %logtrace(M), logtrace(', '),
-    %logtrace(P), logtrace(', '),
-    %logtrace(V), logtrace(', '),
-    %logtrace(BCDA), logtraceln(').'),
+    %logtrace('debug-~Q.',
+    %         rTTIInheritsDirectlyFrom(DerivedTDA, AncestorTDA, Attributes, M, P, V, BCDA),
     true.
 
 :- table rTTIInheritsVirtuallyFrom/6 as opaque.
@@ -144,14 +134,8 @@ rTTIInheritsVirtuallyFrom(DerivedTDA, AncestorTDA, Attributes, M, P, V) :-
     % Is M always zero in virtual inheritance?
 
     % Debugging.
-    %logtrace('debug-rTTIInheritsVirtuallyFrom('),
-    %logtrace(DerivedTDA), logtrace(', '),
-    %logtrace(AncestorTDA), logtrace(', '),
-    %logtrace(Attributes), logtrace(', '),
-    %logtrace(M), logtrace(', '),
-    %logtrace(P), logtrace(', '),
-    %logtrace(V), logtrace(', '),
-    %logtrace(BCDA), logtraceln(').'),
+    %logtrace('debug-~Q.',
+    %         rTTIInheritsVirtuallyFrom(DerivedTDA, AncestorTDA, Attributes, M, P, V, BCDA)),
     true.
 
 
@@ -225,29 +209,28 @@ rTTIInvalidBaseAttributes :-
     rTTIBaseClassDescriptor(_BCDA, _TDA, _NumBases, _M, _P, _V, Attributes, _CHDA),
     Attributes >= 0x80,
     Attributes < 0x0,
-    logwarn('RTTI Information is invalid because BaseClassDescriptor Attributes = '),
-    logwarnln(Attributes).
+    logwarnln('RTTI Information is invalid because BaseClassDescriptor Attributes = ~Q',
+              Attributes).
 
 rTTIInvalidCOLOffset2 :-
     rTTICompleteObjectLocator(_Pointer, _COLA, _TDA, _CHDA, _Offset, Offset2),
     Offset2 \= 0x0,
     Offset2 \= 0x4,
-    logwarn('RTTI Information is invalid because CompleteObjectLocator Offset2 = '),
-    logwarnln(Offset2).
+    logwarnln('RTTI Information is invalid because CompleteObjectLocator Offset2 = ~Q',
+            Offset2).
 
 rTTIInvalidDirectInheritanceP :-
     Big is 0x7fffffff,
     NegativeOne is Big * 2 + 1,
     rTTIInheritsDirectlyFrom(_DerivedTDA, _AncestorTDA, _Attributes, _M, P, _V),
     P \= NegativeOne,
-    logwarn('RTTI Information is invalid because InheritsDirectlyFrom P = '),
-    logwarnln(P).
+    logwarnln('RTTI Information is invalid because InheritsDirectlyFrom P = ~Q', P).
+
 
 rTTIInvalidDirectInheritanceV :-
     rTTIInheritsDirectlyFrom(_DerivedTDA, _AncestorTDA, _Attributes, _M, _P, V),
     V \= 0x0,
-    logwarn('RTTI Information is invalid because InheritsDirectlyFrom V = '),
-    logwarnln(V).
+    logwarnln('RTTI Information is invalid because InheritsDirectlyFrom V = ~Q', V).
 
 rTTIInvalidHierarchyAttributes :-
     rTTIClassHierarchyDescriptor(_CHDA, HierarchyAttributes, _Bases),
@@ -263,8 +246,8 @@ rTTIInvalidHierarchyAttributes :-
 
     % Attributes 0x3 means multiple virtual inheritance
     HierarchyAttributes \= 0x3,
-    logwarn('RTTI Information is invalid because HierarchyAttributes = '),
-    logwarnln(HierarchyAttributes).
+    logwarnln('RTTI Information is invalid because HierarchyAttributes = ~Q',
+              HierarchyAttributes).
 
 :- table rTTIShouldHaveSelfRef/1 as opaque.
 rTTIShouldHaveSelfRef(TDA) :-
@@ -310,11 +293,11 @@ rTTIValid :-
 
 reportMissingSelfRef(TDA) :-
     rTTISelfRef(TDA, _COLA, _CHDA, _BCDA, _VFTable, _Name) -> true;
-    (logwarn('RTTI Information is invalid because missing self-reference for TDA at address '), logwarnln(TDA)).
+    logwarnln('RTTI Information is invalid because missing self-reference for TDA at address ~Q', TDA).
 
 reportMissingTypeDescriptor(TDA) :-
     rTTITypeDescriptor(TDA, _VFTableCheck, _RTTIName, _DName) -> true;
-    (logwarn('RTTI Information is invalid because no RTTITypeDescriptor at address '), logwarnln(TDA)).
+    logwarnln('RTTI Information is invalid because no RTTITypeDescriptor at address ~Q', TDA).
 
 reportRTTIInvalidity :-
     setof(TDA, rTTIAllTypeDescriptors(TDA), TDASet1),
@@ -324,57 +307,31 @@ reportRTTIInvalidity :-
     true.
 
 reportNoBase((A)) :-
-    logdebug('rTTINoBaseName('),
-    logdebug(A), logdebug(', '),
-    rTTIName(A, AName),
-    logdebug('\''), logdebug(AName), logdebug('\''), logdebugln(').').
+    logdebugln('~@~Q.', [rTTIName(A, AName), rTTINoBaseName(A, AName)]).
 reportNoBase :-
     setof((A), rTTINoBase(A), Set),
     maplist(reportNoBase, Set).
 reportNoBase :- true.
 
 reportAncestorOf((D, A)) :-
-    logdebug('rTTIAncestorOfName('),
-    logdebug(D), logdebug(', '),
-    logdebug(A), logdebug(', '),
-    rTTIName(D, DName),
-    rTTIName(A, AName),
-    logdebug('\''), logdebug(DName), logdebug('\''), logdebug(', '),
-    logdebug('\''), logdebug(AName), logdebug('\''), logdebugln(').').
+    logdebugln('~@~@~Q.', [rTTIName(D, DName), rTTIName(A, AName),
+                           rTTIAncestorOfName(D, A, DName, AName)]).
 reportAncestorOf :-
     setof((D, A), rTTIAncestorOf(D, A), Set),
     maplist(reportAncestorOf, Set).
 reportAncestorOf :- true.
 
 reportInheritsDirectlyFrom((D, A, H, M, P, V)) :-
-    logdebug('rTTIInheritsDirectlyFromName('),
-    logdebug(D), logdebug(', '),
-    logdebug(A), logdebug(', '),
-    logdebug(H), logdebug(', '),
-    logdebug(M), logdebug(', '),
-    logdebug(P), logdebug(', '),
-    logdebug(V), logdebug(', '),
-    rTTIName(D, DName),
-    rTTIName(A, AName),
-    logdebug('\''), logdebug(DName), logdebug('\''), logdebug(', '),
-    logdebug('\''), logdebug(AName), logdebug('\''), logdebugln('). ').
+    logdebugln('~@~@~Q.', [rTTIName(D, DName), rTTIName(A, AName),
+                         rTTIInheritsDirectlyFromName(D, A, H, M, P, V, DName, AName)]).
 reportInheritsDirectlyFrom :-
     setof((D, A, H, M, P, V), rTTIInheritsDirectlyFrom(D, A, H, M, P, V), Set),
     maplist(reportInheritsDirectlyFrom, Set).
 reportInheritsDirectlyFrom :- true.
 
 reportInheritsVirtuallyFrom((D, A, H, M, P, V)) :-
-    logdebug('rTTIInheritsVirtuallyFromName('),
-    logdebug(D), logdebug(', '),
-    logdebug(A), logdebug(', '),
-    logdebug(H), logdebug(', '),
-    logdebug(M), logdebug(', '),
-    logdebug(P), logdebug(', '),
-    logdebug(V), logdebug(', '),
-    rTTIName(D, DName),
-    rTTIName(A, AName),
-    logdebug('\''), logdebug(DName), logdebug('\''), logdebug(', '),
-    logdebug('\''), logdebug(AName), logdebug('\''), logdebugln('). ').
+    logdebugln('~@~@~Q.', [rTTIName(D, DName), rTTIName(A, AName),
+                         rTTIInheritsVirtuallyFromName(D, A, H, M, P, V, DName, AName)]).
 reportInheritsVirtuallyFrom :-
     setof((D, A, H, M, P, V), rTTIInheritsVirtuallyFrom(D, A, H, M, P, V), Set),
     maplist(reportInheritsVirtuallyFrom, Set).
@@ -382,13 +339,7 @@ reportInheritsVirtuallyFrom :- true.
 
 
 reportSelfRef((T, L, C, B, V, N)) :-
-    logdebug('rTTISelfRef('),
-    logdebug(T), logdebug(', '),
-    logdebug(L), logdebug(', '),
-    logdebug(C), logdebug(', '),
-    logdebug(B), logdebug(', '),
-    logdebug(V), logdebug(', '),
-    logdebug('\''), logdebug(N), logdebug('\''), logdebugln('). ').
+    logdebugln('~Q.', rTTISelfRef(T, L, C, B, V, N)).
 reportSelfRef :-
     setof((T, L, C, B, V, N), rTTISelfRef(T, L, C, B, V, N), Set),
     maplist(reportSelfRef, Set).
@@ -413,8 +364,7 @@ reportRTTIResults :-
     rTTIPresent(Count),
     (Count > 0 ->
          % If RTTI facts were present, always report that.
-         (loginfo('RTTI was present, found '), format(atom(CountStr), '~D', Count),
-          loginfo(CountStr), loginfoln(' predicates.'),
+         (loginfoln('RTTI was present, found ~D predicates.', Count),
           (rTTIValid -> loginfoln('RTTI was valid.') ; logerrorln('RTTI was invalid.')),
           ((logLevel(Level), Level > 4) ->
                (reportNoBase,

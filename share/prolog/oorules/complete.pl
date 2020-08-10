@@ -11,9 +11,7 @@ completeClassHasNoSpecificBase :-
     not(factClassHasNoBase(Class)),
     not(factDerivedClass(Class, _BaseClass, _ObjectOffset)),
     logwarnln('Solution is incomplete.'),
-    logwarn('completeClassHasNoSpecificBase failed:'),
-    logwarn(' Ctor='), logwarn(Class),
-    logwarnln('').
+    logwarnln('completeClassHasNoSpecificBase failed: Ctor=~Q', Class).
 
 /* Local Variables:   */
 /* mode: prolog       */

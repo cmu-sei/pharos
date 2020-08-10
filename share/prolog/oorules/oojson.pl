@@ -1,4 +1,6 @@
 :- use_module(library(http/json), [json_write_dict/2]).
+:- use_module(library(apply), [maplist/3]).
+:- use_module(library(lists), [member/2]).
 
 :- dynamic finalClass/6.
 :- dynamic finalVFTable/5.
@@ -14,8 +16,8 @@
 :- dynamic finalThunk/2.
 :- dynamic finalDemangledName/4.
 
-:- include(util).
-:- include(results).
+:- ensure_loaded(util).
+:- ensure_loaded(results).
 
 % ===================================================================
 % Usages

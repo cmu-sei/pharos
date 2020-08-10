@@ -1,7 +1,9 @@
-% Copyright 2017 Carnegie Mellon University.
+% Copyright 2017-2020 Carnegie Mellon University.
 % ============================================================================================
 % Basic utilities for Prolog.
 % ============================================================================================
+
+:- use_module(library(lists), [append/3]).
 
 sort_tuple((A,B), (C,D)) :-
     (A < B -> (C=A, D=B); (C=B, D=A)).
@@ -74,21 +76,13 @@ all(L) :-
 
 all_debug(L) :-
     length(L, Len),
-    logtrace('Call to all/1 with '),
-    logtrace(Len),
-    logtraceln(' elements...'),
+    logtraceln('Call to all/1 with ~D elements...', Len),
     cputime(BeforeTime),
     all_int(L),
     cputime(AfterTime),
     DiffTime is AfterTime - BeforeTime,
-    logtrace('... took '),
-    logtrace(DiffTime),
-    logtrace(' seconds on '),
-    logtrace(Len),
-    logtrace(' elements ('),
-    Avg is DiffTime / (Len + 1),
-    logtrace(Avg),
-    logtraceln(' seconds avg).').
+    logtraceln('~@... took ~D seconds on ~D elements (~f seconds avg).',
+               [Avg is DiffTime / (Len + 1), DiffTime, Len, Avg]).
 
 all_int([]).
 all_int([H|T]) :-
@@ -223,19 +217,22 @@ loadPredicates(File) :-
     loadPredicates(File, true_).
 
 loadPredicates(File, Verifier) :-
-    open(File, read, Stream),
-    call_cleanup(readPredicates(Stream, Verifier), close(Stream)).
+    setup_call_cleanup(
+        open(File, read, Stream),
+        readPredicates(Stream, Verifier),
+        close(Stream)).
 
 readPredicates(Stream, Verifier) :-
+    repeat,
     read(Stream, Pred),
-    assertPredicate(Pred, Stream, Verifier).
+    ( Pred = end_of_file -> !
+    ; assertPredicate(Pred, Verifier), fail).
 
-assertPredicate(end_of_file, _, _) :- !.
-assertPredicate(Pred, Stream, Verifier) :- !,
-    (call(Verifier, Pred) -> (assert(Pred), readPredicates(Stream, Verifier)) ;
+
+assertPredicate(Pred, Verifier) :- !,
+    (call(Verifier, Pred) -> assert(Pred) ;
      (functor(Pred, Name, Arity),
-      errwrite('Invalid predicate: '), errwrite(Name), errwrite('/'),
-      errwrite(Arity), errwrite(' = '), errwriteln(Pred),
+      logfatalln('Invalid predicate: ~a/~d = ~Q', [Name, Arity, Pred]),
       % We should really learn how to throw and format the exception properly.
       %throw(error(bad_fact(Name/Arity))),
       halt(1)

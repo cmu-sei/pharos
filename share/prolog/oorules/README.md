@@ -304,16 +304,11 @@ include `thisPtrOffset`, `thisPtrAllocation`, `thisPtrUsage`,
 If your fact generation failed, you may need to revisit the previous
 step, or OOAnalyzer may have failed on your input program.  If you
 have a reasonable set of facts, you can proceed with the Prolog phase
-of object-oriented analysis by running the following command from your
-Pharos build or install directory:
+of object-oriented analysis by running the following command:
 
 ```
-./share/prolog/oorules/oodebugrun ooprog-facts.pl >ooprog.log
+ooprolog --facts ooprog-facts.pl --results ooprog-results.pl --log-level=6 >ooprog.log
 ```
-
-If the `oodebugrun` script is missing, make sure that you [installed SWI
-Prolog and that Pharos found it at build
-time](../../../INSTALL.md#swi-prolog-optional).
 
 This command runs the Prolog analysis phase in SWI Prolog.  Additionally,
 because the previous function analysis step has exited, we no longer have
@@ -372,15 +367,11 @@ This indicates that the final answer was contradictory in some way, and
 that the result was in some way incorrect.  In is normal for some
 classes to be discarded as "worthless" near the end of the Prolog phase.
 These are classes that have only a single method in them (and may not in
-fact be classes at all).  Regardless, you should be able to extract the
-final results from the log with this command:
+fact be classes at all).  
 
-```
-grep ^final ooprog.log >ooprog-results.pl
-```
-
-This command produces a file that should be be nearly identical to the
-one typically produced by the `--prolog-results` option on the
+The final results should be found in the ooprog-results.pl file that was
+created. These results should be be nearly identical to the those produced
+by the `--prolog-results` option on the
 OOAnalyzer command.  You can inspect this file manually to get a sense
 for how well OOAnalyzer did or run the `awk` command from earlier to get
 a distribution of results.  For a successful execution, there should be
@@ -399,11 +390,13 @@ to review the Prolog results directly, but end-users of OOAnalyzer of
 course want to reverse-engineer the actual object-oriented executable in
 IDA Pro or Ghidra.
 
-There is now a Prolog-based tool that will convert the Prolog results
-into the JSON format.  You can invoke this tool with this command:
+The new `ooprolog` command is also capable of generating JSON results.
+This step could have been executed previously by simply adding `--json`
+to the previous `ooprolog` command, but we've chosen to show how it can
+also be run as a separate step.
 
 ```
-./share/prolog/oorules/oojson ooprog-results.pl >ooprog.json
+ooprolog --results ooprog-results.pl --json ooprog.json
 ```
 
 In just a few seconds, this command should produce a JSON file that is

@@ -5,7 +5,7 @@
 % User-level driver for oorules functionality
 % ============================================================================================
 
-:- use_module(library(optparse), [opt_parse/4]).
+:- use_module(library(optparse), [opt_parse/4, opt_help/2]).
 :- use_module(library(option), [dict_options/2, option/2]).
 :- use_module(library(prolog_stack)).
 
@@ -15,6 +15,10 @@
    assert(base_directory(Dir)).
 
 :- initialization(main, main).
+
+nohalt :-
+    (exists_source(library(readline)) -> use_module(library(readline)) ; true),
+    break.
 
 %% Same as option/2, but fails if the value hasn't been set
 check_option(X, O) :-
@@ -31,13 +35,16 @@ setup_oorules_path(Opts) :-
 setup_oorules_path(Opts) :-
     yaml_config(Opts), !.
 
-%% Fallback: Try same directory as this file, followed by CWD
+%% Fallback: Try install oorules location, followed by same directory as this file,
+%% followed by CWD
 setup_oorules_path(_) :-
     base_directory(Dir), !,
     working_directory(CWD, CWD),
-    asserta(file_search_path(pharos, CWD)),
-    asserta(file_search_path(pharos, Dir)).
-
+    atomic_list_concat([Dir, '../share/pharos/prolog/oorules'], '/', RulesDir),
+    absolute_file_name(RulesDir, AbsRulesDir),
+    assertz(file_search_path(pharos, AbsRulesDir)),
+    assertz(file_search_path(pharos, Dir)),
+    assertz(file_search_path(pharos, CWD)).
 
 :- if(exists_source(library(yaml))).
 
@@ -45,7 +52,7 @@ setup_oorules_path(_) :-
 
 yaml_config(Opts) :-
     check_option(config(Config), Opts),
-    handle_yaml_file(Config).
+    handle_yaml_file(Config, Opts).
 
 yaml_config(Opts) :-
     getenv('HOME', Home),
@@ -54,12 +61,13 @@ yaml_config(Opts) :-
 
 yaml_config(Opts) :-
     base_directory(Dir), !,
-    atomic_list_concat([Dir, 'etc', 'pharos.yaml'], '/', Config),
-    handle_yaml_file(Config, Opts).
+    atomic_list_concat([Dir, '../etc', 'pharos.yaml'], '/', Config),
+    absolute_file_name(Config, AbsConfig),
+    handle_yaml_file(AbsConfig, Opts).
 
-yaml_config(_) :-
+yaml_config(Opts) :-
     getenv('PHAROS_CONFIG', Config),
-    handle_yaml_file(Config).
+    handle_yaml_file(Config, Opts).
 
 handle_yaml_file(File, Opts) :-
     prolog_rules_dir_from_yaml(File, Opts, Dir),
@@ -72,67 +80,113 @@ prolog_rules_dir_from_yaml(File, Opts, Dir) :-
        get_dict('application', Dict, Apps),
        get_dict(Script, Apps, App),
        get_dict('pharos', App, Pharos),
-       get_dict('prolog_rules_dir', Pharos, Dir));
+       get_dict('prolog_rules_dir', Pharos, RawDir), !);
      ( get_dict('pharos', Dict, Pharos),
-       get_dict('prolog_rules_dir', Pharos, Dir))).
+       get_dict('prolog_rules_dir', Pharos, RawDir))),
+    (sub_atom(RawDir, 0, 1, _, '/') -> Dir = RawDir ;
+     sub_atom(RawDir, 0, 1, _, _) ->
+         (base_directory(BaseDir),
+          atomic_list_concat([BaseDir, '../share/pharos', RawDir], '/', CDir),
+          absolute_file_name(CDir, Dir))).
 
 :- else.
 yaml_config(_) :- false.
 :- endif.
 
 exit_failure :-
-    halt(1).
+    nl(user_error),
+    usage(user_error, 1).
 
-main :-
-    current_prolog_flag(os_argv, [_Interp|Rest]),
-    main(Rest).
+ooprolog_opts_spec(
+    [
+      [opt(facts), longflags([facts]), shortflags(['f']),
+       type(atom), help('input facts file')],
+      [opt(json), longflags([json]), shortflags(['j']),
+       type(atom), help('output path for json file')],
+      [opt(results), longflags([results]), shortflags(['r']),
+       type(atom), help(['path for Prolog results',
+                         'output when used with --facts',
+                         'input when not used with --facts'])],
 
-main([Script|Args]) :-
-    OptsSpec =
-    [ [opt(loglevel), longflags(['log-level']), shortflags([l]),
+      [opt(ground), longflags([ground]), shortflags(['g']),
+       type(atom), help('input path for ground truth')],
+      [opt(rtti), longflags([rtti]), shortflags(['R']), type(boolean),
+       default(true), help('enable RTTI analysis')],
+      [opt(guess), longflags([guess]), shortflags(['G']), type(boolean),
+       default(true), help('enable guessing')],
+      [opt(loglevel), longflags(['log-level']), shortflags([l]),
        type(integer), default(3), help('logging level (0-7)')],
+
+      [opt(config), longflags([config]), shortflags(['C']), type(atom),
+       help('pharos YAML config file')],
       [opt(stacklimit), longflags(['stack-limit']), shortflags(['S']),
        type(integer), default(200_000_000_000), help('stack limit in bytes')],
       [opt(tablespace), longflags(['table-space']), shortflags(['T']),
        type(integer), default(200_000_000_000), help('table space in bytes')],
       [opt(oorulespath), longflags(['library-path']), shortflags(['P']),
        type(atom), help('path to prolog rules')],
-      [opt(rtti), longflags([rtti]), shortflags(['R']), type(boolean),
-       default(true), help('enable RTTI analysis')],
-      [opt(guess), longflags([guess]), shortflags(['G']), type(boolean),
-       default(true), help('enable guessing')],
       [opt(halt), longflags([halt]), shortflags(['H']), type(boolean),
        default(true), help('halt after execution')],
-      [opt(config), longflags([config]), shortflags(['C']), type(atom),
-       help('pharos YAML config file')],
 
-      [opt(facts), longflags([facts]), shortflags(['f']),
-       type(atom), help('input facts file')],
-      [opt(json), longflags([json]), shortflags(['j']),
-       type(atom), help('output path for json file')],
-      [opt(results), longflags([results]), shortflags(['r']),
-       type(atom), help(['path for result facts',
-                         'output when used with --facts',
-                         'input when used with --ground'])],
-      [opt(ground), longflags([ground]), shortflags(['g']),
-       type(atom), help('input path for ground facts file')],
       [opt(help), longflags([help]), shortflags(['h']), type(boolean),
        help('output this message')]
-    ],
-    opt_parse(OptsSpec, Args, Opts, Positional),
+    ]).
+
+usage(Stream, Status) :-
+    ooprolog_opts_spec(OptsSpec), !,
+    opt_help(OptsSpec, HelpMessage),
+    with_output_to(
+        Stream,
+        (writeln('Usage: ooprolog.pl [--facts <file> | --results <file>] [options]'),
+         nl,
+         writeln('If the --facts option is specified, read the facts and generate the'),
+         writeln('results.  Otherwise, if --results option is specified, read previously'),
+         writeln('generated results instead.  Remaining options control various aspects'),
+         writeln('of the result generation process and create additional outputs.'),
+         nl,
+         write(user_error, HelpMessage))),
+    halt(Status).
+
+set_limit_flag(Flag, Value) :-
+    catch(set_prolog_flag(Flag, Value), error(permission_error(limit, Thing, Val), _Context),
+          (format(user_error, 'Limiting ~q to ~q is not allowed by SWI Prolog.~n',
+                  [Thing, Val]), halt(1))).
+
+parse_options(OptsSpec, Args, Opts, Positional) :-
+    %% opt_parse/4 outputs the option help to user_error when an unknown option is passed.  The
+    %% setup_call_cleanup/3 below resets user_error to a null stream during the call and
+    %% restores it afterward.
+    setup_call_cleanup(
+        (set_stream(user_error, alias(saved_user_error)),
+         open_null_stream(Null),
+         set_stream(Null, alias(user_error))),
+        catch(opt_parse(OptsSpec, Args, Opts, Positional), E, true),
+        (set_stream(saved_user_error, alias(user_error)),
+         close(Null))),
+    (var(E), ! ;
+     ignore((E = error(domain_error(flag_value, Flag), _),
+             format(user_error, 'ERROR: Unknown option ''~a''~n', Flag))),
+     exit_failure).
+
+main :-
+    set_prolog_flag(color_term, true),
+    current_prolog_flag(os_argv, [_Interp|Rest]),
+    catch(main(Rest), E,
+          (print_message(error, E), halt(1))).
+
+main([Script|Args]) :-
+    ooprolog_opts_spec(OptsSpec), !,
+    parse_options(OptsSpec, Args, Opts, Positional),
     option(help(Help), Opts),
-    (var(Help) ; (opt_help(OptsSpec, HelpMessage), write(user_error, HelpMessage), halt)),
+    (var(Help), ! ; usage(user_error, 0)),
     main([script(Script)|Opts], Positional).
 
 main(_, [H|T]) :-
-    format(user_error, 'Unexpected extra arguments: ~q~n', [[H|T]]),
+    format(user_error, 'ERROR: Unexpected extra arguments: ~q~n', [[H|T]]),
     exit_failure.
 
-main(Opts, []) :-
-    check_option(facts(_), Opts),
-    check_option(ground(_), Opts),
-    format(user_error, 'Cannot use both --facts and --ground options~n', []),
-    exit_failure.
+main([], []) :-
+    usage(user_output, 0).
 
 main(Opts, []) :-
     setup_oorules_path(Opts), !,
@@ -142,59 +196,57 @@ main(Opts, []) :-
     option(guess(Guess), Opts),
     option(halt(Halt), Opts),
     option(loglevel(Loglevel), Opts),
-    set_prolog_flag(stack_limit, Stacklimit),
-    set_prolog_flag(table_space, Tablespace),
+    set_limit_flag(stack_limit, Stacklimit),
+    set_limit_flag(table_space, Tablespace),
     assert(logLevel(Loglevel)),
+    consult([pharos(report), pharos(oojson), pharos(validate)]),
     ignore(check_option(oorulespath(Path), Opts) ->
                asserta(file_search_path(pharos, Path))),
     ignore(RTTI -> assert(rTTIEnabled)),
-    (Guess ; assert(guessingDisabled)),
+    (Guess, ! ; assert(guessingDisabled)),
     catch_with_backtrace(
-        (check_option(ground(Ground), Opts) -> do_ground(Ground, Opts) ; do_report(Opts)),
+        (generate_results(Opts),
+         generate_json(Opts),
+         validate_results(Opts)),
         Exception,
-        (print_message(error, Exception), (Halt ; break), exit_failure)),
-    (Halt; prolog).
+        (print_message(error, Exception), (Halt, ! ; nohalt), halt(1))),
+    (Halt, ! ; nohalt).
 
-do_report(Opts) :-
+%% Generate results when there is a facts file
+generate_results(Opts) :-
     check_option(facts(Facts), Opts),
     option(results(Results), Opts),
-    ignore(check_option(json(Json), Opts) -> consult(oojson)),
-    ignore(var(Results), var(Json),
-           format(user_error, 'Cannot determine mode~n', []), exit_failure),
-    !,
-    consult(report),
     setup_call_cleanup(
         (var(Results) -> open_null_stream(ResultStream) ;
          open(Results, write, ResultStream)),
         with_output_to(ResultStream, psolve_no_halt(Facts)),
-        close(ResultStream)),
-    (var(Json) ;
-     setup_call_cleanup(
-         open(Json, write, JsonStream),
-         with_output_to(JsonStream, exportJSON),
-         close(JsonStream))).
+        close(ResultStream)).
 
-do_report(Opts) :-
+%% Load results when there isn't a facts file
+generate_results(Opts) :-
     check_option(results(Results), Opts),
-    check_option(json(Json), Opts),
-    !,
-    consult(oojson),
-    setup_call_cleanup(
-        open(Json, write, JsonStream),
-        with_output_to(JsonStream, exportJSON(Results)),
-        close(JsonStream)).
+    loadResults(Results).
 
-do_report(_) :-
-    format(user_error, 'Cannot determine mode~n', []), exit_failure.
+%% No facts; no results
+generate_results(_) :-
+    writeln(user_error, 'ERROR: Either a --facts or a --results option is required'),
+    exit_failure.
 
-do_ground(Ground, Opts) :-
-    check_option(result(Results), Opts),
-    !,
-    consult(validate),
-    loadAndValidateResults(Results, Ground).
+%% Generate JSON when the option exists
+generate_json(Opts) :-
+    check_option(json(JsonFile), Opts) ->
+        setup_call_cleanup(
+            open(JsonFile, write, JsonStream),
+            with_output_to(JsonStream, exportJSON),
+            close(JsonStream))
+    ; true.
 
-do_ground(_, _) :-
-    format(user_error, 'Results necessary for validation~n', []), exit_failure.
+%% If there is a ground option, validate results
+validate_results(Opts) :-
+    check_option(ground(Ground), Opts) ->
+        loadPredicates(Ground),
+        validateResults
+    ; true.
 
 /* Local Variables:   */
 /* mode: prolog       */

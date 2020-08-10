@@ -9,7 +9,7 @@ import shutil
 import errno
 import json
 
-default_swi_program = "@SWIPL_COMMAND@"
+default_swi_program = "@SWIPL_EXECUTABLE@"
 
 def test_input_path(args):
     return os.path.join(args.git_dir, "tests" , args.testcase[0])
@@ -147,10 +147,10 @@ def run_prolog_test(args):
 
     update_rules(args)
 
-    script = "oodebugrun"
+    script = "ooprolog.pl"
     tool = "swi"
 
-    rules_path = os.path.join(args.build_dir, "share", "prolog", "oorules")
+    rules_path = os.path.join(args.git_dir, "share", "prolog", "oorules")
     os.chdir(rules_path)
 
     # Separate outputs for each command so we can run both simultaneously.
@@ -158,8 +158,10 @@ def run_prolog_test(args):
     prolog_output_path = test_output_path(args) + "." + tool + "prolog_output"
     prolog_spew_path = test_output_path(args) + "." + tool + "prolog_error"
 
-    redirection = ">%s 2>%s" % (prolog_output_path, prolog_spew_path)
-    prolog_cmd = "%s %s %s" % (os.path.join(rules_path, script), ground_facts_path, redirection)
+    redirection = ">%s 2>&1" % (prolog_spew_path,)
+    prolog_cmd = ("%s %s --log-level 6 --facts %s --results %s %s" %
+                  (default_swi_program, os.path.join(rules_path, script),
+                   ground_facts_path, prolog_output_path, redirection))
 
     if args.commands:
         print prolog_cmd
@@ -181,9 +183,11 @@ def run_prolog_test(args):
     if args.swi:
         prolog_json_path = test_output_path(args) + ".swirawjson"
         prolog_spew_path = test_output_path(args) + "." + tool + "prolog_json_error"
-        redirection = ">%s 2>%s" % (prolog_json_path, prolog_spew_path)
+        redirection = ">%s 2>&1" % (prolog_spew_path,)
 
-        prolog_cmd = "%s %s %s" % (os.path.join(rules_path, "oojson"), gen_results_path, redirection)
+        prolog_cmd = ("%s %s --log-level 6 --results %s --json %s %s" %
+                      (default_swi_program, os.path.join(rules_path, script),
+                       gen_results_path, prolog_json_path, redirection))
 
         if args.commands:
             print prolog_cmd
