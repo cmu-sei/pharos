@@ -121,6 +121,14 @@ baselogname(logln).
 baselogname(fmtlog).
 baselogname(fmtlogln).
 
+%% Uncomment to check for dangerous logging arguments (that might be lists)
+%% goal_expansion(Goal, Layout, _, _) :-
+%%     Goal =.. [Name, _Fmt, Args],
+%%     var(Args),
+%%     logging_atom(Name, _),
+%%     format(user_error, "Bad Goal: ~Q~nLocation: ~q~n", [Goal, Layout]),
+%%     halt(1).
+
 goal_expansion(Goal, Out) :-
     Goal =.. [Name, Level|_],
     baselogname(Name),

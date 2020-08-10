@@ -43,13 +43,13 @@ tryBinarySearchInt(PosPred, NegPred, L) :-
 
 tryBinarySearchInt(PosPred, NegPred, List) :-
     logtraceln('~@tryBinarySearch on ~Q: ~Q', [length(List, ListLen), PosPred, ListLen]),
-    logtraceln(List),
+    logtraceln([List]),
     % First try the positive guess on everything. If that fails, we want to retract all the
     % guesses and recurse on a subproblem.
     maplist(PosPred, List);
 
     % We failed! Recurse on first half of the list
-    logtraceln('We failed! tryBinarySearch on ~Q', List),
+    logtraceln('We failed! tryBinarySearch on ~Q', [List]),
     %(sanityChecks -> true;
     %(logerrorln('sanityChecks failed after retracting guesses; this should never happen'),
     % halt)),
@@ -61,7 +61,7 @@ tryBinarySearchInt(PosPred, NegPred, List) :-
     tryBinarySearchInt(PosPred, NegPred, NewList).
 
 tryBinarySearchInt(_PP, _NP, L) :-
-    logtrace('tryBinarySearch completely failed on ~Q', L),
+    logtrace('tryBinarySearch completely failed on ~Q', [L]),
     logtraceln(' and will now backtrack to fix an upstream problem.'),
     fail.
 
@@ -86,7 +86,7 @@ trySetGroup(NewN) :-
     assert(numGroup(NewN)).
 
 trySetGroup(NewN) :-
-    logtraceln('setting numGroup to ~Q failed so setting to 1', NewN),
+    logtraceln('setting numGroup to ~Q failed so setting to 1', [NewN]),
     % We're backtracking!  Crap.
     retract(numGroup(NewN)),
     assert(numGroup(1)),
@@ -94,15 +94,15 @@ trySetGroup(NewN) :-
 
 tryBinarySearch(PP, NP, L) :-
     numGroup(NG),
-    logtraceln('Old numGroup is ~Q', NG),
+    logtraceln('Old numGroup is ~Q', [NG]),
     !,
     tryBinarySearch(PP, NP, L, NG),
     % We're successful.  Adjust numgroup.  We need to query again to see if NG changed.
     numGroup(NGagain),
-    logtraceln('Old numGroup is (again) ~Q', NGagain),
+    logtraceln('Old numGroup is (again) ~Q', [NGagain]),
     length(L, ListLength),
     NGp is max(NGagain, min(ListLength, NGagain*2)),
-    logtraceln('New numGroup is ~Q', NGp),
+    logtraceln('New numGroup is ~Q', [NGp]),
     trySetGroup(NGp).
 
 % Do not guess if either fact is already true, or if doNotGuess(Fact) exists.
@@ -1015,7 +1015,7 @@ guessMergeClassesG(Class1, Class2) :-
     (ClassSet = [Class2]
      ->
          checkMergeClasses(Class1, Class2),
-         logdebugln('guessMergeClassesG had one candidate class: ~Q.', Class2)
+         logdebugln('guessMergeClassesG had one candidate class: ~Q.', [Class2])
      ;
      % We will merge with the largest class
      % XXX: This could be implemented more efficiently using a maplist/2 and a sort.
@@ -1029,7 +1029,7 @@ guessMergeClassesG(Class1, Class2) :-
              not(OtherClassSize > Class2Size))),
 
      checkMergeClasses(Class1, Class2),
-     logdebugln('guessMergeClassesG had more than one candidate class.  Merging with the largest class ~Q.', Class2)
+     logdebugln('guessMergeClassesG had more than one candidate class.  Merging with the largest class ~Q.', [Class2])
     ).
 
 guessMergeClasses(Out) :-

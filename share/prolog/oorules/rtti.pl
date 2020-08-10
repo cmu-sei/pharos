@@ -210,27 +210,27 @@ rTTIInvalidBaseAttributes :-
     Attributes >= 0x80,
     Attributes < 0x0,
     logwarnln('RTTI Information is invalid because BaseClassDescriptor Attributes = ~Q',
-              Attributes).
+              [Attributes]).
 
 rTTIInvalidCOLOffset2 :-
     rTTICompleteObjectLocator(_Pointer, _COLA, _TDA, _CHDA, _Offset, Offset2),
     Offset2 \= 0x0,
     Offset2 \= 0x4,
     logwarnln('RTTI Information is invalid because CompleteObjectLocator Offset2 = ~Q',
-            Offset2).
+            [Offset2]).
 
 rTTIInvalidDirectInheritanceP :-
     Big is 0x7fffffff,
     NegativeOne is Big * 2 + 1,
     rTTIInheritsDirectlyFrom(_DerivedTDA, _AncestorTDA, _Attributes, _M, P, _V),
     P \= NegativeOne,
-    logwarnln('RTTI Information is invalid because InheritsDirectlyFrom P = ~Q', P).
+    logwarnln('RTTI Information is invalid because InheritsDirectlyFrom P = ~Q', [P]).
 
 
 rTTIInvalidDirectInheritanceV :-
     rTTIInheritsDirectlyFrom(_DerivedTDA, _AncestorTDA, _Attributes, _M, _P, V),
     V \= 0x0,
-    logwarnln('RTTI Information is invalid because InheritsDirectlyFrom V = ~Q', V).
+    logwarnln('RTTI Information is invalid because InheritsDirectlyFrom V = ~Q', [V]).
 
 rTTIInvalidHierarchyAttributes :-
     rTTIClassHierarchyDescriptor(_CHDA, HierarchyAttributes, _Bases),
@@ -247,7 +247,7 @@ rTTIInvalidHierarchyAttributes :-
     % Attributes 0x3 means multiple virtual inheritance
     HierarchyAttributes \= 0x3,
     logwarnln('RTTI Information is invalid because HierarchyAttributes = ~Q',
-              HierarchyAttributes).
+              [HierarchyAttributes]).
 
 :- table rTTIShouldHaveSelfRef/1 as opaque.
 rTTIShouldHaveSelfRef(TDA) :-
@@ -293,11 +293,11 @@ rTTIValid :-
 
 reportMissingSelfRef(TDA) :-
     rTTISelfRef(TDA, _COLA, _CHDA, _BCDA, _VFTable, _Name) -> true;
-    logwarnln('RTTI Information is invalid because missing self-reference for TDA at address ~Q', TDA).
+    logwarnln('RTTI Information is invalid because missing self-reference for TDA at address ~Q', [TDA]).
 
 reportMissingTypeDescriptor(TDA) :-
     rTTITypeDescriptor(TDA, _VFTableCheck, _RTTIName, _DName) -> true;
-    logwarnln('RTTI Information is invalid because no RTTITypeDescriptor at address ~Q', TDA).
+    logwarnln('RTTI Information is invalid because no RTTITypeDescriptor at address ~Q', [TDA]).
 
 reportRTTIInvalidity :-
     setof(TDA, rTTIAllTypeDescriptors(TDA), TDASet1),
@@ -364,7 +364,7 @@ reportRTTIResults :-
     rTTIPresent(Count),
     (Count > 0 ->
          % If RTTI facts were present, always report that.
-         (loginfoln('RTTI was present, found ~D predicates.', Count),
+         (loginfoln('RTTI was present, found ~D predicates.', [Count]),
           (rTTIValid -> loginfoln('RTTI was valid.') ; logerrorln('RTTI was invalid.')),
           ((logLevel(Level), Level > 4) ->
                (reportNoBase,

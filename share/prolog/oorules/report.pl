@@ -35,7 +35,7 @@ psolve(X) :- psolve_no_halt(X), halt.
 % This definition of progress is for when we're NOT running from within OOAnalyzer, which is
 % probably the same circumstances where we want this reporting module.
 progress(N) :-
-  loginfoln('There are ~D known facts.', N).
+  loginfoln('There are ~D known facts.', [N]).
 
 % Streams and colors are here because they don't affect the OOAnalyzer C++ mode.
 logStream('FATAL', user_error).

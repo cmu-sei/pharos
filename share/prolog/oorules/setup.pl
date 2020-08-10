@@ -229,7 +229,7 @@ try_assert_real(X) :- delta_con(numfacts, 1), trigger_hook(X), assert_helper(X).
 % reason about the errant trigger which is no longer true.  We do need to fail to avoid creating a choice point when backtracking.
 try_assert_real(X) :- X = trigger_fact(_), !, fail.
 try_assert_real(X) :-
-    logtraceln('Fail-Retracting ~Q...', X),
+    logtraceln('Fail-Retracting ~Q...', [X]),
     delta_con(numfacts, -1),
     retract_helper(X),
     fail.
@@ -238,7 +238,7 @@ try_retract(X) :- not(X), !.
 try_retract(X) :- try_retract_real(X).
 try_retract_real(X) :- delta_con(numfacts, -1), retract_helper(X).
 try_retract_real(X) :-
-    logtrace('Fail-Asserting ~Q...', X),
+    logtrace('Fail-Asserting ~Q...', [X]),
     delta_con(numfacts, 1),
     assert_helper(X),
     fail.
@@ -513,7 +513,7 @@ guess :-
 
         (
             call(Out);
-            (logdebugln('guess: We have back-tracked to the call of ~Q', Out),
+            (logdebugln('guess: We have back-tracked to the call of ~Q', [Out]),
              fail)
         ).
 
@@ -530,7 +530,7 @@ setDefaultLogLevel :-
     logLevel(_) -> true ;
     (numericLogLevel('WARN', N),
      assert(logLevel(N)),
-     loginfoln('Setting default log level to ~d', N)
+     loginfoln('Setting default log level to ~d', [N])
     ).
 
 initialSanityChecks :-

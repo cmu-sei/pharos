@@ -122,7 +122,7 @@ worthlessClass(Class) :-
     !,
 
     classIdentifier(Class, ClassID),
-    logdebugln('Rejecting worthless finalClass ~Q', ClassID).
+    logdebugln('Rejecting worthless finalClass ~Q', [ClassID]).
 
 worthlessClass(Class) :-
     purecall(PurecallMethod),
@@ -130,7 +130,7 @@ worthlessClass(Class) :-
     !,
 
     classIdentifier(Class, ClassID),
-    logdebugln('Rejecting worthless finalClass ~Q', ClassID).
+    logdebugln('Rejecting worthless finalClass ~Q', [ClassID]).
 
 finalFileInfo(FileMD5, Filename) :-
    fileInfo(FileMD5, Filename).
