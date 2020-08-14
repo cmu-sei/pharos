@@ -38,9 +38,9 @@ progress(N) :-
   loginfoln('There are ~D known facts.', [N]).
 
 % Streams and colors are here because they don't affect the OOAnalyzer C++ mode.
-logStream('FATAL', user_error).
-logStream('ERROR', user_error).
-logStream('WARNING', user_error).
+logStream('FATAL', user_output).
+logStream('ERROR', user_output).
+logStream('WARN', user_output).
 logStream('INFO', user_output).
 logStream('DEBUG', user_output).
 logStream('TRACE', user_output).

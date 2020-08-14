@@ -3,7 +3,7 @@
 % Final reporting API.
 % ============================================================================================
 
-:- use_module(library(lists), [member/2]).
+:- use_module(library(lists), [member/2, min_list/2, max_list/2]).
 
 % Long ago, Ed wrote: A solution is <list of classes, a mapping of classes to methods, a
 % mapping of classes to members, a mapping of each class to its immediate parents and offset, a
@@ -57,7 +57,7 @@ classIdentifier(Method, ID) :-
         %logwarnln('picking class ID from method set: ~Q', MethodSet),
         setof(C, (member(C, MethodSet), factConstructor(C)), ConstructorSet),
         %logwarnln('constructor set was: ~Q', ConstructorSet),
-        list_min(ConstructorSet, MinimumConstructor),
+        min_list(ConstructorSet, MinimumConstructor),
         %logwarnln('picked class ID: ~Q', MinimumConstructor),
         true
     )
@@ -67,7 +67,7 @@ classIdentifier(Method, ID) :-
         findall(Method, MethodSet),
         %logwarnln('trying to pick class ID from method set2 ...'),
         %logwarnln('picking class ID from method set: ~Q', MethodSet),
-        list_min(MethodSet, MinimumMethod),
+        min_list(MethodSet, MinimumMethod),
         %logwarnln('picked class ID: ~Q', MinimumMethod),
         true
     )
@@ -164,7 +164,7 @@ finalVFTable(VFTable, CertainSize, LikelySize, RTTIAddressOrNull, RTTINameOrNull
          RTTIAddressOrNull=RTTIAddress, RTTINameOrNull=RTTIName;
      RTTIAddressOrNull=0, RTTINameOrNull=''),
     findall(CertainOffset, factVFTableEntry(VFTable, CertainOffset, _Method), CertainOffsets),
-    list_max(CertainOffsets, CertainMax),
+    max_list(CertainOffsets, CertainMax),
     CertainSize is CertainMax + 4,
     % It's a little unclear what the likely size means in a proper guessing framework.
     LikelySize is CertainSize.
@@ -178,7 +178,7 @@ finalVBTable(VBTable, Class, Size, Offset) :-
     factVBTable(VBTable),
     factVBTableWrite(_Insn, Method, Offset, VBTable),
     findall(CertainOffset, factVBTableEntry(VBTable, CertainOffset, _Value), CertainOffsets),
-    list_max(CertainOffsets, Size),
+    max_list(CertainOffsets, Size),
     classIdentifier(Method, Class).
 
 finalVBTableEntry(VBTable, Offset, Value) :-

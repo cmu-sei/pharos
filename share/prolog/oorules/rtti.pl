@@ -3,7 +3,7 @@
 % ============================================================================================
 
 :- use_module(library(aggregate), [aggregate_all/3]).
-:- use_module(library(apply), [maplist/2]).
+:- use_module(library(apply), [maplist/2, exclude/3]).
 :- use_module(library(lists), [member/2]).
 
 bogusName('MISSING').
@@ -61,14 +61,10 @@ rTTISelfRef(TDA, COLA, CHDA, BCDA, VFTable, Name) :-
 
     %logtraceln('Evaluating TDA=~Q COLA=~Q CHDA=~Q BCDA=~Q', [TDA, COLA, CHDA, BCDA]),
 
-    % Silly Prolog thinks unsigned numbers don't exist.  That's so 1978!
-    Big is 0x7fffffff,
-    NegativeOne is Big * 2 + 1,
-
     % We're primarly checking that TDA points back to the original type descriptor.  But also,
     % if (and only if) BaseAttributes is has the bcd_has_CHD_pointer bit set, then the optional
     % BCHDA field should also point to the same class hierarchy descriptor.
-    rTTIBaseClassDescriptor(BCDA, TDA, _NumBases, 0, NegativeOne, 0, BaseAttributes, BCHDA),
+    rTTIBaseClassDescriptor(BCDA, TDA, _NumBases, 0, 0xffffffff, 0, BaseAttributes, BCHDA),
     bcd_has_CHD_pointer(BitMask),
     (bitmask_check(BaseAttributes, BitMask) -> BCHDA is CHDA; true),
 
@@ -158,8 +154,7 @@ rTTIInheritsFrom(DerivedTDA, AncestorTDA, Attributes, M, P, V) :-
 rTTIDerivedClass(DerivedVFTable, BaseVFTable, Offset) :-
     rTTIEnabled,
     rTTIValid,
-    negative(1, NegativeOne),
-    rTTIInheritsFrom(DerivedTDA, BaseTDA, _Attributes, Offset, NegativeOne, 0),
+    rTTIInheritsFrom(DerivedTDA, BaseTDA, _Attributes, Offset, 0xffffffff, 0),
     rTTITDA2VFTable(DerivedTDA, DerivedVFTable),
     rTTITDA2VFTable(BaseTDA, BaseVFTable).
 
@@ -204,36 +199,27 @@ bcd_nonpolymorphic(0x20).
 bcd_has_CHD_pointer(0x40).
 
 % --------------------------------------------------------------------------------------------
+rttiwarninvalid(Message, Args) :-
+    logwarn('RTTI Information is invalid because ~@~n', format(Message, Args)).
 
 rTTIInvalidBaseAttributes :-
-    rTTIBaseClassDescriptor(_BCDA, _TDA, _NumBases, _M, _P, _V, Attributes, _CHDA),
-    Attributes >= 0x80,
-    Attributes < 0x0,
-    logwarnln('RTTI Information is invalid because BaseClassDescriptor Attributes = ~Q',
-              [Attributes]).
-
-rTTIInvalidCOLOffset2 :-
-    rTTICompleteObjectLocator(_Pointer, _COLA, _TDA, _CHDA, _Offset, Offset2),
-    Offset2 \= 0x0,
-    Offset2 \= 0x4,
-    logwarnln('RTTI Information is invalid because CompleteObjectLocator Offset2 = ~Q',
-            [Offset2]).
+    rTTIBaseClassDescriptor(BCDA, _TDA, _NumBases, _M, _P, _V, Attributes, _CHDA),
+    % See Base Class Descriptor (BCD) attribute flags above for details of each bit.
+    (Attributes >= 0x80; Attributes < 0x0),
+    rttiwarninvalid('BaseClassDescriptor at ~Q has attributes = ~Q', [BCDA, Attributes]).
 
 rTTIInvalidDirectInheritanceP :-
-    Big is 0x7fffffff,
-    NegativeOne is Big * 2 + 1,
     rTTIInheritsDirectlyFrom(_DerivedTDA, _AncestorTDA, _Attributes, _M, P, _V),
-    P \= NegativeOne,
-    logwarnln('RTTI Information is invalid because InheritsDirectlyFrom P = ~Q', [P]).
-
+    P \= 0xffffffff,
+    rttiwarninvalid('InheritsDirectlyFrom P = ~Q', [P]).
 
 rTTIInvalidDirectInheritanceV :-
     rTTIInheritsDirectlyFrom(_DerivedTDA, _AncestorTDA, _Attributes, _M, _P, V),
     V \= 0x0,
-    logwarnln('RTTI Information is invalid because InheritsDirectlyFrom V = ~Q', [V]).
+    rttiwarninvalid('InheritsDirectlyFrom V = ~Q', [V]).
 
 rTTIInvalidHierarchyAttributes :-
-    rTTIClassHierarchyDescriptor(_CHDA, HierarchyAttributes, _Bases),
+    rTTIClassHierarchyDescriptor(CHDA, HierarchyAttributes, _Bases),
 
     % Attributes 0x0 means a normal inheritance (non multiple/virtual)
     HierarchyAttributes \= 0x0,
@@ -246,8 +232,7 @@ rTTIInvalidHierarchyAttributes :-
 
     % Attributes 0x3 means multiple virtual inheritance
     HierarchyAttributes \= 0x3,
-    logwarnln('RTTI Information is invalid because HierarchyAttributes = ~Q',
-              [HierarchyAttributes]).
+    rttiwarninvalid('CHD at ~Q has attributes = ~Q', [CHDA, HierarchyAttributes]).
 
 :- table rTTIShouldHaveSelfRef/1 as opaque.
 rTTIShouldHaveSelfRef(TDA) :-
@@ -256,7 +241,9 @@ rTTIShouldHaveSelfRef(TDA) :-
 
 :- table rTTIHasSelfRef/1 as opaque.
 rTTIHasSelfRef(TDA) :-
-    rTTISelfRef(TDA, _COLA, _CHDA, _BCDA, _VFTable, _Name).
+    rTTISelfRef(TDA, _COLA, _CHDA, _BCDA, _VFTable, _Name) -> true;
+    rttiwarninvalid('missing self-reference for TDA at address ~Q', [TDA]),
+    false.
 
 :- table rTTIAllTypeDescriptors/1 as opaque.
 rTTIAllTypeDescriptors(TDA) :-
@@ -270,41 +257,32 @@ rTTIAllTypeDescriptors(TDA) :-
 
 :- table rTTIHasTypeDescriptor/1 as opaque.
 rTTIHasTypeDescriptor(TDA) :-
-    rTTITypeDescriptor(TDA, _VFTableCheck, _RTTIName, _DName).
+    rTTITypeDescriptor(TDA, _VFTableCheck, _RTTIName, _DName) -> true;
+    rttiwarninvalid('missing self-reference for TDA at address ~Q', [TDA]),
+    false.
+
+
+findNone(Pred) :-
+    findall(true, Pred, R), R = [].
 
 % Is the RTTI information internally consistent?
 :- table rTTIValid/0 as opaque.
 rTTIValid :-
-    rTTIEnabled,
-    reportRTTIInvalidity,
-    not(rTTIInvalidBaseAttributes),
-    not(rTTIInvalidCOLOffset2),
-    not(rTTIInvalidDirectInheritanceP),
-    not(rTTIInvalidDirectInheritanceV),
-    setof(TDA, rTTIAllTypeDescriptors(TDA), TDASet1),
-    maplist(rTTIHasTypeDescriptor, TDASet1),
-    setof(TDA, rTTIShouldHaveSelfRef(TDA), TDASet2),
-    maplist(rTTIHasSelfRef, TDASet2),
-    true.
+    rTTIEnabled ->
+        exclude(call, [setof(TDA, rTTIAllTypeDescriptors(TDA), TDASet1),
+                       exclude(rTTIHasTypeDescriptor, TDASet1, R1), R1 = [],
+                       setof(TDA, rTTIShouldHaveSelfRef(TDA), TDASet2),
+                       exclude(rTTIHasSelfRef, TDASet2, R2), R2 = [],
+                       findNone(rTTIInvalidBaseAttributes),
+                       findNone(rTTIInvalidHierarchyAttributes),
+                       findNone(rTTIInvalidDirectInheritanceP),
+                       findNone(rTTIInvalidDirectInheritanceV)],
+                Results),
+        Results = [].
 
 % ============================================================================================
 % Reporting
 % ============================================================================================
-
-reportMissingSelfRef(TDA) :-
-    rTTISelfRef(TDA, _COLA, _CHDA, _BCDA, _VFTable, _Name) -> true;
-    logwarnln('RTTI Information is invalid because missing self-reference for TDA at address ~Q', [TDA]).
-
-reportMissingTypeDescriptor(TDA) :-
-    rTTITypeDescriptor(TDA, _VFTableCheck, _RTTIName, _DName) -> true;
-    logwarnln('RTTI Information is invalid because no RTTITypeDescriptor at address ~Q', [TDA]).
-
-reportRTTIInvalidity :-
-    setof(TDA, rTTIAllTypeDescriptors(TDA), TDASet1),
-    maplist(reportMissingTypeDescriptor, TDASet1),
-    setof(TDA, rTTIShouldHaveSelfRef(TDA), TDASet2),
-    maplist(reportMissingSelfRef, TDASet2),
-    true.
 
 reportNoBase((A)) :-
     logdebugln('~@~Q.', [rTTIName(A, AName), rTTINoBaseName(A, AName)]).

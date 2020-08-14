@@ -1,6 +1,6 @@
 % Copyright 2017-2020 Carnegie Mellon University.
 
-:- use_module(library(lists), [member/2]).
+:- use_module(library(lists), [member/2, max_list/2]).
 
 % --------------------------------------------------------------------------------------------
 % The method is certain to be an object-oriented method.
@@ -921,7 +921,7 @@ reasonVFTableSizeGTE(VFTable, Size) :-
     % Ed says: By prefixing E^ we tell setof NOT to case on E.
     % If we leave E as _, it will case on different values of E!
     setof(S, E^factVFTableEntry(VFTable, S, E), Set),
-    list_max(Set, LastEntry),
+    max_list(Set, LastEntry),
     Size is LastEntry + 4,
     % Debugging
     logtraceln('~@~Q.', [not((factVFTableSizeGTE(VFTable, ExistingSize),
@@ -956,7 +956,7 @@ reasonVFTableSizeLTE(VFTable, Size) :-
     % Ed says: By prefixing M^ we tell setof NOT to case on M.
     % If we leave M as _, it will case on different values of M!
     setof(S, M^factNOTVFTableEntry(VFTable, S, M), Set),
-    list_max(Set, LastEntry),
+    max_list(Set, LastEntry),
     Size is LastEntry + 4,
     % Debugging
     logtraceln('~@~Q.', [not((factVFTableSizeLTE(VFTable, ExistingSize),
@@ -1061,8 +1061,7 @@ reasonVBTableEntry(VBTable, Offset, Value) :-
     rTTIEnabled,
     rTTIValid,
     rTTIInheritsFrom(DerivedTDA, _BaseTDA, _Attributes, 0, P, Offset),
-    negative(1, NegativeOne),
-    iso_dif(P, NegativeOne),
+    iso_dif(P, 0xffffffff),
     possibleVBTableWrite(_Insn, Method, P, VBTable),
     rTTITDA2Class(DerivedTDA, DerivedClass),
     find(Method, DerivedClass),
@@ -1433,8 +1432,7 @@ reasonDerivedClass_C(DerivedClass, BaseClass, Offset) :-
 reasonDerivedClass_D(DerivedClass, BaseClass, Offset) :-
     rTTIEnabled,
     rTTIValid,
-    negative(1, NegativeOne),
-    rTTIInheritsFrom(DerivedTDA, BaseTDA, _Attributes, Offset, NegativeOne, 0),
+    rTTIInheritsFrom(DerivedTDA, BaseTDA, _Attributes, Offset, 0xffffffff, 0),
     rTTITDA2Class(DerivedTDA, DerivedClass),
     rTTITDA2Class(BaseTDA, BaseClass),
     iso_dif(BaseClass, DerivedClass),
@@ -1448,8 +1446,7 @@ reasonDerivedClass_E(DerivedClass, BaseClass, Offset) :-
     rTTIEnabled,
     rTTIValid,
     rTTIInheritsFrom(DerivedTDA, BaseTDA, _Attributes, M, P, V),
-    negative(1, NegativeOne),
-    iso_dif(P, NegativeOne),
+    iso_dif(P, 0xffffffff),
     possibleVBTableWrite(_Insn, Method, P, VBTableAddr),
     rTTITDA2Class(DerivedTDA, DerivedClass),
     rTTITDA2Class(BaseTDA, BaseClass),
@@ -2714,7 +2711,7 @@ reasonClassSizeGTE_G(Class, Size) :-
 
 reasonMinimumPossibleClassSize(Class, Size) :-
     setof(S, factClassSizeGTE(Class, S), Set),
-    list_max(Set, Size),
+    max_list(Set, Size),
     logtraceln('~Q.', reasonMinimumPossibleClassSize(Class, Size)).
 
 % --------------------------------------------------------------------------------------------
@@ -2768,7 +2765,7 @@ reasonClassSizeLTE_D(Class, Size) :-
 
 reasonMaximumPossibleClassSize(Class, Size) :-
     setof(S, factClassSizeLTE(Class, S), Set),
-    list_min(Set, Size).
+    min_list(Set, Size).
 
 % --------------------------------------------------------------------------------------------
 % These rules are intended to make it easier to report the size constraints on a specific

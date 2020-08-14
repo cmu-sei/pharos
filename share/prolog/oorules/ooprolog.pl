@@ -14,6 +14,8 @@
 :- prolog_load_context(directory, Dir),
    assert(base_directory(Dir)).
 
+:- dynamic globalHalt/0 as opaque.
+
 :- initialization(main, main).
 
 nohalt :-
@@ -168,6 +170,11 @@ parse_options(OptsSpec, Args, Opts, Positional) :-
              format(user_error, 'ERROR: Unknown option ''~a''~n', Flag))),
      exit_failure).
 
+run_with_backtrace(X) :-
+    catch_with_backtrace(
+        X, Exception,
+        (print_message(error, Exception), (globalHalt, ! ; nohalt), halt(1))).
+
 main :-
     set_prolog_flag(color_term, true),
     current_prolog_flag(os_argv, [_Interp|Rest]),
@@ -195,6 +202,7 @@ main(Opts, []) :-
     option(rtti(RTTI), Opts),
     option(guess(Guess), Opts),
     option(halt(Halt), Opts),
+    ignore(Halt -> assert(globalHalt)),
     option(loglevel(Loglevel), Opts),
     set_limit_flag(stack_limit, Stacklimit),
     set_limit_flag(table_space, Tablespace),
@@ -204,12 +212,9 @@ main(Opts, []) :-
                asserta(file_search_path(pharos, Path))),
     ignore(RTTI -> assert(rTTIEnabled)),
     (Guess, ! ; assert(guessingDisabled)),
-    catch_with_backtrace(
-        (generate_results(Opts),
-         generate_json(Opts),
-         validate_results(Opts)),
-        Exception,
-        (print_message(error, Exception), (Halt, ! ; nohalt), halt(1))),
+    generate_results(Opts),
+    generate_json(Opts),
+    validate_results(Opts),
     (Halt, ! ; nohalt).
 
 %% Generate results when there is a facts file
@@ -217,10 +222,14 @@ generate_results(Opts) :-
     check_option(facts(Facts), Opts),
     option(results(Results), Opts),
     setup_call_cleanup(
-        (var(Results) -> open_null_stream(ResultStream) ;
-         open(Results, write, ResultStream)),
-        with_output_to(ResultStream, psolve_no_halt(Facts)),
-        close(ResultStream)).
+        open(Facts, read, FactStream),
+        setup_call_cleanup(
+            (var(Results) -> open_null_stream(ResultStream) ;
+             open(Results, write, ResultStream)),
+            with_output_to(ResultStream,
+                           run_with_backtrace(psolve_no_halt(stream(FactStream)))),
+            close(ResultStream)),
+        close(FactStream)).
 
 %% Load results when there isn't a facts file
 generate_results(Opts) :-
@@ -237,20 +246,23 @@ generate_json(Opts) :-
     check_option(json(JsonFile), Opts) ->
         setup_call_cleanup(
             open(JsonFile, write, JsonStream),
-            with_output_to(JsonStream, exportJSON),
+            with_output_to(JsonStream, run_with_backtrace(exportJSON)),
             close(JsonStream))
     ; true.
 
 %% If there is a ground option, validate results
 validate_results(Opts) :-
     check_option(ground(Ground), Opts) ->
-        loadPredicates(Ground),
-        validateResults
+        setup_call_cleanup(
+            open(Ground, read, Stream),
+            run_with_backtrace(
+                (loadPredicates(stream(Stream)),
+                 validateResults)),
+            close(Stream))
     ; true.
 
 /* Local Variables:   */
 /* mode: prolog       */
 /* fill-column:    95 */
 /* comment-column: 0  */
-
 /* End:               */

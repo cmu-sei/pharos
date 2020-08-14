@@ -2,7 +2,7 @@
 % Rules for tracking which methods are assigned to which classes.
 % ============================================================================================
 
-:- use_module(library(apply), [maplist/2]).
+:- use_module(library(apply), [maplist/2, include/3]).
 :- use_module(library(lists), [member/2]).
 
 make(M) :-

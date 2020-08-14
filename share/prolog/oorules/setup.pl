@@ -15,7 +15,6 @@
 :- dynamic rTTIEnabled/0 as opaque.
 
 :- dynamic profilingEnabled/0.
-:- dynamic debuggingStoreEnabled/0.
 :- dynamic deterministicEnabled/0.
 
 % When an "upstream problem" occurs, by default we will terminate the analysis because it can
@@ -293,8 +292,8 @@ logtraceClasses :-
     arg(Index, OldTerm, From),
     find(From, From2),
     (From = From2 -> fail;
-     logerrln('~Q should be a class representative in ~Q argument ~Q but ~Q is the rep.',
-              [From, OldTerm, Index, From2])).
+     logerrorln('~Q should be a class representative in ~Q argument ~Q but ~Q is the rep.',
+                [From, OldTerm, Index, From2])).
 
 % This is a helper predicate used by mergeClasses(M1, M2).  The messages are logged at the
 % logtrace level, because there's quite a lot of them, but this is a fairly important set of
@@ -339,9 +338,7 @@ mergeClasses(M1, M2) :-
     maplist(mergeClassBuilder, Set, Actions),
     %debugln(Actions),
 
-    all(Actions),
-
-    debug_store(unionfind).
+    all(Actions).
 
 % It does not appear that the ordering of the reasoning rules is too important because we'll
 % eventually complete all reasoning before going to to guessing.  On the other hand, reasoning

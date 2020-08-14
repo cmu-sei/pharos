@@ -1,6 +1,6 @@
 :- use_module(library(http/json), [json_write_dict/2]).
 :- use_module(library(apply), [maplist/3]).
-:- use_module(library(lists), [member/2]).
+:- use_module(library(lists), [member/2, max_list/2]).
 
 :- dynamic finalClass/6.
 :- dynamic finalVFTable/5.
@@ -119,7 +119,7 @@ getBaseMember(_ClassId, _Offset, true):-
     true.
 
 getMemberSizes(ClassId, Offset, Size):-
-    finalMember(ClassId, Offset, SizeList, _Confidence), list_max(SizeList, Size).
+    finalMember(ClassId, Offset, SizeList, _Confidence), max_list(SizeList, Size).
 getMemberSizes(ClassId, Offset, Size):-
     finalMemberAccess(ClassId, Offset, Size, _InsnList).
 
@@ -144,7 +144,7 @@ makeNormalMemberJson(ClassId, Offset, OffsetStr, Out):-
          );
      (
          bagof(Size, getMemberSizes(ClassId, Offset, Size), SizeList),
-         list_max(SizeList, Size),
+         max_list(SizeList, Size),
          makeMemberPrefix(ClassId, Offset, Prefix),
          makeMemberType(ClassId, Size, Prefix, Type),
          makeMemberName(ClassId, Offset, Prefix, MemberName),
