@@ -25,53 +25,64 @@
 % version of the rule is a bit nasty because we can't rely on multiple implementations of the
 % rule and tabling to give us just one answer...   I think.
 
+:- table classIdentifier/2 as opaque.
+
 classIdentifier(Method, ID) :-
     var(Method),
     nonvar(ID),
     throw_with_backtrace(error(instantiation_error, classIdentifier/2)).
 
 classIdentifier(Method, ID) :-
-    (
+    find(Method, Class),
+    ((
         % Must be the VFTable at offset zero to be the "master" table for the class.
-        find(Method, Class),
         reasonPrimaryVFTableForClassFinal(VFTable, Class),
-        %logwarnln('setting classID from vftable ~Q', Method),
+        logdebugln('Setting classID of ~Q to primary vftable ~Q', [Class, VFTable]),
         true
     )
     ->
         ID is VFTable
     ;
+    % This will use any VFTable on the class as an identifier but only if there is a single
+    % VFTable.
     (
-        find(Method, Class),
+        once((findVFTable(VFTable, Class),
+              forall(findVFTable(OtherVFTable, Class),
+                     VFTable = OtherVFTable),
+              logdebugln('Setting classID of ~Q to only vftable ~Q', [Class, VFTable])))
+    ) ->
+        ID is VFTable
+    ;
+    (
         find(RealDestructor, Class),
         factRealDestructor(RealDestructor),
-        %logwarnln('setting classID from real destructuor for ~Q', Method),
+        logdebugln('Setting classID of ~Q to real destructuor ~Q', [Class, RealDestructor]),
         true
     )
     ->
         ID is RealDestructor
     ;
     (
-        findall(Method, MethodSet),
+        findallMethods(Class, MethodSet),
         %logwarnln('trying to pick class ID from method set1 ...'),
         %logwarnln('picking class ID from method set: ~Q', MethodSet),
         setof(C, (member(C, MethodSet), factConstructor(C)), ConstructorSet),
         %logwarnln('constructor set was: ~Q', ConstructorSet),
         min_list(ConstructorSet, MinimumConstructor),
-        %logwarnln('picked class ID: ~Q', MinimumConstructor),
+        logdebugln('Setting classID of ~Q to minimum constructor ~Q', [Class, MinimumConstructor]),
         true
     )
     -> ID is MinimumConstructor
     ;
     (
-        findall(Method, MethodSet),
+        findallMethods(Method, MethodSet),
         %logwarnln('trying to pick class ID from method set2 ...'),
         %logwarnln('picking class ID from method set: ~Q', MethodSet),
         min_list(MethodSet, MinimumMethod),
-        %logwarnln('picked class ID: ~Q', MinimumMethod),
+        logdebugln('Setting classID of ~Q to minimum method ~Q', [Class, MinimumMethod]),
         true
     )
-    -> ID is MinimumMethod.
+    -> ID is MinimumMethod).
 
 % --------------------------------------------------------------------------------------------
 % A helper for identifying "worthless" classes to reduce noise in the output.
@@ -85,8 +96,11 @@ usefulClass(Class) :-
     factDerivedClass(Class, _, _).
 
 % A class is useful if it has a VFTable.
+%% usefulClass(Class) :-
+%%     reasonPrimaryVFTableForClass(_VFTable, Class).
+
 usefulClass(Class) :-
-    reasonPrimaryVFTableForClass(_VFTable, Class).
+    findVFTable(_VFTable, Class).
 
 % A class is useful if it is not size zero.
 usefulClass(Class) :-
@@ -94,12 +108,12 @@ usefulClass(Class) :-
 
 % A class containing a constructor is useful.
 usefulClass(Class) :-
-    find(Method, Class),
+    findMethod(Method, Class),
     factConstructor(Method).
 
 % A class containing a real destructor is useful.
 usefulClass(Class) :-
-    find(Method, Class),
+    findMethod(Method, Class),
     factRealDestructor(Method).
 
 % A class with more than one method is useful.
@@ -120,17 +134,14 @@ worthlessClass(Class) :-
 worthlessClass(Class) :-
     not(usefulClass(Class)),
     !,
-
-    classIdentifier(Class, ClassID),
-    logdebugln('Rejecting worthless finalClass ~Q', [ClassID]).
+    logdebugln('Rejecting worthless finalClass ~Q', [Class]).
 
 worthlessClass(Class) :-
     purecall(PurecallMethod),
     find(PurecallMethod, Class),
     !,
 
-    classIdentifier(Class, ClassID),
-    logdebugln('Rejecting worthless finalClass ~Q', [ClassID]).
+    logdebugln('Rejecting worthless finalClass ~Q because it contains purecall at ~Q', [Class, PurecallMethod]).
 
 finalFileInfo(FileMD5, Filename) :-
    fileInfo(FileMD5, Filename).
@@ -142,9 +153,15 @@ finalClass(ClassID, VFTableOrNull, CSize, LSize, RealDestructorOrNull, MethodLis
     class(Class),
     not(worthlessClass(Class)),
     classIdentifier(Class, ClassID),
-    % If there's a certain VFTableWrite, use the VFTable value from it -- if not use zero.
-    (reasonPrimaryVFTableForClass(VFTable, Class)
-     -> VFTableOrNull=VFTable; VFTableOrNull=0),
+    % If there's a certain VFTableWrite, use the VFTable value from it.  On the other hand if
+    % there is a single VFTable in the class, use that.  Otherwise return zero (null).
+    ((reasonPrimaryVFTableForClass(VFTable, Class);
+      (findVFTable(VFTable, Class),
+       forall(findVFTable(OtherVFTable, Class), VFTable = OtherVFTable)))
+     ->
+         VFTableOrNull=VFTable
+     ;
+     VFTableOrNull=0),
     % Get the certain and likely class sizes.
     reasonMinimumPossibleClassSize(Class, CSize),
     LSize is CSize,
@@ -213,14 +230,15 @@ finalInheritance(DerivedClassID, BaseClassID, ObjectOffset, VFTableOrNull, false
 
           classIdentifier(DerivedClass, DerivedClassID),
           classIdentifier(BaseClass, BaseClassID),
-          % I think this clause incorrectly requires the class to have a constructor just so that we
-          % can detect the constructor.  It should probably be grouped with that part of the rule.
-          factConstructor(DerivedConstructor),
-          find(DerivedConstructor, DerivedClass),
-          % Unify with the derived constructor to unify with the VFTable value.  In the new world of
-          % proper guessing, it's possible that we don't have a VFTable.
-          (factVFTableWrite(_Insn, DerivedConstructor, ObjectOffset, VFTable) ->
-               VFTableOrNull = VFTable ; VFTableOrNull is 0))).
+
+          % Try to identify the relevant VFTable
+          ((find(VFTable, DerivedClass),
+            factVFTableWrite(_Insn, DerivedConstructor, ObjectOffset, VFTable),
+            find(DerivedConstructor, DerivedClass))
+           ->
+               VFTableOrNull = VFTable
+           ;
+           VFTableOrNull is 0))).
 
 % Cory's a little uncertain about this rule because it's unclear if we'll ever assert a certain
 % inheritance relationship without the virtual table fact that would trigger the rule above.
@@ -401,7 +419,9 @@ generateResults :-
     (setof((C6, O6, S6, L6), finalMember(C6, O6, S6, L6), _Set6); true),
     (setof((C7, O7, S7, E7), finalMemberAccess(C7, O7, S7, E7), _Set7); true),
     (setof((M8, P8, C8), finalMethodProperty(M8, P8, C8), _Set8); true),
-    writeln('% Object detection reporting complete.').
+    writeln('% Object detection reporting complete.'),
+    reportStage('Complete'),
+    ws_end.
 
 %% Local Variables:
 %% mode: prolog

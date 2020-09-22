@@ -1,4 +1,4 @@
-// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2020 Carnegie Mellon University.  See LICENSE file for terms.
 // Author: Cory Cohen
 
 #include <boost/range/adaptor/map.hpp>
@@ -139,6 +139,7 @@ OOSolver::OOSolver(DescriptorSet & ds_, const ProgOptVarMap& vm) : ds(ds_)
   }
 
   if (vm.count("json")) {
+    json_path = vm["json"].as<std::string>();
     perform_analysis = true;
   }
 
@@ -158,6 +159,9 @@ OOSolver::OOSolver(DescriptorSet & ds_, const ProgOptVarMap& vm) : ds(ds_)
     session->add_fact("logLevel", logging_level);
     session->consult("oorules/progress_oosolver");
     session->consult("oorules/setup");
+    if (json_path) {
+      session->consult("oorules/oojson");
+    }
   } catch (const Error& error) {
     GFATAL << "Unable to start Prolog session." << LEND;
     GFATAL << error.what() << LEND;
@@ -231,6 +235,11 @@ OOSolver::analyze(const OOAnalyzer& ooa) {
     if (results_filename.size() != 0) {
       if (!dump_results()) return false;
     }
+
+    if (json_path) {
+      session->command("exportJSONTo", *json_path);
+    }
+
   }
 
   return true;

@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <rose.h>
 
@@ -7,7 +7,6 @@
 #include <libpharos/descriptors.hpp>
 #include <libpharos/options.hpp>
 #include <libpharos/riscops.hpp>
-#include <libpharos/oojson_exporter.hpp>
 #include <libpharos/ooanalyzer.hpp>
 #include <libpharos/ooclass.hpp>
 
@@ -122,12 +121,6 @@ static int ooanalyzer_main(int argc, char **argv)
     else {
       OINFO << "OOAnalyzer analysis complete, found: " << get_stats(ooclasses) << LEND;
     }
-  }
-  if (vm.count("json")) {
-    OOJsonExporter json(vm);
-    json.generate_json(ooclasses);
-    json.export_json();
-
   }
   OINFO << "OOAnalyzer analysis complete." << LEND;
 

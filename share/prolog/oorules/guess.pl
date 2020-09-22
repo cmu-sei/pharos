@@ -28,7 +28,7 @@ countGuess :-
     fail.
 
 tryBinarySearchInt(_PosPred, _NegPred, []) :-
-    logtraceln('tryBinarySearch empty.'),
+    logdebugln('tryBinarySearch empty.'),
     fail.
 
 tryBinarySearchInt(PosPred, NegPred, L) :-
@@ -37,9 +37,13 @@ tryBinarySearchInt(PosPred, NegPred, L) :-
     logtraceln('tryBinarySearch on ~Q~Q', [PosPred, L]),
     !,
     (call(PosPred, X);
-     logtraceln('The guess ~Q(~Q) was inconsistent with a valid solution.', [PosPred, X]),
-     logtraceln('Guessing ~Q(~Q) instead.', [NegPred, X]),
-     call(NegPred, X)).
+     logdebugln('The guess ~Q(~Q) was inconsistent with a valid solution.', [PosPred, X]),
+     logdebugln('Guessing ~Q(~Q) instead.', [NegPred, X]),
+     call(NegPred, X);
+     logwarn('tryBinarySearch completely failed on ~Q', [L]),
+     logwarnln(' and will now backtrack to fix an upstream problem.'),
+     fail
+    ).
 
 tryBinarySearchInt(PosPred, NegPred, List) :-
     logtraceln('~@tryBinarySearch on ~Q: ~Q', [length(List, ListLen), PosPred, ListLen]),
@@ -59,11 +63,6 @@ tryBinarySearchInt(PosPred, NegPred, List) :-
     take(NewListLen, List, NewList),
 
     tryBinarySearchInt(PosPred, NegPred, NewList).
-
-tryBinarySearchInt(_PP, _NP, L) :-
-    logtrace('tryBinarySearch completely failed on ~Q', [L]),
-    logtraceln(' and will now backtrack to fix an upstream problem.'),
-    fail.
 
 % This is a wrapper that limits the number of entries to assert at one time
 tryBinarySearch(PP, NP, L, N) :-
@@ -181,7 +180,8 @@ tryVFTable(VFTable) :-
     countGuess,
     loginfoln('Guessing ~Q.', factVFTable(VFTable)),
     try_assert(factVFTable(VFTable)),
-    try_assert(guessedVFTable(VFTable)).
+    try_assert(guessedVFTable(VFTable)),
+    make(VFTable).
 
 tryNOTVFTable(VFTable) :-
     countGuess,
@@ -732,6 +732,59 @@ guessCommitClassHasNoBase(Out) :-
     Out = tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
 
 
+% The following merge guesses should occur late so that we can identify all classes which have
+% base classes.  This will allow the best guesses from guessLateMergeClassesF1 to fire.
+% guessLateMergeClassesF2 then makes the remaining guesses for singleton methods in vftables of
+% derived classes.
+
+% We previously tried to make these guesses using HasNoBase, which often comes from
+% guessCommitClassHasNoBase.  But we observed instances where HasNoBase would be guessed
+% incorrectly on a singleton class, which would then prevent the singleton from being correctly
+% merged to its vftable.  So we instead wait for a while and use the absence of a base class as
+% the criterion for F1.
+
+% If we have VFTable that is NOT associated with a class because there's no factVFTableWrite,
+% factClassCallsMethod is not true...  The problem here is that we don't which method call
+% which other methods (the direction of the call).  But we still have a very strong suggestion
+% that methods in the VFTable are related in someway.  As a guessing rule a reasonable
+% compromize is to say that any class that is still assigned to itself, is better off (from an
+% edit distance perspective) grouped with the otehr methods.
+guessLateMergeClassesF2(Class, Method) :-
+    % There are two different entries in the same VFTable...
+    factMethodInVFTable(VFTable, _Offset1, Method),
+
+    % One of the methods is in a class all by itself right now.
+    findall(Method, [Method]),
+    findVFTable(VFTable, Class),
+
+    checkMergeClasses(Class, Method).
+
+guessLateMergeClassesF1(Class, Method) :-
+    guessLateMergeClassesF2(Class, Method),
+
+    % If a method is in the vftable of a derived and base class, we should give priority to the
+    % base class.
+    not(factDerivedClass(Class, _BaseClass, _Offset)).
+
+guessLateMergeClasses(Out) :-
+    reportFirstSeen('guessLateMergeClassesF1'),
+    minof((Class, Method),
+          guessLateMergeClassesF1(Class, Method)),
+    !,
+    OneTuple=[(Class, Method)],
+    logtraceln('Proposing ~Q.', factLateMergeClasses_F1(OneTuple)),
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
+
+guessLateMergeClasses(Out) :-
+    reportFirstSeen('guessLateMergeClassesF2'),
+    minof((Class, Method),
+          guessLateMergeClassesF2(Class, Method)),
+    !,
+    OneTuple=[(Class, Method)],
+    logtraceln('Proposing ~Q.', factLateMergeClasses_F2(OneTuple)),
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
+
+
 % --------------------------------------------------------------------------------------------
 % Various rules for guessing method to class assignments...
 % --------------------------------------------------------------------------------------------
@@ -801,8 +854,8 @@ guessMergeClassesA(Class1, MethodClass) :-
     % This rule is symmetric because Prolog will try binding the same method to Constructor2 on
     % one evluation, and Constructor1 on the next evaluation, so even though the rule is also
     % true for Constructor2, that case will be handled when it's bound to Constructor.
-    logtraceln('Proposing ~Q.', factMergeClasses_A(Class1, Method)),
-    checkMergeClasses(Class1, MethodClass).
+    checkMergeClasses(Class1, MethodClass),
+    logtraceln('Proposing ~Q.', factMergeClasses_A(Class1, Method)).
 
 guessMergeClasses(Out) :-
     reportFirstSeen('guessMergeClassesA'),
@@ -829,7 +882,8 @@ guessMergeClasses(Out) :-
 reasonMethodInVFTable(VFTable, Offset, Method, Entry) :-
     not(purecall(Entry)),
     factVFTableEntry(VFTable, Offset, Entry),
-    dethunk(Entry, Method).
+    dethunk(Entry, Method),
+    not(purecall(Method)).
 
 guessMergeClassesB(Class1, Class2) :-
     factVFTableEntry(VFTable, _VFTableOffset, Entry1),
@@ -847,8 +901,12 @@ guessMergeClassesB(Class1, Class2) :-
     % have the vftable for the method that's imported...
     not(symbolProperty(Method1, virtual)),
 
+    find(Method1, Class1),
+
     % Which class is VFTable associated with?
     reasonVFTableBelongsToClass(VFTable, _ObjOffset1, Class2),
+
+    iso_dif(Class1, Class2),
 
     % The method is allowed to appear in other VFTables, but only if they are on the same
     % class.  Ed conjectures this is necessary for multiple inheritance.  When adding thunk
@@ -858,10 +916,9 @@ guessMergeClassesB(Class1, Class2) :-
     forall(factMethodInVFTable(OtherVFTable, _Offset, Method1),
            reasonVFTableBelongsToClass(OtherVFTable, _ObjOffset2, Class2)),
 
-    find(Method1, Class1),
 
-    logtraceln('Proposing ~Q.', factMergeClasses_B(Method1, VFTable, Class1, Class2)),
-    checkMergeClasses(Class1, Class2).
+    checkMergeClasses(Class1, Class2),
+    logtraceln('Proposing ~Q.', factMergeClasses_B(Method1, VFTable, Class1, Class2)).
 
 guessMergeClasses(Out) :-
     reportFirstSeen('guessMergeClassesB'),
@@ -887,8 +944,8 @@ guessMergeClassesC(Class1, Class2) :-
     not(purecall(Method)), % Never merge purecall methods into classes.
     factDerivedClass(Class1, _BaseClass, _Offset),
     find(Method, Class2),
-    logtraceln('Proposing ~Q.', factMergeClasses_C(Class1, Class2)),
-    checkMergeClasses(Class1, Class2).
+    checkMergeClasses(Class1, Class2),
+    logtraceln('Proposing ~Q.', factMergeClasses_C(Class1, Class2)).
 
 guessMergeClasses(Out) :-
     reportFirstSeen('guessMergeClassesC'),
@@ -906,8 +963,8 @@ guessMergeClassesD(Class1, Class2) :-
     not(purecall(Method)), % Never merge purecall methods into classes.
     factDerivedClass(_DerivedClass, Class1, _Offset),
     find(Method, Class2),
-    logtraceln('Proposing ~Q.', factMergeClasses_D(Class1, Class2)),
-    checkMergeClasses(Class1, Class2).
+    checkMergeClasses(Class1, Class2),
+    logtraceln('Proposing ~Q.', factMergeClasses_D(Class1, Class2)).
 
 guessMergeClasses(Out) :-
     reportFirstSeen('guessMergeClassesD'),
@@ -926,8 +983,8 @@ guessMergeClassesE(Class1, Class2) :-
     % Same reasoning as in guessMergeClasses_B...
     not(symbolProperty(Method, virtual)),
     find(Method, Class2),
-    logtraceln('Proposing ~Q.', factMergeClasses_E(Class1, Class2)),
-    checkMergeClasses(Class1, Class2).
+    checkMergeClasses(Class1, Class2),
+    logtraceln('Proposing ~Q.', factMergeClasses_E(Class1, Class2)).
 
 guessMergeClasses(Out) :-
     reportFirstSeen('guessMergeClassesE'),
@@ -938,38 +995,6 @@ guessMergeClasses(Out) :-
     logtraceln('Proposing ~Q.', factMergeClasses_E(OneTuple)),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
-% If we have VFTable that is NOT associated with a class because there's no factVFTableWrite,
-% factClassCallsMethod is not true...  The problem here is that we don't which method call
-% which other methods (the direction of the call).  But we still have a very strong suggestion
-% that methods in the VFTable are related in someway.  As a guessing rule a reasonable
-% compromize is to say that any class that is still assigned to itself, is better off (from an
-% edit distance perspective) grouped with the otehr methods.
-guessMergeClassesF(Class, Method1) :-
-    % There are two different entries in the same VFTable...
-    factMethodInVFTable(VFTable, _Offset1, Method1),
-
-    % One of the methods is in a class all by itself right now.
-    findall(Method1, [Method1]),
-
-    factMethodInVFTable(VFTable, _Offset2, Method2),
-    iso_dif(Method1, Method2),
-    % Follow thunks for both entries.  What does it mean if the thunks differed but the methods
-    % did not?  Cory's not sure right now, but this is what the original rule did.
-    iso_dif(Method1, Method2),
-
-    % So go ahead and merge it into this class..
-    find(Method2, Class),
-    logtraceln('Proposing ~Q.', factMergeClasses_F(Class, Method1)),
-    checkMergeClasses(Class, Method1).
-
-guessMergeClasses(Out) :-
-    reportFirstSeen('guessMergeClassesF'),
-    minof((Class, Method),
-          guessMergeClassesF(Class, Method)),
-    !,
-    OneTuple=[(Class, Method)],
-    logtraceln('Proposing ~Q.', factMergeClasses_F(OneTuple)),
-    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % Try guessing that a VFTable belongs to a method.
 
@@ -1020,16 +1045,18 @@ guessMergeClassesG(Class1, Class2) :-
      % We will merge with the largest class
      % XXX: This could be implemented more efficiently using a maplist/2 and a sort.
      % Select a class
-     member(Class2, ClassSet),
-     % How big is it?
-     numberOfMethods(Class2, Class2Size),
-     % There is no one bigger
-     forall(member(OtherClass, ClassSet),
-            (numberOfMethods(OtherClass, OtherClassSize),
-             not(OtherClassSize > Class2Size))),
+     % XXX This is currently disabled
+     fail
+     %% member(Class2, ClassSet),
+     %% % How big is it?
+     %% numberOfMethods(Class2, Class2Size),
+     %% % There is no one bigger
+     %% forall(member(OtherClass, ClassSet),
+     %%        (numberOfMethods(OtherClass, OtherClassSize),
+     %%         not(OtherClassSize > Class2Size))),
 
-     checkMergeClasses(Class1, Class2),
-     logdebugln('guessMergeClassesG had more than one candidate class.  Merging with the largest class ~Q.', [Class2])
+     %% checkMergeClasses(Class1, Class2),
+     %% logdebugln('guessMergeClassesG had more than one candidate class.  Merging with the largest class ~Q.', [Class2])
     ).
 
 guessMergeClasses(Out) :-

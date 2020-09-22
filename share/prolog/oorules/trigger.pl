@@ -191,6 +191,17 @@ dispatchTrigger(factClassSizeGTE(Class1,GTESize), Out) :-
     maplist(try_assert_builder(factNOTMergeClasses), ClassSets, ActionSets),
     Out = all(ActionSets).
 
+% reasonNOTMergeClasses_Q
+dispatchTrigger(findint(Method, _Class), Out) :-
+    setof((Class1, Class2),
+          OtherMethod^((reasonNOTMergeClasses_Q(Class1, Class2, Method, OtherMethod);
+                        reasonNOTMergeClasses_Q(Class1, Class2, OtherMethod, Method)),
+                       iso_dif(Class1, Class2),
+                       not(dynFactNOTMergeClasses(Class1, Class2)),
+                       loginfoln('Concluding ~Q.', factNOTMergeClasses(Class1, Class2))),
+          ClassSets),
+    maplist(try_assert_builder(factNOTMergeClasses), ClassSets, ActionSets),
+    Out = all(ActionSets).
 
 concludeTrigger(Out) :-
     reportFirstSeen('concludeTrigger'),

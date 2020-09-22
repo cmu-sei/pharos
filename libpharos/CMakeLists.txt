@@ -30,7 +30,6 @@ set(PHAROS_SOURCES
   ooanalyzer.cpp
   ooclass.cpp
   ooelement.cpp
-  oojson_exporter.cpp
   oomember.cpp
   oomethod.cpp
   oosolver.cpp

@@ -396,6 +396,12 @@ makeOneVcallUsageJson(Insn, Key, Out):-
     Out = vcall{'targets': TargetJsons}.
 
 
+exportJSONTo(FileName) :-
+    setup_call_cleanup(
+        open(FileName, write, Stream),
+        with_output_to(Stream, exportJSON),
+        close(Stream)).
+
 exportJSON :-
     makeAllStructuresJson(ClassJson),
     (bagof(Key:Out, Insn^makeOneVcallUsageJson(Insn, Key, Out), KVPairs) ->

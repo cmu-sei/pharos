@@ -55,11 +55,9 @@ baselogln(Level, X) :-
     fmtlog(Level, '~P~n', [X]).
 
 fmtlog(Level, Fmt, Args) :-
-    format(atom(Repr), Fmt, Args),
-    log(Level, Repr).
+    format(atom(Repr), Fmt, Args) -> log(Level, Repr) ; true.
 fmtlogln(Level, Fmt, Args) :-
-    format(atom(Repr), Fmt, Args),
-    logln(Level, Repr).
+    format(atom(Repr), Fmt, Args) -> logln(Level, Repr) ; true.
 
 % This is a default implementation of traceAtLevel which should never be used because the code
 % in goal_expansion/2 below should replace it at load time.

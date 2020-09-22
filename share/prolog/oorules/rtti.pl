@@ -25,24 +25,9 @@ rTTITDA2VFTable(TDA, VFTable) :-
 :- table rTTITDA2Class/2 as incremental.
 rTTITDA2Class(TDA, Class) :-
     % First turn the TypeDescriptor address into a VFTable address.
-    rTTITypeDescriptor(TDA, _TIVTable, _Name, _DName),
-    rTTICompleteObjectLocator(Pointer, _COLA, TDA, _CHDA, Offset, _O2),
-    VFTable is Pointer + 4,
-    % Now to turn the VFTable address into a class ID.  Presumably there's at least one method
-    % that write the VFTable pointer.  We only want the one installed at offset zero because
-    % we're looking for the constructor of the class associated with the VFTable.
-    factVFTableWrite(_Insn, Method, 0, VFTable),
-    % But if that method is confused about which VFTable is the primary, don't use that method
-    % to determine the correct class.   Presumably there will be another non-conflicted method
-    % that will just produce the correct answer.
-    not(possibleVFTableOverwrite(_, _, Method, Offset, _VFTable1, _VFTable2)),
-    % Finally, get the current class representative for that method.
+    rTTITDA2VFTable(TDA, VFTable),
 
-    % Because of inlining and optimization, destructors should not be used for correlating TDAs
-    % and VFTables.   See the commentary in mergeClasses().
-    not(factNOTConstructor(Method)),
-
-    find(Method, Class).
+    find(VFTable, Class).
 
 % In each class definition, there's supposed to be one circular loop of pointers that describes
 % casting a class into itself.  This rule finds that set of pointers, tying together a type
@@ -232,6 +217,13 @@ rTTIInvalidHierarchyAttributes :-
 
     % Attributes 0x3 means multiple virtual inheritance
     HierarchyAttributes \= 0x3,
+
+    % Attributes 0x5 means ???
+    HierarchyAttributes \= 0x5,
+
+    % Attributes 0x7 means ???
+    HierarchyAttributes \= 0x7,
+
     rttiwarninvalid('CHD at ~Q has attributes = ~Q', [CHDA, HierarchyAttributes]).
 
 :- table rTTIShouldHaveSelfRef/1 as opaque.

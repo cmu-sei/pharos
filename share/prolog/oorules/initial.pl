@@ -119,18 +119,19 @@ validVBTableEntry(VBTable, Entry, Offset) :-
     PreviousEntry is Entry - 4,
     validVBTableEntry(VBTable, PreviousEntry, _PreviousOffset),
     % The constructor that the table was installed into will be the derived constructor.
-    possibleVBTableWrite(_Insn1, DerivedConstructor, BaseOffset, VBTable),
+    possibleVBTableWrite(_Insn1, DerivedConstructor, _BaseOffset, VBTable),
     possibleConstructor(DerivedConstructor),
     % And the method invoked at the computed offset will be the base constructor.
-    ObjectOffset is BaseOffset + Offset,
+    %ObjectOffset is BaseOffset + Offset,
     %logtraceln('Object Offset for ~Q entry ~Q is ~Q', [VBTable, Entry, ObjectOffset]),
 
     % Intentionally NOT a validFuncOffset because we're speculating fairly widely here.  A
     % validFuncOffset might be more correct, but that would require that we already know that
     % BaseConstructor is a validMethod, and we'd like to conclude that from guessing about the
     % VBTable that is in turn dependent on this fact.  Some more though is needed here...
-    funcOffset(_Insn2, DerivedConstructor, BaseConstructor, ObjectOffset),
-    possibleConstructor(BaseConstructor).
+    %funcOffset(_Insn2, DerivedConstructor, BaseConstructor, ObjectOffset),
+    %possibleConstructor(BaseConstructor),
+    true.
 
 validVBTableEntry(VBTable, 0, Offset) :-
     % There's a possible entry...

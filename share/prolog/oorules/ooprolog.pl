@@ -220,7 +220,7 @@ main(Opts, []) :-
 %% Generate results when there is a facts file
 generate_results(Opts) :-
     check_option(facts(Facts), Opts),
-    option(results(Results), Opts),
+    option(results(Results), Opts), !,
     setup_call_cleanup(
         open(Facts, read, FactStream),
         setup_call_cleanup(
@@ -233,7 +233,7 @@ generate_results(Opts) :-
 
 %% Load results when there isn't a facts file
 generate_results(Opts) :-
-    check_option(results(Results), Opts),
+    check_option(results(Results), Opts), !,
     loadResults(Results).
 
 %% No facts; no results
@@ -244,10 +244,7 @@ generate_results(_) :-
 %% Generate JSON when the option exists
 generate_json(Opts) :-
     check_option(json(JsonFile), Opts) ->
-        setup_call_cleanup(
-            open(JsonFile, write, JsonStream),
-            with_output_to(JsonStream, run_with_backtrace(exportJSON)),
-            close(JsonStream))
+        run_with_backtrace(exportJSONTo(JsonFile))
     ; true.
 
 %% If there is a ground option, validate results

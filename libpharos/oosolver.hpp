@@ -1,4 +1,4 @@
-// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2020 Carnegie Mellon University.  See LICENSE file for terms.
 // Author: Cory Cohen
 
 #ifndef Pharos_OOSolver_H
@@ -191,6 +191,9 @@ class OOSolver {
   // This is a little hacky, but we need a way to disable the actual analysis for performance
   // reasons during testing.  So for now, if there's no output, then there's no analysis.
   bool perform_analysis;
+
+  // Location for json output
+  boost::optional<std::string> json_path;
 
   // Private implementation of add_facts() broken into several parts.
   void add_method_facts(const OOAnalyzer& ooa);

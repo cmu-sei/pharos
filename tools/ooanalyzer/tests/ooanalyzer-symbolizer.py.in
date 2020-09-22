@@ -56,6 +56,39 @@ def fixup_ugly_symbols(symbol):
     return symbol
 
 # ===========================================================================
+# Build the symbol map from a .ground file
+# ===========================================================================
+def build_symbol_map_from_ground_file(ground_file):
+    addr2symbol = {}
+    try:
+        f = open(ground_file, 'r')
+        lines = f.readlines()
+    except:
+        print ("Error opening " + ground_file)
+        assert (False)
+
+    gtline = re.compile (r"^groundTruth\((0x[^,]+), '([^']+)', '([^']+)', ([^,]+), ([^,]+), ([^,]+), ([^,]+), ([^,]+), '([^']+)'\).$")
+
+    for l in lines:
+        l = l.rstrip()
+
+        m = gtline.match (l)
+
+        if m is not None:
+            addr = m.group(1)
+            addr = int(addr, 16)
+            #print (addr)
+
+            classname = m.group(2)
+            methodname = m.group(3)
+
+            symbol = "0x%08X %s::%s" % (addr, classname, methodname)
+
+            addr2symbol[addr] = symbol
+
+    return addr2symbol
+
+# ===========================================================================
 # Build the symbol map.
 # ===========================================================================
 def build_symbol_map(symbols_file):
@@ -74,7 +107,8 @@ def build_symbol_map(symbols_file):
         try:
             (addr, isthunk, idasymbol, symbol) = l.split(None, 3)
         except ValueError:
-            print >>sys.stderr, "Bad line: %s" % l
+            print ("Bad line: %s" % l, file=sys.stderr)
+            raise
 
         addr = int(addr, 16)
         if symbol != 'None':
@@ -154,7 +188,12 @@ parser.add_argument('--output-file', '-o', type=str,
 
 args = vars(parser.parse_args())
 #print(args)
-m = build_symbol_map (args["symbols-file"])
+
+try:
+    m = build_symbol_map (args["symbols-file"])
+except ValueError:
+    m = build_symbol_map_from_ground_file (args["symbols-file"])
+
 input_file = open(args["input-file"], "r") if args["input-file"] is not None else sys.stdin
 #print(input_file)
 output_file = open(args["output_file"], "w") if args["output_file"] is not None else sys.stdout

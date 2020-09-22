@@ -237,7 +237,7 @@ try_retract(X) :- not(X), !.
 try_retract(X) :- try_retract_real(X).
 try_retract_real(X) :- delta_con(numfacts, -1), retract_helper(X).
 try_retract_real(X) :-
-    logtrace('Fail-Asserting ~Q...', [X]),
+    logtraceln('Fail-Asserting ~Q...', [X]),
     delta_con(numfacts, 1),
     assert_helper(X),
     fail.
@@ -263,6 +263,15 @@ fixupClasses(From, To, OldTerm, NewTerm) :-
 
     %logtraceln('Fixing up ~Q/~Q index ~Q from ~Q to ~Q in predicate ~Q',
     %           [Pred, Arity, Index, From, To, IntermediateOldTerm]),
+
+    % fixupClasses is only correct if From appears in one location.  E.g., factDerivedClass(X,
+    % X, 0) will cause us to leave facts around that still contain From.
+    (   Trigger=false, (classArgs(Pred/Arity, OtherIndex), iso_dif(Index, OtherIndex), arg(OtherIndex, IntermediateOldTerm, To))
+    ->
+        (logerrorln('An internal error occurred in OOAnalyzer. Please report this to the developers:~n~Q', (IntermediateOldTerm, Trigger)),
+         throw_with_backtrace(error(system_error(fixupClasses, IntermediateOldTerm, Trigger))))
+    ;
+        true),
 
     % Now we'll break it apart.
     IntermediateOldTerm =.. IntermediateOldTermElements,
@@ -331,12 +340,17 @@ mergeClasses(M1, M2) :-
 
     loginfoln('Merging class ~Q into ~Q ...', [OldRep, NewRep]),
 
-    setof((OldTerm, NewTerm),
+    % An empty vftable class can cause fixupClasses to fail
+    (setof((OldTerm, NewTerm),
           fixupClasses(OldRep, NewRep, OldTerm, NewTerm),
-          Set),
+          Set)
+     ->
+         true
+     ;
+     Set = []),
 
     maplist(mergeClassBuilder, Set, Actions),
-    %debugln(Actions),
+    %logdebugln(Actions),
 
     all(Actions).
 
@@ -373,10 +387,10 @@ reasonForward :-
           concludeClassSizeLTE(Out);
           concludeClassHasNoBase(Out);
           concludeClassHasUnknownBase(Out);
-          concludeMergeClasses(Out);
+          concludeNOTMergeClasses(Out);
           % We should probably be more intelligent about how we order here for trigger
           concludeTrigger(Out);
-          concludeNOTMergeClasses(Out);
+          concludeMergeClasses(Out);
           concludeClassCallsMethod(Out)
         )),
 
@@ -384,7 +398,10 @@ reasonForward :-
     % the reasoning because of once/1.
 
     % Go ahead and try_assert the fact.
-    call(Out).
+    if_(call(Out),
+        true,
+        (logerrorln('An internal error occurred in OOAnalyzer. Please report this to the developers:~n~Q', Out),
+         throw_with_backtrace(error(system_error(reasonForward, Out))))).
 
 % Reason forward as many times as possible.  It's ok if we can't reason forward any more.  But
 % if we _backtrack_ and can't reason forward, it means that we've exhausted this search tree,
@@ -393,7 +410,8 @@ reasonForward :-
 % committed to the first branch.
 reasonForwardAsManyTimesAsPossible :-
     logtraceln('reasonForwardAsManyTimesAsPossible'),
-    %(sanityChecks -> true; (logwarnln('Failed sanity check during forward reasoning'), fail)),
+    %(sanityChecks -> true; (logwarnln('Failed sanity check during forward reasoning'),
+    %                       throw_with_backtrace(error(system_error(reasonForwardAsManyTimesAsPossible))))),
     if_(reasonForward,
         reasonForwardAsManyTimesAsPossible,
         logdebugln('reasonForwardAsManyTimesAsPossible complete.')).
@@ -410,29 +428,34 @@ tryAGuess :-
 % even if that is in another loop iteration.
 reasoningLoop :-
     if_(tryAGuess,
-        (logtraceln('reasoningLoop: pre-reason sanityChecks'),
+        (logdebugln('reasoningLoop: pre-reason sanityChecks'),
          (sanityChecks
          -> loginfoln('Constraint checks succeeded, proceeding to reason forward!')
          ; (logwarnln('Constraint checks failed, retracting guess!'), fail)),
-         logtraceln('reasoningLoop: reasonForardAsManyTimesAsPossible'),
+         logdebugln('reasoningLoop: reasonForardAsManyTimesAsPossible'),
          reasonForwardAsManyTimesAsPossible,
          logdebugln('reasoningLoop: post-reason sanityChecks'),
          (sanityChecks
          -> loginfoln('Constraint checks succeeded, guess accepted!')
          ; (logwarnln('Constraint checks failed, retracting guess!'), fail)),
          (backtrackForUpstream ->
-              (reasoningLoop;
-               % If we have reached this point, sanity checks have initially passed but we have
-               % backtracked here, which means an upstream problem caused us to backtrack.  This is
-               % controlled by the backtrackForUpstream/0 option.
-               (loginfoln('Backtracking into reasoningLoop/0 to fix an upstream problem.'),
-                fail));
+              reasoningLoop
+         ;
           % If we are not backtracking, we eagerly cut here to avoid wasting a lot of memory.
           (!,
-           reasoningLoop;
-           logerrorln('Refusing to backtrack into reasoningLoop to fix an upstream problem because backtrackForUpstream/0 is not set.  The results will be inaccurate.')))),
-         % If we can't guess, exit with true.
-         true).
+           reasoningLoop))),
+        % If we can't guess, exit with true.  Cut so we don't trigger the second rule.
+        (!, loginfoln('reasoningLoop: There are no possible guesses remaining'))).
+
+% If we have reached this point, sanity checks have initially passed but we have
+% backtracked here, which means an upstream problem caused us to backtrack.  This is
+% controlled by the backtrackForUpstream/0 option.
+reasoningLoop :-
+    backtrackForUpstream ->
+        loginfoln('reasoningLoop: Backtracking into reasoningLoop/0 to fix an upstream problem.'),
+        fail
+    ;
+    logerrorln('Refusing to backtrack into reasoningLoop to fix an upstream problem because backtrackForUpstream/0 is not set.  The results will be inaccurate.').
 
 % --------------------------------------------------------------------------------------------
 % The performance of our code is highly dependent on the ordering of these guesses.  Making bad
@@ -502,9 +525,14 @@ guess :-
               % RealDestructorChange! (uncomment next line and add semicolon above)
               %guessFinalRealDestructor(Out)
 
+              % These rules must come very late, but before guessCommitClassHasNoBase.  See
+              % guess.pl for more commentary.
+              guessLateMergeClasses(Out);
+
               % As the very last guess, explicitly guess factClassHasNoBase(Class) for any
               % class that we have not identified a base class for.
               guessCommitClassHasNoBase(Out)
+
 
              )),
 
@@ -531,10 +559,10 @@ setDefaultLogLevel :-
     ).
 
 initialSanityChecks :-
-    sanityChecks -> true ;
+    sanityChecks -> true;
     logfatalln('Initial sanity check failed, indicating the OO rules are incorrect.'),
     logfatalln('Please report this failures to the Pharos developers!'),
-    false.
+    throw_with_backtrace(error(system_error(initialSanityChecks))).
 
 % The Source should either be ooanalyzer_tool or ooscript, and is only used right now to pick
 % the relevant error message when we run out of table or stack space.

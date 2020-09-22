@@ -144,12 +144,22 @@ set(SPACER_FAILING_TESTS
   fake_failed_test
   )
 
+# SEAHORN approach
+set(SEAHORN_FAILING_TESTS
+  # Because no one else includes this test.
+  func_array
+  # This makes it a little easier to manage the lists in CMake. Don't remove.
+  fake_failed_test
+  )
+
 set(FS_PASSING_TESTS ${ALL_TESTS})
 set(WP_PASSING_TESTS ${ALL_TESTS})
 set(SPACER_PASSING_TESTS ${ALL_TESTS})
+set(SEAHORN_PASSING_TESTS ${ALL_TESTS})
 list(REMOVE_ITEM FS_PASSING_TESTS ${FS_FAILING_TESTS})
 list(REMOVE_ITEM WP_PASSING_TESTS ${WP_FAILING_TESTS})
 list(REMOVE_ITEM SPACER_PASSING_TESTS ${SPACER_FAILING_TESTS})
+list(REMOVE_ITEM SEAHORN_PASSING_TESTS ${SEAHORN_FAILING_TESTS})
 
 set(PATHANALYZER_TEST_DIR "${CMAKE_SOURCE_DIR}/tests/pathanalyzer")
 
@@ -168,6 +178,9 @@ mark_as_advanced(PATHTEST_CROSS32BIT)
 # Set PATHTEST_TIMEOUT_SECS
 set(PATHTEST_TIMEOUT_SECS 120 CACHE STRING "Timeout in seconds for pathanalyzer tests")
 mark_as_advanced(PATHTEST_TIMEOUT_SECS)
+
+set(PATHTEST_SEAHORN_SCRIPT "" CACHE FILEPATH "Path to seahorn/ghidrall test script")
+mark_as_advanced(PATHTEST_SEAHORN_SCRIPT)
 
 foreach(test ${ALL_TESTS})
   add_executable(${test}_64 EXCLUDE_FROM_ALL ${test}.cpp)
@@ -220,6 +233,10 @@ if (PHAROS_RUN_PATHANALYZER_TESTS)
     else()
       set(args)
     endif()
+    set(SEAHORN_GOAL)
+    if (type STREQUAL "nongoal")
+      set(SEAHORN_GOAL "--nongoal")
+    endif()
     foreach(test ${SPACER_PASSING_TESTS})
       add_test(NAME pathanalyzer_spacer_${test}_${type}_${bits}
                COMMAND pathanalyzer_test --method=spacer --no-semantics ${args}
@@ -250,6 +267,18 @@ if (PHAROS_RUN_PATHANALYZER_TESTS)
         ENVIRONMENT "PHAROS_PASS_EXCEPTIONS=1" LABELS
         "pathanalyzer;pathanalyzer_${type};pathanalyzer_fs;pathanalyzer_fs_${type}")
     endforeach()
+    if (PATHTEST_SEAHORN_SCRIPT)
+      foreach(test ${SEAHORN_PASSING_TESTS})
+        add_test(NAME pathanalyzer_sea_${test}_${type}_${bits}
+          COMMAND "${PATHTEST_SEAHORN_SCRIPT}"
+          --solver=chc --locals=byte_addressable ${SEAHORN_GOAL} --optimization=3
+          --llvm-file=${test}_sea_${type}_${bits}.ll ${test}_${bits}
+          --capture=${test}_sea_${type}_${bits}.output)
+        set_tests_properties (pathanalyzer_sea_${test}_${type}_${bits}
+          PROPERTIES TIMEOUT ${PATHTEST_TIMEOUT_SECS}
+          LABELS "pathanalyzer;pathanalyzer_${type};pathanalyzer_sea;pathanalyzer_sea_${type}")
+      endforeach()
+    endif()
   endforeach()
 endif()
 

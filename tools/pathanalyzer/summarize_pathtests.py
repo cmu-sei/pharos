@@ -10,8 +10,9 @@
 # cmake -DPATHTEST_CXX_FLAGS=-O2 .. && make -j32
 # ctest -j32 -R ^path > O2.txt
 # ../tools/pathanalyzer/summarize_pathtests.py <O2.txt O2 >O2.csv
-# sort O0.txt O1.txt O2.txt > pathtests.csv
-# (Import pathtests.csv into second sheet in pathtests.ods)
+# sort O0.csv O1.csv O2.csv > pathtests.csv
+# ./tools/pathanalyzer/summarize_pathtests.py --stage2 <pathtests.csv >pathtable.csv
+# (Import pathtable.csv into second sheet in pathtests.ods)
 
 import sys
 
@@ -70,7 +71,7 @@ def read_ctest_output(config):
         if name.startswith('pathanalyzer_'):
             name = name[13:]
         else:
-            raise ValueError("Invalid name name '%s'" % name)
+            raise ValueError("Invalid name test name '%s'" % name)
 
         if name.endswith('_32'):
             archbits = 32
@@ -102,6 +103,9 @@ def read_ctest_output(config):
         elif name.startswith('wp_'):
             method = 'wp'
             name = name[3:]
+        elif name.startswith('sea_'):
+            method = 'sea'
+            name = name[4:]
         else:
             raise ValueError("Invalid name method '%s'" % name)
 

@@ -33,6 +33,14 @@ makeIfNecessary(M) :-
 find(M, R) :-
     findint(M, R).
 
+findVFTable(V, R) :-
+    findint(V, R),
+    factVFTable(V).
+
+findMethod(M, R) :-
+    findint(M, R),
+    factMethod(M).
+
 % Find all objects on M's class
 findall(M, S) :-
     find(M, R),

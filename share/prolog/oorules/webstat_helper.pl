@@ -16,6 +16,7 @@ ws_init :- set_flag(webstat_y, 0.5),
            ws_control(window, perfchart),
            sleep(1),
            ws_control(perfchart, [clear,interval(60),start]).
+ws_end :- ws_control(perfchart, [stop]).
 yDelta(0.3).
 getNextY(NextY) :- get_flag(webstat_y, Y),
                    yDelta(YD),

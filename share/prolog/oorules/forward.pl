@@ -237,7 +237,8 @@ concludeVFTable(Out) :-
            loginfoln('Concluding ~Q.', factVFTable(VFTable))),
           VFTableSets),
     maplist(try_assert_builder(factVFTable), VFTableSets, ActionSets),
-    Out = all(ActionSets).
+    Out = ((all(ActionSets),
+            makeObjects(VFTableSets))).
 
 % There's no reasoning for NOT a vftable?  The fact might be asserted by a failed guess, but
 % that's about as close as we would get to reasoning currently...

@@ -1,4 +1,4 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <rose.h>
 
@@ -18,7 +18,7 @@ void DebugLabelMap::preOrderVisit(SgNode* n)
     SgAsmFunction* func = isSgAsmFunction(n);
     rose_addr_t addr = func->get_entry_va();
     if (addr != 0) {
-      char buffer[12];
+      char buffer[21];
       snprintf(buffer, sizeof(buffer), "sub_%0" PRIX64, addr);
       //printf("Label: %0"PRIX64" %s\n", func->get_entry_va(), buffer);
       std::string cppstr = buffer;

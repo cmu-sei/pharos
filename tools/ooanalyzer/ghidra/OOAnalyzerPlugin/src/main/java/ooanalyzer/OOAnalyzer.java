@@ -1143,17 +1143,33 @@ public class OOAnalyzer {
     for (Optional<Function> vfo : vfuncs) {
 
       if (vfo.isEmpty ()) {
-        // If we can't find the exact function, just use a pointer data type
-        PointerDataType pdt = new PointerDataType ();
-        vftableStruct.insertAtOffset(offset, pdt, pdt.getLength(),
-                                     String.valueOf(offset), "virtual function table entry.");
+
+        // We can't find the function.  If Ghidra already has something there, use
+        // that. Otherwise add a pointer.
+        if (vftableStruct.getComponentAt (offset) == null) {
+          // Add a pointer data type so we have something there
+          PointerDataType pdt = new PointerDataType ();
+          vftableStruct.insertAtOffset(offset, pdt, pdt.getLength(),
+                                       String.valueOf(offset), "virtual function table entry.");
+        }
       } else {
         Function vf = vfo.get ();
+        String name = vf.getName ();
+
+        Address addr = vf.getEntryPoint ();
+        Symbol symbol = flatApi.getSymbolAt (addr);
+
+        if (symbol != null) {
+          name = symbol.getName (true);
+          Msg.debug (this, "Using symbol name " + name + " instead of function name " + vf.getName ());
+        }
+
         FunctionDefinitionDataType vfDef = new FunctionDefinitionDataType(ooanalyzerVirtualFunctionsCategory,
                                                                           vf.getName(), vf.getSignature());
         Pointer pvfDt = PointerDataType.getPointer(vfDef, dataTypeMgr);
 
-        vftableStruct.insertAtOffset(offset, pvfDt, pvfDt.getLength(),
+        vftableStruct.deleteAtOffset (offset);
+        vftableStruct.insertAtOffset (offset, pvfDt, pvfDt.getLength(),
                                      vf.getName() + "_" + String.valueOf(offset), "virtual function table entry.");
       }
       offset += pointerSize;
@@ -1344,12 +1360,13 @@ public class OOAnalyzer {
         // There may be cases where we need to make room for class members by clearing
         // space
         int endOffset = mbr.getOffset() + mbrType.getLength();
-        for (int i = 0; i < ghidraType.getNumComponents(); i++) {
-          var comp = ghidraType.getComponent(i);
-          if (comp.getOffset() >= mbr.getOffset() && comp.getOffset() <= endOffset) {
-            ghidraType.clearComponent(i);
-          }
+        for (int offset = mbr.getOffset (); offset < endOffset; offset++) {
+          var comp = ghidraType.getComponentAt (offset);
+          Msg.debug (this, "Clearing component " + comp);
+          ghidraType.clearComponent(comp.getOrdinal ());
         }
+
+        Msg.debug (this, "Adding member " + mbr + " to class " + ghidraType.getDisplayName () + " at offset " + mbr.getOffset ());
 
         ghidraType.replaceAtOffset(mbr.getOffset(), mbrType, mbrType.getLength(), typeName,
                                    mbrType.getDescription());

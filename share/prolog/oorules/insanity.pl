@@ -178,6 +178,15 @@ insanityBaseVFTableLarger :-
     logwarnln('Consistency checks failed.'),
     logwarnln('insanityBaseVFTableLarger failed:').
 
+% A method may not be both a constructor and not a constructor.
+:- table insanityConstructorAndNotConstructor/0 as incremental.
+insanityConstructorAndNotConstructor :-
+    factConstructor(Method),
+    factNOTConstructor(Method),
+    logwarnln('Consistency checks failed.'),
+    logwarnln('A method may not be a constructor and not a constructor:'),
+    logwarnln(' Method=~Q', [Method]).
+
 % A method may not be both a constructor and a real destructor.
 % PAPER: Sanity-DoubleDuty
 :- table insanityConstructorAndRealDestructor/0 as incremental.
@@ -236,6 +245,7 @@ insanityEmbeddedAndNot :-
 :- table sanityChecks/0 as incremental.
 sanityChecks :-
     not(insanityEmbeddedAndNot),
+    not(insanityConstructorAndNotConstructor),
     not(insanityConstructorAndRealDestructor),
     %not(insanityVFTableOnTwoClasses),
     not(insanityConstructorInVFTable),

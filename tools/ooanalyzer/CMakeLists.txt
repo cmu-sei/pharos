@@ -26,16 +26,16 @@ foreach(previous ${OOANALYZER_TEST_PREVIOUS})
 
   add_test(NAME "ooanalyzer_test_${und_name}"
     COMMAND ${CMAKE_CURRENT_BINARY_DIR}/tests/ooanalyzer-test.py
-    "--build-dir" ${CMAKE_BINARY_DIR} "--git-dir" ${CMAKE_SOURCE_DIR} ${tgt_name}
+    "--build-dir" ${CMAKE_BINARY_DIR} "--git-dir" ${CMAKE_SOURCE_DIR} -c ${tgt_name}
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_tests_properties("ooanalyzer_test_${und_name}" PROPERTIES LABELS ooanalyzer)
 
-  add_test(NAME "ooprolog_swi_test_${und_name}"
+  add_test(NAME "ooprolog_test_${und_name}"
     COMMAND ${CMAKE_CURRENT_BINARY_DIR}/tests/ooanalyzer-test.py
     "--build-dir" ${CMAKE_BINARY_DIR} "--git-dir" ${CMAKE_SOURCE_DIR}
-    "--swi-path" "${SWIPL_EXECUTABLE}" -v -p -s ${tgt_name}
+    "--swi-path" "${SWIPL_EXECUTABLE}" -v -p -c ${tgt_name}
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  set_tests_properties("ooprolog_swi_test_${und_name}" PROPERTIES LABELS ooprolog)
+  set_tests_properties("ooprolog_test_${und_name}" PROPERTIES LABELS ooprolog)
 
 endforeach()
 
@@ -48,10 +48,10 @@ set_property(TEST ooanalyzer_test_ooex_vs2010_Lite_ooex7   PROPERTY COST 230.49)
 set_property(TEST ooanalyzer_test_ooex_vs2010_Lite_oo      PROPERTY COST 175.66)
 set_property(TEST ooanalyzer_test_ooex_vs2010_Lite_poly    PROPERTY COST 178.75)
 
-set_property(TEST ooprolog_swi_test_ooex_vs2010_Lite_ooex7 PROPERTY COST 9.73)
-set_property(TEST ooprolog_swi_test_ooex_vs2010_Lite_oo    PROPERTY COST 7.06)
-set_property(TEST ooprolog_swi_test_ooex_vs2010_Lite_poly  PROPERTY COST 7.42)
+set_property(TEST ooprolog_test_ooex_vs2010_Lite_ooex7 PROPERTY COST 9.73)
+set_property(TEST ooprolog_test_ooex_vs2010_Lite_oo    PROPERTY COST 7.06)
+set_property(TEST ooprolog_test_ooex_vs2010_Lite_poly  PROPERTY COST 7.42)
 
-set_property(TEST ooprolog_swi_test_ooex_vs2010_Lite_ooex7 PROPERTY COST 5.64)
-set_property(TEST ooprolog_swi_test_ooex_vs2010_Lite_oo    PROPERTY COST 3.64)
-set_property(TEST ooprolog_swi_test_ooex_vs2010_Lite_poly  PROPERTY COST 3.70)
+set_property(TEST ooprolog_test_ooex_vs2010_Lite_ooex7 PROPERTY COST 5.64)
+set_property(TEST ooprolog_test_ooex_vs2010_Lite_oo    PROPERTY COST 3.64)
+set_property(TEST ooprolog_test_ooex_vs2010_Lite_poly  PROPERTY COST 3.70)

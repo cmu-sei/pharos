@@ -95,9 +95,7 @@ have the *unzip* command installed. Once installed, start Ghidra and
 you should see a prompt you to configure the plugin. If all goes well,
 then a new menu item will be visible to the Ghidra toolbar labeled
 *CERT*. This menu will contain an entry named *OOAnalyzer* with a
-shortcut key of F12. If installation was successful, you should also
-see a new script named `OOAExampleScript.java` in the Ghidra Script
-Manager.
+shortcut key of F12.
 
 ## Using the Plugin
 
@@ -182,11 +180,10 @@ correspond to the address where the table is defined.
 
 ### Running the OOAnalyzer Plugin ###
 
-There are three ways to run the OOAnalyzer Plugin:
+There are two ways to run the OOAnalyzer Plugin:
 
 1. Launching it directly through the <kbd>CERT</kbd> menu
 2. Pressing the <kbd>F12</kbd> key, which is the shortcut for the plugin
-2. Running the `OOAExampleScript.java` script from the Ghidra Script Manager
 
 When the Plugin is run, the *OOAnalyzer Setting* window will be
 displayed to configure and execute the plugin. To run the plugin, you
