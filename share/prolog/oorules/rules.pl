@@ -720,13 +720,19 @@ reasonVFTableOverwrite(Method, VFTable2, VFTable1, Offset) :-
 
 % PAPER: PrimaryVFTable
 
-% Free, _, Bound
 reasonVFTableBelongsToClass(VFTable, Offset, Class) :-
+    reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite),
+
+    logtraceln('~Q belongs to ~Q at offset ~Q because of ~Q ~Q.', [VFTable, Class, Offset, Rule, VFTableWrite]).
+
+% Free, _, Bound
+reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
     var(VFTable),
     nonvar(Class),
     !,
     find(Method, Class),
-    factVFTableWrite(_Insn, Method, Offset, VFTable),
+    factVFTableWrite(Insn, Method, Offset, VFTable),
+    VFTableWrite=factVFTableWrite(Insn, Method, Offset, VFTable),
 
     % ejs 9/13/20: If a factVFTableOverwrite exists, then the VFTable doesn't belong to this
     % class.  This is different than the first case below, which says that the absence of
@@ -763,19 +769,22 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class) :-
          % vftables with destructors before any determination about constructors or destructors
          % was made.  So we must actually wait for a definitive constructor conclusion rather
          % than the absence of contradictory evidence.
-         factConstructor(Method));
+         factConstructor(Method),
+         Rule=constructor);
 
         % Alternatively, if we are a destructor, make sure there is no other class trying to
         % install this vftable
         % XXX: Should Offset = Offset2?
-        forall(factVFTableWrite(_Insn5, Method2, Offset2, VFTable),
+        (forall(factVFTableWrite(_Insn5, Method2, Offset2, VFTable),
                % It is ok to ignore overwritten vftables
                (factVFTableOverwrite(Method2, VFTable, _OtherVFTable, Offset2);
                 % Otherwise it better be the same class
-                find(Method2, Class)));
+                find(Method2, Class))),
+         Rule=destructor);
 
         % If Class has no base, then the VFTable installation we see must be the right one.
-        factClassHasNoBase(Class)
+        (factClassHasNoBase(Class),
+         Rule=hasnobase)
 
     ).
 
@@ -783,9 +792,9 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class) :-
 % Bound, _, Free: OK
 % Free, _, Bound: Not OK
 % Free, _, Free: OK
-reasonVFTableBelongsToClass(VFTable, Offset, Class) :-
-    factVFTableWrite(_Insn, Method, Offset, VFTable),
-
+reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
+    factVFTableWrite(Insn, Method, Offset, VFTable),
+    VFTableWrite=factVFTableWrite(Insn, Method, Offset, VFTable),
     find(Method, Class),
 
     % ejs 9/13/20: If a factVFTableOverwrite exists, then the VFTable doesn't belong to this
@@ -823,19 +832,22 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class) :-
          % vftables with destructors before any determination about constructors or destructors
          % was made.  So we must actually wait for a definitive constructor conclusion rather
          % than the absence of contradictory evidence.
-         factConstructor(Method));
+         factConstructor(Method),
+         Rule=constructor);
 
         % Alternatively, if we are a destructor, make sure there is no other class trying to
         % install this vftable
         % XXX: Should Offset = Offset2?
-        forall(factVFTableWrite(_Insn5, Method2, Offset2, VFTable),
+        (forall(factVFTableWrite(_Insn5, Method2, Offset2, VFTable),
                % It is ok to ignore overwritten vftables
                (factVFTableOverwrite(Method2, VFTable, _OtherVFTable, Offset2);
                 % Otherwise it better be the same class
-                find(Method2, Class)));
+                find(Method2, Class))),
+         Rule=destructor);
 
         % If Class has no base, then the VFTable installation we see must be the right one.
-        factClassHasNoBase(Class)
+        (factClassHasNoBase(Class),
+         Rule=hasnobase)
 
     ).
 
@@ -2018,7 +2030,7 @@ reasonClassCallsMethod_F(Class, Method) :-
 :- table reasonMergeClasses_C/2 as incremental.
 :- table reasonMergeClasses_D/2 as incremental.
 :- table reasonMergeClasses_E/2 as incremental.
-:- table reasonMergeClasses_F/2 as incremental.
+%:- table reasonMergeClasses_F/2 as incremental.
 :- table reasonMergeClasses_G/2 as incremental.
 :- table reasonMergeClasses_H/2 as incremental.
 :- table reasonMergeClasses_I/2 as incremental.
@@ -2034,7 +2046,7 @@ reasonMergeClasses(C,M) :-
         reasonMergeClasses_C(C,M),
         reasonMergeClasses_D(C,M),
         reasonMergeClasses_E(C,M),
-        reasonMergeClasses_F(C,M),
+        %reasonMergeClasses_F(C,M),
         reasonMergeClasses_G(C,M),
         reasonMergeClasses_H(C,M),
         reasonMergeClasses_J(C,M),
@@ -2206,27 +2218,28 @@ reasonMergeClasses_E(Class1, Class2) :-
     logtraceln('~@~Q.', [not(find(Class1, Class2)),
                          reasonMergeClasses_E(DerivedClass, ObjectOffset, Class1, Class2)]).
 
+% ejs 9/22/20 Disabled because it's a redundant version of _B
 % Because the Method2 appears in VFTable assocated with a class, and that class has no base, so
 % all methods in the VFTable must be on the class.
 % PAPER: Merging-16
 % Ed comment: This rule seems too specialized. Another way of thinking about this rule is that any method in a virtual function table is on the class or its ancestor.  If there is no base, then obviously the method is on the class itself.
 % ED_PAPER_INTERESTING
-reasonMergeClasses_F(Class1, Class2) :-
-    % Start with a method associated with a primary VFTable (offset zero).
-    reasonPrimaryVFTableForClass(VFTable, Class1),
-    % There's a second method in that VFTable.
-    factVFTableEntry(VFTable, _VFTableOffset, Entry),
-    dethunk(Entry, Method2),
-    % Method1 cannot be purecall already because of factVFTableWrite().
-    not(purecall(Entry)), % Never merge purecall methods into classes.
-    not(purecall(Method2)), % Never merge purecall methods into classes.
-    % If the VFTable class has no base, the method must be on the class.
-    factClassHasNoBase(Class1),
-    find(Method2, Class2),
-    iso_dif(Class1, Class2),
-    % Debugging
-    logtraceln('~@~Q.', [not(find(Class1, Class2)),
-                         reasonMergeClasses_F(Method2, VFTable, Class1, Class2)]).
+%% reasonMergeClasses_F(Class1, Class2) :-
+%%     % Start with a method associated with a primary VFTable (offset zero).
+%%     reasonPrimaryVFTableForClass(VFTable, Class1),
+%%     % There's a second method in that VFTable.
+%%     factVFTableEntry(VFTable, _VFTableOffset, Entry),
+%%     dethunk(Entry, Method2),
+%%     % Method1 cannot be purecall already because of factVFTableWrite().
+%%     not(purecall(Entry)), % Never merge purecall methods into classes.
+%%     not(purecall(Method2)), % Never merge purecall methods into classes.
+%%     % If the VFTable class has no base, the method must be on the class.
+%%     factClassHasNoBase(Class1),
+%%     find(Method2, Class2),
+%%     iso_dif(Class1, Class2),
+%%     % Debugging
+%%     logtraceln('~@~Q.', [not(find(Class1, Class2)),
+%%                          reasonMergeClasses_F(Method2, VFTable, Class1, Class2)]).
 
 % Because the symbols tell us they're the same class.
 % PAPER: XXX Symbols

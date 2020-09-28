@@ -433,8 +433,11 @@ OOSolver::add_rtti_chd_facts(const rose_addr_t addr)
                           base.pClassDescriptor.value);
         visited.insert(base.address);
 
-        // This is where we read and export facts for the undocumented "sub-chd".
-        if (visited.find(base.pClassDescriptor.value) == visited.end()) {
+        // This is where we read and export facts for the undocumented "sub-chd", but only if
+        // the base.attributes flag has bit 0x40 set, which indicates that optional pointer is
+        // present.
+        if (base.attributes.value & 0x40 &&
+            visited.find(base.pClassDescriptor.value) == visited.end()) {
           add_rtti_chd_facts(base.pClassDescriptor.value);
         }
       }
@@ -464,8 +467,11 @@ OOSolver::add_rtti_chd_facts(const rose_addr_t addr)
     session->add_fact("rTTIClassHierarchyDescriptor", addr,
                       chd.attributes.value, base_addresses);
   }
+  catch (std::exception &e) {
+    GERROR << "RTTI Class Hierarchy Descriptor was bad at " << addr_str(addr) << ": " << e.what () << LEND;
+  }
   catch (...) {
-    GDEBUG << "RTTI Class Hierarchy Descriptor was bad at " << addr_str(addr) << LEND;
+    GERROR << "RTTI Class Hierarchy Descriptor was bad at " << addr_str(addr) << LEND;
   }
 }
 

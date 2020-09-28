@@ -250,7 +250,7 @@ rTTIAllTypeDescriptors(TDA) :-
 :- table rTTIHasTypeDescriptor/1 as opaque.
 rTTIHasTypeDescriptor(TDA) :-
     rTTITypeDescriptor(TDA, _VFTableCheck, _RTTIName, _DName) -> true;
-    rttiwarninvalid('missing self-reference for TDA at address ~Q', [TDA]),
+    rttiwarninvalid('missing type descriptor for TDA at address ~Q', [TDA]),
     false.
 
 

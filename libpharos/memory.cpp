@@ -3,6 +3,7 @@
 #include "memory.hpp"
 #include "state.hpp"
 #include "descriptors.hpp"
+#include <sstream>
 
 namespace pharos {
 
@@ -13,7 +14,9 @@ std::size_t Memory::read_bytes(rose_addr_t addr, void *buf, Bytes bytes) const {
 void Memory::read_bytes_strict(rose_addr_t addr, void *buf, Bytes bytes) const {
   auto size = read_bytes(addr, buf, bytes);
   if (size != bytes) {
-    throw std::runtime_error("Bytes not in image");
+    std::stringstream ss;
+    ss << "read_bytes_script: request to read " << bytes << " bytes at " << addr_str(addr) << " failed because only " << size << " bytes were read from the image";
+    throw std::runtime_error(ss.str());
   }
 }
 

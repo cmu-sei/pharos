@@ -70,21 +70,21 @@ initialFact(purecall/1).
 
 % rTTICompleteObjectLocator(Pointer, Address, TDAddress, CHDAddress, Offset, CDOffset)
 %
-% There's a pointer to an RTTI Complete Object Locator data structure at Pointer (address just
-% before the VFTable) which points to Address which is where the RTTI Complete Object Locator
-% data structure is located in memory.  TDAddress and CHDAddress are the addresses of the
-% corresponding Type Descriptor and Class Hierarchy Descriptor respectively.  Offset is
-% described as the offset of this VFTable in the class.  CDOffset is described as the
-% constructor displacement offset (?).  This object occurs once per VFTable (not once per
-% class).
+% There's a pointer to an RTTI Complete Object Locator data structure at Pointer which points
+% to Address which is where the RTTI Complete Object Locator data structure is located in
+% memory.  TDAddress and CHDAddress are the addresses of the corresponding Type Descriptor and
+% Class Hierarchy Descriptor respectively.  Offset is described as the offset of this VFTable
+% in the class.  CDOffset is described as the constructor displacement offset (?).  This object
+% occurs once per VFTable (not once per class), and the VFTable being described occurs one
+% pointer length (typically 4 or 8 bytes) beyond the address of pointer.
 %
 initialFact(rTTICompleteObjectLocator/6).
 
 % rTTITypeDescriptor(Address, VFTable, Name, DemangledName)
 %
-% There's an RTTI Type Descriptor at Address.  The virtual function table is at address VFTable
-% and the Name of the class is specified (in the mangled name format).  The DemangledName is
-% also exported using the Pharos Visual Studio name demangler now.
+% There's an RTTI Type Descriptor at Address.  VFTable points to type_info::`vftable`.  The
+% Name of the class being described is specified (in the mangled name format).  The
+% DemangledName is also exported using the Pharos Visual Studio name demangler now.
 %
 initialFact(rTTITypeDescriptor/4).
 
