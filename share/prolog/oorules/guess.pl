@@ -855,7 +855,7 @@ guessMergeClassesA(Class1, MethodClass) :-
     % one evluation, and Constructor1 on the next evaluation, so even though the rule is also
     % true for Constructor2, that case will be handled when it's bound to Constructor.
     checkMergeClasses(Class1, MethodClass),
-    logtraceln('Proposing ~Q.', factMergeClasses_A(Class1, Method)).
+    logtraceln('Proposing ~Q.', factMergeClasses_A(Class1, MethodClass)).
 
 guessMergeClasses(Out) :-
     reportFirstSeen('guessMergeClassesA'),
@@ -863,7 +863,6 @@ guessMergeClasses(Out) :-
           guessMergeClassesA(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
-    logtraceln('Proposing ~Q.', factMergeClasses_A(OneTuple)),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % Another good guessing heuristic is that if a virtual call was resolved through a specific
@@ -926,53 +925,116 @@ guessMergeClasses(Out) :-
           guessMergeClassesB(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
-    logtraceln('Proposing ~Q.', factMergeClasses_B(OneTuple)),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
+% A Derived class calls a method.  Does that method belong to the base or derived class?
 
-% This rule makes guesses about whether to assign methods to the derived class or the base
-% class.  Right now it's an arbitrary guess (try the derived class first), but we can probably
-% add a bunch of rules using class sizes and vftable sizes once the size rules are cleaned up a
-% litte.  These rules are not easily combined in the "problem upstream" pattern because of the
-% way Constructor is unified with different parameters of factDerviedConstructor, and it's not
-% certain that the method is assigned to eactly one of those two anyway.  There's still the
-% possibilty that the method is on one of the base classes bases -- a scenario that we may not
-% currently be making any guesses for.
-% ED_PAPER_INTERESTING
-guessMergeClassesC(Class1, Class2) :-
-    factClassCallsMethod(Class1, Method),
-    not(purecall(Method)), % Never merge purecall methods into classes.
-    factDerivedClass(Class1, _BaseClass, _Offset),
-    find(Method, Class2),
-    checkMergeClasses(Class1, Class2),
-    logtraceln('Proposing ~Q.', factMergeClasses_C(Class1, Class2)).
+% 1. If the called method does not install any base class vftables, guess that the method is on the derived class.
+% 2. If the called method installs a base VFTable, guess that the method belongs on the base class.
+% 3. Guess that the called method is on the derived class.
+% 4. Finally guess that the called method is on the base class.
+% Note: Although it seems like #1 is redundant, removing #1 changes the order in which guesses
+% are made which causes unit tests to fail.
+
+% If the called method does not install any base class vftables and there are no other derived
+% classes that call the method, guess that the method is on the derived class.
+guessMergeClassesC1(DerivedClass, CalledClass) :-
+    % A derived class calls a method
+    factClassCallsMethod(DerivedClass, CalledMethod),
+    not(purecall(CalledMethod)), % Never merge purecall methods into classes.
+    factDerivedClass(DerivedClass, BaseClass, Offset),
+    find(CalledMethod, CalledClass),
+
+    % The called method does NOT install any vftables that are on the base class.
+    not((
+               find(BaseVFTable, BaseClass),
+               factVFTableWrite(_Insn, CalledMethod, Offset, BaseVFTable)
+       )),
+    % There does NOT exist a distinct class that also calls the called method.  If this
+    % happens, there is ambiguity about which derived class the CalledMethod should be placed
+    % on, so it should probably go on the base.
+    %% not((
+    %%            factClassCallsMethod(DerivedClass2, CalledMethod),
+    %%            iso_dif(DerivedClass, DerivedClass2),
+    %%            factNOTMergeClasses(DerivedClass, DerivedClass2)
+    %%    )),
+    % ejs 10/8/2020 This rule is a bit difficult to understand, particularly because of the
+    % multiple factClassCallsMethod check that is intended to detect multiple derived classes.
+    % We found that a new reasoning rule covered some of the same cases and is easier to
+    % understand, reasonNOTMergeClasses_R.  We are not sure if this completely covers this
+    % rule, so we are just commenting it out for now.  Although we expected to be able to
+    % comment out this rule (guessMergeClassesC1) completely, there is apparently an implied
+    % ordering dependency.  So we are leaving this rule here.
+
+    checkMergeClasses(DerivedClass, CalledClass),
+    logtraceln('Proposing ~Q.', factMergeClasses_C1(DerivedClass, CalledClass, CalledMethod,
+                                                   BaseClass, Offset)).
 
 guessMergeClasses(Out) :-
-    reportFirstSeen('guessMergeClassesC'),
+    reportFirstSeen('guessMergeClassesC1'),
     minof((Class, Method),
-          guessMergeClassesC(Class, Method)),
+          guessMergeClassesC1(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
-    logtraceln('Proposing ~Q.', factMergeClasses_C(OneTuple)),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
-% If that didn't work, maybe the method belongs on the base instead.
-% ED_PAPER_INTERESTING
-guessMergeClassesD(Class1, Class2) :-
-    factClassCallsMethod(Class1, Method),
-    not(purecall(Method)), % Never merge purecall methods into classes.
-    factDerivedClass(_DerivedClass, Class1, _Offset),
-    find(Method, Class2),
-    checkMergeClasses(Class1, Class2),
-    logtraceln('Proposing ~Q.', factMergeClasses_D(Class1, Class2)).
+% If the called method installs a base VFTable, guess that the method belongs on the base class.
+guessMergeClassesC2(BaseClass, CalledClass) :-
+    factClassCallsMethod(DerivedClass, CalledMethod),
+    not(purecall(CalledMethod)), % Never merge purecall methods into classes.
+    factDerivedClass(DerivedClass, BaseClass, Offset),
+    find(CalledMethod, CalledClass),
+
+    % The CalledMethod installs a VFTable on the base class
+    find(BaseVFTable, BaseClass),
+    factVFTableWrite(_Insn, CalledMethod, Offset, BaseVFTable),
+
+    checkMergeClasses(BaseClass, CalledClass),
+    logtraceln('Proposing ~Q.', factMergeClasses_C2(BaseClass, CalledClass, CalledMethod,
+                                                   DerivedClass, Offset)).
 
 guessMergeClasses(Out) :-
-    reportFirstSeen('guessMergeClassesD'),
+    reportFirstSeen('guessMergeClassesC2'),
     minof((Class, Method),
-          guessMergeClassesD(Class, Method)),
+          guessMergeClassesC2(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
-    logtraceln('Proposing ~Q.', factMergeClasses_D(OneTuple)),
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
+
+% If we haven't made a guess about the called method, guess that it is on the derived class.
+guessMergeClassesC3(DerivedClass, CalledClass) :-
+    factClassCallsMethod(DerivedClass, CalledMethod),
+    not(purecall(CalledMethod)), % Never merge purecall methods into classes.
+    factDerivedClass(DerivedClass, BaseClass, Offset),
+    find(CalledMethod, CalledClass),
+    checkMergeClasses(DerivedClass, CalledClass),
+    logtraceln('Proposing ~Q.', factMergeClasses_C3(DerivedClass, CalledClass, CalledMethod,
+                                                    BaseClass, Offset)).
+
+guessMergeClasses(Out) :-
+    reportFirstSeen('guessMergeClassesC3'),
+    minof((Class, Method),
+          guessMergeClassesC3(Class, Method)),
+    !,
+    OneTuple=[(Class, Method)],
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
+
+% If we still haven't made a guess about the called method, guess that it is on the base class.
+guessMergeClassesC4(BaseClass, CalledClass) :-
+    factClassCallsMethod(BaseClass, CalledMethod),
+    not(purecall(CalledMethod)), % Never merge purecall methods into classes.
+    factDerivedClass(DerivedClass, BaseClass, Offset),
+    find(CalledMethod, CalledClass),
+    checkMergeClasses(BaseClass, CalledClass),
+    logtraceln('Proposing ~Q.', factMergeClasses_C4(BaseClass, CalledClass, CalledMethod,
+                                                    DerivedClass, Offset)).
+
+guessMergeClasses(Out) :-
+    reportFirstSeen('guessMergeClassesC4'),
+    minof((Class, Method),
+          guessMergeClassesC4(Class, Method)),
+    !,
+    OneTuple=[(Class, Method)],
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % And finally just guess regardless of derived class facts.
@@ -992,7 +1054,6 @@ guessMergeClasses(Out) :-
           guessMergeClassesE(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
-    logtraceln('Proposing ~Q.', factMergeClasses_E(OneTuple)),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 
@@ -1034,13 +1095,14 @@ guessMergeClassesG(Class1, Class2) :-
               iso_dif(Class1, Class)),
           ClassSet),
 
-    logdebugln('~Q is installed by destructor ~Q and these other classes: ~Q',
+    logtraceln('~Q is installed by destructor ~Q and these other classes: ~Q',
                [factVFTableWrite(Method, Offset, VFTable), Method, ClassSet]),
 
     (ClassSet = [Class2]
      ->
          checkMergeClasses(Class1, Class2),
-         logdebugln('guessMergeClassesG had one candidate class: ~Q.', [Class2])
+         logtraceln('guessMergeClassesG had one candidate class: ~Q.', [Class2]),
+         logtraceln('Proposing ~Q.', factMergeClasses_G(Class1, Class2))
      ;
      % We will merge with the largest class
      % XXX: This could be implemented more efficiently using a maplist/2 and a sort.
@@ -1065,7 +1127,6 @@ guessMergeClasses(Out) :-
           guessMergeClassesG(Class1, Class2)),
     !,
     OneTuple=[(Class1, Class2)],
-    logtraceln('Proposing ~Q.', factMergeClasses_G(OneTuple)),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 

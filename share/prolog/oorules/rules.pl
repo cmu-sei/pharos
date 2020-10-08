@@ -2021,6 +2021,27 @@ reasonClassCallsMethod_F(Class, Method) :-
 % that makes other rules incorrect.
 
 % --------------------------------------------------------------------------------------------
+
+% This rule is a much more tightly constrained version of possiblyReused in initial.pl.  This
+% version may in fact be too tightly constrained to always detect the reuse in time to prevent
+% the inappropriate class merges that it is designed to block, but it seems to work right now.
+:- table reasonReusedImplementation/1 as incremental.
+
+reasonReusedImplementation(Method) :-
+    possiblyReused(Method),
+    factMethodInVFTable(VFTable1, _Offset1, Method),
+    factMethodInVFTable(VFTable2, _Offset2, Method),
+    iso_dif(VFTable1, VFTable2),
+    find(VFTable1, Class1),
+    find(VFTable2, Class2),
+    iso_dif(Class1, Class2),
+    not((
+               reasonClassRelationship(Class1, Class2);
+               reasonClassRelationship(Class2, Class1)
+       )),
+    logtraceln('Reasoning ~Q.', factReusedImplementation(Class1, Class2, Method)).
+
+% --------------------------------------------------------------------------------------------
 :- table reasonMergeClasses/2 as incremental.
 
 % This is an attempt by Ed to avoid recomputing all of reasonMergeClasses when we invalidate
@@ -2094,6 +2115,8 @@ reasonMergeClasses_B(BaseClass, MethodClass) :-
 
     % Which has a Method
     factMethodInVFTable(BaseVFTable, _Offset, Method),
+    not(purecall(Method)),
+    not(reasonReusedImplementation(Method)),
 
     % We don't have to check purecall because factMethodInVFTable does already
 
@@ -2142,7 +2165,7 @@ reasonMergeClasses_C(Class, ExistingClass) :-
 % class constructor).
 % PAPER: Merging-1
 % ED_PAPER_INTERESTING
-reasonMergeClasses_D(Method1, Method2) :-
+reasonMergeClasses_D(Class1, Class2) :-
     % We've been back and forth several times about whether the object offset that the VFTable
     % address is written into should bound to zero or not.  Cory currently believes that while
     % the rule _might_ apply in cases where the offset is non-zero, the obvious case occurs
@@ -2274,13 +2297,15 @@ reasonMergeClasses_H(DerivedClass, MethodClass) :-
     factVFTableSizeLTE(BaseVFTable, BaseSize),
     % There's an entry in the derived vftable that's to big to be in the base vftable.
     factVFTableEntry(DerivedVFTable, VOffset, Method),
+    not(purecall(Method)),
+    not(reasonReusedImplementation(Method)),
     VOffset > BaseSize,
     find(Method, MethodClass),
     iso_dif(DerivedClass, MethodClass),
     % Debugging
     logtraceln('~@~Q.', [not(find(DerivedClass, MethodClass)),
-                         reasonMergeClasses_H(DerivedVFTable, BaseSize, VOffset, BaseVFTable,
-                                              Method, DerivedClass, MethodClass)]).
+                         reasonMergeClasses_H(BaseVFTable, DerivedVFTable, BaseSize, VOffset,
+                                              Method, BaseClass, DerivedClass, MethodClass)]).
 
 % Because a vftable is connected by a vftable write.  See reasonVFTableBelongsToClass for more
 % information.
@@ -2290,7 +2315,7 @@ reasonMergeClasses_I(VFTableClass, Class) :-
 
     iso_dif(VFTableClass, Class),
 
-    logtraceln('~@~Q.', [not(find(VFTable, Class)),
+    logtraceln('~@~Q.', [not(find(VFTableClass, Class)),
                          reasonMergeClasses_I(VFTableClass, Class)]).
 
 % Sometimes a class may have multiple vftables that we know are on the same class through RTTI.
@@ -2374,6 +2399,7 @@ reasonMergeClasses_K(MethodClass, VFTClass) :-
 :- table reasonNOTMergeClasses_P/2 as incremental.
 :- table reasonNOTMergeClasses_Q/2 as incremental.
 :- table reasonNOTMergeClasses_Qhelper/2 as incremental.
+:- table reasonNOTMergeClasses_R/2 as incremental.
 
 reasonNOTMergeClasses(M1,M2) :-
     reasonNOTMergeClasses_A(M1,M2).
@@ -2399,9 +2425,10 @@ reasonNOTMergeClasses_new(M1,M2) :-
         % _N is now handled in trigger.pl
         %reasonNOTMergeClasses_N(M1,M2),
         reasonNOTMergeClasses_O(M1,M2),
-        reasonNOTMergeClasses_P(M1,M2)
+        reasonNOTMergeClasses_P(M1,M2),
         % _Q is now handled in trigger.pl
         %reasonNOTMergeClasses_Q(M1,M2)
+        reasonNOTMergeClasses_R(M1,M2)
       ]).
 
 % Because it's already true.
@@ -2456,6 +2483,7 @@ reasonNOTMergeClasses_C(Class1, Class2) :-
 % PAPER: Merging-7
 % ED_PAPER_INTERESTING
 reasonNOTMergeClasses_E(Class1, Class2, Insn1, Method1, 0, VFTable1) :-
+    false,
     % Two VFTables are written into the zero object offset in two different methods.  The
     % sterotypical case is of course two compeltely unrelated classes.  This rule applies
     % equally to constructors and destructors.  There were problems in Lite/oo with 0x402766 (a
@@ -2688,6 +2716,25 @@ reasonNOTMergeClasses_Q(Class1Sorted, Class2Sorted, Method1, Method2) :-
     % Debugging
     logtraceln('~@~Q.', [not(dynFactNOTMergeClasses(Class1Sorted, Class2Sorted)),
                          reasonNOTMergeClasses_Q(Class1Sorted, Class2Sorted, ClassName)]).
+
+% If a derived class calls a method, and that method installs the derived class' vftable, then
+% the called method cannot be on the base class.
+reasonNOTMergeClasses_R(Class1Sorted, Class2Sorted) :-
+    % A derived class calls a method
+    factClassCallsMethod(DerivedClass, CalledMethod),
+    not(purecall(CalledMethod)), % Never merge purecall methods into classes.
+    factDerivedClass(DerivedClass, BaseClass, Offset),
+    find(CalledMethod, CalledClass),
+
+    % The CalledMethod installs a VFTable on the derived class
+    find(DerivedVFTable, DerivedClass),
+    factVFTableWrite(_Insn, CalledMethod, Offset, DerivedVFTable),
+
+    % Handle symmetry
+    sort_tuple((BaseClass, CalledClass), (Class1Sorted, Class2Sorted)),
+    % Debugging
+    logtraceln('~@~Q.', [not(dynFactNOTMergeClasses(Class1Sorted, Class2Sorted)),
+                         reasonNOTMergeClasses_R(Class1Sorted, Class2Sorted, DerivedClass, BaseClass, Offset)]).
 
 reasonNOTMergeClassesSet(Constructor, Set) :-
     factConstructor(Constructor),

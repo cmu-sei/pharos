@@ -54,7 +54,7 @@
 :- dynamic factNOTVirtualFunctionCall/5 as incremental.
 :- dynamic factVFTable/1 as incremental.
 :- dynamic factNOTVFTable/1 as incremental.
-:- dynamic factVFTableWrite/4 as incremental,abstract(0).
+:- dynamic factVFTableWrite/4 as (incremental,abstract(0)).
 :- dynamic factVFTableOverwrite/4 as incremental.
 :- dynamic factVFTableEntry/3 as incremental.
 :- dynamic factNOTVFTableEntry/3 as incremental.
@@ -455,7 +455,10 @@ reasoningLoop :-
         loginfoln('reasoningLoop: Backtracking into reasoningLoop/0 to fix an upstream problem.'),
         fail
     ;
-    logerrorln('Refusing to backtrack into reasoningLoop to fix an upstream problem because backtrackForUpstream/0 is not set.  The results will be inaccurate.').
+    logfatalln('Refusing to backtrack into reasoningLoop to fix an upstream problem because backtrackForUpstream/0 is not set.'),
+    logfatalln('This likely indicates that there is a problem with the OO rules.'),
+    logfatalln('Please report this failure to the Pharos developers!'),
+    throw_with_backtrace(error(system_error(upstreamProblem))).
 
 % --------------------------------------------------------------------------------------------
 % The performance of our code is highly dependent on the ordering of these guesses.  Making bad
@@ -561,7 +564,7 @@ setDefaultLogLevel :-
 initialSanityChecks :-
     sanityChecks -> true;
     logfatalln('Initial sanity check failed, indicating the OO rules are incorrect.'),
-    logfatalln('Please report this failures to the Pharos developers!'),
+    logfatalln('Please report this failure to the Pharos developers!'),
     throw_with_backtrace(error(system_error(initialSanityChecks))).
 
 % The Source should either be ooanalyzer_tool or ooscript, and is only used right now to pick

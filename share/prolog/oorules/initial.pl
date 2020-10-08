@@ -198,6 +198,80 @@ validMethodMemberAccess(Insn, Method, Offset, Size) :-
     not(invalidMethodMemberAccess(Method)).
 
 % ============================================================================================
+% This code is an attempt to handle functions optimized by link-time code generation to use the
+% same address for methods that are actually on different classes.  When this occurs it is a
+% fairly significant problem for the overall OOAnalyzer strategy for assigning methods to
+% classes.  To attempt to combat the problem, we start with two observations: First, that the
+% optimization is most common for "trivial" functions with very few instructions like "xor
+% eax,eax; ret".  Second, that the problem seems to cause the most trouble when methods are
+% assigned to classes via VFTable reasoning rules that are otherwise sound.  These two rules
+% will not "fix" the problem but they should significantly reduce the frequency at which it
+% causes consistency failures.
+% ============================================================================================
+:- table trivial/1 as opaque.
+
+% A trivial function is defined roughly as one that has no facts to speak of.  Having all four
+% calling conventions typically means that the function was trivial enough that we were unable
+% to differentiate between the calling conventions.  The rest of the not() clauses are further
+% checks to ensure that the method does more or less nothing.
+trivial(Address):-
+    % Having all of these calling conventions limits the behavior of the function a fair bit.
+    % Having the cdecl calling convention is also permitted, but _not_ required.
+    callingConvention(Address, '__stdcall'),
+    callingConvention(Address, '__thiscall'),
+    callingConvention(Address, '__fastcall'),
+    callingConvention(Address, '__vectorcall'),
+
+    % Can't require EAX return code because some trivial functions "just return", not even
+    % setting EAX.
+
+    % And a bunch of other things should NOT be true...
+
+    % No reading of parameters is allowed!  First because it's very common.
+    not(callParameter(_, Address, _, _)),
+    not(funcParameter(_, Address, _)),
+    % No calling other functions, unless they're also trivial.  Very common.
+    not((callTarget(_, Address, Called), not(trivial(Called)))),
+    % No reading from the object.  Anotehr very effective blocker.
+    not(methodMemberAccess(_, Address, _, _)),
+
+    % Trivial methods are certainly not valid for constructor like methods, and possibly not
+    % for destructor like as well.
+    not(noCallsBefore(Address)),
+    not(noCallsAfter(Address)),
+    % No thunking to other functions.
+    not(thunk(Address, _)),
+    % No allocating memory.
+    not(thisPtrAllocation(_, Address, _, _, _)),
+
+    % Implied by no callTargets?
+    not(funcOffset(_, Address, _, _)),
+    not(insnCallsDelete(_, Address, _)),
+    % Implied by no methodMemberAccess?
+    not(uninitializedReads(Address)),
+    not(returnsSelf(Address)),
+    not(thisPtrUsage(_, Address, _, _)),
+    not(possibleVFTableWrite(_, Address, _, _)),
+    not(possibleVBTableWrite(_, Address, _, _)),
+    logtraceln('Reasoning ~Q.', factTrivial(Address)).
+
+% For the second part of our approach, we're going to look for trivial functions that _might_
+% be in more than one VFTable.  This opaquely tabled predicate is still very broad.  For
+% example, it doesn't even prove that the function appears in more than one table because both
+% entry addresses might be in the same table.  This rule might eventually need to be broadened
+% further to include reuse situations that don't involve VFTables in reused functions are a
+% problem in other rules as well.  Also see a more restricted version of this rule in rules.pl
+% named reasonReusedImplementation that greatly strengthens the requirements.
+:- table possiblyReused/1 as opaque.
+
+possiblyReused(Function):-
+    trivial(Function),
+    initialMemory(EntryAddress1, Function),
+    initialMemory(EntryAddress2, Function),
+    iso_dif(EntryAddress1, EntryAddress2),
+    logtraceln('Reasoning ~Q.', factPossiblyReused(Function)).
+
+% ============================================================================================
 % Thunk handling...
 % ============================================================================================
 

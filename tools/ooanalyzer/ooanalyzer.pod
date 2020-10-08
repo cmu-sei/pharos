@@ -164,6 +164,10 @@ OOAnalyzer has been tested primarily with 32-bit Windows executables.
 64-bit executables, and executables for other operating systems may
 work as well, but have not been tested extensively.
 
+OOAnalyzer is not designed to be re-run using an existing set of fact
+files as an input.  This can be achieved by using the L<ooprolog(1)>
+program.
+
 =head1 AUTHOR
 
 Written by the Software Engineering Institute at Carnegie Mellon
@@ -178,17 +182,12 @@ for details.
 
 =head1 SEE ALSO
 
-The documentation for the OOAnalyzer IDA plugin is available from:
-
-=over 4
-
-man ooanalyzer-plugin
-
-=back
+oprolog(1)
 
 =cut
 
 Local Variables:
 mode:text
 indent-tabs-mode:nil
+fill-column: 73
 End:
