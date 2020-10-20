@@ -90,8 +90,6 @@ finalDemangledName(0x4184ec, '.?AVexception@std@@', 'std::exception', '').
 finalDemangledName(0x41850c, '.?AVbad_cast@std@@', 'std::bad_cast', '').
 finalDemangledName(0x418518, '.?AVtype_info@@', type_info, '').
 finalDemangledName(0x4186b8, '.?AVbad_exception@std@@', 'std::bad_exception', '').
-finalEmbeddedObject(0x4183dc, 0, 0x4184ec, likely).
-finalEmbeddedObject(0x4183e8, 0, 0x4184ec, likely).
 finalEmbeddedObject(0x418434, 0x4, 0x40606c, likely).
 finalFileInfo('BE390C1EB4B313C892F8F754A0FCD7BD', 'ooex7.exe').
 finalInheritance(0x401f60, 0x4013e0, 0x4, 0, false).

@@ -137,7 +137,10 @@ makeNormalMemberJson(ClassId, Offset, OffsetStr, Out):-
     ((finalEmbeddedObject(ClassId, Offset, InnerClassId, _);
       finalInheritance(ClassId, InnerClassId, Offset, _, _)) ->
          (
-             finalClass(InnerClassId, _VFTable, Size, _OtherSize, _RealDestruct, _Methods),
+             (finalClass(InnerClassId, _VFTable, Size, _OtherSize, _RealDestruct, _Methods)
+              -> true;
+              (Size=unknown,
+               logerrorln('Unable to find class ~Q. Please report this error to the OOAnalyzer developers.', InnerClassId))),
              makeClassName(InnerClassId, ClsType),
              makeMemberName(ClassId, Offset, ClsType, MemberName),
              Struct = ClsType, Type = 'struc'

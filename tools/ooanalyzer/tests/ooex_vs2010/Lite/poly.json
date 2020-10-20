@@ -2398,11 +2398,11 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "name": ".?AVexception@std@@_0x0",
+                    "name": ".?AVlogic_error@std@@_0x0",
                     "offset": "0x0",
                     "parent": true,
                     "size": 9,
-                    "struc": ".?AVexception@std@@",
+                    "struc": ".?AVlogic_error@std@@",
                     "type": "struc",
                     "usages": [
                         "0x4035ff"
@@ -2486,11 +2486,11 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "name": ".?AVexception@std@@_0x0",
+                    "name": ".?AVlogic_error@std@@_0x0",
                     "offset": "0x0",
                     "parent": true,
                     "size": 9,
-                    "struc": ".?AVexception@std@@",
+                    "struc": ".?AVlogic_error@std@@",
                     "type": "struc",
                     "usages": [
                         "0x40364c"

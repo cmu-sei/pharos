@@ -412,6 +412,16 @@ concludeClassHasUnknownBase(Out) :-
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).
 
+concludeReusedImplementation(Out) :-
+    reportFirstSeen('concludeReusedImplementation'),
+    setof(Method,
+          (reasonReusedImplementation(Method),
+           not(factReusedImplementation(Method)),
+           loginfoln('Concluding ~Q.', factReusedImplementation(Method))),
+          MethodSets),
+    maplist(try_assert_builder(factReusedImplementation), MethodSets, ActionSets),
+    Out = all(ActionSets).
+
 concludeClassCallsMethod(Out) :-
     reportFirstSeen('concludeClassCallsMethod'),
     setof((Class, Method),
@@ -438,6 +448,13 @@ concludeNOTMergeClasses(Out) :-
           ClassSets),
     maplist(try_assert_builder(factNOTMergeClasses), ClassSets, ActionSets),
     Out = all(ActionSets).
+
+concludeMergeVFTables(Out) :-
+    reportFirstSeen('concludeMergeVFTables'),
+    reasonMergeVFTables(Class1, Class2),
+    not(dynFactNOTMergeClasses(Class1, Class2)),
+    loginfoln('Concluding ~Q.', mergeVFTables(Class1, Class2)),
+    Out = mergeClasses(Class1, Class2).
 
 concludeMergeClasses(Out) :-
     reportFirstSeen('concludeMergeClasses'),

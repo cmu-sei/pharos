@@ -75,6 +75,7 @@
 :- dynamic factClassSizeGTE/2 as incremental.
 :- dynamic factClassSizeLTE/2 as incremental.
 :- dynamic factClassHasNoBase/1 as incremental.
+:- dynamic factReusedImplementation/1 as incremental.
 :- dynamic factClassHasUnknownBase/1 as incremental.
 :- dynamic factNOTMergeClasses/2 as incremental.
 :- dynamic factClassCallsMethod/2 as incremental.
@@ -352,7 +353,14 @@ mergeClasses(M1, M2) :-
     maplist(mergeClassBuilder, Set, Actions),
     %logdebugln(Actions),
 
-    all(Actions).
+    all(Actions),
+
+    (logLevelEnabled('TRACE')
+     ->
+         findall(NewRep, AllObjects),
+         logtraceln('Objects now on ~Q: ~Q', [NewRep, AllObjects])
+     ;
+         true).
 
 % It does not appear that the ordering of the reasoning rules is too important because we'll
 % eventually complete all reasoning before going to to guessing.  On the other hand, reasoning
@@ -387,9 +395,11 @@ reasonForward :-
           concludeClassSizeLTE(Out);
           concludeClassHasNoBase(Out);
           concludeClassHasUnknownBase(Out);
+          concludeReusedImplementation(Out);
           concludeNOTMergeClasses(Out);
           % We should probably be more intelligent about how we order here for trigger
           concludeTrigger(Out);
+          concludeMergeVFTables(Out);
           concludeMergeClasses(Out);
           concludeClassCallsMethod(Out)
         )),
@@ -476,54 +486,54 @@ guess :-
               guessVBTable(Out);
               guessDerivedClass(Out);
 
-              % Guess that methods really are methods.  Currently the ordering for this rule was
-              % pretty random --  in time to guessing VFTable entries?
+              % Guess that methods really are methods.  Currently the ordering for this rule
+              % was pretty random -- in time to guessing VFTable entries?
               guessMethod(Out);
 
-              % Perhaps both of these should be guessed at once?  They're so closely related that we
-              % might get better results from requiring both or none...  But how to do that?  These area
-              % guessed before constructors in particular because the prevent some bas constructor
-              % guesses.
+              % Guessing VFTables needed to be moved earlier than it used to be because we
+              % corrected some defects in VFTable forward reasoning that made guessing much
+              % more important.   It's unclear if it needs to be this early, but results were
+              % definitely better here than later.
+              guessVFTableEntry(Out);
+
+              % Perhaps both of these should be guessed at once?  They're so closely related
+              % that we might get better results from requiring both or none...  But how to do
+              % that?  These area guessed before constructors in particular because the prevent
+              % some bas constructor guesses.
               guessDeletingDestructor(Out);
               guessRealDestructor(Out);
 
-              % Constructors are very important guesses that can sometimes be reasoned soundly in the
-              % presence of virtual function tables, but we often have to guess when there are not
-              % tables.
+              % Constructors are very important guesses that can sometimes be reasoned soundly
+              % in the presence of virtual function tables, but we often have to guess when
+              % there are not tables.
               guessConstructor(Out);
 
-              % This is a fairly solid rule that used to be forward reasoning until it was found to
-              % be incorrect in certain rare cases.  It has to be before ClassHasNoBase because it
-              % will cause confusion about embedded object versus inheritance if it's after.
+              % This is a fairly solid rule that used to be forward reasoning until it was
+              % found to be incorrect in certain rare cases.  It has to be before
+              % ClassHasNoBase because it will cause confusion about embedded object versus
+              % inheritance if it's after.
               guessNOTMergeClasses(Out);
 
-              % This is a very important (and very speculative) guess that's required to make a lot of
-              % forward progress. :-( It's a very likely source of backtracking.  Its relationship with
-              % guessing constructors is very unclear.  We probably need to have a fairly complete set of
-              % constructors to derive base class relationships which prevent bad no-base guesses.
+              % This is a very important (and very speculative) guess that's required to make a
+              % lot of forward progress. :-( It's a very likely source of backtracking.  Its
+              % relationship with guessing constructors is very unclear.  We probably need to
+              % have a fairly complete set of constructors to derive base class relationships
+              % which prevent bad no-base guesses.
               guessClassHasNoBase(Out);
 
-              % Guess some less likely constructors after having finished reasoning through the likely
-              % implications of the inheritance of the more likely constuctor guesses.
+              % Guess some less likely constructors after having finished reasoning through the
+              % likely implications of the inheritance of the more likely constuctor guesses.
               guessUnlikelyConstructor(Out);
 
-              % This guess was move to almost last because in the case of overlapping VFTables, there's a
-              % lot of bad guesses that are very confusing.  Alternatively, we could choose not to make
-              % guesses that do not overlap with _possible_ tables initially, and then later make more
-              % speculative guesses that do.  These guesses probably don't drive a lot of logic
-              % currently, but could drive more later (we're currently lacking good rules limiting the
-              % relationships between virtual methods).
-              guessVFTableEntry(Out);
-
-              % This shuold probably be the very last guess because a lot of it is pretty arbitrary.
-              % Alternatively we could break the different ways of proposing guesses into different rules
-              % and make higher confidence guesses earlier and lower confidence guesses later.  Right
-              % now, that's handled by clause ordering within this one rule, which precludes us from
-              % splitting it up.
+              % This shuold probably be the very last guess because a lot of it is pretty
+              % arbitrary.  Alternatively we could break the different ways of proposing
+              % guesses into different rules and make higher confidence guesses earlier and
+              % lower confidence guesses later.  Right now, that's handled by clause ordering
+              % within this one rule, which precludes us from splitting it up.
               guessMergeClasses(Out);
 
-              % Only after we've merged all the methods into the classes should we take wild guesses
-              % at real destructors.
+              % Only after we've merged all the methods into the classes should we take wild
+              % guesses at real destructors.
               guessFinalDeletingDestructor(Out);
               % RealDestructorChange! (uncomment next line and add semicolon above)
               %guessFinalRealDestructor(Out)

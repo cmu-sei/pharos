@@ -215,10 +215,17 @@ concludeTrigger(Out) :-
           Facts),
     !,
 
-    setof(OutTemp,
+    (setof(OutTemp,
           Fact^OutTemp^(member(Fact, Facts), dispatchTrigger(Fact, OutTemp)),
-          ActionList),
-    Out = all(ActionList).
+          ActionList)
+     ->
+         % If we generated any actions, take them
+         Out = all(ActionList)
+     ;
+         % If we didn't take any actions, succeed but return a noop action.  If we don't do this,
+         % concludeTrigger will fail and the next conclusion rule will be evaluated even if there
+         % are more trigger facts to be considered.  This can lead to upstream problem errors.
+         Out = true).
 
 /* Local Variables:   */
 /* mode: prolog       */

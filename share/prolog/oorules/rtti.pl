@@ -133,8 +133,7 @@ rTTIInheritsFrom(DerivedTDA, AncestorTDA, Attributes, M, P, V) :-
 % analysis.  Additionally, this rule may be used efficiently in places where we would normally
 % rely on sanity checking to detect contradictions because of the primacy of RTTI conclusions.
 % The only catch is that the RTTI data only gives us VFTables, not class ids, so we'll have to
-% call reasonPrimaryVFTableForClass(VFTable, Class) later to map these facts to get the correct
-% class ids.
+% call findVFTable(VFTable, 0, Class) later to map these facts to get the correct class ids.
 :- table rTTIDerivedClass/3 as opaque.
 rTTIDerivedClass(DerivedVFTable, BaseVFTable, Offset) :-
     rTTIEnabled,

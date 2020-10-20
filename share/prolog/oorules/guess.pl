@@ -674,8 +674,8 @@ guessClassHasNoBaseB(Class) :-
 guessClassHasNoBase(Out) :-
     reportFirstSeen('guessClassHasNoBase'),
     osetof(Class,
-           guessClassHasNoBaseB(Class),
-           ClassSet),
+          guessClassHasNoBaseB(Class),
+          ClassSet),
     logtraceln('Proposing ~P.', 'ClassHasNoBase_B'(ClassSet)),
     Out = tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
 
@@ -903,7 +903,7 @@ guessMergeClassesB(Class1, Class2) :-
     find(Method1, Class1),
 
     % Which class is VFTable associated with?
-    reasonVFTableBelongsToClass(VFTable, _ObjOffset1, Class2),
+    findVFTable(VFTable, Class2),
 
     iso_dif(Class1, Class2),
 
@@ -913,8 +913,7 @@ guessMergeClassesB(Class1, Class2) :-
     % same place.  It's unclear if this is really correct.
 
     forall(factMethodInVFTable(OtherVFTable, _Offset, Method1),
-           reasonVFTableBelongsToClass(OtherVFTable, _ObjOffset2, Class2)),
-
+           findVFTable(OtherVFTable, Class2)),
 
     checkMergeClasses(Class1, Class2),
     logtraceln('Proposing ~Q.', factMergeClasses_B(Method1, VFTable, Class1, Class2)).
@@ -1059,19 +1058,16 @@ guessMergeClasses(Out) :-
 
 % Try guessing that a VFTable belongs to a method.
 
-% Say that a VFTable is installed by multiple methods.  If all of
-% these methods are on the same class, it's a fair bet that the
-% VFTable corresponds to that class.  This is implemented in
-% reasonVFTableBelongsToClass.  But if the methods are not (currently)
-% known to be on the same class, it's less clear what to do.  One
-% situation we've observed is when a destructor is not merged.  There
-% is some ambiguity because destructors are optimized more.  If a
-% destructor installs a VFTable, we can't tell if the destructor is
-% for that VFTable's class, or if the destructor is on a derived class
-% (and the base destructor was inlined).  This guess identifies this
-% situation.  We initially guess that the two class fragments are on
-% the same class.  If that fails, we guess that the class identified
-% by the destructor is derived from the other class.
+% Say that a VFTable is installed by multiple methods.  If all of these methods are on the same
+% class, it's a fair bet that the VFTable corresponds to that class.  This is implemented in
+% reasonVFTableBelongsToClass.  But if the methods are not (currently) known to be on the same
+% class, it's less clear what to do.  One situation we've observed is when a destructor is not
+% merged.  There is some ambiguity because destructors are optimized more.  If a destructor
+% installs a VFTable, we can't tell if the destructor is for that VFTable's class, or if the
+% destructor is on a derived class (and the base destructor was inlined).  This guess
+% identifies this situation.  We initially guess that the two class fragments are on the same
+% class.  If that fails, we guess that the class identified by the destructor is derived from
+% the other class.
 
 % XXX: We may be able to do additional reasoning based on whether the
 % classes have bases or not.  But this is probably handled by sanity
@@ -1081,9 +1077,8 @@ guessMergeClassesG(Class1, Class2) :-
     factVFTableWrite(_Insn, Method, Offset, VFTable),
     find(Method, Class1),
 
-    % This guessing rule is only for destructors, because
-    % VFTableOverwrite logic works for constructors (see
-    % reasonVFTableBelongsToClass).
+    % This guessing rule is only for destructors, because VFTableOverwrite logic works for
+    % constructors (see reasonVFTableBelongsToClass).
     factNOTConstructor(Method),
 
     % Which other classes also install this VFTable

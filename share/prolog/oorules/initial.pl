@@ -9,13 +9,16 @@
 :- table possibleConstructor/1 as opaque.
 
 possibleConstructor(M) :-
-    returnsSelf(M),
-    noCallsBefore(M).
+    (returnsSelf(M), noCallsBefore(M));
+    symbolProperty(M, constructor).
 
 :- table possibleDestructor/1 as opaque.
 
 possibleDestructor(M) :-
-    noCallsAfter(M).
+    noCallsAfter(M);
+    symbolProperty(M, realDestructor);
+    symbolProperty(M, deletingDestructor).
+
 
 % --------------------------------------------------------------------------------------------
 

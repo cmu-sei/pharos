@@ -79,8 +79,6 @@ finalDemangledName(0x4124ec, '.?AVbad_cast@std@@', 'std::bad_cast', '').
 finalDemangledName(0x4124f8, '.?AVtype_info@@', type_info, '').
 finalDemangledName(0x412578, '.?AVbad_exception@std@@', 'std::bad_exception', '').
 finalEmbeddedObject(0x4123c4, 0x4, 0x403eb6, likely).
-finalEmbeddedObject(0x41249c, 0, 0x4124cc, likely).
-finalEmbeddedObject(0x4124a8, 0, 0x4124cc, likely).
 finalFileInfo('D3ABCCEDC43A1CE0768AA2C269A89A37', 'oo.exe').
 finalInheritance(0x4015e0, 0x4011f0, 0, 0, false).
 finalInheritance(0x40284c, 0x4038ae, 0, 0, false).

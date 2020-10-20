@@ -81,8 +81,6 @@ finalDemangledName(0x4124a4, '.?AVexception@std@@', 'std::exception', '').
 finalDemangledName(0x4124c4, '.?AVbad_cast@std@@', 'std::bad_cast', '').
 finalDemangledName(0x412548, '.?AVbad_exception@std@@', 'std::bad_exception', '').
 finalEmbeddedObject(0x412394, 0x4, 0x403e49, likely).
-finalEmbeddedObject(0x41246c, 0, 0x4124a4, likely).
-finalEmbeddedObject(0x412478, 0, 0x4124a4, likely).
 finalFileInfo('66C439911D71C4323F6249C763CFFD47', 'poly.exe').
 finalInheritance(0x401680, 0x401200, 0, 0, false).
 finalInheritance(0x4027bd, 0x403841, 0, 0, false).

@@ -37,6 +37,11 @@ findVFTable(V, R) :-
     findint(V, R),
     factVFTable(V).
 
+findVFTable(VFTable, Offset, Class) :-
+    findVFTable(VFTable, Class),
+    factVFTableWrite(_Insn, Method, Offset, VFTable),
+    find(Method, Class).
+
 findMethod(M, R) :-
     findint(M, R),
     factMethod(M).

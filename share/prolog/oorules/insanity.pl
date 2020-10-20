@@ -234,6 +234,23 @@ insanityContradictoryMerges :-
     logwarn(' Method1=~Q', [Method1]),
     logwarnln(' Method2=~Q', [Method2]).
 
+:- table insanityContradictoryNOTConstructor/0 as incremental.
+insanityContradictoryNOTConstructor :-
+    reasonNOTConstructor(M),
+    factConstructor(M),
+    logwarnln('failed.'),
+    logwarnln('Consistency checks failed.'),
+    logwarnln('Contradictory information about constructor: factConstructor(~Q) but reasonNOTConstructor(~Q)', [M, M]).
+
+
+insanityContradictoryNOTConstructor :-
+    reasonConstructor(M),
+    factNOTConstructor(M),
+    logwarnln('failed.'),
+    logwarnln('Consistency checks failed.'),
+    logwarnln('Contradictory information about constructor: factNOTConstructor(~Q) but reasonConstructor(~Q)', [M, M]).
+
+
 :- table insanityEmbeddedAndNot/0 as incremental.
 insanityEmbeddedAndNot :-
     factEmbeddedObject(A, B, C),
@@ -260,6 +277,7 @@ sanityChecks :-
     not(insanityInheritanceLoop),
     %not(insanityInheritanceAfterNonInheritance),
     not(insanityContradictoryMerges),
+    not(insanityContradictoryNOTConstructor),
     not(insanityTwoRealDestructorsOnClass).
 
 /* Local Variables:   */

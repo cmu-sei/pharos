@@ -18,6 +18,36 @@
 % ejs: It sure would be nice if there was a consistent prolog library...
 
 % ============================================================================================
+
+% We've found that under some circumstances (see https://github.com/cmu-sei/pharos/issues/101)
+% vftables can be reused on different classes.  We believe this is only when no methods are
+% overridden. Here is an example.
+
+%% Concluding factVFTableWrite(0x70d682, 0x70d650, 0, 0xa2c85c).
+%% Concluding factVFTableWrite(0x70d147, 0x70d0a0, 0x16c, 0x9ae574).
+%% Concluding factVFTableWrite(0x70d133, 0x70d0a0, 0, 0xa2c85c).
+
+% Ed thought there were two possibilities:
+
+%% 1. Both classes inherit from a common base class but don't override any functions. Class
+%% 0x70d0a0 inherits from another class as well.
+
+%% 2. Class 0x70d0a0 inherits from 0x70d650 and
+%% another class, and does not override any methods from 0x70d650. Normally we'd see a vftable
+%% overwrite, but since the vftables are the same we might not.
+
+%% This predicate adds an extra check to make sure that there is exactly one class that claims
+%% ownership of the VFTable.  Right now we only envision it being used in final.pl, hence the
+%% name.
+reasonPrimaryVFTableForClassFinal(V, C) :-
+    nonvar(C),
+    % Hey we found one!
+    findVFTable(V, 0, C),
+    !,
+    % No one else better also claim it
+    forall(findVFTable(V, 0, OC), C = OC).
+
+% ============================================================================================
 % Class Identification...
 % ============================================================================================
 
@@ -96,9 +126,6 @@ usefulClass(Class) :-
     factDerivedClass(Class, _, _).
 
 % A class is useful if it has a VFTable.
-%% usefulClass(Class) :-
-%%     reasonPrimaryVFTableForClass(_VFTable, Class).
-
 usefulClass(Class) :-
     findVFTable(_VFTable, Class).
 
@@ -130,18 +157,18 @@ worthlessClass(Class) :-
     var(Class),
     throw_with_backtrace(error(instantiation_error, worthlessClass/1)).
 
-% A class is worthless if (1) it's not useful, or (2) contains purecall.
+% A class is worthless if (1) it's not useful, or (2) consists only of purecall.
 worthlessClass(Class) :-
     not(usefulClass(Class)),
     !,
     logdebugln('Rejecting worthless finalClass ~Q', [Class]).
 
 worthlessClass(Class) :-
-    purecall(PurecallMethod),
-    find(PurecallMethod, Class),
+    findall(Class, [Method]),
+    purecall(Method),
     !,
 
-    logdebugln('Rejecting worthless finalClass ~Q because it contains purecall at ~Q', [Class, PurecallMethod]).
+    logdebugln('Rejecting worthless finalClass ~Q because it contains purecall at ~Q', [Class, Method]).
 
 finalFileInfo(FileMD5, Filename) :-
    fileInfo(FileMD5, Filename).
@@ -155,7 +182,7 @@ finalClass(ClassID, VFTableOrNull, CSize, LSize, RealDestructorOrNull, MethodLis
     classIdentifier(Class, ClassID),
     % If there's a certain VFTableWrite, use the VFTable value from it.  On the other hand if
     % there is a single VFTable in the class, use that.  Otherwise return zero (null).
-    ((reasonPrimaryVFTableForClass(VFTable, Class);
+    ((findVFTable(VFTable, 0, Class);
       (findVFTable(VFTable, Class),
        forall(findVFTable(OtherVFTable, Class), VFTable = OtherVFTable)))
      ->
