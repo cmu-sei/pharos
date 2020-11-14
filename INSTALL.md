@@ -281,11 +281,14 @@ If all of the dependencies have been built and properly installed,
 building Pharos should be pretty easy.  We use the standard CMake
 build approach listed below.
 
+Similar to NCPU above, change `make -j4` to `make -j1` unless you
+have a lot of RAM.
+
 ```
 $ cd pharos
 $ mkdir build
 $ cd build
-$ cmake -DCMAKE_INSTALL_PREFIX=/usr/local 
+$ cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
 $ make -j4
 ```
 
@@ -303,7 +306,7 @@ $ ctest -j4
 Installing should also be easy.  Simply type:
 
 ```
-$ make install
+$ sudo make install
 ```
 
 The software installs into /usr/local by default, but can be
