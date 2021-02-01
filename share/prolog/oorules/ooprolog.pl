@@ -1,12 +1,13 @@
 #!/usr/bin/env swipl
 
-% Copyright 2020 Carnegie Mellon University.
+% Copyright 2020-2021 Carnegie Mellon University.
 % ============================================================================================
 % User-level driver for oorules functionality
 % ============================================================================================
 
 :- use_module(library(optparse), [opt_parse/4, opt_help/2]).
 :- use_module(library(option), [dict_options/2, option/2]).
+:- use_module(library(lists), [append/3]).
 :- use_module(library(prolog_stack)).
 
 :- dynamic file_search_path/2.
@@ -177,8 +178,11 @@ run_with_backtrace(X) :-
 
 main :-
     set_prolog_flag(color_term, true),
-    current_prolog_flag(os_argv, [_Interp|Rest]),
-    catch(main(Rest), E,
+    current_prolog_flag(os_argv, FullArgs),
+    current_prolog_flag(argv, ScriptArgs),
+    append(PrologArgs, ScriptArgs, FullArgs),
+    append(_, [Script], PrologArgs),
+    catch(main([Script|ScriptArgs]), E,
           (print_message(error, E), halt(1))).
 
 main([Script|Args]) :-

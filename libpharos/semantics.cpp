@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/format.hpp>
 
@@ -176,7 +176,9 @@ void SymbolicValue::discard_oversized_expression() {
   // }
 
 
-  if (nnodes > get_global_limits().node_condition_limit) {
+  if (get_global_limits().node_condition_limit
+      && nnodes > get_global_limits().node_condition_limit)
+  {
     // Almost/all of the discarded expressions are a single bit.  Situtations where the value
     // is larger than one bit might be worth investigating, but don't elevate the error past a
     // warning, because ordinary users don't care about this.

@@ -238,7 +238,14 @@ public class OOAnalyzer {
   }
 
   private String normalizeName(String name) {
-    return name.replaceAll("::", "/");
+    String out = name.replaceAll("::", "/");
+    if (out.endsWith("/")) {
+      Msg.warn (this, "Normalize name ending in ::? " + name);
+      // What should we do here?  For now strip it and put __.
+      out = out.substring(0, out.length () - 1) + "__";
+    }
+
+    return out;
   }
 
   /**
@@ -425,15 +432,17 @@ public class OOAnalyzer {
     // The types are now complete (including members). Update the datatype
     // manager.
 
-    var ghidraTypeArray = classTypeMap
+    classTypeMap
       .values ()
       .stream ()
       .takeWhile (entry -> !monitor.isCancelled ())
-      .toArray(DataType[]::new);
+      .forEach(entry -> {
+          monitor.incrementProgress(1);
+          allowSwingToProcessEvents();
+          updateTypeManager(entry, useOOAnalyzerNamespace);
+        });
     if (monitor.isCancelled ()) return 0;
-    allowSwingToProcessEvents();
-    updateTypeManager(ghidraTypeArray, useOOAnalyzerNamespace);
-    if (monitor.isCancelled ()) return 0;
+    dataTypeMgr.flushEvents ();
     Msg.info(this, "Type manager updated.");
     monitor.initialize(classTypeMap.size ());
     monitor.setMessage("Updating methods and vftables");
@@ -1491,24 +1500,6 @@ public class OOAnalyzer {
   }
 
   /**
-   * /** Add an array of data types.
-   *
-   * @param dTypes            The list of data types to commit.
-   * @param useOOAnalyzerPath Flag for where to add the type
-   */
-  private void updateTypeManager(final DataType[] dTypes, boolean useOOAnalyzerPath) {
-
-    for (var dt : dTypes) {
-      allowSwingToProcessEvents ();
-      if (monitor.isCancelled ()) {
-        return;
-      }
-      updateTypeManager(dt, useOOAnalyzerPath);
-    }
-    dataTypeMgr.flushEvents();
-  }
-
-  /**
    * Analyze the methods associated with this type.
    *
    * @param ghidraType The data structure containing methods
@@ -1627,8 +1618,11 @@ public class OOAnalyzer {
         // For imports, we used a method name
         if (isMethodName) {
           demangledName = demangledObj.getNamespace ().toString().replace("\n", "\\n").replace(" ", "_");
-          // This will leave a :: at the end that we need to remove
-          demangledName = demangledName.substring (0, demangledName.length () - "::".length ());
+          // Ghidra sometimes leaves :: at the end, though this appears to have been fixed at
+          // some point.
+          if (demangledName.endsWith ("::")) {
+            demangledName = demangledName.substring (0, demangledName.length () - "::".length ());
+          }
         } else {
           Msg.warn(OOAnalyzer.class, "Ghidra suceeded on a non-imported class name.  This is unexpected.");
           demangledName = demangledObj.toString().replace("\n", "\\n").replace(" ", "_");
@@ -1649,13 +1643,15 @@ public class OOAnalyzer {
         }
         if (namespaceType != null) {
           namespace = namespaceType;
-          // This will leave a :: at the end that we need to remove
-          namespace = namespace.substring (0, namespace.length () - "::".length ());
+          // Ghidra sometimes leaves :: at the end, though this appears to have been fixed at
+          // some point.
+          if (namespace.endsWith ("::")) {
+            namespace = namespace.substring (0, namespace.length () - "::".length ());
+          }
 
         } else {
           namespace = "";
         }
-        // Ghidra demangler leaves :: at the end, which we don't want.
         Msg.debug(OOAnalyzer.class, "Got namespace from Ghidra demangler: " + namespace);
         return Optional.of (Map.of("demangledName", demangledName, "namespace", namespace));
       } else {

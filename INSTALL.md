@@ -223,10 +223,10 @@ $ cd rose
 This version has a reasonable chance of working or only having minor
 issues.  If you want to be conservative and use the version of ROSE
 that was known to compile with the latest major commit to the Pharos
-repository, you can checkout this commit (ROSE version v0.10.7.16):
+repository, you can checkout this commit (ROSE version v0.11.11.2):
 
 ```
-$ git checkout v0.10.7.16
+$ git checkout v0.11.11.2
 ```
 
 ROSE can be configured in a multitude of ways, and some attention to

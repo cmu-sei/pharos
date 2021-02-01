@@ -13,18 +13,11 @@ using namespace pharos;
 ProgOptDesc dumpmasm_options() {
   namespace po = boost::program_options;
 
-  ProgOptDesc masmopt("Dump MASM v0.02 options");
+  ProgOptDesc masmopt("DumpMASM options");
   masmopt.add_options()
-    ("hex-bytes,h",
-     po::value<int>(),
-     "number of hex bytes to show per instruction")
-    ("basic-block-lines,l",
-     "split basic blocks with lines")
     ("format",
      po::value<std::string>(),
      "write output in specified format")
-    ("reasons,r",
-     "split basic blocks with lines")
     ;
   return masmopt;
 }

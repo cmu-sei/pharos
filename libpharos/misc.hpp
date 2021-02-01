@@ -48,26 +48,27 @@ using TreeNodePtrSet = std::set<TreeNodePtr>;
 
 // These should all eventually be replaced by non-x86 specific calls.  When that time comes,
 // remove these, and the compiler will tell us what places we need to touch.
-constexpr auto x86_add          = Rose::BinaryAnalysis::x86_add;
-constexpr auto x86_call         = Rose::BinaryAnalysis::x86_call;
-constexpr auto x86_farcall      = Rose::BinaryAnalysis::x86_farcall;
-constexpr auto x86_farjmp       = Rose::BinaryAnalysis::x86_farjmp;
-constexpr auto x86_int3         = Rose::BinaryAnalysis::x86_int3;
-constexpr auto x86_ja           = Rose::BinaryAnalysis::x86_ja;
-constexpr auto x86_jmp          = Rose::BinaryAnalysis::x86_jmp;
-constexpr auto x86_js           = Rose::BinaryAnalysis::x86_js;
-constexpr auto x86_lea          = Rose::BinaryAnalysis::x86_lea;
-constexpr auto x86_leave        = Rose::BinaryAnalysis::x86_leave;
-constexpr auto x86_regclass_gpr = Rose::BinaryAnalysis::x86_regclass_gpr;
-constexpr auto x86_regclass_ip  = Rose::BinaryAnalysis::x86_regclass_ip;
-constexpr auto x86_mov          = Rose::BinaryAnalysis::x86_mov;
-constexpr auto x86_pop          = Rose::BinaryAnalysis::x86_pop;
-constexpr auto x86_push         = Rose::BinaryAnalysis::x86_push;
-constexpr auto x86_ret          = Rose::BinaryAnalysis::x86_ret;
-constexpr auto x86_sub          = Rose::BinaryAnalysis::x86_sub;
-constexpr auto x86_xor          = Rose::BinaryAnalysis::x86_xor;
-constexpr auto x86_rep_insb     = Rose::BinaryAnalysis::x86_rep_insb;
-constexpr auto x86_repne_scasw  = Rose::BinaryAnalysis::x86_repne_scasw;
+constexpr auto x86_add              = Rose::BinaryAnalysis::x86_add;
+constexpr auto x86_call             = Rose::BinaryAnalysis::x86_call;
+constexpr auto x86_farcall          = Rose::BinaryAnalysis::x86_farcall;
+constexpr auto x86_farjmp           = Rose::BinaryAnalysis::x86_farjmp;
+constexpr auto x86_int3             = Rose::BinaryAnalysis::x86_int3;
+constexpr auto x86_ja               = Rose::BinaryAnalysis::x86_ja;
+constexpr auto x86_jmp              = Rose::BinaryAnalysis::x86_jmp;
+constexpr auto x86_js               = Rose::BinaryAnalysis::x86_js;
+constexpr auto x86_lea              = Rose::BinaryAnalysis::x86_lea;
+constexpr auto x86_leave            = Rose::BinaryAnalysis::x86_leave;
+constexpr auto x86_regclass_gpr     = Rose::BinaryAnalysis::x86_regclass_gpr;
+constexpr auto x86_regclass_ip      = Rose::BinaryAnalysis::x86_regclass_ip;
+constexpr auto x86_regclass_segment = Rose::BinaryAnalysis::x86_regclass_segment;
+constexpr auto x86_mov              = Rose::BinaryAnalysis::x86_mov;
+constexpr auto x86_pop              = Rose::BinaryAnalysis::x86_pop;
+constexpr auto x86_push             = Rose::BinaryAnalysis::x86_push;
+constexpr auto x86_ret              = Rose::BinaryAnalysis::x86_ret;
+constexpr auto x86_sub              = Rose::BinaryAnalysis::x86_sub;
+constexpr auto x86_xor              = Rose::BinaryAnalysis::x86_xor;
+constexpr auto x86_rep_insb         = Rose::BinaryAnalysis::x86_rep_insb;
+constexpr auto x86_repne_scasw      = Rose::BinaryAnalysis::x86_repne_scasw;
 
 // Some Nodes are actually stored in a vector
 using TreeNodePtrVector = std::vector<TreeNodePtr>;

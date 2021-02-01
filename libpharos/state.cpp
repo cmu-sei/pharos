@@ -19,9 +19,8 @@ extern SymbolicRiscOperatorsPtr global_rops;
 using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
 
 SymbolicRegisterState::SymbolicRegisterState(
-  const Rose::BinaryAnalysis::InstructionProvider& _ip,
-  const SymbolicValuePtr &proto):
-  RegisterStateGeneric(proto, _ip.registerDictionary()), ip(_ip)
+  const SymbolicValuePtr &proto, const Rose::BinaryAnalysis::RegisterDictionary *rd):
+  RegisterStateGeneric(proto, rd)
 {
   // moving the global_rops creation to pharos_main caused this message to always come out:
   //STRACE << "SymbolicRegisterState::SymbolicRegisterState(proto, rd)" << LEND;
@@ -106,8 +105,6 @@ RegisterSet SymbolicRegisterState::diff(const SymbolicRegisterStatePtr & other) 
       SymbolicValuePtr ovalue = other->inspect_register(rp.desc);
       // If there's no value at all in the output state, it must be unchanged.
       if (!ovalue) continue;
-      // 64-bit issue! This should be the following code (but one thing at a time...)
-      if (rp.desc == ipreg) continue;
       // Report everything that's not guaranteed to match.  The caller can think harder about
       // the results if they want, but we shouldn't force more analysis than is required here.
       if (!(value->must_equal(ovalue, SmtSolverPtr()))) {
@@ -269,6 +266,11 @@ sortByOffset(const RegisterStateGeneric::RegPair &a, const RegisterStateGeneric:
 void SymbolicRegisterState::print(std::ostream& stream, Formatter& fmt) const {
   // Print the register state using the standard ROSE API.
   RegisterStateGeneric::print(stream, fmt);
+  return;
+
+  // Disable the following code by returning early.  Right now, the code below is really just a
+  // stub for extending this system to print something else we might want to report, primarily
+  // in the tracesem program, but it makes the output less useful in its current state.
 
   size_t maxlen = 6;
 
@@ -289,7 +291,7 @@ void SymbolicRegisterState::print(std::ostream& stream, Formatter& fmt) const {
 
       SymbolicValuePtr value = SymbolicValue::promote(rp.value);
       for (const TreeNodePtr& v : value->get_possible_values()) {
-        OINFO << fmt.get_line_prefix() << "  possible=" << *v << LEND;
+        stream << fmt.get_line_prefix() << "  possible=" << *v << LEND;
       }
 
       // This is frequently huge, so I've commented it out.  It should really be controlled by

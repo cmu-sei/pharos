@@ -1,6 +1,6 @@
-# Pharos Static Analysis Framework Source Code
+# Pharos Static Binary Analysis Framework Code Release
 
-Copyright 2015-2019 Carnegie Mellon University. All Rights Reserved.
+Copyright 2021 Carnegie Mellon University.
 
 BSD (SEI)
 
@@ -15,53 +15,48 @@ notice, this list of conditions and the following disclaimer.
 notice, this list of conditions and the following disclaimer in the
 documentation and/or other materials provided with the distribution.
 
-3. Products derived from this software may not include “Carnegie
-Mellon University,” "SEI” and/or “Software Engineering Institute" in
-the name of such derived product, nor shall “Carnegie Mellon
-University,” "SEI” and/or “Software Engineering Institute" be used to
+3. Products derived from this software may not include "Carnegie
+Mellon University," "SEI" and/or "Software Engineering Institute" in
+the name of such derived product, nor shall "Carnegie Mellon
+University," "SEI" and/or "Software Engineering Institute" be used to
 endorse or promote products derived from this software without prior
 written permission. For written permission, please contact
 permission@sei.cmu.edu.
 
 ### ACKNOWLEDGMENTS AND DISCLAIMERS
 
-Pharos Code Release includes and/or can make use of certain third
-party software ("Third Party Software"). The Third Party Software that
-is used by Pharos Code Release is dependent upon your system
+Pharos Static Binary Analysis Framework Code Release includes and/or
+can make use of certain third party software ("Third Party
+Software"). The Third Party Software that is used by Pharos Static
+Binary Analysis Framework Code Release is dependent upon your system
 configuration, but typically includes the software identified
-below. By using Pharos Code Release, You agree to comply with any and
-all relevant Third Party Software terms and conditions contained in
-any such Third Party Software or separate license file distributed
-with such Third Party Software. The parties who own the Third Party
-Software ("Third Party Licensors") are intended third party
-beneficiaries to this License with respect to the terms applicable to
-their Third Party Software. Third Party Software licenses only apply
-to the Third Party Software and not any other portion of Pharos Code
-Release or Pharos Code Release as a whole.
+below. By using Pharos Static Binary Analysis Framework Code Release,
+You agree to comply with any and all relevant Third Party Software
+terms and conditions contained in any such Third Party Software or
+separate license file distributed with such Third Party Software. The
+parties who own the Third Party Software ("Third Party Licensors") are
+intended third party beneficiaries to this License with respect to the
+terms applicable to their Third Party Software. Third Party Software
+licenses only apply to the Third Party Software and not any other
+portion of Pharos Static Binary Analysis Framework Code Release or
+Pharos Static Binary Analysis Framework Code Release as a whole.
 
 This material is based upon work funded and supported by the
-Department of Defense under Contract No. FA8702-15-D-0002 with
-Carnegie Mellon University for the operation of the Software
+Department of Homeland Security under Contract No. FA8702-15-D-0002
+with Carnegie Mellon University for the operation of the Software
 Engineering Institute, a federally funded research and development
-center.
+center sponsored by the United States Department of Defense.
 
 The view, opinions, and/or findings contained in this material are
 those of the author(s) and should not be construed as an official
 Government position, policy, or decision, unless designated by other
-documentation.  References herein to any specific commercial product,
-process, or service by trade name, trade mark, manufacturer, or
-otherwise, does not necessarily constitute or imply its endorsement,
-recommendation, or favoring by Carnegie Mellon University or its
-Software Engineering Institute.
+documentation.
 
-NO WARRANTY. THIS CARNEGIE MELLON UNIVERSITY AND SOFTWARE ENGINEERING
-INSTITUTE MATERIAL IS FURNISHED ON AN "AS-IS" BASIS. CARNEGIE MELLON
-UNIVERSITY MAKES NO WARRANTIES OF ANY KIND, EITHER EXPRESSED OR
-IMPLIED, AS TO ANY MATTER INCLUDING, BUT NOT LIMITED TO, WARRANTY OF
-FITNESS FOR PURPOSE OR MERCHANTABILITY, EXCLUSIVITY, OR RESULTS
-OBTAINED FROM USE OF THE MATERIAL. CARNEGIE MELLON UNIVERSITY DOES NOT
-MAKE ANY WARRANTY OF ANY KIND WITH RESPECT TO FREEDOM FROM PATENT,
-TRADEMARK, OR COPYRIGHT INFRINGEMENT.
+References herein to any specific commercial product, process, or
+service by trade name, trade mark, manufacturer, or otherwise, does
+not necessarily constitute or imply its endorsement, recommendation,
+or favoring by Carnegie Mellon University or its Software Engineering
+Institute.
 
 [DISTRIBUTION STATEMENT A] This material has been approved for public
 release and unlimited distribution.  Please see Copyright notice for
@@ -75,12 +70,11 @@ by Carnegie Mellon University.
 This Software includes and/or makes use of the following Third-Party
 Software subject to its own license:
 
-
 1. ROSE Compiler Framework (http://rosecompiler.org/)
 
-   Copyright 2017 LLNL
+   Copyright 2005-2021 Lawrence Livermore National Lab
 
-   http://rosecompiler.org/ROSE_HTML_Reference/group__license.html
+   https://github.com/rose-compiler/rose/blob/develop/COPYRIGHT
 
 2. SWI-Prolog (https://swi-prolog.org/)
 
@@ -116,10 +110,10 @@ Software subject to its own license:
 
    Copyright 2008, Google Inc
 
-   https://github.com/google/googletest/blob/master/googletest/LICENSE
+   https://github.com/google/googletest/blob/master/LICENSE
 
 8. MD5 Implementation
 
    Copyright (c) 2001 Alexander Peslyak placed in the Public Domain
 
-DM19-0778
+DM21-0086

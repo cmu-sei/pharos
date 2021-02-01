@@ -493,7 +493,9 @@ class ApiResultJsonFormatter : public ApiResultFormatter {
 
  public:
 
-  ApiResultJsonFormatter() { }
+  ApiResultJsonFormatter() { 
+      out_json_ = json::simple_builder()->object();
+  }
 
   virtual void Format(ApiSearchResultVector &results, ApiOutputManager::PathLevel m);
 

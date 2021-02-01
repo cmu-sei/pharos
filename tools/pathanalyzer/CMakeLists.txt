@@ -1,10 +1,14 @@
 add_executable(pathanalyzer pathanalyzer.cpp)
 target_link_libraries(pathanalyzer pharos)
-install(TARGETS pathanalyzer DESTINATION bin)
+
+# Removed as install target due to its experimental nature
+#install(TARGETS pathanalyzer DESTINATION bin)
 
 add_executable(pathfinder pathfinder.cpp)
 target_link_libraries(pathfinder pharos)
-install(TARGETS pathfinder DESTINATION bin)
+
+# Removed as install target due to its experimental nature
+#install(TARGETS pathfinder DESTINATION bin)
 
 add_executable(merge_test merge_test.cpp)
 target_link_libraries(merge_test pharos gtest)

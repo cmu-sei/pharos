@@ -1,4 +1,4 @@
-// Copyright 2017-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2017-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_json
 #define Pharos_json
@@ -33,7 +33,7 @@ class Array : public virtual Node {
   virtual void add(NodeRef o) = 0;
   virtual void add(Simple && v) = 0;
   virtual std::size_t size() const = 0;
-  bool empty() const { return size(); }
+  bool empty() const { return 0 == size(); }
 
   // Workaround for g++ 5.4 bug
   template <typename T>
@@ -50,7 +50,7 @@ class Object : public virtual Node {
   virtual void add(std::string && str, NodeRef o) = 0;
   virtual void add(std::string && str, Simple && v) = 0;
   virtual std::size_t size() const = 0;
-  bool empty() const { return size(); }
+  bool empty() const { return 0 == size(); }
 
   // Workaround for g++ 5.4 bug
   template <typename T>

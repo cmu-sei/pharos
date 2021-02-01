@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # cmake -DPATHTEST_CROSS32BIT=on -DPATHTEST_CXX_FLAGS=-O0 -DPATHTEST_TIMEOUT_SECS=300 ..
 # make -j32

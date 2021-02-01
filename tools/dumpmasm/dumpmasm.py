@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # This script dumps data from IDA in approximately the same format as
 # dumpmasm.  That format is:

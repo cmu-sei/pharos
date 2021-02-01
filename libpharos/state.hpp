@@ -4,7 +4,6 @@
 #define Pharos_State_H
 
 #include <rose.h>
-#include <Partitioner2/InstructionProvider.h>
 
 #include "semantics.hpp"
 #include "misc.hpp"
@@ -75,48 +74,38 @@ class SymbolicRegisterState: public RegisterStateGeneric {
 
  protected:
 
-  const Rose::BinaryAnalysis::InstructionProvider& ip;
-  RegisterDescriptor ipreg;
-
   // Constructors are protected to ensure that instance() methods are used instead.
 
   // Constructors must take custom types to ensure promotion.
-  explicit SymbolicRegisterState(const Rose::BinaryAnalysis::InstructionProvider& ip,
-                                 const SymbolicValuePtr &proto);
+  explicit SymbolicRegisterState(const SymbolicValuePtr &proto,
+                                 const RegisterDictionary *rd);
 
   // Copy constructor should ensure a deep copy.
   // In general this doesn't happen at correct level if we don't implement it, but in this
   // case, we don't have any additional work to do calling the parent method is sufficient.
   explicit SymbolicRegisterState(const SymbolicRegisterState& other):
-    RegisterStateGeneric(other),
-    ip(other.ip) {
+    RegisterStateGeneric(other) {
     STRACE << "SymbolicRegisterState::SymbolicRegisterState(other)" << LEND;
   }
 
  public:
 
   // Instance() methods must take custom types to ensure promotion.
-  static SymbolicRegisterStatePtr instance(const Rose::BinaryAnalysis::InstructionProvider& ip,
-                                           const SymbolicValuePtr &proto) {
+  static SymbolicRegisterStatePtr instance(const SymbolicValuePtr &proto,
+                                           const RegisterDictionary *rd) {
     STRACE << "SymbolicRegisterState::instance(SymbolicValuePtr, RegisterDictionary)" << LEND;
-    return SymbolicRegisterStatePtr(new SymbolicRegisterState(ip, proto));
+    return SymbolicRegisterStatePtr(new SymbolicRegisterState(proto, rd));
   }
 
   // Instance() methods must take custom types to ensure promotion. Yet Robb seems to think
   // it's ok to pass a BaseSValue in the TestSemantics jig... I guess we'll promote, and assert
   // if we didn't get the right kind of protoype value?  Long term we should really support
   // other arbitrary values.
-  static SymbolicRegisterStatePtr instance(const Rose::BinaryAnalysis::InstructionProvider& ip,
-                                           const BaseSValuePtr &proto) {
+  static SymbolicRegisterStatePtr instance(const BaseSValuePtr &proto,
+                                           const RegisterDictionary *rd) {
     STRACE << "SymbolicRegisterState::instance(BaseSValuePtr, RegisterDictionary)" << LEND;
     SymbolicValuePtr sproto = SymbolicValue::promote(proto);
-    return SymbolicRegisterStatePtr(new SymbolicRegisterState(ip, sproto));
-  }
-
-  // Default constructors are a CERT addition.
-  static SymbolicRegisterStatePtr instance(const Rose::BinaryAnalysis::InstructionProvider& ip) {
-    SymbolicValuePtr svalue = SymbolicValue::instance();
-    return SymbolicRegisterStatePtr(new SymbolicRegisterState(ip, svalue));
+    return SymbolicRegisterStatePtr(new SymbolicRegisterState(sproto, rd));
   }
 
   // Each custom class must implement promote.
@@ -127,15 +116,11 @@ class SymbolicRegisterState: public RegisterStateGeneric {
   }
 
   virtual BaseRegisterStatePtr create(
-    const BaseSValuePtr &proto, UNUSED const Rose::BinaryAnalysis::RegisterDictionary *rd)
+    const BaseSValuePtr &proto, const RegisterDictionary *rd)
     const override
   {
     STRACE << "SymbolicRegisterState::create()" << LEND;
-
-    // We discard the passed register dictionary, and use the one from our instruction provider
-    // instead.  ROSE is a bit messay here, because it's the disassembler, and not the register
-    // dictionary who decides which register is the instruction pointer. :-(
-    return instance(ip, SymbolicValue::promote(proto));
+    return instance(SymbolicValue::promote(proto), rd);
   }
 
   virtual BaseRegisterStatePtr clone() const override {

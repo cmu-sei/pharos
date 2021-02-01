@@ -9,8 +9,8 @@ reportStage(X) :- var(X), !, throw(instantiation_error(X)).
 :- if(current_predicate(ws_control/2)).
 % webstat_Control is loaded
 
-reportStage(X, Y) :- ws_control(perfchart, marking([label=X,y=Y])).
 reportStage(X) :- getNextY(Y), reportStage(X, Y).
+reportStage(X, Y) :- ws_control(perfchart, marking([label=X,y=Y])).
 
 ws_init :- set_flag(webstat_y, 0.5),
            ws_control(window, perfchart),

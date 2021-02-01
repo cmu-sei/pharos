@@ -138,6 +138,7 @@ bool VirtualFunctionCallAnalyzer::analyze() {
       // Reads of the ESP register don't count (because they're always present in call
       // instruction for the manipulation of the stack for the return address).
       if (aa.register_descriptor == du.ds.get_stack_reg()) continue;
+      if (aa.register_descriptor.get_major() == x86_regclass_segment) continue;
       vfunc_aa = &aa;
     }
   }

@@ -1109,7 +1109,7 @@ bool ApiSearchExecutor::Search(ApiSig sig, ApiSearchResultVector *result_list ) 
         }
         if (startv == NULL_VERTEX) {
 
-          GWARN << "Could not find starting vertex in "
+          GINFO << "Could not find starting vertex in "
                 << addr_str(start_comp->GetEntryAddr()) << LEND;
 
           worklist.erase(workitem);
@@ -1169,9 +1169,9 @@ bool ApiSearchExecutor::Search(ApiSig sig, ApiSearchResultVector *result_list ) 
           // search segment, prevent this search from continuing,
           // reset everything and proceed
 
-          GERROR << "Warning: Search aborted in function " << addr_str(start_comp_addr)
-                 << " while looking for starting API function: " << start_api.name
-                 << " due to possible corruption!" << LEND;
+          GINFO << "Warning: Search aborted in function " << addr_str(start_comp_addr)
+                << " while looking for starting API function: " << start_api.name
+                << LEND;
 
           aborted=true;
           purge_state=true;
@@ -1520,9 +1520,9 @@ void ApiResultJsonFormatter::Format(ApiSearchResultVector &results, ApiOutputMan
     match->add("Category", res.match_category);
 
     SgAsmX86Instruction *start_insn = GetLastBlkInsn(res.search_tree.front().block);
+    match->add("Start Address", addr_str(start_insn->get_address()));
 
     if (path_level != ApiOutputManager::PathLevel::NONE) {
-      match->add("Start Address", addr_str(start_insn->get_address()));
 
       // generate the search path, if specified
       auto path = builder->array();
@@ -1542,9 +1542,11 @@ void ApiResultJsonFormatter::Format(ApiSearchResultVector &results, ApiOutputMan
           path_entry->add("Function",addr_str(wpi->func));
         }
         else if (path_level == ApiOutputManager::PathLevel::SIG_PATH) {
-          if (wpi->is_part_of_sig && wpi->name != "") {
+          if (wpi->is_part_of_sig) {
             // if part of sig, then must include API. Only include if the API name is found
-            path_entry->add("API", wpi->name);
+            if (wpi->name != "") {
+              path_entry->add("API", wpi->name);
+            }
             path_entry->add("Address",addr_str(address));
             path_entry->add("Function",addr_str(wpi->func));
           }
@@ -2516,7 +2518,7 @@ void ApiGraph::ConsolidateEmptyFunctions() {
     const FunctionDescriptor *call_target_fd = cd.get_function_descriptor();
     const FunctionDescriptor *containing_fd  = cd.get_containing_function();
 
-    if (call_target_fd != NULL) {
+    if (call_target_fd != NULL && containing_fd != NULL) {
 
       ApiCfgComponentPtr empty_cfg_comp = GetComponent(call_target_fd->get_address());
       ApiCfgComponentPtr calling_cfg_comp = GetComponent(containing_fd->get_address());

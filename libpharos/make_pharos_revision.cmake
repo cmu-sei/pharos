@@ -1,5 +1,6 @@
 execute_process(
   COMMAND git rev-parse HEAD
+  WORKING_DIRECTORY "${srcdir}"
   OUTPUT_VARIABLE out
   RESULT_VARIABLE result
   ERROR_QUIET

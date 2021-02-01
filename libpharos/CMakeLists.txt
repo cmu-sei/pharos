@@ -125,7 +125,9 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/config.yaml"
 add_custom_target(generate_pharos_revision ALL)
 add_custom_command(
   TARGET generate_pharos_revision
-  COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/make_pharos_revision.cmake"
+  COMMAND ${CMAKE_COMMAND}
+  "-Dsrcdir=${CMAKE_CURRENT_SOURCE_DIR}"
+  -P "${CMAKE_CURRENT_SOURCE_DIR}/make_pharos_revision.cmake"
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   BYPRODUCTS PHAROS_REVISION)
 add_dependencies(pharos generate_pharos_revision)

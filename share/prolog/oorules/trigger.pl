@@ -206,12 +206,12 @@ dispatchTrigger(findint(Method, _Class), Out) :-
 concludeTrigger(Out) :-
     reportFirstSeen('concludeTrigger'),
     setof(X,
-          % Limit ourselves to 100 facts at once.  See
+          % Limit ourselves to 100K facts at once.  See
           % https://github.com/cmu-sei/pharos/issues/114
           atmost(
               (retract(trigger_fact(X)),
                logtraceln('Processing trigger fact... ~Q', X)),
-              100),
+              100000),
           Facts),
     !,
 
@@ -222,10 +222,10 @@ concludeTrigger(Out) :-
          % If we generated any actions, take them
          Out = all(ActionList)
      ;
-         % If we didn't take any actions, succeed but return a noop action.  If we don't do this,
-         % concludeTrigger will fail and the next conclusion rule will be evaluated even if there
-         % are more trigger facts to be considered.  This can lead to upstream problem errors.
-         Out = true).
+         % If we didn't take any actions, recurse. If we don't do this, concludeTrigger will
+         % fail and the next conclusion rule will be evaluated even if there are more trigger
+         % facts to be considered.  This can lead to upstream problem errors.
+         concludeTrigger(Out)).
 
 /* Local Variables:   */
 /* mode: prolog       */

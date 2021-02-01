@@ -298,7 +298,7 @@ reasonNOTConstructor_F(Method) :-
     factNOTConstructor(OtherMethod),
     validFuncOffset(_Insn, OtherMethod, Method, _Offset),
     % Debugging
-    logtraceln('~@~Q.', [not(factNOTConstructor(Method)), reasonNOTConstructor_F(Method)]).
+    logtraceln('~@~Q.', [not(factNOTConstructor(Method)), reasonNOTConstructor_F(Method, OtherMethod)]).
 
 
 % Because you can't be a constructor on a class that's already known to have a VFTable if you
@@ -331,6 +331,7 @@ reasonNOTConstructor_H(Method) :-
 
     logtraceln('~@~Q.', [not(factNOTConstructor(Method)),
                          reasonNOTConstructor_H(VFTable, Method)]).
+
 
 reasonNOTConstructorSet(Set) :-
     setof(Method, reasonNOTConstructor(Method), Set).
@@ -378,6 +379,7 @@ reasonRealDestructorSet(Set) :-
 :- table reasonNOTRealDestructor_F/1 as incremental.
 :- table reasonNOTRealDestructor_G/1 as incremental.
 :- table reasonNOTRealDestructor_H/1 as incremental.
+:- table reasonNOTRealDestructor_I/2 as opaque.
 
 reasonNOTRealDestructor(Method) :-
     %logwarnln('Recomputing reasonNOTRealDestructor...'),
@@ -388,7 +390,8 @@ reasonNOTRealDestructor(Method) :-
         reasonNOTRealDestructor_E(Method),
         reasonNOTRealDestructor_F(Method),
         reasonNOTRealDestructor_G(Method),
-        reasonNOTRealDestructor_H(Method)
+        reasonNOTRealDestructor_H(Method),
+        reasonNOTRealDestructor_I(Method)
       ]).
 
 % Because it is already known to NOT be a real destructor.
@@ -462,6 +465,32 @@ reasonNOTRealDestructor_H(Method) :-
     % The presumption about ECX also necessitates this restriction?
     callingConvention(Method, '__thiscall').
 
+% Destructors normally have one argument.  According to
+% https://fossies.org/linux/cfe/lib/CodeGen/MicrosoftCXXABI.cpp, deleting destructors have a
+% second argument.  Therefore, any method that has more than two parameters is not a
+% destructor. Any method with more than one parameter is not a real destructor.
+:- table reasonDestructorParams/2 as opaque.
+reasonDestructorParams(Method, MaxParams) :-
+    % There is a method
+    findMethod(Method, _Class),
+    % Get params
+    setof(Param, Hash^funcParameter(Method, Param, Hash), Params),
+    % ejs: It looks like arguments are not reliable
+    %setof(Arg, Ins^Hash^callParameter(Ins, Method, Arg, Hash), Args),
+    % Check length
+    length(Params, ParamLen),
+    %length(Args, ArgLen),
+
+    ParamLen > MaxParams.
+    %(ParamLen > MaxParams; ArgLen > MaxParams).
+
+reasonNOTRealDestructor_I(Method) :-
+    Params = 1,
+    reasonDestructorParams(Method, Params),
+
+    logtraceln('~@~Q.', [not(factNOTRealDestructor(Method)),
+                         reasonNOTRealDestructor_I(Params, Method)]).
+
 reasonNOTRealDestructorSet(Set) :-
     setof(Method, reasonNOTRealDestructor(Method), Set).
 
@@ -513,6 +542,7 @@ reasonDeletingDestructor(Method) :-
 :- table reasonNOTDeletingDestructor_E/1 as incremental.
 :- table reasonNOTDeletingDestructor_F/1 as incremental.
 :- table reasonNOTDeletingDestructor_G/1 as incremental.
+:- table reasonNOTDeletingDestructor_H/1 as opaque.
 
 reasonNOTDeletingDestructor(Method) :-
     %logwarnln('Recomputing reasonNOTDeletingDestructor...'),
@@ -522,7 +552,8 @@ reasonNOTDeletingDestructor(Method) :-
         reasonNOTDeletingDestructor_D(Method),
         reasonNOTDeletingDestructor_E(Method),
         reasonNOTDeletingDestructor_F(Method),
-        reasonNOTDeletingDestructor_G(Method)
+        reasonNOTDeletingDestructor_G(Method),
+        reasonNOTDeletingDestructor_H(Method)
       ]).
 
 % Because it is already known to NOT be a deleting destructor.
@@ -578,6 +609,17 @@ reasonNOTDeletingDestructor_F(Method) :-
 % is that is does not rely on the correct detection of delete() which is sometimes a problem.
 reasonNOTDeletingDestructor_G(Method) :-
     not(possiblyVirtual(Method)).
+
+% Destructors normally have one argument.  According to
+% https://fossies.org/linux/cfe/lib/CodeGen/MicrosoftCXXABI.cpp, deleting destructors have a
+% second argument.  Therefore, any method that has more than two parameters is not a
+% destructor. Any method with more than one parameter is not a real destructor.
+reasonNOTDeletingDestructor_H(Method) :-
+    Params = 2,
+    reasonDestructorParams(Method, Params),
+
+    logtraceln('~@~Q.', [not(factNOTDeletingDestructor(Method)),
+                         reasonNOTDeletingDestructor_H(Params, Method)]).
 
 reasonNOTDeletingDestructorSet(Set) :-
     setof(Method, reasonNOTDeletingDestructor(Method), Set).
@@ -1159,9 +1201,9 @@ reasonVBTableEntry(VBTable, Offset, Value) :-
     rTTIValid,
     rTTIInheritsFrom(DerivedTDA, _BaseTDA, _Attributes, 0, P, Offset),
     iso_dif(P, 0xffffffff),
-    possibleVBTableWrite(_Insn, Method, P, VBTable),
     rTTITDA2Class(DerivedTDA, DerivedClass),
     find(Method, DerivedClass),
+    possibleVBTableWrite(_Insn, Method, P, VBTable),
     possibleVBTableEntry(VBTable, Offset, Value),
     % Debugging
     logtraceln('~Q.', reasonVBTableEntry_A(VBTable, Offset, Value)).
@@ -2186,7 +2228,7 @@ reasonMergeClasses_C(Class, ExistingClass) :-
 
     % Debugging
     logtraceln('~@~Q.', [not(find(Class, ExistingClass)),
-                         reasonMergeClasses_C(Class, ExistingClass)]).
+                         reasonMergeClasses_C(Class, ExistingClass, Method)]).
 
 % If there are two implementations of the constructor on the same class, they should be merged
 % into a single class.  For example Cls1(int x) and Cls1(char y).  When the class has virtual
@@ -2720,13 +2762,13 @@ reasonNOTMergeClasses_O(Class1Sorted, Class2Sorted) :-
 % rule at present.
 reasonNOTMergeClasses_P(Class1Sorted, Class2Sorted) :-
     validFuncOffset(_Insn, Caller, Method, Offset),
+    Offset > 0,
     find(Method, Class1),
     find(Caller, Class2),
     iso_dif(Class1, Class2),
     factMethod(Caller),
     factMethod(Method),
     iso_dif(Method, Caller),
-    Offset > 0,
     (factConstructor(Method);
      (factDeletingDestructor(Method), not(factRealDestructor(Caller)));
      factRealDestructor(Method)),
@@ -2906,10 +2948,10 @@ reasonClassSizeGTE_A(Class, Size) :-
 % Because all classes must have a non-negative size.
 % PAPER: CSize-0
 reasonClassSizeGTE_B(Class, Size) :-
-    % Constrain this rule to proven methods, so we don't go assigning class sizes to methods
-    % that aren't even really methods.
-    factMethod(Method),
-    find(Method, Class),
+    % Constrain this rule to proven methods/vftables, so we don't go assigning class sizes to
+    % methods that aren't even really methods.
+    (factMethod(Element); factVFTable(Element)),
+    find(Element, Class),
     Size = 0,
     % Debugging
     logtraceln('~@~Q.', [not((factClassSizeGTE(Class, ExistingSize), ExistingSize >= Size)),
@@ -2940,6 +2982,9 @@ reasonClassSizeGTE_D(Class, Size) :-
     % the fact exporter, so that we don't have to deal with it here.
     Size \= 0,
     find(Constructor, Class),
+    % ejs 1/5/21: This rule only applies if we know there are no base classes using some of the
+    % allocated object's space.
+    factClassHasNoBase(Class),
     % Debugging
     logtraceln('~@~Q.', [not((factClassSizeGTE(Class, ExistingSize), ExistingSize >= Size)),
                          reasonClassSizeGTE_D(Class, Size)]).

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import sys
 import os
@@ -138,8 +138,14 @@ def run_prolog_test(args):
     script = "ooprolog.pl"
     tool = "swi"
 
-    rules_path = os.path.join(args.git_dir, "share", "prolog", "oorules")
-    os.chdir(rules_path)
+    if 'PHAROS_APPIMAGE_PATH' in os.environ:
+        exe_path = os.environ['PHAROS_APPIMAGE_PATH']
+        script_path = "ooprolog"
+    else:
+        exe_path = args.swi_path
+        rules_path = os.path.join(args.git_dir, "share", "prolog", "oorules")
+        script_path = os.path.join(rules_path, script)
+        os.chdir(rules_path)
 
     # Separate outputs for each command so we can run both simultaneously.
     gen_results_path = test_output_path(args) + ".swiresults"
@@ -148,7 +154,7 @@ def run_prolog_test(args):
 
     redirection = ">%s 2>&1" % (prolog_spew_path,)
     prolog_cmd = ("%s %s --log-level 5 --facts %s --results %s --json %s %s" %
-                  (default_swi_program, os.path.join(rules_path, script),
+                  (exe_path, script_path,
                    ground_facts_path, gen_results_path, prolog_json_path,
                    redirection))
 

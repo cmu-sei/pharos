@@ -44,8 +44,9 @@ SymbolicRiscOperatorsPtr SymbolicRiscOperators::instance(
   Callbacks * callbacks_,
   const SmtSolverPtr & solver_) {
 
-  auto ip = ds_.get_partitioner().instructionProvider();
-  SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(ip);
+  SymbolicValuePtr proto = SymbolicValue::instance();
+  const RegisterDictionary& regdict = ds_.get_regdict();
+  SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(proto, &regdict);
   SymbolicMemoryMapStatePtr mstate = SymbolicMemoryMapState::instance();
   SymbolicStatePtr state = SymbolicState::instance(rstate, mstate);
   return instance(ds_, state, callbacks_, solver_);

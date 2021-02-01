@@ -67,8 +67,10 @@ static std::vector<hashinfo> known_hashes = {
 {"6040FB1A8C43146322C12F6FEDB78351", "near near void * __cdecl operator new(unsigned int) ", "??2@YAPAXI@Z", "new"},
 // 0x4407f0 in ../code/testcases/BuildExes/BuildExesvs2012/vs2012/sc0d1o1/Debug/oo.exe
 {"8D4762ABA02E949F19752C2E511A98E7", "near void __cdecl operator delete(near void *) ", "??3@YAXPAX@Z", "del"},
-// 0x4fb6e0 in ../code/testcases/malware/malware-67b9be3c70653a48a239a380e697babc.exe
-{"7461553B7014A7921AC39DBA12CCC3A7", "near near void * __cdecl operator new[](unsigned int) ", "??_U@YAPAXI@Z", "new[]"},
+// 0x412a70 in ../code/testcases/VisualCppTests/LoopTest/LoopTest.exe
+// See github issue #151
+//// 0x4fb6e0 in ../code/testcases/malware/malware-67b9be3c70653a48a239a380e697babc.exe
+//{"7461553B7014A7921AC39DBA12CCC3A7", "near near void * __cdecl operator new[](unsigned int) ", "??_U@YAPAXI@Z", "new[]"},
 // 0x415ba0 in ../code/testcases/light-pop3-smtp/pop3.exe
 {"73F3C7EF29364905D2D9B95F19640509", "near void __cdecl operator delete(near void *, near void *) ", "??3@YAXPAX0@Z", "del placement"},
 // 0x46b780 in ../code/testcases/BuildExes/BuildExesvs2012/vs2012/sc0d0o0/Debug/oopoly.exe

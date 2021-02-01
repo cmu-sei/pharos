@@ -184,21 +184,71 @@ ObjectUse::ObjectUse(OOAnalyzer& ooa, const FunctionDescriptor* f) {
   analyze_object_uses(ooa);
 }
 
-using VertexFound = std::runtime_error;
+struct VertexFound : public std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
+struct Aborted : public std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
 
 // Use a fancy std bidirectional thingie instead?
-using AddrVertexMap = std::map<rose_addr_t, CFGVertex>;
-using VertexAddrMap = std::map<CFGVertex, rose_addr_t>;
+using InsnVertexMap = std::map<SgAsmInstruction*, CFGVertex>;
+using VertexInsnMap = std::map<CFGVertex, SgAsmInstruction*>;
 
+// XXX: Should just pass a pointer to ThisCallPtr to cov
 class CallOrderVisitor: public boost::default_bfs_visitor {
  public:
-  AddrVertexMap call2vertex;
-  VertexAddrMap vertex2call;
+  InsnVertexMap call2vertex;
+  VertexInsnMap vertex2call;
+  SymbolicValuePtr this_ptr;
+  const MethodEvidenceMap &method_evidence;
+  const OOAnalyzer &ooa;
+  const FunctionDescriptor *fd;
+  bool constructor = true;
   // The current start vertex (so we don't match ourself).
   CFGVertex current;
-  CallOrderVisitor() { }
+  CallOrderVisitor(const MethodEvidenceMap &method_evidence_,
+                   const OOAnalyzer &ooa_,
+                   const FunctionDescriptor *fd_)
+    : method_evidence (method_evidence_),
+      ooa (ooa_),
+      fd (fd_)
+  { }
   template < typename Graph >
-  void discover_vertex(CFGVertex v, const Graph & g UNUSED) const {
+  void discover_vertex(CFGVertex v, const Graph & g) const {
+
+    if (constructor) {
+      // When traversing dataflow backwards, we should stop if we hit a call to new.  This
+      // isn't quite correct because we are doing BFS, and there could be another path.  But
+      // that is probably pathological, and not enough to merit doing a full dataflow analysis
+      // here.
+      auto bb = get(boost::vertex_name, g, v);
+      assert (bb);
+      auto stmts = bb->get_statementList ();
+
+      auto calls_new = [&] (const SgAsmStatement* insn) {
+        assert (insn);
+
+        auto cd = fd->ds.get_call (insn->get_address ());
+        // Is this a call?
+        if (!cd) return false;
+
+        // Is this a call to new?
+        auto call_targets = cd->get_targets ();
+        auto is_new = [&] (const auto &addr) { return ooa.is_new_method (addr); };
+        if (boost::find_if (call_targets, is_new) == call_targets.end ()) return false;
+        // Ok, it's a call to new.  Does it return our this pointer?
+        auto return_value = cd->get_return_value ();
+        if (!return_value) return false;
+        return return_value->get_expression()->isEquivalentTo (this_ptr->get_expression());
+      };
+
+      // Does this BB have any calls to new for the current thisptr?
+      if (boost::find_if (stmts, calls_new) != stmts.end ()) {
+        throw Aborted ("aborted");
+      }
+    }
+
     // Don't match ourself.
     if (v == current) {
       //rose_addr_t a = vertex2call.at(v);
@@ -207,17 +257,31 @@ class CallOrderVisitor: public boost::default_bfs_visitor {
     }
     // But if we match one of the other call instructions, we're done, so throw!
     if (vertex2call.find(v) != vertex2call.end()) {
-      rose_addr_t calladdr = vertex2call.at(v);
-      rose_addr_t curraddr = vertex2call.at(current);
-      GDEBUG << "Address " << addr_str(curraddr)
-             << " was disproven by address " << addr_str(calladdr) << LEND;
-      throw VertexFound("found");
+      SgAsmInstruction* callinsn = vertex2call.at (v);
+      SgAsmInstruction* currinsn = vertex2call.at (current);
+
+      if (!constructor) {
+        // When looking to disprove destructors, we should stop if hit delete.  The same caveat
+        // holds are for constructors above that this may stop the search prematurely.  The
+        // check is here because delete looks like a method call on the thisptr, so it will be
+        // present in vertex2call.
+        auto call_targets = method_evidence.find (callinsn)->second;
+        auto is_delete = [&] (const ThisCallMethod* target) { return ooa.is_delete_method (target->get_address ()); };
+        
+        if (boost::find_if (call_targets, is_delete) != call_targets.end ()) {
+          throw Aborted ("aborted");
+        }
+      }
+
+      GDEBUG << "Address " << addr_str(currinsn->get_address ())
+             << " was disproven by address " << addr_str(callinsn->get_address ()) << LEND;
+      throw VertexFound ("vertexfound");
     }
   }
   // Add an instruction to the bidirectional map.
-  void add(rose_addr_t a, CFGVertex v) {
-    call2vertex[a] = v;
-    vertex2call[v] = a;
+  void add(SgAsmInstruction* i, CFGVertex v) {
+    call2vertex[i] = v;
+    vertex2call[v] = i;
   }
 };
 
@@ -253,7 +317,7 @@ void ThisPtrUsage::update_ctor_dtor(OOAnalyzer& ooa) const {
   // the calls and add them to the CallOrderVisitor.
 
   NonReturningCFGFilter nrf;
-  CallOrderVisitor cov;
+  CallOrderVisitor cov (method_evidence, ooa, fd);
 
   // How many more vertices do we need to find?
   size_t remaining = method_evidence.size();
@@ -287,7 +351,7 @@ void ThisPtrUsage::update_ctor_dtor(OOAnalyzer& ooa) const {
       if (lastinsn->get_address() == callinsn->get_address()) {
         //OINFO << "Adding insn to map: " << addr_str(callinsn->get_address()) << LEND;
         // Add the vertex to the vector of interesting call vertices.
-        cov.add(callinsn->get_address(), vertex);
+        cov.add(callinsn, vertex);
         // We've found another...
         remaining--;
         // There's no point in looking through more method evidence since we found it.
@@ -311,7 +375,7 @@ void ThisPtrUsage::update_ctor_dtor(OOAnalyzer& ooa) const {
   for (const MethodEvidenceMap::value_type& mpair : method_evidence) {
     SgAsmInstruction* callinsn = mpair.first;
     rose_addr_t caddr = callinsn->get_address();
-    auto s_found = cov.call2vertex.find(caddr);
+    auto s_found = cov.call2vertex.find(callinsn);
     if (s_found == cov.call2vertex.end()) {
       GERROR << "Unable to find " << addr_str(caddr) << " in " << " call order visitor." << LEND;
       continue;
@@ -331,6 +395,8 @@ void ThisPtrUsage::update_ctor_dtor(OOAnalyzer& ooa) const {
           // Mark our starting vertex and then do a breadth first search for one of the other
           // calls.  Reverse the graph because we want to search backwards in the CFG.
           cov.current = s;
+          cov.constructor = true;
+          cov.this_ptr = this_ptr;
           boost::filtered_graph<CFG, NonReturningCFGFilter> filtered_graph(cfg, nrf);
           auto reversed_graph = boost::make_reverse_graph(filtered_graph);
           boost::breadth_first_search(reversed_graph, s, visitor(cov));
@@ -343,6 +409,9 @@ void ThisPtrUsage::update_ctor_dtor(OOAnalyzer& ooa) const {
           // Mark the method as not a constructor.
           wtcm->no_calls_before = false;
         }
+        catch (Aborted&) {
+          GDEBUG << "Search to disprove method " << wtcm->address_string() << " is a constructor aborted when examining the call at " << addr_str(caddr) << LEND;
+        }
       }
 
       // If we still think that we're possibly a destructor...
@@ -351,6 +420,8 @@ void ThisPtrUsage::update_ctor_dtor(OOAnalyzer& ooa) const {
         try {
           // Mark our starting vertex and then do a breadth first search for one of the other
           cov.current = s;
+          cov.constructor = false;
+          cov.this_ptr = this_ptr;
           boost::filtered_graph<CFG, NonReturningCFGFilter> filtered_graph(cfg, nrf);
           boost::breadth_first_search(filtered_graph, s, visitor(cov));
         }
@@ -361,6 +432,9 @@ void ThisPtrUsage::update_ctor_dtor(OOAnalyzer& ooa) const {
                 << "of the call at " << addr_str(caddr) << LEND;
           // Mark the method as not a destructor.
           wtcm->no_calls_after = false;
+        }
+        catch (Aborted&) {
+          GDEBUG << "Search to disprove method " << wtcm->address_string () << " is a destructor aborted when examining the call at " << addr_str(caddr) << LEND;
         }
       }
     }

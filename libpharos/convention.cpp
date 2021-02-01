@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/optional.hpp>
 
@@ -1101,12 +1101,14 @@ CallingConventionMatcher::match(const FunctionDescriptor* fd,
     // Make a copy of the parameter registers, so that we can remove them as we process them.
     RegisterEvidenceMap temp_params = ru.parameter_registers;
 
-    // All functions are allowed to use the stack.
-    RegisterDescriptor esp = regdict.find("esp");
-    if (temp_params.find(esp) != temp_params.end()) temp_params.erase(esp);
-    // All functions are allowed to use the direction flag.
-    RegisterDescriptor df = regdict.find("df");
-    if (temp_params.find(df) != temp_params.end()) temp_params.erase(df);
+    // A list of registers that functions are allowed to use without being considered
+    // parameters
+    static char const * allowed_registers[] =
+      {"esp", "df", "cs", "ds", "ss", "es", "gs", "fs", nullptr};
+    for (char const ** regname = allowed_registers; *regname; ++regname) {
+      RegisterDescriptor rd = regdict.find(*regname);
+      if (temp_params.find(rd) != temp_params.end()) temp_params.erase(rd);
+    }
 
     // The calling convention doesn't have register parameters, and the function does, then it
     // can't match the calling convention.
@@ -1193,6 +1195,12 @@ CallingConventionMatcher::CallingConventionMatcher()
   nonvol.add_nonvolatile(regdict, "esi");
   nonvol.add_nonvolatile(regdict, "edi");
   nonvol.add_nonvolatile(regdict, "ebp");
+  nonvol.add_nonvolatile(regdict, "cs");
+  nonvol.add_nonvolatile(regdict, "ds");
+  nonvol.add_nonvolatile(regdict, "ss");
+  nonvol.add_nonvolatile(regdict, "es");
+  nonvol.add_nonvolatile(regdict, "fs");
+  nonvol.add_nonvolatile(regdict, "gs");
 
   // Agner's commentary points out that this is strictly not non-volatile, since it's always
   // supposed to be cleared by default.  Thus clearing it is allowed (double-safe), but setting

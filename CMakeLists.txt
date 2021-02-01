@@ -66,7 +66,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
 endif()
 
 # Rose
-find_package(Rose 0.10.7.16 REQUIRED)
+find_package(Rose 0.11.11.2 REQUIRED)
 
 # Find git
 find_package(Git REQUIRED)

@@ -18,6 +18,7 @@ take(N, List, Prefix) :-
 :- discontiguous(guessConstructor/1).
 :- discontiguous(guessClassHasNoBase/1).
 :- discontiguous(guessMergeClasses/1).
+:- discontiguous(guessLateMergeClasses/1).
 
 
 countGuess :-
@@ -784,6 +785,33 @@ guessLateMergeClasses(Out) :-
     logtraceln('Proposing ~Q.', factLateMergeClasses_F2(OneTuple)),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
+% ejs 1/27/21 This rule used to be a normal merge guess instead of a late merge guess.  But we
+% ran into a bug in #158 in which we incorrectly merged a base constructor with a derived
+% constructor.  The base was never allocated, and had many classes derived from it.  Later
+% because of size reasoning we detected a contradiction.  We believe that the late merge
+% guesses occur after guesses about embedding and inheritance, so this allows us to explicitly
+% make a guess about inheritance first and use better suited guessing rules than
+% LateMergeClassesG.
+
+% And finally just guess regardless of derived class facts.
+% ED_PAPER_INTERESTING
+guessLateMergeClassesG(Class1, Class2) :-
+    factClassCallsMethod(Class1, Method),
+    not(purecall(Method)), % Never merge purecall methods into classes.
+    % Same reasoning as in guessMergeClasses_B...
+    not(symbolProperty(Method, virtual)),
+    find(Method, Class2),
+    checkMergeClasses(Class1, Class2),
+    logtraceln('Proposing ~Q.', factLateMergeClasses_G(Class1, Class2)).
+
+guessLateMergeClasses(Out) :-
+    reportFirstSeen('guessLateMergeClassesG'),
+    minof((Class, Method),
+          guessLateMergeClassesG(Class, Method)),
+    !,
+    OneTuple=[(Class, Method)],
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
+
 
 % --------------------------------------------------------------------------------------------
 % Various rules for guessing method to class assignments...
@@ -838,32 +866,42 @@ guessNOTMergeClasses(Out) :-
 % methods with the same constructors should suggest a class merger between the constructors
 % instead (for performance reasons)?
 % Ed: Why does it matter that there are two constructors?
-guessMergeClassesA(Class1, MethodClass) :-
-    factMethod(Method),
-    not(purecall(Method)), % Never merge purecall methods into classes.
-    validFuncOffset(_Insn1, Constructor1, Method, 0),
-    validFuncOffset(_Insn2, Constructor2, Method, 0),
-    iso_dif(Constructor1, Constructor2),
-    factConstructor(Constructor1),
-    factConstructor(Constructor2),
-    find(Constructor1, Class1),
-    find(Constructor2, Class2),
-    find(Method, MethodClass),
-    iso_dif(Class1, Class2),
-    iso_dif(Class1, Method),
-    % This rule is symmetric because Prolog will try binding the same method to Constructor2 on
-    % one evluation, and Constructor1 on the next evaluation, so even though the rule is also
-    % true for Constructor2, that case will be handled when it's bound to Constructor.
-    checkMergeClasses(Class1, MethodClass),
-    logtraceln('Proposing ~Q.', factMergeClasses_A(Class1, MethodClass)).
 
-guessMergeClasses(Out) :-
-    reportFirstSeen('guessMergeClassesA'),
-    minof((Class, Method),
-          guessMergeClassesA(Class, Method)),
-    !,
-    OneTuple=[(Class, Method)],
-    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
+% 1/27/21: We found in issue #150 that this rule made an incorrect guess that eventually
+% resulted in a contradiction.  Cory wrote: 'The proposed description of what happened is that
+% 0x401ce0 is a method on an STL class, and that many classes in the program embed this STL
+% class at various offsets. guessMergeClassesA is incorrectly triggering based on this method
+% occuring at offset zero in multiple classes, when 0x401ce0 defintely should NOT cause class
+% merges.'  Cory reflected that he thought this rule was probably too specific, and might not
+% be needed anymore now that we improved some other rules.  Testing showed that disabling it
+% largely had positive effects, and fixed the problem in #150.
+
+%% guessMergeClassesA(Class1, MethodClass) :-
+%%     factMethod(Method),
+%%     not(purecall(Method)), % Never merge purecall methods into classes.
+%%     validFuncOffset(_Insn1, Constructor1, Method, 0),
+%%     validFuncOffset(_Insn2, Constructor2, Method, 0),
+%%     iso_dif(Constructor1, Constructor2),
+%%     factConstructor(Constructor1),
+%%     factConstructor(Constructor2),
+%%     find(Constructor1, Class1),
+%%     find(Constructor2, Class2),
+%%     find(Method, MethodClass),
+%%     iso_dif(Class1, Class2),
+%%     iso_dif(Class1, Method),
+%%     % This rule is symmetric because Prolog will try binding the same method to Constructor2 on
+%%     % one evluation, and Constructor1 on the next evaluation, so even though the rule is also
+%%     % true for Constructor2, that case will be handled when it's bound to Constructor.
+%%     checkMergeClasses(Class1, MethodClass),
+%%     logwarnln('Proposing ~Q.', factMergeClasses_A(Constructor1, Constructor2, Method, Class1, MethodClass)).
+
+%% guessMergeClasses(Out) :-
+%%     reportFirstSeen('guessMergeClassesA'),
+%%     minof((Class, Method),
+%%           guessMergeClassesA(Class, Method)),
+%%     !,
+%%     OneTuple=[(Class, Method)],
+%%     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % Another good guessing heuristic is that if a virtual call was resolved through a specific
 % VFTable, and there's nothing contradictory, try assigning the call to the class that it was
@@ -1032,25 +1070,6 @@ guessMergeClasses(Out) :-
     reportFirstSeen('guessMergeClassesC4'),
     minof((Class, Method),
           guessMergeClassesC4(Class, Method)),
-    !,
-    OneTuple=[(Class, Method)],
-    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
-
-% And finally just guess regardless of derived class facts.
-% ED_PAPER_INTERESTING
-guessMergeClassesE(Class1, Class2) :-
-    factClassCallsMethod(Class1, Method),
-    not(purecall(Method)), % Never merge purecall methods into classes.
-    % Same reasoning as in guessMergeClasses_B...
-    not(symbolProperty(Method, virtual)),
-    find(Method, Class2),
-    checkMergeClasses(Class1, Class2),
-    logtraceln('Proposing ~Q.', factMergeClasses_E(Class1, Class2)).
-
-guessMergeClasses(Out) :-
-    reportFirstSeen('guessMergeClassesE'),
-    minof((Class, Method),
-          guessMergeClassesE(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).

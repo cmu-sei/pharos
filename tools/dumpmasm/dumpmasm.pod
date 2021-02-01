@@ -6,18 +6,42 @@ B<dumpmasm> - Dump assembly listing using Pharos partitioner
 
 =head1 SYNOPSIS
 
-dumpmasm [--hex-bytes=NUMBER] [--basic-block-lines] [--format=STRING]
-  [--reasons] [...Pharos options...] EXECUTABLE_FILE
+dumpmasm [...Pharos options...] EXECUTABLE_FILE
 
 dumpmasm --help
-
-dumpmasm --rose-version
 
 @PHAROS_OPTS_POD@
 
 =head1 DESCRIPTION
 
-B<dumpmasm> does stuff.
+B<dumpmasm> shows the disassembly and function partitioning results from the
+Pharos platform.  Function partitioning is the assignment of instructions to
+functions.  B<dumpmasm> also reports the control flow graph recovered by the
+Pharos framework.
+
+The file format is a comma separated value (CSV) format with three primary
+record formats:
+
+"PART", address, "INSN", function_address, hex_bytes, mnemonic, operands
+
+"PART", address, "DATA", function_address, hex_bytes, "db", "???"
+
+"FLOW", from_address, to_address, flow_type
+
+The PART/INSN record type represents a disassembled instruction from the
+function partitioner (disassembler).  The mnemonic and operands fields are
+intended to communicate which instruction was found, but is not an
+authoritative disassembly in a rigorously valid MASM format.
+
+The PART/DATA record type represents data discovered in the program by the
+function partitioner.  The trailing "???" field was left for future expansion
+to include data type information.  In contrast to INSN records, the DATA
+records indicate that Pharos does not believe that the bytes represent
+executable code.
+
+The FLOW record type describes control flow discovered by the Pharos
+framework.  The flow type field is one of several keywords that are documented
+in detail in the PDGEdgeType enumeration in the graph.hopp source file.
 
 =head1 OPTIONS
 
@@ -27,21 +51,11 @@ The following options are specific to the B<dumpmasm> program.
 
 =over 4
 
-=item B<--hex-bytes>=I<NUMBER>, B<-h>=I<NUMBER>
+=item B<--format=STRING>
 
-number of hex bytes to show per instruction
-
-=item B<--basic-block-lines>, B<-l>
-
-split basic blocks with lines
-
-=item B<--format=STRING>, B<-l>
-
-write output in specified format
-
-=item B<--reasons>, B<-r>
-
-split basic blocks with lines
+Write output in specified format. The string "csv" is the only valid option,
+and also the default, making this option fairly useless in the most recent
+version of this command.
 
 =back
 
@@ -49,7 +63,9 @@ split basic blocks with lines
 
 =head1 EXAMPLES
 
-Put examples here.
+dumpmasm test.exe | grep '^"PART"'
+
+dumpmasm test.exe | grep '^"FLOW"'
 
 =head1 ENVIRONMENT
 
@@ -69,9 +85,8 @@ Put examples here.
 
 =head1 NOTES
 
-This program was one of these first ROSE programs written by the SEI
-and it has not been updated properly to the latest version of ROSE.
-It may contain bugs as a result of the tool evolution.
+This program is an internal tool used for debugging the function partitioner,
+and hasn't been well maintained.
 
 =head1 AUTHOR
 

@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/algorithm/string.hpp>
 #include <boost/tokenizer.hpp>
@@ -170,7 +170,7 @@ BlockAnalysis::record_dependencies(
   SgAsmX86Instruction *insn,
   const SymbolicStatePtr& cstate)
 {
-  SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(du.dispatcher->get_operators());
+  SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(du.dispatcher->operators());
 
   du.update_accesses(insn, rops);
   //du.print_accesses(insn); // Debugging
@@ -384,7 +384,7 @@ BlockAnalysis::analyze(bool with_context)
   DSTREAM << "Emulating block " << addr_str(address) << LEND;
 
   SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(
-    du.dispatcher->get_operators());
+    du.dispatcher->operators());
   size_t arch_bits = du.ds.get_arch_bits();
   RegisterDescriptor eiprd = du.ds.get_ip_reg();
   RegisterDescriptor esprd = du.ds.get_stack_reg();
@@ -486,7 +486,7 @@ BlockAnalysis::handle_stack_delta(SgAsmBlock *bb, SgAsmX86Instruction* insn,
   const CallDescriptor* cd = du.ds.get_call(iaddr);
 
   SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(
-    du.dispatcher->get_operators());
+    du.dispatcher->operators());
   SymbolicStatePtr after_state = rops->get_sstate();
 
   // We'll need to know the delta for this instruction.
@@ -691,16 +691,17 @@ DUAnalysis::DUAnalysis(DescriptorSet& ds_, FunctionDescriptor & f)
   // The RiscOps can be obtained from the dispatcher once it's created.
   SymbolicRiscOperatorsPtr rops;
 
-  auto ip = ds.get_partitioner().instructionProvider();
+  SymbolicValuePtr proto = SymbolicValue::instance();
+  const RegisterDictionary& regdict = ds.get_regdict();
   if (rigor) {
     // This is the new bit that instantiates the list-based memory state instead of the map based state.
-    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(ip);
+    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(proto, &regdict);
     SymbolicMemoryListStatePtr mstate = SymbolicMemoryListState::instance();
     SymbolicStatePtr state = SymbolicState::instance(rstate, mstate);
     rops = SymbolicRiscOperators::instance(ds, state, &rops_callbacks);
   }
   else {
-    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(ip);
+    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(proto, &regdict);
     SymbolicMemoryMapStatePtr mstate = SymbolicMemoryMapState::instance();
     SymbolicStatePtr state = SymbolicState::instance(rstate, mstate);
     rops = SymbolicRiscOperators::instance(ds, state, &rops_callbacks);
@@ -963,7 +964,7 @@ void create_overwritten_register(SymbolicRiscOperatorsPtr rops,
 void
 DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& cstate)
 {
-  SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->get_operators());
+  SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->operators());
 
   // This might not be correct.  I'm still a little muddled on how we're handling thunks.
   if (!insn_is_call(insn)) return;
@@ -1530,7 +1531,7 @@ bool DUAnalysis::saved_register(SgAsmX86Instruction* insn, const Definition& def
   SDEBUG << "Checking for saved register for:" << debug_instruction(insn) << LEND;
 
   // We need a register descriptor for ESP, because it's special.
-  RegisterDictionary regdict = ds.get_regdict();
+  const RegisterDictionary& regdict = ds.get_regdict();
   RegisterDescriptor resp = regdict.find("esp");
 
   const AbstractAccess* saveloc = NULL;
@@ -1649,8 +1650,9 @@ DUAnalysis::update_output_state()
   // can result in confusing downstream behavior, because the output state is not related to the input
   if (out_vertices.size() == 0) {
     SERROR << "Function " << fd->address_string() << " has no out edges." << LEND;
-    auto ip = ds.get_partitioner().instructionProvider();
-    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(ip);
+    SymbolicValuePtr proto = SymbolicValue::instance();
+    const RegisterDictionary& regdict = ds.get_regdict();
+    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(proto, &regdict);
     SymbolicMemoryMapStatePtr mstate = SymbolicMemoryMapState::instance();
     output_state = SymbolicState::instance(rstate, mstate);
     output_valid = false;
@@ -1701,8 +1703,9 @@ DUAnalysis::update_output_state()
   // If no blocks ended with return instructions, return an empty output_state.
   if (ret_blocks.size() == 0) {
     SDEBUG << "Function " << fd->address_string() << " has no valid return blocks." << LEND;
-    auto ip = ds.get_partitioner().instructionProvider();
-    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(ip);
+    SymbolicValuePtr proto = SymbolicValue::instance();
+    const RegisterDictionary& regdict = ds.get_regdict();
+    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(proto, &regdict);
     SymbolicMemoryMapStatePtr mstate = SymbolicMemoryMapState::instance();
     output_state = SymbolicState::instance(rstate, mstate);
     output_valid = false;
@@ -1727,7 +1730,7 @@ DUAnalysis::update_output_state()
   output_state = blocks.at(addr).output_state->sclone();
   for (const SgAsmBlock *block : ret_blocks) {
     addr = block->get_address();
-    SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->get_operators());
+    SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->operators());
     output_state->merge(blocks.at(addr).output_state, rops.get(), SymbolicValue::incomplete(1));
   }
 }
@@ -1735,7 +1738,7 @@ DUAnalysis::update_output_state()
 void DUAnalysis::save_treenodes() {
 
   // Map for every treenode we every find
-  SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->get_operators());
+  SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->operators());
 
   unique_treenodes_ = rops->unique_treenodes;
   memory_accesses_ = rops->memory_accesses;
@@ -1846,7 +1849,7 @@ DUAnalysis::merge_predecessors(CFGVertex vertex)
   // The merged state that we return.
   SymbolicStatePtr cstate;
 
-  SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->get_operators());
+  SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->operators());
 
   SgAsmBlock *bblock = get(boost::vertex_name, cfg, vertex);
   assert(bblock!=NULL);
@@ -1909,7 +1912,7 @@ DUAnalysis::merge_predecessors_with_conditions(CFGVertex vertex)
   // The merged state that we return.
   SymbolicStatePtr cstate;
 
-  SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->get_operators());
+  SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->operators());
 
   SgAsmBlock *bblock = get(boost::vertex_name, cfg, vertex);
   assert(bblock!=NULL);
@@ -2009,7 +2012,7 @@ DUAnalysis::process_block_with_limit(CFGVertex vertex)
 
   // Incoming rops for the block.  This is the merge of all out policies of predecessor
   // vertices, with special consideration for the function entry block.
-  SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->get_operators());
+  SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->operators());
 
   // There is now a setting to determine whether the conditions computed for basic blocks are
   // preserved and propogated when merging predecessors. Real conditions are needed for certain
@@ -2131,7 +2134,7 @@ DUAnalysis::loop_over_cfg()
           << " of " << num_vertices(cfg) << " blocks in the control flow." << LEND;
   }
 
-  SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->get_operators());
+  SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->operators());
   initial_state = rops->get_sstate();
   // Cory thinks the clone here is wrong, because it won't include subsequent "updates" to the
   // initial state for values that are created as we read them.
@@ -2286,7 +2289,7 @@ DUAnalysis::analyze_basic_blocks_independently()
   // Instead of loop_over_cfg(), this algorithm is going to be simpler, so it's right here.
 
   // The RISC operators were built in the constructor based on how much rigor we wanted.
-  SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->get_operators());
+  SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::promote(dispatcher->operators());
 
   // Visit each basic block in the function without regard to the ordering in the control flow,
   // or even whether the blocks are connected to the control flow.

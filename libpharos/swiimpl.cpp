@@ -167,14 +167,23 @@ Error::build_msg(qid_t qid)
   if (exc) {
     Frame fid{};
     auto args = PL_new_term_refs(2);
+#if PLVERSION >= 80306 // Since 8.3.6, PL_put_term() can fail
+    bool put_term_success = PL_put_term(args, exc);
+#else
+    constexpr bool put_term_success = true;
     PL_put_term(args, exc);
-    static auto message_to_string = PL_predicate("message_to_string", 2, nullptr);
-    if (PL_call_predicate(nullptr, PL_Q_NORMAL, message_to_string, args)) {
-      char * msg;
-      size_t size;
-      if (PL_get_string_chars(args + 1, &msg, &size)) {
-        err_str = std::string{msg, size};
+#endif
+    if (put_term_success) {
+      static auto message_to_string = PL_predicate("message_to_string", 2, nullptr);
+      if (PL_call_predicate(nullptr, PL_Q_NORMAL, message_to_string, args)) {
+        char * msg;
+        size_t size;
+        if (PL_get_string_chars(args + 1, &msg, &size)) {
+          err_str = std::string{msg, size};
+        }
       }
+    } else {
+      err_str = "Could not generate Prolog error string"s;
     }
     PL_clear_exception();
   }

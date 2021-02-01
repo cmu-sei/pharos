@@ -81,8 +81,8 @@ bool OOAnalyzer::identify_delete_method(FunctionDescriptor const & fd) {
   if (delete_hashes.find(sig) != delete_hashes.end()) {
     // Because the hash for a delete method is basically just a stub that jumps to _free,
     // we need to do some additional analysis to avoid a bunch of false positives. :-(
-    //GINFO << "Function at " << fd->address_string() << " matches hash "
-    //      << sig << " of known delete() method (but has not been confirmed)." << LEND;
+    GINFO << "Function at " << fd.address_string() << " matches hash "
+          << sig << " of known delete() method (but has not been confirmed)." << LEND;
 
     // Some of the delete hashes are actually short stubs that jump to other implementations of
     // delete.  An example of this was the statically linked implementation of ??3@YAXPAXI@Z in
@@ -96,8 +96,8 @@ bool OOAnalyzer::identify_delete_method(FunctionDescriptor const & fd) {
       if (!(cd->is_tail_call())) continue;
       for (rose_addr_t target : cd->get_targets()) {
         if (is_delete_method(target)) {
-          GINFO << "Function at " << addr_str(target) << " matches hash "
-                << sig << " of known delete() method." << LEND;
+          GINFO << "Function at " << addr_str(target) << " (and its thunk " << addr_str(fdaddr)
+                << ") matches hash "<< sig << " of known delete() method." << LEND;
           set_delete_method(fdaddr);
           delete_methods_found++;
           return true;
