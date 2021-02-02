@@ -50,7 +50,7 @@ test "$1" = "-reclaim" && rm -rf $DIR/z3
 cd $DIR
 test -d rose && rm -rf rose
 
-git clone --depth 1 -b v0.10.7.16 https://github.com/rose-compiler/rose rose
+git clone --depth 1 -b v0.11.11.2 https://github.com/rose-compiler/rose rose
 cd rose
 
 # See rose issue #52
