@@ -1566,13 +1566,13 @@ void ApiResultJsonFormatter::Format(ApiSearchResultVector &results, ApiOutputMan
 std::string ApiResultJsonFormatter::ToString() {
 
   std::stringstream out;
-  out << json::pretty() << out_json_;
+  out << json::pretty() << *out_json_;
   return out.str();
 }
 
 bool ApiResultJsonFormatter::ToFile(std::string ofile_name) {
   std::ofstream out(ofile_name);
-  out << json::pretty() << out_json_;
+  out << json::pretty() << *out_json_;
 
   return true;
 }

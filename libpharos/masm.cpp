@@ -126,6 +126,7 @@ std::string masm_x86TypeToPtrName(SgAsmType* ty) {
     return "V" + std::to_string(vt->get_nElmts()) + masm_x86TypeToPtrName(vt->get_elmtType());
   }
   ASSERT_not_reachable("unhandled type: " + ty->toString());
+  return "BAD_TYPE";
 }
 
 std::string masm_unparseX86Expression(SgAsmExpression *expr,

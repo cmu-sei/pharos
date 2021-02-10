@@ -46,7 +46,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/local.cmake" OPTIONAL)
 set(ROSE_ROOT  "" CACHE PATH "The root directory of the ROSE library")
 set(BOOST_ROOT "" CACHE PATH "The root directory of the Boost installation")
 set(Z3_ROOT  "" CACHE PATH "The root directory of the Z3 installation")
-set(YAML_CPP_ROOT "" CACHE PATH "The root directory of the yaml-cpp installation")
+set(YamlCpp_ROOT "" CACHE PATH "The root directory of the yaml-cpp installation")
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/site.cmake" OPTIONAL)
 include("${CMAKE_CURRENT_SOURCE_DIR}/local.cmake" OPTIONAL)

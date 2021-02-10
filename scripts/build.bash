@@ -17,7 +17,7 @@ mkdir build
 cd build
 cmake -GNinja -DCMAKE_INSTALL_PREFIX=$PREFIX -DROSE_ROOT=$PREFIX \
       -DBOOST_ROOT=$PREFIX -DZ3_ROOT=$PREFIX -DSWIPL_ROOT=$PREFIX \
-      -DYAML_CPP_ROOT=/usr ../..
+      -DYamlCpp_ROOT=/usr ../..
 
 ninja -k $NCPU -j $NCPU || true
 ninja -j 1

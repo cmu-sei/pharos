@@ -132,11 +132,16 @@ goal_expansion(Goal, Out) :-
     baselogname(Name),
     (logLevelEnabled(Level) -> Out = Goal ; Out = true).
 
+%% The rule at HERE subsumes this rule.  But we think this rule is here to avoid warnings about
+%% variables being used only once (e.g., because they were deleting by the expansion).  It's
+%% unclear if this is a real concern now that we only use SWI and compiling is always done on
+%% demand.
 goal_expansion(Goal, Out) :-
     Goal =.. [Name, _Fmt, Args],
     logging_atom(Name, Level),
     (logLevelEnabled(Level) -> Out = Goal ; Out = noop(Args)).
 
+%% HERE
 goal_expansion(Goal, Out) :-
     functor(Goal, Name, _),
     logging_atom(Name, Level),

@@ -16,12 +16,12 @@
    assert(base_directory(Dir)).
 
 :- dynamic globalHalt/0 as opaque.
+:- dynamic runOptions/1.
 
 :- initialization(main, main).
 
 nohalt :-
-    (exists_source(library(readline)) -> use_module(library(readline)) ; true),
-    break.
+    set_prolog_flag(toplevel_goal, prolog).
 
 %% Same as option/2, but fails if the value hasn't been set
 check_option(X, O) :-
@@ -130,6 +130,8 @@ ooprolog_opts_spec(
        type(atom), help('path to prolog rules')],
       [opt(halt), longflags([halt]), shortflags(['H']), type(boolean),
        default(true), help('halt after execution')],
+      [opt(load_only), longflags([load_only]), shortflags(['L']), type(boolean),
+       default(false), help('only load the code')],
 
       [opt(help), longflags([help]), shortflags(['h']), type(boolean),
        help('output this message')]
@@ -174,15 +176,13 @@ parse_options(OptsSpec, Args, Opts, Positional) :-
 run_with_backtrace(X) :-
     catch_with_backtrace(
         X, Exception,
-        (print_message(error, Exception), (globalHalt, ! ; nohalt), halt(1))).
+        (print_message(error, Exception), (globalHalt -> halt(1) ; true))).
 
 main :-
     set_prolog_flag(color_term, true),
-    current_prolog_flag(os_argv, FullArgs),
-    current_prolog_flag(argv, ScriptArgs),
-    append(PrologArgs, ScriptArgs, FullArgs),
-    append(_, [Script], PrologArgs),
-    catch(main([Script|ScriptArgs]), E,
+    current_prolog_flag(argv, Argv),
+    source_file(main, Script),
+    catch(main([Script|Argv]), E,
           (print_message(error, E), halt(1))).
 
 main([Script|Args]) :-
@@ -200,13 +200,23 @@ main([], []) :-
     usage(user_output, 0).
 
 main(Opts, []) :-
+    load(Opts),
+    (   option(load_only(true), Opts)
+    ->  asserta(runOptions(Opts))
+    ;   run(Opts)
+    ).
+
+load(Opts) :-
     setup_oorules_path(Opts), !,
     option(stacklimit(Stacklimit), Opts),
     option(tablespace(Tablespace), Opts),
     option(rtti(RTTI), Opts),
     option(guess(Guess), Opts),
-    option(halt(Halt), Opts),
-    ignore(Halt -> assert(globalHalt)),
+    (   option(halt(true), Opts),
+        \+ option(load_only(true), Opts)
+    ->  assert(globalHalt)
+    ;   nohalt
+    ),
     option(loglevel(Loglevel), Opts),
     set_limit_flag(stack_limit, Stacklimit),
     set_limit_flag(table_space, Tablespace),
@@ -215,11 +225,16 @@ main(Opts, []) :-
     ignore(check_option(oorulespath(Path), Opts) ->
                asserta(file_search_path(pharos, Path))),
     ignore(RTTI -> assert(rTTIEnabled)),
-    (Guess, ! ; assert(guessingDisabled)),
+    (Guess, ! ; assert(guessingDisabled)).
+
+run :-
+    runOptions(Opts),
+    run(Opts).
+
+run(Opts) :-
     generate_results(Opts),
     generate_json(Opts),
-    validate_results(Opts),
-    (Halt, ! ; nohalt).
+    validate_results(Opts).
 
 %% Generate results when there is a facts file
 generate_results(Opts) :-

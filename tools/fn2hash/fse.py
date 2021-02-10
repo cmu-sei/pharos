@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright 2017, Carngegie Mellon University
 #
@@ -317,7 +317,13 @@ def do_matrix():
     num_fn_per_file = {}
     for f in file2fn.keys():
         num_fn_per_file[f] = len(file2fn[f])
-    files_descending = [f[0] for f in sorted(num_fn_per_file.iteritems(),key=operator.itemgetter(1),reverse=True) if f[1] > 0]
+    files_descending = []
+    for pair in sorted(num_fn_per_file.items(), key=lambda item: item[1], reverse=True):
+        # Skip files that have no functions.
+        if pair[1] == 0:
+            continue
+        # Append the file hash to the correctly sorted list.
+        files_descending.append(pair[0])
     files_dropped = len(file2fn) - len(files_descending)
     logger.info("(%d files dropped because no functions found)"%files_dropped)
 

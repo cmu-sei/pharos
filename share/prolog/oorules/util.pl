@@ -180,7 +180,8 @@ show_progress :-
 
 
 throw_with_backtrace(Throw) :-
-    backtrace(100),
+    get_prolog_backtrace(100, Backtrace, [goal_term_depth(100)]),
+    print_prolog_backtrace(user_error, Backtrace),
     throw(Throw).
 
 shut_down :-

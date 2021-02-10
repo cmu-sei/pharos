@@ -1551,7 +1551,7 @@ public class OOAnalyzer {
                                                           ghidraTypeSym.getParentNamespace());
 
         // Create a new method for this class symbol
-        createNewLabel(ghidraMethod.getEntryPoint(), methodName, clsNamespace, SourceType.USER_DEFINED);
+        createOrUpdateLabel(ghidraMethod.getEntryPoint(), methodName, clsNamespace, SourceType.USER_DEFINED);
 
         applyClassToMethod(ghidraType, ghidraMethod, mType);
 

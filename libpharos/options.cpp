@@ -1,4 +1,4 @@
-// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <algorithm>
 #include <iterator>
@@ -300,6 +300,8 @@ static ProgOptVarMap parse_cert_options_internal(
 
   // Register our custom callback for determining if two expressions may be equal.
   set_may_equal_callback();
+
+  get_logging_destination()->prefix()->showElapsedTime(false);
 
   // Get the options logging facility working with the standard options.
   olog.initialize("OPTI");

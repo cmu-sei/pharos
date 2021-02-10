@@ -17,6 +17,7 @@
 #include <memory>
 #include <ostream>
 #include <mutex>
+#include <stack>
 
 #include "enums.hpp"
 #include "prologbase.hpp"

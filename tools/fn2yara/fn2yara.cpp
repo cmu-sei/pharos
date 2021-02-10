@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/algorithm/string.hpp>
 
@@ -139,7 +139,7 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
     typedef std::vector<rose_addr_t> vec_t;
     typedef vec_t::const_iterator    it_t;
 
-    rose_addr_t addr;
+    rose_addr_t addr = 0;
     size_t size = 0;
     vec_t addresses;
     bool end_block = false;

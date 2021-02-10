@@ -177,12 +177,6 @@ using BuilderRef = std::unique_ptr<Builder>;
 
 std::ostream & operator<<(std::ostream & stream, Node const & n);
 
-template <typename T>
-std::enable_if_t<std::is_base_of<Node, typename T::element_type>::value, std::ostream &>
-operator<<(std::ostream & stream, T const & n) {
-  return stream << *n;
-}
-
 class pretty {
  private:
   unsigned indent;

@@ -24,7 +24,7 @@ fi
 # SWI
 cd $DIR
 test -d swipl-devel && rm -rf swipl-devel
-git clone --recursive -b V8.2.0 --depth 1 https://github.com/swi-prolog/swipl-devel
+git clone --recursive -b V8.3.19 --depth 1 https://github.com/swi-prolog/swipl-devel
 cd swipl-devel
 mkdir build
 cd build
