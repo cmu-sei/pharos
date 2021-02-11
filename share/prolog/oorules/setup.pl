@@ -1,4 +1,4 @@
-% Copyright 2017-2020 Carnegie Mellon University.
+% Copyright 2017-2021 Carnegie Mellon University.
 
 :- use_module(library(apply), [maplist/3]).
 
@@ -187,6 +187,21 @@ classArgs(factClassSizeLTE/2, 1).
 :- ensure_loaded(class).
 :- ensure_loaded(trigger).
 :- ensure_loaded(swihelp).
+
+% ============================================================================================
+% Version warning.
+% ============================================================================================
+version_check :-
+    current_prolog_flag(version_data, swi(Major, Minor, Patch, _Extra)),
+    current_prolog_flag(version, Version),
+    Version < 80319,
+    logwarnln("The version of SWI Prolog being used is version ~d.~d.~d.  This",
+              [Major, Minor, Patch]),
+    logwarnln("version does not contain bug fixes installed in version 8.3.19."),
+    logwarnln("The lack of these fixes can cause problems in rare cases.  See"),
+    logwarnln("https://github.com/cmu-sei/pharos/issues/156 for more details.").
+
+version_check.
 
 % These predicates are just named differently in SWI Prolog.
 incr_assert(T)  :- assertz(T).
@@ -621,6 +636,7 @@ complain_stack_size(X) :-
 % Solve when guessing is disabled
 solve_internal :-
     setDefaultLogLevel,
+    version_check,
     guessingDisabled,
     !,
     (loginfoln('Reasoning about object oriented constructs based on known facts ...'),

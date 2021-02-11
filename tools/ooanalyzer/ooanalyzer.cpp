@@ -1,4 +1,4 @@
-// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <rose.h>
 
@@ -85,7 +85,7 @@ static int ooanalyzer_main(int argc, char **argv)
 
   OINFO << "OOAnalyzer version " << VERSION << "." << LEND;
 
-  if (!vm.count("prolog-facts") && !vm.count("json")) {
+  if (!vm.count("prolog-facts") && !vm.count("prolog-results") && !vm.count("json")) {
     GFATAL << "You must provide --json (for use with the IDA plugin) or --prolog-facts." << LEND;
     GFATAL << "If you use --prolog-facts you probably also want to use --prolog-results." << LEND;
     return EXIT_FAILURE;

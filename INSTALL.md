@@ -266,10 +266,14 @@ $ sudo make -j4 install
 
 ### SWI Prolog
 
-SWI Prolog is the backbone of OOAnalyzer's reasoning system.  The Pharos
-build system currently depends on version 8.3.19 or greater.
+SWI Prolog is the backbone of OOAnalyzer's reasoning system.  The
+Pharos build system currently depends on version 8.2.0 or greater.
+SWI Prolog version 8.3.19 or later fixes a bug in Prolog that can be
+triggered by ooanalyzer in some rare cases.  See
+https://github.com/cmu-sei/pharos/issues/156 for more details.
 
-These commands will build and install this version to $SWIPL_LOCATION:
+These commands will build and install version 8.3.16 to
+$SWIPL_LOCATION:
 
 ```
 $ git clone --recursive -b V8.3.19 --depth 1 https://github.com/swi-prolog/swipl-devel

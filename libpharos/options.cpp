@@ -422,6 +422,11 @@ static ProgOptVarMap parse_cert_options_internal(
   // apidb
   apidblog[Sawyer::Message::WARN].enable();
 
+  // Prolog logging levels
+  plog[Sawyer::Message::ERROR].enable();
+  plog[Sawyer::Message::FATAL].enable();
+  plog[Sawyer::Message::WARN].enable();
+
   // If the user has modified the verbosity level, let's try to get the logging right before we
   // emit any messages at all.
   auto verbosity_opt = vm.get<int>("verbose", "pharos.verbosity");
@@ -471,9 +476,6 @@ static ProgOptVarMap parse_cert_options_internal(
     slog[Sawyer::Message::DEBUG].enable(verbosity >= 13);
 
     // Prolog logging levels
-    plog[Sawyer::Message::ERROR].enable(true);
-    plog[Sawyer::Message::FATAL].enable(true);
-    plog[Sawyer::Message::WARN].enable(true);
     plog[Sawyer::Message::INFO].enable(verbosity >= 3);
     plog[Sawyer::Message::WHERE].enable(verbosity >= 6);
     plog[Sawyer::Message::TRACE].enable(verbosity >= 9);

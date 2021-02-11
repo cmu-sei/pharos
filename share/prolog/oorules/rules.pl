@@ -2706,12 +2706,10 @@ reasonNOTMergeClasses_L(Class1, Class2) :-
 % PAPER: Class size constraints
 % Called by trigger.pl
 reasonNOTMergeClasses_M(Class1, Class2, GTESize, LTESize) :-
-    factClassSizeGTE(Class1, GTESize),
-    factClassSizeLTE(Class2, LTESize),
-    % This rule handles symmetry correctly, so adding this constraint causes the rule to fire
-    % twice, but reduces the number of NOTMergeClass facts created by this rule.
-    Class1 < Class2,
+    factClassSizeGTE(BigClass, GTESize),
+    factClassSizeLTE(SmallClass, LTESize),
     LTESize < GTESize,
+    sort_tuple((BigClass, SmallClass), (Class1, Class2)),
     % Debugging
     logtraceln('~@~Q.', [not(dynFactNOTMergeClasses(Class1, Class2)),
                          reasonNOTMergeClasses_M(Class1, Class2, GTESize, LTESize)]).
@@ -2724,12 +2722,10 @@ reasonNOTMergeClasses_M(Class1, Class2, GTESize, LTESize) :-
 % candidates for a merge in the first place.  The current rule simply looks at sizes and
 % nothing else.  As a result this is the largest source of factNOTMergeClass facts.
 reasonNOTMergeClasses_N(Class1, Class2, GTESize, LTESize) :-
-    factClassSizeLTE(Class1, LTESize),
-    factClassSizeGTE(Class2, GTESize),
-    % This rule handles symmetry correctly, so adding this constraint causes the rule to fire
-    % twice, but reduces the number of NOTMergeClass facts created by this rule.
-    Class1 < Class2,
+    factClassSizeLTE(SmallClass, LTESize),
+    factClassSizeGTE(BigClass, GTESize),
     GTESize > LTESize,
+    sort_tuple((SmallClass, BigClass), (Class1, Class2)),
     % Debugging
     logtraceln('~@~Q.', [not(dynFactNOTMergeClasses(Class1, Class2)),
                          reasonNOTMergeClasses_N(Class1, Class2, GTESize, LTESize)]).

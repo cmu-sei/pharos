@@ -193,8 +193,8 @@ finalClass(ClassID, VFTableOrNull, CSize, LSize, RealDestructorOrNull, MethodLis
     reasonMinimumPossibleClassSize(Class, CSize),
     LSize is CSize,
     % Optionally find the the real destructor as well.
-    ((factRealDestructor(RealDestructor),
-      find(RealDestructor, Class))
+    ((find(RealDestructor, Class),
+      factRealDestructor(RealDestructor))
      -> RealDestructorOrNull=RealDestructor; RealDestructorOrNull=0),
     findallMethods(Class, UnsortedMethodList),
     sort(UnsortedMethodList, MethodList).
