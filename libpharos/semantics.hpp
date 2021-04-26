@@ -1,4 +1,4 @@
-// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Semantics_H
 #define Pharos_Semantics_H
@@ -97,6 +97,14 @@ class SymbolicValue: public ParentSValue {
   }
 
  public:
+
+  // Some methods that used to be public have been declared protected in later versions of
+  // Rose.  Here we re-export them as public.
+  using ParentSValue::must_equal;
+  using ParentSValue::get_comment;
+  using ParentSValue::set_comment;
+  using ParentSValue::is_number;
+  using ParentSValue::get_number;
 
   // Conversion to TreeNodePtr
   operator TreeNodePtr() const {

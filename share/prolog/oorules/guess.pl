@@ -652,6 +652,29 @@ tryNOTConstructor(Method) :-
     try_assert(guessedNOTConstructor(Method)).
 
 % --------------------------------------------------------------------------------------------
+% Try guessing that method is NOT a constructor.
+% --------------------------------------------------------------------------------------------
+
+% This rule used to be a forward reasoning rule.  But after some time, it became clear that
+% there are some cases in which noCallsBefore/1, and thus possibleConstructor/1, are missing
+% for constructors.  One example is when stack space is reused for multiple objects.  Now we
+% make this a guessing rule instead, since they are almost always right.  But if they aren't,
+% we don't want to cause a contradiction.
+guessNOTConstructorA(Method) :-
+    factMethod(Method),
+    not(possibleConstructor(Method)),
+    doNotGuessHelper(factConstructor(Method),
+                     factNOTConstructor(Method)).
+
+guessNOTConstructor(Out) :-
+    reportFirstSeen('guessNOTConstructor'),
+    osetof(Method,
+           guessNOTConstructorA(Method),
+           MethodSet),
+    logtraceln('Proposing ~Q.', factNOTConstructorA(MethodSet)),
+    Out = tryBinarySearch(tryNOTConstructor, tryConstructor, MethodSet).
+
+% --------------------------------------------------------------------------------------------
 % Try guessing that constructor has no base class.
 % --------------------------------------------------------------------------------------------
 
@@ -682,19 +705,24 @@ guessClassHasNoBase(Out) :-
 
 % Then guess classes regardless of their VFTable writes.
 % ED_PAPER_INTERESTING
-guessClassHasNoBaseC(Class) :-
-    factConstructor(Constructor),
-    find(Constructor, Class),
-    not(factDerivedClass(Class, _BaseClass, _Offset)),
-    doNotGuessHelper(factClassHasNoBase(Class),
-                     factClassHasUnknownBase(Class)).
 
-guessClassHasNoBase(Out) :-
-    osetof(Class,
-           guessClassHasNoBaseC(Class),
-           ClassSet),
-    logtraceln('Proposing ~P.', 'ClassHasNoBase_C'(ClassSet)),
-    Out = tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
+% ejs 2/17/21 This was incorrectly making a guess on 2010/Lite/ooex7 for 0x402520. It's a
+% pretty wild guess, so it should probably happen later.  We already have
+% guessCommitClassHasNoBase which is similar, but does not prioritize constructors.
+
+%% guessClassHasNoBaseC(Class) :-
+%%     factConstructor(Constructor),
+%%     find(Constructor, Class),
+%%     not(factDerivedClass(Class, _BaseClass, _Offset)),
+%%     doNotGuessHelper(factClassHasNoBase(Class),
+%%                      factClassHasUnknownBase(Class)).
+
+%% guessClassHasNoBase(Out) :-
+%%     osetof(Class,
+%%            guessClassHasNoBaseC(Class),
+%%            ClassSet),
+%%     logtraceln('Proposing ~P.', 'ClassHasNoBase_C'(ClassSet)),
+%%     Out = tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
 
 tryClassHasNoBase(Class) :-
     countGuess,
@@ -755,7 +783,8 @@ guessLateMergeClassesF2(Class, Method) :-
     factMethodInVFTable(VFTable, _Offset1, Method),
 
     % One of the methods is in a class all by itself right now.
-    findall(Method, [Method]),
+    is_singleton(Method),
+
     findVFTable(VFTable, Class),
 
     checkMergeClasses(Class, Method).
@@ -785,6 +814,41 @@ guessLateMergeClasses(Out) :-
     logtraceln('Proposing ~Q.', factLateMergeClasses_F2(OneTuple)),
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
+
+guessLateMergeClasses_G1(Class1, Class2) :-
+    factClassRelatedMethod(Class1, Method),
+    not(purecall(Method)), % Never merge purecall methods into classes.
+    % Same reasoning as in guessMergeClasses_B...
+    not(symbolProperty(Method, virtual)),
+
+    % Prioritize classes with constructors over classes without them compared to the G2 rule
+    % that's about to follow.  An unusual corner case is demonstrated by the Lite troublemakers
+    % where we have Locinfo and Lockit.  Locinfo has a Lockit at offset zero.  We know that the
+    % Locinfo constructor calls the Lockit constructor, and that the Locinfo destructor calls
+    % the Lockit destructor. We correctly identfy the constructor properties, and the
+    % ObjectInObjectRelationship, but we do NOT identify the destructor properties.  We know
+    % that the appropriate pairs of constructors and destructors are related in some way, but
+    % also know that the destructors are related to each other as well, leading us to
+    % incorrectly join the destructors.  Prioritizing this rule forces the constructors to get
+    % joined to their destructors (and other methods) before the weaker G2 rule does the wrong
+    % thing by merging destructors.  We could block destructors here, but in this particular
+    % case, we don't that the faulty relationship is between destructors.  Further, it seems
+    % like the need to prioritize constructors is also related to the constraints blocking
+    % ObjectInObject in the factClassRelatedMethod()...
+    (factConstructor(Method); (find(Ctor, Class1), factConstructor(Ctor)) -> true),
+
+    find(Method, Class2),
+    checkMergeClasses(Class1, Class2),
+    logtraceln('Proposing ~Q.', factLateMergeClasses_G1(Class1, Class2)).
+
+guessLateMergeClasses(Out) :-
+    reportFirstSeen('guessLateMergeClasses_G1'),
+    minof((Class, Method),
+          guessLateMergeClasses_G1(Class, Method)),
+    !,
+    OneTuple=[(Class, Method)],
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
+
 % ejs 1/27/21 This rule used to be a normal merge guess instead of a late merge guess.  But we
 % ran into a bug in #158 in which we incorrectly merged a base constructor with a derived
 % constructor.  The base was never allocated, and had many classes derived from it.  Later
@@ -795,19 +859,19 @@ guessLateMergeClasses(Out) :-
 
 % And finally just guess regardless of derived class facts.
 % ED_PAPER_INTERESTING
-guessLateMergeClassesG(Class1, Class2) :-
-    factClassCallsMethod(Class1, Method),
+guessLateMergeClasses_G2(Class1, Class2) :-
+    factClassRelatedMethod(Class1, Method),
     not(purecall(Method)), % Never merge purecall methods into classes.
     % Same reasoning as in guessMergeClasses_B...
     not(symbolProperty(Method, virtual)),
     find(Method, Class2),
     checkMergeClasses(Class1, Class2),
-    logtraceln('Proposing ~Q.', factLateMergeClasses_G(Class1, Class2)).
+    logtraceln('Proposing ~Q.', factLateMergeClasses_G2(Class1, Class2)).
 
 guessLateMergeClasses(Out) :-
     reportFirstSeen('guessLateMergeClassesG'),
     minof((Class, Method),
-          guessLateMergeClassesG(Class, Method)),
+          guessLateMergeClasses_G2(Class, Method)),
     !,
     OneTuple=[(Class, Method)],
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).

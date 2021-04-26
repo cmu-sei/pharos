@@ -1,4 +1,4 @@
-// Copyright 2016-2020 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2021 Carnegie Mellon University.  See LICENSE file for terms.
 // Author: Cory Cohen
 
 #include <boost/range/adaptor/map.hpp>
@@ -22,6 +22,8 @@
 #include "oomethod.hpp"
 #include "oomember.hpp"
 #include "oovftable.hpp"
+
+namespace bf = boost::filesystem;
 
 namespace pharos {
 
@@ -64,7 +66,7 @@ OOSolver::OOSolver(DescriptorSet & ds_, const ProgOptVarMap& vm) : ds(ds_)
   perform_analysis = false;
 
   if (vm.count("prolog-facts")) {
-    facts_filename = vm["prolog-facts"].as<std::string>();
+    facts_filename = vm["prolog-facts"].as<bf::path>().native();
   }
 
   tracing_enabled = false;
@@ -134,12 +136,12 @@ OOSolver::OOSolver(DescriptorSet & ds_, const ProgOptVarMap& vm) : ds(ds_)
   }
 
   if (vm.count("prolog-results")) {
-    results_filename = vm["prolog-results"].as<std::string>();
+    results_filename = vm["prolog-results"].as<bf::path>().native();
     perform_analysis = true;
   }
 
   if (vm.count("json")) {
-    json_path = vm["json"].as<std::string>();
+    json_path = vm["json"].as<bf::path>().native();
     perform_analysis = true;
   }
 
@@ -536,7 +538,7 @@ OOSolver::add_call_facts(const OOAnalyzer& ooa)
 
       session->add_fact("callTarget", cd.get_address(), callfunc->get_address(), target);
 
-      bool isdelete = ooa.is_delete_method(target);
+      bool isdelete = ooa.is_candidate_delete_method(target);
       std::string thisptr_term = "invalid";
       if (isdelete) {
         auto params = cd.get_parameters().get_params();
@@ -544,7 +546,7 @@ OOSolver::add_call_facts(const OOAnalyzer& ooa)
           const ParameterDefinition& param = *params.begin();
           const SymbolicValuePtr& value = param.get_value();
           if (value) thisptr_term = "sv_" + std::to_string(value->get_hash());
-          GDEBUG << "Parameter to delete at " << cd.address_string() << " was: "
+          GTRACE << "Parameter to delete at " << cd.address_string() << " was: "
                  << thisptr_term << " tn=" << *(value->get_expression()) << LEND;
         }
         session->add_fact("insnCallsDelete", cd.get_address(),

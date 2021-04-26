@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2018-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <vector>
 #include <cctype>
@@ -8,7 +8,11 @@
 #include <libpharos/options.hpp>
 #include <libpharos/json.hpp>
 
+#include <boost/filesystem.hpp>
+
 using namespace pharos;
+
+namespace bf = boost::filesystem;
 
 namespace {
 
@@ -16,7 +20,7 @@ ProgOptDesc options() {
   namespace po = boost::program_options;
   ProgOptDesc opts("APILookup Options");
   opts.add_options()
-    ("json,j", po::value<std::string>()->value_name("FILENAME")->implicit_value("-"),
+    ("json,j", po::value<bf::path>()->value_name("FILENAME")->implicit_value("-"),
      "Ouput JSON to given file.  Default is to stdout (-).")
     ("pretty-json,p", po::value<unsigned>()->implicit_value(4),
      "Pretty-print json.  Argument is the indent width")
@@ -189,11 +193,11 @@ int apilookup_main(int argc, char **argv) {
   std::ostream * json_out = nullptr;
   auto & json = vm["json"];
   if (!json.empty()) {
-    std::string fname = json.as<std::string>();
-    if (fname == "-") {
+    auto fname = json.as<bf::path>();
+    if (fname.compare("-") == 0) {
       json_out = &std::cout;
     } else {
-      json_fout = make_unique<std::ofstream>();
+      json_fout = make_unique<std::ofstream>(fname.native());
       json_out = json_fout.get();
     }
     json_records = json::simple_builder()->array();

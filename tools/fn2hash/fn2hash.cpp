@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <rose.h>
 
@@ -14,7 +14,11 @@
 #include <libpharos/json.hpp>
 #include <libpharos/bua.hpp>
 
+#include <boost/filesystem.hpp>
+
 using namespace pharos;
+
+namespace bf = boost::filesystem;
 
 #define DEFAULT_MIN_INSTRUCTIONS 1
 
@@ -31,7 +35,7 @@ ProgOptDesc hash_options() {
      ("Minimum number of instructions needed to output data for a function"))
     ("basic-blocks,B", po::bool_switch(),
      "Output optional basic block level data")
-    ("json,j", po::value<std::string>(),
+    ("json,j", po::value<bf::path>(),
      "Output as JSON to the given file.  ('-' means stdout)")
     ("pretty-json,p", po::value<unsigned>()->implicit_value(4),
      "Pretty-print json.  Argument is the indent width")
@@ -55,11 +59,11 @@ class HashAnalyzer : public BottomUpAnalyzer {
     min_instructions = vm_["min-instructions"].as<size_t>();
     basic_blocks = vm_["basic-blocks"].as<bool>();
     if (vm_.count("json")) {
-      auto & fname = vm_["json"].as<std::string>();
-      if (fname == "-") {
+      auto & fname = vm_["json"].as<bf::path>();
+      if (fname.compare("-") == 0) {
         out = &std::cout;
       } else {
-        fout = make_unique<std::ofstream>(fname);
+        fout = make_unique<std::ofstream>(fname.native());
         out = fout.get();
       }
       builder = json::simple_builder();
@@ -70,7 +74,7 @@ class HashAnalyzer : public BottomUpAnalyzer {
         args->add(arg);
       }
       main->add("invocation", std::move(args));
-      main->add("analyzed_file", vm["file"].as<std::string>());
+      main->add("analyzed_file", vm["file"].as<bf::path>().native());
       analysis = builder->array();
       if (vm.count("pretty-json")) {
         *out << json::pretty(vm["pretty-json"].as<unsigned>());
@@ -284,7 +288,7 @@ static int fn2hash_main(int argc, char **argv) {
 
   ProgOptVarMap vm = parse_cert_options(argc, argv, hashod, proghelptext);
 
-  filename = vm["file"].as<std::string>();
+  filename = vm["file"].as<bf::path>().native();
   filemd5 = get_file_md5(filename);
   OINFO << "Calculating function hashes for file: " << filename << " ; MD5: " << filemd5 << LEND;
 

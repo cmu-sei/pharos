@@ -4,6 +4,7 @@
 #include <boost/range/adaptor/map.hpp>
 #include <boost/graph/visitors.hpp>
 #include <boost/graph/breadth_first_search.hpp>
+#include <boost/graph/depth_first_search.hpp>
 #include <boost/graph/graph_utility.hpp>
 #include <boost/graph/filtered_graph.hpp>
 
@@ -266,15 +267,16 @@ class CallOrderVisitor: public boost::default_bfs_visitor {
         // check is here because delete looks like a method call on the thisptr, so it will be
         // present in vertex2call.
         auto call_targets = method_evidence.find (callinsn)->second;
-        auto is_delete = [&] (const ThisCallMethod* target) { return ooa.is_delete_method (target->get_address ()); };
-        
+        auto is_delete = [&] (const ThisCallMethod* target) {
+          return ooa.is_candidate_delete_method (target->get_address ()); };
+
         if (boost::find_if (call_targets, is_delete) != call_targets.end ()) {
           throw Aborted ("aborted");
         }
       }
 
-      GDEBUG << "Address " << addr_str(currinsn->get_address ())
-             << " was disproven by address " << addr_str(callinsn->get_address ()) << LEND;
+      GDEBUG << "The call to constructor/destructor candidate at address " << addr_str(currinsn->get_address ())
+             << " was disproven by the earlier/later call at address " << addr_str(callinsn->get_address ()) << LEND;
       throw VertexFound ("vertexfound");
     }
   }
@@ -325,7 +327,32 @@ void ThisPtrUsage::update_ctor_dtor(OOAnalyzer& ooa) const {
   if (remaining == 0) return;
 
   // Get the control flow graph.
-  CFG const & cfg = fd->get_rose_cfg();
+  CFG cfg = fd->get_rose_cfg();
+
+  // Remove cycles from the graph.  Generally speaking, we assume that all operations on the
+  // same thisptr occur on the same object.  But in rare occasions, the same memory may be used
+  // for distinct objects.  In these cases, the object will be destructed and constructed more
+  // than once.  But at this point, we do not know what methods are constructors and
+  // destructors, so we may not be able to tell where this happens.  This is particularly
+  // problematic in loops, because the backedge of the loop may allow a method to appear to be
+  // called before the constructor, but in reality that can never happen because the object
+  // will always be destructed before exiting the loop.  By removing the backedges from the
+  // graph, we prevent this from happening.  Ed believes there is no negative consequence of
+  // doing this, or if there is, it's very contrived and rare.  Basically, this change says
+  // that when looking for constructors and destructors, we only look at object instances that
+  // originate outside of the loop; we do not examine objects coming from a previous loop
+  // iteration.
+  std::vector<CFGEdge> back_edges;
+
+  depth_first_search (cfg,
+                      boost::visitor(boost::make_dfs_visitor (boost::write_property (boost::typed_identity_property_map<CFGEdge> (),
+                                                                                     std::back_inserter (back_edges),
+                                                                                     boost::on_back_edge ()))).
+                      root_vertex (fd->get_entry_vertex ()));
+
+  for (const CFGEdge &e : back_edges) {
+    boost::remove_edge (e, cfg);
+  }
 
   // For each vertex in the control flow graph.
   for (const CFGVertex& vertex : cfg_vertices(cfg)) {
@@ -475,10 +502,10 @@ void ObjectUse::analyze_object_uses(OOAnalyzer const & ooa) {
     SymbolicValuePtr this_ptr = get_this_ptr_for_call(cd);
     // We're only interested in valid pointers.
     if (!(this_ptr->is_valid())) continue;
-    GDEBUG << "This-Ptr for call at " << cd->address_string() <<  " is " << *this_ptr << LEND;
+    GTRACE << "This-Ptr for call at " << cd->address_string() <<  " is " << *this_ptr << LEND;
     // If the symbolic value is an ITE expression, pick the meaningful one.
     this_ptr = pick_this_ptr(this_ptr);
-    GDEBUG << "Updated This-Ptr for call at " << cd->address_string()
+    GTRACE << "Updated This-Ptr for call at " << cd->address_string()
            <<  " is " << *this_ptr << LEND;
     // Get the string representation of the this-pointer.
     SVHash hash = this_ptr->get_hash();
@@ -494,13 +521,13 @@ void ObjectUse::analyze_object_uses(OOAnalyzer const & ooa) {
       ThisPtrUsageMap::iterator finder = references.find(hash);
       // If we don't create a new entry for the this-pointer.
       if (finder == references.end()) {
-        GDEBUG << "Adding ref this_ptr=" << *this_ptr << LEND;
+        GTRACE << "Adding ref this_ptr=" << *this_ptr << LEND;
         references.insert(ThisPtrUsageMap::value_type(
                             hash, ThisPtrUsage(fd, this_ptr, tcm, cd->get_insn())));
       }
       // Otherwise, add this method to the existing list of methods.
       else {
-        GDEBUG << "Adding method this_ptr=" << *this_ptr << LEND;
+        GTRACE << "Adding method this_ptr=" << *this_ptr << LEND;
         finder->second.add_method(tcm, cd->get_insn());
       }
     }

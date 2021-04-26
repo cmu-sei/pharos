@@ -52,7 +52,7 @@ StackVariable::add_evidence(StackVariableEvidence* e) {
     TreeNodePtr valtnp = e->aa.value->get_expression();
     TreeNodePtr memtnp = e->aa.memory_address->get_expression();
 
-    GDEBUG << "Adding StackVar evidence Insn: "
+    GTRACE << "Adding StackVar evidence Insn: "
            << addr_str(e->insn->get_address()) << " Val: "
            << " - " << *valtnp << ", Mem: "
            << *memtnp << LEND;
@@ -176,7 +176,7 @@ StackVariableAnalyzer::uses_allocation_instruction(const SgAsmX86Instruction *in
 
   bool result = (ai != alloc_insns.end());
   if (result) {
-    GDEBUG << "Instruction " << addr_str(insn->get_address())
+    GTRACE << "Instruction " << addr_str(insn->get_address())
            << " is a stack allocation instruction." << LEND;
   }
   return result;
@@ -192,7 +192,7 @@ StackVariableAnalyzer::uses_allocation_instruction(const SgAsmX86Instruction *in
 bool
 StackVariableAnalyzer::uses_saved_register(const SgAsmX86Instruction *insn) {
 
-  GDEBUG << "Checking instruction '" << debug_instruction(insn)
+  GTRACE << "Checking instruction '" << debug_instruction(insn)
          << "' for saved register use" << LEND;
 
   const SavedRegisterSet & saved_registers = fd_->get_register_usage().saved_registers;
@@ -201,17 +201,17 @@ StackVariableAnalyzer::uses_saved_register(const SgAsmX86Instruction *insn) {
     if (sr.save != NULL) {
       if (sr.save->get_address() == insn->get_address()) {
         return true;
-        GDEBUG << "Uses saved register" << LEND;
+        GTRACE << "Uses saved register" << LEND;
       }
     }
     if (sr.restore != NULL) {
       if (sr.restore->get_address() == insn->get_address())  {
         return true;
-        GDEBUG << "Uses saved register" << LEND;
+        GTRACE << "Uses saved register" << LEND;
       }
     }
   }
-  GDEBUG << "Doesn't use saved register" << LEND;
+  GTRACE << "Doesn't use saved register" << LEND;
   return false;
 }
 
@@ -225,7 +225,7 @@ StackVariableAnalyzer::uses_parameter(const SgAsmX86Instruction *insn) {
     return false;
   }
 
-  GDEBUG << "Checking instruction '" << debug_instruction(insn)
+  GTRACE << "Checking instruction '" << debug_instruction(insn)
          << "' for parameter use in function " << addr_str(fd_->get_address()) << LEND;
 
   auto fd_params = fd_->get_parameters().get_params();
@@ -235,7 +235,7 @@ StackVariableAnalyzer::uses_parameter(const SgAsmX86Instruction *insn) {
     for (const ParameterDefinition &func_pd : fd_params) {
       if (func_pd.get_insn() == NULL) continue;
       if (insn->get_address() == func_pd.get_insn()->get_address()) {
-        GDEBUG << "Uses FD parameter" << LEND;
+        GTRACE << "Uses FD parameter" << LEND;
         return true;
       }
     }
@@ -248,7 +248,7 @@ StackVariableAnalyzer::uses_parameter(const SgAsmX86Instruction *insn) {
 
   if (outgoing_calls.size() > 0) {
 
-    GDEBUG << "Function " << addr_str(fd_->get_address()) << " contains "
+    GTRACE << "Function " << addr_str(fd_->get_address()) << " contains "
            << outgoing_calls.size() << " calls" << LEND;
 
     for (const CallDescriptor *cd : outgoing_calls) {
@@ -257,23 +257,23 @@ StackVariableAnalyzer::uses_parameter(const SgAsmX86Instruction *insn) {
 
       if (cd_params.empty()) {
         // this call has no parameters
-        GDEBUG << "There are no parameters" << LEND;
+        GTRACE << "There are no parameters" << LEND;
         continue;
       }
 
-      GDEBUG << "Evaluating out going call " << addr_str(cd->get_address()) << LEND;
+      GTRACE << "Evaluating out going call " << addr_str(cd->get_address()) << LEND;
 
       for (const ParameterDefinition &call_pd : cd_params) {
         if (call_pd.get_insn() == NULL) continue;
         if (insn->get_address() == call_pd.get_insn()->get_address()) {
-          GDEBUG << "Uses CD parameter" << LEND;
+          GTRACE << "Uses CD parameter" << LEND;
           return true;
         }
       }
     }
   }
 
-  GDEBUG << "Doesn't use parameter" << LEND;
+  GTRACE << "Doesn't use parameter" << LEND;
 
   return false;
 }
@@ -352,9 +352,9 @@ void StackVariableAnalyzer::accumulate_stkvar_evidence(
 StackVariablePtrList &
 StackVariableAnalyzer::analyze() {
 
-  GDEBUG << "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-" << LEND;
-  GDEBUG << "+- Beginning stack variable analysis -+" << LEND;
-  GDEBUG << "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-" << LEND;
+  GTRACE << "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-" << LEND;
+  GTRACE << "+- Beginning stack variable analysis -+" << LEND;
+  GTRACE << "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-" << LEND;
 
   GDEBUG << "Analyzing stack varaibles in function "
          << addr_str(fd_->get_address()) << LEND;
@@ -374,21 +374,21 @@ StackVariableAnalyzer::analyze() {
 
     // control flow instructions can't access local variables
     if (insn_is_control_flow(insn) == true) {
-      GDEBUG << "   Insn " << addr_str(iaddr)
+      GTRACE << "   Insn " << addr_str(iaddr)
              << " is a control flow instruction" << LEND;
 
       continue;
     }
 
     else if (uses_allocation_instruction(insn)) {
-      GDEBUG << "   Insn " << addr_str(iaddr)
+      GTRACE << "   Insn " << addr_str(iaddr)
              << " is a stack allocation instruction" << LEND;
       continue;
     }
 
     // Skip saved register instructions
     else if (uses_saved_register(insn)) {
-      GDEBUG << "   Insn " << addr_str(iaddr)
+      GTRACE << "   Insn " << addr_str(iaddr)
              << " uses a saved register" << LEND;
       continue;
     }
@@ -400,7 +400,7 @@ StackVariableAnalyzer::analyze() {
     // writes for the instructions to determine if the access involves a local
     // variable
 
-    GDEBUG << "AA on instruction " << debug_instruction(insn) << LEND;
+    GTRACE << "AA on instruction " << debug_instruction(insn) << LEND;
 
     // Get the DUAnalysis object to check accesses for stack var
     // evidence
@@ -408,7 +408,7 @@ StackVariableAnalyzer::analyze() {
 
     access_filters::aa_range reg_reads = du.get_reg_reads(iaddr);
     if (std::begin(reg_reads) != std::end(reg_reads)) {
-      GDEBUG << "Checking reg reads for stack variables" << LEND;
+      GTRACE << "Checking reg reads for stack variables" << LEND;
       for (const AbstractAccess &rraa : reg_reads) {
         // The read is on a transient tree node
         if (du.fake_read(insn, rraa)) continue;
@@ -417,7 +417,7 @@ StackVariableAnalyzer::analyze() {
     }
     access_filters::aa_range mem_reads = du.get_mem_reads(iaddr);
     if (std::begin(mem_reads) != std::end(mem_reads)) {
-      GDEBUG << "Checking mem reads for stack variables" << LEND;
+      GTRACE << "Checking mem reads for stack variables" << LEND;
       for (const AbstractAccess &mraa : mem_reads) {
         // The read is on a transient tree node
         if (du.fake_read(insn, mraa)) continue;
@@ -430,14 +430,14 @@ StackVariableAnalyzer::analyze() {
 
     access_filters::aa_range reg_writes = du.get_reg_writes(iaddr);
     if (std::begin(reg_writes) != std::end(reg_writes)) {
-      GDEBUG << "Checking reg writes for stack variables" << LEND;
+      GTRACE << "Checking reg writes for stack variables" << LEND;
       for (const AbstractAccess &rwaa : reg_writes) {
         accumulate_stkvar_evidence(insn, rwaa);
       }
     }
     access_filters::aa_range mem_writes = du.get_mem_writes(iaddr);
     if (std::begin(mem_writes) != std::end(mem_writes)) {
-      GDEBUG << "Checking writes for stack variables" << LEND;
+      GTRACE << "Checking writes for stack variables" << LEND;
       for (const AbstractAccess &mwaa : mem_writes) {
         accumulate_stkvar_evidence(insn, mwaa);
       }
@@ -466,14 +466,14 @@ StackVariableAnalyzer::analyze_stkvar_evidence() {
   // variables
   for (StackVariableEvidence* evidence : evidence_) {
 
-    GDEBUG << "Offset: " << evidence->offset << LEND;
-    GDEBUG << "  Insn: " << addr_str(evidence->insn->get_address()) << LEND;
-    GDEBUG << "  Uses param: " << ((evidence->uses_param) ? "true" : "false") << LEND;
-    GDEBUG << "  Evidence location: "
+    GTRACE << "Offset: " << evidence->offset << LEND;
+    GTRACE << "  Insn: " << addr_str(evidence->insn->get_address()) << LEND;
+    GTRACE << "  Uses param: " << ((evidence->uses_param) ? "true" : "false") << LEND;
+    GTRACE << "  Evidence location: "
            << ((evidence->in_value) ? "value" : "memory") << LEND;
-    GDEBUG << "  Accesses: " << evidence->aa.str() << LEND;
-    GDEBUG << "  AA mem/reg: " << ((evidence->aa.is_mem()) ? "mem" : "reg") << LEND;
-    GDEBUG << "---"  << LEND;
+    GTRACE << "  Accesses: " << evidence->aa.str() << LEND;
+    GTRACE << "  AA mem/reg: " << ((evidence->aa.is_mem()) ? "mem" : "reg") << LEND;
+    GTRACE << "---"  << LEND;
 
     // is there an existing stackvariable baed on this evidence?
     auto find_pred = [&evidence](const StackVariable* v) {
@@ -492,7 +492,7 @@ StackVariableAnalyzer::analyze_stkvar_evidence() {
       var = new StackVariable(evidence->offset);
       // Should the evidence be saved
 
-      GDEBUG << "Adding evidence to " << evidence->offset << ": "
+      GTRACE << "Adding evidence to " << evidence->offset << ": "
              << addr_str(evidence->insn->get_address()) << LEND;
 
       var->add_evidence(evidence);
@@ -504,14 +504,14 @@ StackVariableAnalyzer::analyze_stkvar_evidence() {
 
   for (StackVariable* candidate : candidate_vars) {
 
-    GDEBUG << "Candidate variable offset: " << candidate->get_offset() << LEND;
+    GTRACE << "Candidate variable offset: " << candidate->get_offset() << LEND;
 
     bool is_new_var = false;
     for (StackVariableEvidence* evidence : candidate->get_evidence()) {
 
       if (true == evidence->uses_param) {
 
-        GDEBUG << "Evaluating evidence at instruction "
+        GTRACE << "Evaluating evidence at instruction "
                << addr_str(evidence->insn->get_address()) << LEND;
 
         // In the case of parameters, we care about the value that is,
@@ -520,7 +520,7 @@ StackVariableAnalyzer::analyze_stkvar_evidence() {
 
         // Parameter based evidence in reg accesses is discarded, for now
         if (false == evidence->aa.is_mem()) {
-          GDEBUG << "Parameter is a register access, ignoring" << LEND;
+          GTRACE << "Parameter is a register access, ignoring" << LEND;
           continue;
         }
 
@@ -531,7 +531,7 @@ StackVariableAnalyzer::analyze_stkvar_evidence() {
         if (true == evidence->in_value && evidence->aa.value) {
           TreeNodePtr tnp = evidence->aa.value->get_expression();
 
-          GDEBUG << "Checking parameter value for literal: " << *tnp << LEND;
+          GTRACE << "Checking parameter value for literal: " << *tnp << LEND;
 
           // Detect and discard things like "push 0"
           if (!tnp->isIntegerConstant()) {
@@ -564,11 +564,11 @@ StackVariableAnalyzer::analyze_stkvar_evidence() {
           // may inadvertantly discard things we don't yet
           // understand. If things break, start looking here
           if (evidence->aa.reg_name() == "esp") {
-            GDEBUG << ">>> The register accessed is ESP <<<" << LEND;
+            GTRACE << ">>> The register accessed is ESP <<<" << LEND;
             continue;
           }
           if (evidence->aa.value) {
-            GDEBUG << "Evidence not param and is_reg insn: "
+            GTRACE << "Evidence not param and is_reg insn: "
                    << addr_str(evidence->insn->get_address()) << LEND;
             candidate->set_memory_address(evidence->aa.value);
             is_new_var = true;
@@ -608,14 +608,14 @@ StackVariableAnalyzer::analyze_stkvar_evidence() {
       // so no need to set the flag here
 
       if (is_new_var) {
-        GDEBUG << "  New Var Insn: " << addr_str(evidence->insn->get_address()) << LEND;
-        GDEBUG << "  Uses param: " << ((evidence->uses_param) ? "true" : "false") << LEND;
-        GDEBUG << "  Evidence location: "
+        GTRACE << "  New Var Insn: " << addr_str(evidence->insn->get_address()) << LEND;
+        GTRACE << "  Uses param: " << ((evidence->uses_param) ? "true" : "false") << LEND;
+        GTRACE << "  Evidence location: "
                << ((evidence->in_value) ? "value" : "memory") << LEND;
-        GDEBUG << "  Access: " << evidence->aa.str() << LEND;
-        GDEBUG << "  Access isRead: " << ((evidence->aa.isRead) ? "yes" : "no") << LEND;
-        GDEBUG << "  Access mem/reg: " << ((evidence->aa.is_mem()) ? "mem" : "reg") << LEND;
-        GDEBUG << "-" << LEND;
+        GTRACE << "  Access: " << evidence->aa.str() << LEND;
+        GTRACE << "  Access isRead: " << ((evidence->aa.isRead) ? "yes" : "no") << LEND;
+        GTRACE << "  Access mem/reg: " << ((evidence->aa.is_mem()) ? "mem" : "reg") << LEND;
+        GTRACE << "-" << LEND;
       }
     }
 
@@ -633,7 +633,7 @@ StackVariableAnalyzer::analyze_stkvar_evidence() {
 
       stkvars_.emplace(pos, candidate);
     }
-    GDEBUG << "---"  << LEND;
+    GTRACE << "---"  << LEND;
   }
 
   GDEBUG << "Found " << stkvars_.size() << " stack variables based on "

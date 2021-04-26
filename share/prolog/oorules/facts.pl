@@ -49,7 +49,10 @@ initialFact(uninitializedReads/1).
 % insnCallsDelete(Insn, Func, ThisPtr).
 %
 % Instruction Insn in Function Func calls the delete method.  The ThisPtr argument is the hash
-% of the this-pointer that was passed to the delete method.
+% of the this-pointer that was passed to the delete method.  Note that the determination of
+% which functions are delete() is not 100% correct and has small numbers of both false
+% negatives and false positives.  This fact frequently does not include class specific custom
+% delete() overrides.
 %
 initialFact(insnCallsDelete/3).
 
@@ -113,7 +116,8 @@ initialFact(rTTIBaseClassDescriptor/8).
 % Instruction Insn in Function allocates Size bytes of memory of Type and assigns it to the
 % specified ThisPtr. Type is one of: "type_Heap", "type_Unknown", "type_Stack", "type_Global",
 % or "type_Param".  It's likely that only "type_Heap" is exported as a Prolog fact currently.
-%
+% This fact uses an approximate detection of new() methods wih many of the same caveats as the
+% delete() detection, but is in general much more accurate.
 initialFact(thisPtrAllocation/5).
 
 % thisPtrUsage(Insn, Function, ThisPtr, Method).

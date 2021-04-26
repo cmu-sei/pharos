@@ -19,6 +19,7 @@ pharos:
   typedb: [ typedb/types.json ]
   concurrency_level: 1
   allow_non_pe: true
+  function_tags: {}
 
 # application specific overrides, based on the executable name
 application:

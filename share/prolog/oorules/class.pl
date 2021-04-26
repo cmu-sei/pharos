@@ -64,6 +64,12 @@ class(C) :-
     findAllClasses(S),
     member(C, S).
 
+is_singleton(M) :-
+    find(M, M), % Quick check
+
+    once(findnsols(2, OM, find(OM, M), L)),
+    length(L, 1).
+
 /* Local Variables:   */
 /* mode: prolog       */
 /* fill-column:    95 */

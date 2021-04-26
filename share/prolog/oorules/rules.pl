@@ -201,6 +201,11 @@ reasonConstructor(Method) :-
     symbolProperty(Method, constructor),
     logtraceln('~@~Q.', [not(factConstructor(Method)), reasonConstructor_C(Method)]).
 
+% Because we see that a base class constructor is called before a vftable is installed.
+reasonConstructor(Method) :-
+    certainConstructorOrDestructorInheritanceSpecialCase(Method, constructor),
+    logtraceln('~@~Q.', [not(factConstructor(Method)), reasonConstructor_D(Method)]).
+
 % Because if we're certain about a derived constructor relationship then obviously both methods
 % are constructors.  Duplicative?
 %reasonConstructor(Method) :-
@@ -236,10 +241,11 @@ reasonConstructorSet(Set) :-
 :- table reasonNOTConstructor_B/1 as incremental.
 :- table reasonNOTConstructor_C/1 as incremental.
 :- table reasonNOTConstructor_D/1 as incremental.
-:- table reasonNOTConstructor_E/1 as incremental.
+%:- table reasonNOTConstructor_E/1 as incremental.
 :- table reasonNOTConstructor_F/1 as incremental.
 :- table reasonNOTConstructor_G/1 as incremental.
 :- table reasonNOTConstructor_H/1 as incremental.
+:- table reasonNOTConstructor_I/1 as incremental.
 
 reasonNOTConstructor(Method) :-
     %logwarnln('Recomputing reasonNOTConstructor...'),
@@ -247,10 +253,11 @@ reasonNOTConstructor(Method) :-
         reasonNOTConstructor_B(Method),
         reasonNOTConstructor_C(Method),
         reasonNOTConstructor_D(Method),
-        reasonNOTConstructor_E(Method),
+        %reasonNOTConstructor_E(Method),
         reasonNOTConstructor_F(Method),
         reasonNOTConstructor_G(Method),
-        reasonNOTConstructor_H(Method)
+        reasonNOTConstructor_H(Method),
+        reasonNOTConstructor_I(Method)
       ]).
 
 % Because it is already known to NOT be a constructor.
@@ -285,11 +292,12 @@ reasonNOTConstructor_D(Method) :-
 % Because it is called after another method on an object instance pointer.
 % PAPER: Order-NotConstructor
 % ED_PAPER_INTERESTING
-reasonNOTConstructor_E(Method) :-
-    factMethod(Method),
-    not(possibleConstructor(Method)),
-    % Debugging
-    logtraceln('~@~Q.', [not(factNOTConstructor(Method)), reasonNOTConstructor_E(Method)]).
+% As of 4/16/21, this is now guessNOTConstructorA.
+%% reasonNOTConstructor_E(Method) :-
+%%     factMethod(Method),
+%%     not(possibleConstructor(Method)),
+%%     % Debugging
+%%     logtraceln('~@~Q.', [not(factNOTConstructor(Method)), reasonNOTConstructor_E(Method)]).
 
 % Because it is called by a non-constructor on the same object instance.
 % PAPER: Call-NotConstructor
@@ -332,6 +340,11 @@ reasonNOTConstructor_H(Method) :-
     logtraceln('~@~Q.', [not(factNOTConstructor(Method)),
                          reasonNOTConstructor_H(VFTable, Method)]).
 
+% Because we see a base class destructor is called after a vftable is installed.
+reasonNOTConstructor_I(Method) :-
+    certainConstructorOrDestructorInheritanceSpecialCase(Method, destructor),
+    logtraceln('~@~Q.', [not(factNOTConstructor(Method)),
+                         reasonNOTConstructor_I(Method)]).
 
 reasonNOTConstructorSet(Set) :-
     setof(Method, reasonNOTConstructor(Method), Set).
@@ -379,7 +392,7 @@ reasonRealDestructorSet(Set) :-
 :- table reasonNOTRealDestructor_F/1 as incremental.
 :- table reasonNOTRealDestructor_G/1 as incremental.
 :- table reasonNOTRealDestructor_H/1 as incremental.
-:- table reasonNOTRealDestructor_I/2 as opaque.
+:- table reasonNOTRealDestructor_I/1 as incremental.
 
 reasonNOTRealDestructor(Method) :-
     %logwarnln('Recomputing reasonNOTRealDestructor...'),
@@ -472,7 +485,7 @@ reasonNOTRealDestructor_H(Method) :-
 :- table reasonDestructorParams/2 as opaque.
 reasonDestructorParams(Method, MaxParams) :-
     % There is a method
-    findMethod(Method, _Class),
+    possibleMethod(Method),
     % Get params
     setof(Param, Hash^funcParameter(Method, Param, Hash), Params),
     % ejs: It looks like arguments are not reliable
@@ -487,6 +500,7 @@ reasonDestructorParams(Method, MaxParams) :-
 reasonNOTRealDestructor_I(Method) :-
     Params = 1,
     reasonDestructorParams(Method, Params),
+    factMethod(Method),
 
     logtraceln('~@~Q.', [not(factNOTRealDestructor(Method)),
                          reasonNOTRealDestructor_I(Params, Method)]).
@@ -595,9 +609,9 @@ reasonNOTDeletingDestructor_E(Method) :-
 % perform badly in this case, so we are leaving it for now.  But perhaps it should be relegated
 % to a guessing rule.
 reasonNOTDeletingDestructor_F(Method) :-
-    factMethod(Method),
-    % Someone calls delete
+    % Have we detected delete() at all in this program?  If not, disable this rule.
     insnCallsDelete(_Insn, _Method, _Ptr),
+    factMethod(Method),
     % We use thiscall
     callingConvention(Method, '__thiscall'),
     funcParameter(Method, ecx, ThisPtr),
@@ -645,6 +659,31 @@ certainConstructorOrDestructor(Method) :-
 
 certainConstructorOrDestructor(Method) :-
     factVBTableWrite(_Insn, Method, _Offset, _VBTable).
+
+% When calls to a base constructor/destructor are not inlined, and the child overwrites the
+% vftable, we can tell if both are constructors or destructors by the order in which this
+% happens.  Constructors install their vftables after initializing the parent class, whereas
+% destructors are the opposite.
+:- table certainConstructorOrDestructorInheritanceSpecialCase/2 as incremental.
+certainConstructorOrDestructorInheritanceSpecialCase(Method, Type) :-
+    factMethod(Method),
+    certainConstructorOrDestructor(Method),
+
+    % There is some offset for which there is a single vftable write and a thiscall to the same
+    % offset
+    factVFTableWrite(WriteAddr, Method, Offset, VFTable),
+    not((factVFTableWrite(_, Method, Offset, VFTable2), iso_dif(VFTable, VFTable2))),
+    funcOffset(CallAddr, Method, Callee, Offset),
+    % Ideally we would check that there is a single call, but it turns out that __RTC_CheckEsp
+    % looks like a thiscall to offset 0, so instead we'll just sanity check that the method we
+    % are calling looks like a constructor.  Since this special case also assumes vftable
+    % installation, we'll also check that it installs some tables.
+    certainConstructorOrDestructor(Callee),
+
+    (   CallAddr < WriteAddr
+    ->  Type=constructor
+    ;   Type=destructor).
+
 
 certainConstructorOrDestructorSet(Set) :-
     setof(Method, certainConstructorOrDestructor(Method), Set).
@@ -1288,10 +1327,23 @@ reasonObjectInObject_E(OuterClass, InnerClass, Offset) :-
     % We are certain that this member offset is passed to InnerConstructor.
     validFuncOffset(_CallInsn, OuterConstructor, InnerConstructor, Offset),
     factConstructor(OuterConstructor),
+    find(OuterConstructor, OuterClass),
+
+    % We previously used a not(ReasonClassRelationship()) clause to prevent creating
+    % ObjectInObject facts for child to grand-parent relationships, expecially in the
+    % std::exception classes, but that has ordering problems because this rule triggers before
+    % we've assigned the constructors to the correct classes (a clas merge).  This stricter
+    % requirement that there NOT be an existing ObjectInObject and the same offset is a better
+    % solution.  Without this constraint, this rule instead becomes a stealth class merge
+    % because of logic that occurs later saying that two objects at the same offset must be the
+    % same class.  And there doesn't appear be any downside either since there's already an
+    % ObjectInObject at the appropriate offset, and we can reach the right conclusions through
+    % those later class merges.
+    not(factObjectInObject(OuterClass, _, Offset)),
+
     factConstructor(InnerConstructor),
     iso_dif(InnerConstructor, OuterConstructor),
     find(InnerConstructor, InnerClass),
-    find(OuterConstructor, OuterClass),
 
     % It's not good enough for the methods to currently be assigned to different classes
     % because they could actually be on the same class, and we just haven't merged them yet.
@@ -1304,16 +1356,6 @@ reasonObjectInObject_E(OuterClass, InnerClass, Offset) :-
     % is actually only required when the offset is zero, because it's always true that an
     % object can't embed or inherit itself at a non-zero offset.
     dynFactNOTMergeClasses(InnerClass, OuterClass),
-
-    % There's a poorly understood case demonstrated by constructors in Lite/oo:
-    %   0x40365c = std::length_error
-    %   0x40360f = std::logic_error
-    %   0x403f39 = std::exception
-
-    % The hierarchy is length_error is a logic_error, which is an exception, but this rule
-    % concludes that there's an exception in length_error, which is probably not what we
-    % wanted.  This blocks that condition, but it's not clear that it does so optimally.
-    not(reasonClassRelationship(OuterClass, InnerClass)),
 
     % Debugging
     logtraceln('~@~Q.', [not(factObjectInObject(OuterClass, InnerClass, Offset)),
@@ -1410,15 +1452,9 @@ reasonEmbeddedObject_D(Class, EmbeddedClass, Offset) :-
 % --------------------------------------------------------------------------------------------
 :- table reasonNOTEmbeddedObject/3 as incremental.
 
-% Because it is already known to be true.
-% PAPER: NA
-reasonNOTEmbeddedObject(Class, EmbeddedClass, Offset) :-
-    factNOTEmbeddedObject(Class, EmbeddedClass, Offset).
-
 % Because we can't be an embedded object if we're already an inheritance relationship.
 % PAPER: Logic
 reasonNOTEmbeddedObject(Class, EmbeddedClass, Offset) :-
-    factObjectInObject(Class, EmbeddedClass, Offset),
     factDerivedClass(Class, EmbeddedClass, Offset).
 
 % Add rule for: We cannot be an embedded object if we've extended the vftable in question.
@@ -1633,20 +1669,10 @@ reasonDerivedClass_F(DerivedClass, BaseClass, Offset) :-
 % --------------------------------------------------------------------------------------------
 :- table reasonNOTDerivedClass/3 as incremental.
 
-% Because it is already known to be true.
-% PAPER: NA
-reasonNOTDerivedClass(DerivedClass, BaseClass, ObjectOffset) :-
-    factNOTDerivedClass(DerivedClass, BaseClass, ObjectOffset).
-
 % Because it can't be an inheritance relationship if it is already an embedded object.
 % PAPER: Logic
 reasonNOTDerivedClass(DerivedClass, BaseClass, ObjectOffset) :-
-    factEmbeddedObject(DerivedClass, BaseClass, ObjectOffset),
-    find(DerivedConstructor, DerivedClass),
-    find(BaseConstructor, BaseClass),
-    % ejs: Why do these need to be constructors?
-    factConstructor(DerivedConstructor),
-    factConstructor(BaseConstructor).
+    factEmbeddedObject(DerivedClass, BaseClass, ObjectOffset).
 
 % There can't be multiple inhertitance without single inheritance.  VFTable writes at non-zero
 % offsets can not represent base classes unless there's also a VFTable write at offset zero.
@@ -1689,26 +1715,51 @@ reasonDerivedClassRelationship(DerivedClass, BaseClass) :-
 % Because there's a relationship with one or more intermediate classes.
 % PAPER: Do we need this in the paper?
 reasonDerivedClassRelationship(DerivedClass, BaseClass) :-
-    factDerivedClass(DerivedClass, MiddleClass, _Offset),
+    reasonDerivedClassRelationship(DerivedClass, MiddleClass),
     iso_dif(DerivedClass, MiddleClass),
     reasonDerivedClassRelationship(MiddleClass, BaseClass),
+    %factDerivedClass(MiddleClass, BaseClass, _Offset),
     iso_dif(MiddleClass, BaseClass).
 
 % --------------------------------------------------------------------------------------------
 % It is certain that there is a class relationship between the two classes (either through
 % inheritance or embedding).
 
+% reasonClassRelationship_internal(_, _) is generally a small table, but it can be very
+% expensive to maintain all variants.  So we have a front-end here that always queries
+% reasonClassRelationship(_, _).
+
+reasonClassRelationship_fe(Class1, Class2) :- var(Class1), var(Class2), !,
+   reasonClassRelationship_internal(Class1, Class2).
+
+reasonClassRelationship_fe(Class1, Class2) :- integer(Class1), var(Class2), !,
+   % Unbound call
+   reasonClassRelationship_internal(Class1, Class2UB),
+   % Unification
+   Class2=Class2UB.
+
+reasonClassRelationship_fe(Class1, Class2) :- integer(Class1), integer(Class2), !,
+   % Unbound call
+   reasonClassRelationship(Class1, Class2UB),
+   % Unification
+   %Class1=Class1UB,
+   Class2=Class2UB.
+
+reasonClassRelationship_fe(_, _) :- throw(system_error(reasonClassRelationship)).
+
+reasonClassRelationship(A,B) :- reasonClassRelationship_internal(A,B).
+
 % This causes a huge amount of tabling space in FireFall.
-:- table reasonClassRelationship/2 as incremental.
+:- table reasonClassRelationship_internal/2 as incremental.
 
 % Because there's an immediate relationship.
 % PAPER: NA
-reasonClassRelationship(DerivedClass, BaseClass) :-
+reasonClassRelationship_internal(DerivedClass, BaseClass) :-
     factObjectInObject(DerivedClass, BaseClass, _Offset).
 
 % Because there's a relationship with one or more intermediate classes.
 % PAPER: Do we need this in the paper?
-reasonClassRelationship(DerivedClass, BaseClass) :-
+reasonClassRelationship_internal(DerivedClass, BaseClass) :-
     factObjectInObject(DerivedClass, MiddleClass, _Offset),
     iso_dif(DerivedClass, MiddleClass),
     reasonClassRelationship(MiddleClass, BaseClass),
@@ -1919,6 +1970,71 @@ reasonClassHasUnknownBaseSet(Set) :-
 % Rules for method assignment.
 % ============================================================================================
 
+% classRelatedMethod(Class, Method) is true if there is an object containing a method on Class
+% and Method.  The Class and Method are obviously related in some way, but there is no
+% information about the direction of that relationship.
+:- table reasonClassRelatedMethod/2 as incremental.
+:- table reasonClassRelatedMethod_A/2 as incremental.
+%:- table reasonClassRelatedMethod_B/2 as incremental.
+
+reasonClassRelatedMethod(Class, Method) :-
+    reasonClassRelatedMethod_A(Class, Method).
+    % _B is now a trigger rule
+    %; reasonClassRelatedMethod_B(Class, Method).
+
+% ClassCallsMethod => ClassRelatedMethod
+reasonClassRelatedMethod_A(Class, Method) :-
+    factClassCallsMethod(Class, Method).
+
+:- table thisPtrUsage/3 as opaque.
+thisPtrUsage(Function, ThisPtr, Method) :-
+    thisPtrUsage(_, Function, ThisPtr, Method).
+
+% Because two methods are called on the same this-pointer in the same function.  This rule is
+% NOT direction safe, because it simply observes two methods being called on the same object
+% pointer, and does not account for inheritance relationships.
+% PAPER: Call-1
+reasonClassRelatedMethod_B(Class1, Class2, Method1, Method2) :-
+
+    % Method1, Class1 are bound
+    (   nonvar(Method1), nonvar(Class1)
+    ->  thisPtrUsage(Function, ThisPtr, Method1)
+    ;   true),
+
+    % Method2, Class2 are bound
+    (   nonvar(Method2), nonvar(Class2)
+    ->  thisPtrUsage(Function, ThisPtr, Method2)
+    ;   true),
+
+    % Now we execute both thisPtrUsage to enumerate whichever one is not bound
+    thisPtrUsage(Function, ThisPtr, Method1),
+    thisPtrUsage(Function, ThisPtr, Method2),
+
+    iso_dif(Method1, Method2),
+    find(Method1, Class1),
+    % Don't propose assignments we already know.
+    find(Method2, Class2),
+    iso_dif(Class1, Class2),
+
+    % Function could be a derived constructor calling Method1 (a base constructor) and Method2
+    % (a method on Function's class).  This incorrectly concludes that Method2 is called from
+    % Method1 unless it is blocked by a clause like this...  but what is really correct here?
+
+    % ejs 2/12/21 Adding a more conservative (but possibly unnecessary) check for ANY object at
+    % offset 0 (instead of Class1).
+    not((find(Function, FunctionClass), factObjectInObject(FunctionClass, _InnerClass1, 0))),
+
+    % We also need to verify that Class2 has no object at 0.
+    not((factObjectInObject(Class2, _InnerClass2, 0))),
+
+    % Functions that are methods can call base methods
+
+    % Debugging
+    logtraceln('~@~Q.', [not(factClassRelatedMethod(Class1, Method2)),
+                         reasonClassRelatedMethod_B(Function, Method1, Class1, Method2)]).
+
+% classCallsMethod(Class, Method) means that Method can be called by a method on Class.  The
+% opposite is not necessarily true.
 :- table reasonClassCallsMethod/2 as incremental.
 :- table reasonClassCallsMethod_A/2 as incremental.
 :- table reasonClassCallsMethod_B/2 as incremental.
@@ -1929,38 +2045,13 @@ reasonClassHasUnknownBaseSet(Set) :-
 
 reasonClassCallsMethod(Class, Method) :-
     %logwarnln('Recomputing reasonClassCallsMethod...'),
-    or([reasonClassCallsMethod_A(Class, Method),
+    or([%reasonClassCallsMethod_A(Class, Method),
         reasonClassCallsMethod_B(Class, Method),
         reasonClassCallsMethod_C(Class, Method),
         reasonClassCallsMethod_D(Class, Method)
       %        reasonClassCallsMethod_E(Class, Method),
       %        reasonClassCallsMethod_F(Class, Method)
       ]).
-
-% Because two methods are called on the same this-pointer in the same function.
-% This rule is NOT direction safe, because it simply observes two methods being called on the
-% same object pointer, and does not account for inheritance relationships.  Cory and Ed
-% discussed changing it into a guessing rule that guesses the direction of the relationship.
-% PAPER: Call-1
-reasonClassCallsMethod_A(Class1, Method2) :-
-    thisPtrUsage(_, Function, ThisPtr, Method1),
-    thisPtrUsage(_, Function, ThisPtr, Method2),
-    iso_dif(Method1, Method2),
-    find(Method1, Class1),
-    % Don't propose assignments we already know.
-    find(Method2, Class2),
-    iso_dif(Class1, Class2),
-
-    % Function could be a derived constructor calling Method1 (a base constructor) and Method2
-    % (a method on Function's class).  This incorrectly concludes that Method2 is called from
-    % Method1 unless it is blocked by a clause like this...  but what is really correct here?
-    not((find(Function, FunctionClass), factObjectInObject(FunctionClass, Class1, 0))),
-
-    % Functions that are methods can call base methods
-
-    % Debugging
-    logtraceln('~@~Q.', [not(factClassCallsMethod(Class1, Method2)),
-                         reasonClassCallsMethod_A(Function, Method1, Class1, Method2)]).
 
 % Because the method appears in a vftable assigned in another method.  This rule is direction
 % safe because we know the class that "owns" the VFTable through findVFTable.
@@ -1994,6 +2085,20 @@ reasonClassCallsMethod_C(Class1, Method2) :-
     logtraceln('~@~Q.', [not(factClassCallsMethod(Class1, Method2)),
                          reasonClassCallsMethod_C(Method1, Class1, Method2)]).
 
+% This predicate is used to see if the object at the listed offset is a Class, and if so, which
+% one.  It's notable in that it is recursive however, so it can cover multiple levels.  It
+% turns out this is important because inlining may hide one level of the hierarchy.
+:- table reasonClassAtOffset/3 as incremental.
+reasonClassAtOffset(OuterClass, Offset, InnerClass) :-
+    factObjectInObject(OuterClass, InnerClass, Offset).
+
+reasonClassAtOffset(OuterClass, Offset, InnerClass) :-
+    ground(Offset),
+    reasonClassAtOffset(OuterClass, MiddleOffset, MiddleClass),
+    % If Offset is bound, use it to bind InnerOffset.
+    InnerOffset is Offset - MiddleOffset,
+    reasonClassAtOffset(MiddleClass, InnerOffset, InnerClass).
+
 % Because a method on an outer class calls a method on a known inner object.  This rule is
 % direction safe because it incorporates ObjectInObject, which has sorted out the inheritance
 % and/or embedding relationships with sufficient confidence that we have confidence in
@@ -2007,7 +2112,10 @@ reasonClassCallsMethod_D(InnerClass, InnerMethod) :-
     % export the facts required to do that, so we'll just assume they're related for right now.
     find(OuterMethod, OuterClass),
     % We must know that there's an object within an object at that offset.
-    factObjectInObject(OuterClass, InnerClass, Offset),
+    % ejs 2/12/21 If the compiler inlined behavior from an intermediate object, we might never
+    % see it.  So we use reasonClassAtOffset to look through multiple levels of embedding or
+    % inheritance.  This was extremely important for merging std::allocator<char> in 2010/Debug/ooex7.
+    reasonClassAtOffset(OuterClass, Offset, InnerClass),
     iso_dif(OuterClass, InnerClass),
     iso_dif(InnerClass, InnerMethod),
     % Debugging
@@ -2020,38 +2128,38 @@ reasonClassCallsMethod_D(InnerClass, InnerMethod) :-
 % function a method in the first place.  Here we're just repeating the logic to also associate
 % the __cdecl OO method with the correct class.  This rule is direction safe because we know
 % the class associated with the __thiscall OO method.
-reasonClassCallsMethod_E(Class, Method) :-
-    factMethod(Proven),
-    find(Proven, Class),
-    callingConvention(Proven, '__thiscall'),
-    funcParameter(Proven, ecx, ThisPtr),
-    callParameter(Insn, Proven, 0, ThisPtr),
-    callTarget(Insn, Proven, Method),
-    callingConvention(Method, '__cdecl'),
-    % Debugging
-    logtraceln('~@~Q.', [not(factClassCallsMethod(Class, Method)),
-                         reasonClassCallsMethod_E(Insn, Class, Method)]).
+%% reasonClassCallsMethod_E(Class, Method) :-
+%%     factMethod(Proven),
+%%     find(Proven, Class),
+%%     callingConvention(Proven, '__thiscall'),
+%%     funcParameter(Proven, ecx, ThisPtr),
+%%     callParameter(Insn, Proven, 0, ThisPtr),
+%%     callTarget(Insn, Proven, Method),
+%%     callingConvention(Method, '__cdecl'),
+%%     % Debugging
+%%     logtraceln('~@~Q.', [not(factClassCallsMethod(Class, Method)),
+%%                          reasonClassCallsMethod_E(Insn, Class, Method)]).
 
 % Because the same this-pointer is passed from a known __cdecl OO method to another __cdecl
 % method (as the first parameter) in the same function.  This method is not direction safe
 % because the two cdecl methods could be on different classes involved in an inheritance
 % relationship, and we haven't sorted that out correctly.
-reasonClassCallsMethod_F(Class, Method) :-
-    % A ThisPtr is passed to a known method.
-    callParameter(Insn1, Func, 0, ThisPtr),
-    callTarget(Insn1, Func, Target1),
-    dethunk(Target1, Proven),
-    factMethod(Proven),
-    find(Proven, Class),
-    % Then the same this-pointer is passed to another method.
-    callParameter(Insn2, Func, 0, ThisPtr),
-    iso_dif(Insn1, Insn2),
-    callTarget(Insn2, Func, Target2),
-    dethunk(Target2, Method),
-    callingConvention(Method, '__cdecl'),
-    % Debugging
-    logtraceln('~@~Q.', [not(factClassCallsMethod(Class, Method)),
-                         reasonClassCallsMethod_F(Insn1, Insn2, Class, Method)]).
+%% reasonClassCallsMethod_F(Class, Method) :-
+%%     % A ThisPtr is passed to a known method.
+%%     callParameter(Insn1, Func, 0, ThisPtr),
+%%     callTarget(Insn1, Func, Target1),
+%%     dethunk(Target1, Proven),
+%%     factMethod(Proven),
+%%     find(Proven, Class),
+%%     % Then the same this-pointer is passed to another method.
+%%     callParameter(Insn2, Func, 0, ThisPtr),
+%%     iso_dif(Insn1, Insn2),
+%%     callTarget(Insn2, Func, Target2),
+%%     dethunk(Target2, Method),
+%%     callingConvention(Method, '__cdecl'),
+%%     % Debugging
+%%     logtraceln('~@~Q.', [not(factClassCallsMethod(Class, Method)),
+%%                          reasonClassCallsMethod_F(Insn1, Insn2, Class, Method)]).
 
 % --------------------------------------------------------------------------------------------
 % So the reasonInstanceIndirectlyCallMethod rule turned out to be wrong.  I've kept the notes
@@ -2072,9 +2180,22 @@ reasonClassCallsMethod_F(Class, Method) :-
 % the inappropriate class merges that it is designed to block, but it seems to work right now.
 :- table reasonReusedImplementation/1 as incremental.
 
+reasonReusedImplementation(Method) :-
+    % trigger
+    % reasonReusedImplementation_A(Method);
+    reasonReusedImplementation_B(Method).
+
 % Because there's a trivial function that occurs in two tables where we know that the classes
 % are not associated by an inheritance relationship.
-reasonReusedImplementation(Method) :-
+
+% Trigger rule
+reasonReusedImplementation_A(Method, Class1, VFTable1) :-
+
+    % Conditions: This rule is optimized for Method or VFTable1 to be bound
+    (integer(Method);
+     integer(VFTable1)),
+    !,
+
     %possiblyReused(Method),
     factMethodInVFTable(VFTable1, _Offset1, Method),
     factMethodInVFTable(VFTable2, _Offset2, Method),
@@ -2086,14 +2207,41 @@ reasonReusedImplementation(Method) :-
                reasonClassRelationship(Class1, Class2);
                reasonClassRelationship(Class2, Class1)
        )),
+
     logtraceln('~@~Q.', [
                    not(factReusedImplementation(Method)),
                    reasonReusedImplementation_A(Class1, VFTable1, Class2, VFTable2, Method)]).
 
+reasonReusedImplementation_A(Method, Class1, VFTable1) :-
+
+    % Conditions: This rule is optimized for Class1 to be bound
+    integer(Class1),
+    !,
+
+    find(VFTable1, Class1),
+    find(VFTable2, Class2),
+    iso_dif(VFTable1, VFTable2),
+    iso_dif(Class1, Class2),
+
+    %possiblyReused(Method),
+    factMethodInVFTable(VFTable1, _Offset1, Method),
+    factMethodInVFTable(VFTable2, _Offset2, Method),
+    not((
+               reasonClassRelationship(Class1, Class2);
+               reasonClassRelationship(Class2, Class1)
+       )),
+
+    logtraceln('~@~Q.', [
+                   not(factReusedImplementation(Method)),
+                   reasonReusedImplementation_A(Class1, VFTable1, Class2, VFTable2, Method)]).
+
+reasonReusedImplementation_A(_,_,_) :-
+    throw(system_error(reasonReusedImplementation_A)).
+
 % Because there are two instances of the same method pointer in the same VFTable.  This rule
 % must use factVFTableEntry because the point of the thunks may be to differeniate between two
 % addresses that share an implementation but the thunks are in fact the actual functions.
-reasonReusedImplementation(Method) :-
+reasonReusedImplementation_B(Method) :-
     factVFTableEntry(VFTable, Offset1, Method),
     factVFTableEntry(VFTable, Offset2, Method),
     iso_dif(Offset1, Offset2),
@@ -2135,7 +2283,7 @@ reasonMergeVFTables(VFTableClass, Class) :-
 :- table reasonMergeClasses_G/2 as incremental.
 :- table reasonMergeClasses_H/2 as incremental.
 :- table reasonMergeClasses_J/2 as incremental.
-%:- table reasonMergeClasses_K/2 as incremental.
+:- table reasonMergeClasses_K/2 as incremental.
 
 reasonMergeClasses(C,M) :-
     or([reasonMergeClasses_B(C,M),
@@ -2145,8 +2293,8 @@ reasonMergeClasses(C,M) :-
         %reasonMergeClasses_F(C,M),
         reasonMergeClasses_G(C,M),
         reasonMergeClasses_H(C,M),
-        reasonMergeClasses_J(C,M)
-        %reasonMergeClasses_K(C,M)
+        reasonMergeClasses_J(C,M),
+        reasonMergeClasses_K(C,M)
       ]).
 
 % Because the classes have already been merged.
@@ -2397,6 +2545,17 @@ reasonMergeClasses_J(VFTable1Class, VFTable2Class) :-
     logtraceln('~@~Q.', [not(find(VFTable1Class, VFTable2Class)),
                          reasonMergeClasses_J(TDA, VFTable1, VFTable2, VFTable1Class, VFTable2Class)]).
 
+% If two methods are present on the same object, and we know neither method's class has a base
+% class, the methods must be on the same object.
+reasonMergeClasses_K(Class1, Class2) :-
+    factClassRelatedMethod(Class1, Method),
+    factClassHasNoBase(Class1),
+    find(Method, Class2),
+    factClassHasNoBase(Class2),
+    iso_dif(Class1, Class2),
+    logtraceln('~@~Q.', [not(find(Class1, Class2)),
+                         reasonMergeClasses_K(Class1, Class2, Method)]).
+
 % This rule says that if a constructor installs a single VFTable, then any method in that VFTable
 % must belong to that VFTable's class.
 
@@ -2420,7 +2579,7 @@ reasonMergeClasses_J(VFTable1Class, VFTable2Class) :-
 
 %% ejs 10/18/20: I don't think this rule is correct at all.
 
-%% Looking back at my vftable installation table for inheritance 
+%% Looking back at my vftable installation table for inheritance
 %% https://docs.google.com/spreadsheets/d/1Sglpf0HT363kH09jmpx0tYHvuTvJgRTEsu7x0sj-QAA/edit#gid=1459733299
 %%  and looking at which cases there can be a single vftable installed by
 %% a constructor...
@@ -2487,7 +2646,7 @@ reasonMergeClasses_J(VFTable1Class, VFTable2Class) :-
 :- table reasonNOTMergeClasses_O/2 as incremental.
 :- table reasonNOTMergeClasses_P/2 as incremental.
 :- table reasonNOTMergeClasses_Q/2 as incremental.
-:- table reasonNOTMergeClasses_Qhelper/2 as incremental.
+:- table reasonNOTMergeClasses_Qhelper/3 as opaque.
 :- table reasonNOTMergeClasses_R/2 as incremental.
 
 reasonNOTMergeClasses(M1,M2) :-
@@ -2495,6 +2654,7 @@ reasonNOTMergeClasses(M1,M2) :-
 reasonNOTMergeClasses(M1,M2) :-
     reasonNOTMergeClasses_new(M1,M2).
 
+:- table reasonNOTMergeClasses_new/2 as incremental.
 reasonNOTMergeClasses_new(M1,M2) :-
     %logwarnln('Recomputing reasonNOTMergeClasses...'),
     or([reasonNOTMergeClasses_J(M1,M2),
@@ -2705,7 +2865,7 @@ reasonNOTMergeClasses_L(Class1, Class2) :-
 % Because the sizes are incomaptible.
 % PAPER: Class size constraints
 % Called by trigger.pl
-reasonNOTMergeClasses_M(Class1, Class2, GTESize, LTESize) :-
+reasonNOTMergeClasses_M(BigClass, Class1, Class2, GTESize, LTESize) :- nonvar(BigClass), nonvar(GTESize), !,
     factClassSizeGTE(BigClass, GTESize),
     factClassSizeLTE(SmallClass, LTESize),
     LTESize < GTESize,
@@ -2714,6 +2874,17 @@ reasonNOTMergeClasses_M(Class1, Class2, GTESize, LTESize) :-
     logtraceln('~@~Q.', [not(dynFactNOTMergeClasses(Class1, Class2)),
                          reasonNOTMergeClasses_M(Class1, Class2, GTESize, LTESize)]).
 
+reasonNOTMergeClasses_M(SmallClass, Class1, Class2, GTESize, LTESize) :- nonvar(SmallClass), nonvar(LTESize), !,
+    factClassSizeLTE(SmallClass, LTESize),
+    factClassSizeGTE(BigClass, GTESize),
+    LTESize < GTESize,
+    sort_tuple((BigClass, SmallClass), (Class1, Class2)),
+    % Debugging
+    logtraceln('~@~Q.', [not(dynFactNOTMergeClasses(Class1, Class2)),
+                         reasonNOTMergeClasses_M(Class1, Class2, GTESize, LTESize)]).
+
+reasonNOTMergeClasses_M(_,_,_,_,_) :- throw(system_error(reasonNOTMergeClasses_M)).
+
 % Because the sizes are incompatible.
 % PAPER: Class size constraints
 % Called by trigger.pl
@@ -2721,14 +2892,14 @@ reasonNOTMergeClasses_M(Class1, Class2, GTESize, LTESize) :-
 % want to add a contraint requiring that there be a reason to think that the classes were
 % candidates for a merge in the first place.  The current rule simply looks at sizes and
 % nothing else.  As a result this is the largest source of factNOTMergeClass facts.
-reasonNOTMergeClasses_N(Class1, Class2, GTESize, LTESize) :-
-    factClassSizeLTE(SmallClass, LTESize),
-    factClassSizeGTE(BigClass, GTESize),
-    GTESize > LTESize,
-    sort_tuple((SmallClass, BigClass), (Class1, Class2)),
-    % Debugging
-    logtraceln('~@~Q.', [not(dynFactNOTMergeClasses(Class1, Class2)),
-                         reasonNOTMergeClasses_N(Class1, Class2, GTESize, LTESize)]).
+%% reasonNOTMergeClasses_N(Class1, Class2, GTESize, LTESize) :-
+%%     factClassSizeLTE(SmallClass, LTESize),
+%%     factClassSizeGTE(BigClass, GTESize),
+%%     GTESize > LTESize,
+%%     sort_tuple((SmallClass, BigClass), (Class1, Class2)),
+%%     % Debugging
+%%     logtraceln('~@~Q.', [not(dynFactNOTMergeClasses(Class1, Class2)),
+%%                          reasonNOTMergeClasses_N(Class1, Class2, GTESize, LTESize)]).
 
 % Because the method accesses members that aren't there.
 % PAPER: Merging-15

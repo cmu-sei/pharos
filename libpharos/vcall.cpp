@@ -24,7 +24,7 @@ bool VirtualFunctionCallAnalyzer::resolve_object(const TreeNodePtr& object_expr,
   // There must be a variable portion for this to be a virtual function call.
   const TreeNodePtr & object_ptr = ooace.variable_portion();
   if (object_ptr == NULL) {
-    GDEBUG << "Non virtual: " << debug_instruction(call_insn)
+    GTRACE << "Non virtual: " << debug_instruction(call_insn)
            << " - no variable portion in object_expr=" << *object_expr << LEND;
     return false;
   }
@@ -32,7 +32,7 @@ bool VirtualFunctionCallAnalyzer::resolve_object(const TreeNodePtr& object_expr,
   // Object offsets are not allowed to be negative.
   int64_t object_offset = ooace.constant_portion();
   if (object_offset < 0) {
-    GDEBUG << "Non virtual: " << debug_instruction(call_insn)
+    GTRACE << "Non virtual: " << debug_instruction(call_insn)
            << " - negative object offset in object_expr=" << *object_expr << LEND;
     return false;
   }
@@ -41,7 +41,7 @@ bool VirtualFunctionCallAnalyzer::resolve_object(const TreeNodePtr& object_expr,
   // probably isn't correct, but we'll need to think about it more.
   const LeafNodePtr & lobj_ptr = object_ptr->isLeafNode();
   if (!lobj_ptr) {
-    GDEBUG << "Non virtual: " << debug_instruction(call_insn)
+    GTRACE << "Non virtual: " << debug_instruction(call_insn)
            << " - rejected non-leaf ptr=" << *object_ptr << LEND;
     return false;
   }
@@ -84,11 +84,11 @@ find_accesses(SgAsmX86Instruction* insn,
 
   // Go through each memory read looking for ones that match the value.
   for (const AbstractAccess& aa : du.get_reads(insn->get_address())) {
-    //GDEBUG << "Considering AA=" << aa << LEND;
+    //GTRACE << "Considering AA=" << aa << LEND;
     // If the value in the access can be equal to the value supplied, add it to the set.
     if (sv->can_be_equal(aa.value)) {
       result.insert(&aa);
-      GDEBUG << "Found AA: " << debug_instruction(insn) << " for value=" << *value << LEND;
+      GTRACE << "Found AA: " << debug_instruction(insn) << " for value=" << *value << LEND;
     }
   }
 
@@ -123,7 +123,7 @@ bool VirtualFunctionCallAnalyzer::analyze() {
   auto reads = du.get_reads(call_insn->get_address());
   // If there were no reads in the call, something's really wrong.
   if (std::begin(reads) == std::end(reads)) {
-    GDEBUG << "Non virtual: " << debug_instruction(call_insn) << " - no read of target." << LEND;
+    GTRACE << "Non virtual: " << debug_instruction(call_insn) << " - no read of target." << LEND;
     return false;
   }
 
@@ -145,7 +145,7 @@ bool VirtualFunctionCallAnalyzer::analyze() {
 
   // If the virtual function pointer is still NULL, we're not a virtual call.
   if (vfunc_aa == NULL) {
-    GDEBUG << "Non virtual: " << debug_instruction(call_insn) << " - no virtual func access." << LEND;
+    GTRACE << "Non virtual: " << debug_instruction(call_insn) << " - no virtual func access." << LEND;
     return false;
   }
 
@@ -172,7 +172,7 @@ bool VirtualFunctionCallAnalyzer::analyze() {
     // destination.  It appears that this is triggering more often than expected, probably
     // because we don't appear to defining latest writers correctly for our CALL instructions.
     if (vftable_insns.size() == 0) {
-      GDEBUG << "Non virtual: " << debug_instruction(call_insn)
+      GTRACE << "Non virtual: " << debug_instruction(call_insn)
              << " - no latest write for vfunc_aa=" << *vfunc_aa << LEND;
       return false;
     }
@@ -185,7 +185,7 @@ bool VirtualFunctionCallAnalyzer::analyze() {
   // function pointer from the memory address in the virtual function table.
   for (SgAsmInstruction* vftable_ginsn : vftable_insns) {
     SgAsmX86Instruction* vftable_xinsn = isSgAsmX86Instruction(vftable_ginsn);
-    GDEBUG << "Possible vtable instruction: " << debug_instruction(vftable_xinsn) << LEND;
+    GTRACE << "Possible vtable instruction: " << debug_instruction(vftable_xinsn) << LEND;
 
     // Find the abstract access (or accesses) that reads the virtual function pointer from the
     // memory address in the virtual function table.  This abstract access is found from the
@@ -196,19 +196,19 @@ bool VirtualFunctionCallAnalyzer::analyze() {
     AASet vtable_aas = find_accesses(vftable_xinsn, du, vfunc_ptr);
     // If we didn't find any vtable abstract accesses, that's why this call is not virtual.
     if (vtable_aas.size() == 0) {
-      GDEBUG << "Non virtual: " << debug_instruction(call_insn)
+      GTRACE << "Non virtual: " << debug_instruction(call_insn)
              << " - no vtable abstract access vfunc_ptr=" << *vfunc_ptr << LEND;
       continue;
     }
 
     // For each vtable abstract access, try to find the offset into the table.
     for (const AbstractAccess* vtable_aa : vtable_aas) {
-      GDEBUG << "Vtable AA: " << debug_instruction(vftable_xinsn)
+      GTRACE << "Vtable AA: " << debug_instruction(vftable_xinsn)
              << " vfunc_ptr=" << *vfunc_ptr << LEND;
 
       // All valid vtable accesses must be memory reads.
       if (!vtable_aa->is_mem()) {
-        GDEBUG << "Non virtual: " << debug_instruction(call_insn)
+        GTRACE << "Non virtual: " << debug_instruction(call_insn)
                << " - vtable access was not a memory read" << *vtable_aa << LEND;
         return false;
       }
@@ -221,7 +221,7 @@ bool VirtualFunctionCallAnalyzer::analyze() {
       // There must be a variable portion for this to be a virtual function call.
       const TreeNodePtr & vtable_ptr = foace.variable_portion();
       if (vtable_ptr == NULL) {
-        GDEBUG << "Non virtual: " << debug_instruction(call_insn)
+        GTRACE << "Non virtual: " << debug_instruction(call_insn)
                << " - no variable portion in vtable_expr=" << *vtable_expr << LEND;
         continue;
       }
@@ -229,7 +229,7 @@ bool VirtualFunctionCallAnalyzer::analyze() {
       // Virtual function table offsets are not allowed to be negative, but they can be zero.
       int64_t vtable_offset = foace.constant_portion();
       if (vtable_offset < 0) {
-        GDEBUG << "Non virtual: " << debug_instruction(call_insn)
+        GTRACE << "Non virtual: " << debug_instruction(call_insn)
                << " - negative vtable offset in vtable_expr=" << *vtable_expr << LEND;
         continue;
       }
@@ -254,7 +254,7 @@ bool VirtualFunctionCallAnalyzer::analyze() {
 
         // If the abstract access was NULL, then there's clearly no latest writer.
         if (vtable_ptr_aa == NULL) {
-          GDEBUG << "Non virtual: " << debug_instruction(call_insn)
+          GTRACE << "Non virtual: " << debug_instruction(call_insn)
                  << " - no writer for vtable_ptr=" << *vtable_ptr << LEND;
           continue;
         }
@@ -263,13 +263,13 @@ bool VirtualFunctionCallAnalyzer::analyze() {
         // the instruction that references the object pointer and the offset into it.  Perhaps
         // we should be doing something will all of the writers, not just the first one?
         if (vtable_ptr_aa->latest_writers.size() == 0) {
-          GDEBUG << "Non virtual: " << debug_instruction(call_insn)
+          GTRACE << "Non virtual: " << debug_instruction(call_insn)
                  << " - no latest write for vtable_aa=" << *vtable_ptr_aa << LEND;
           continue;
         }
         SgAsmX86Instruction* object_insn = isSgAsmX86Instruction(*(vtable_ptr_aa->latest_writers.begin()));
         if (object_insn == NULL) {
-          GDEBUG << "Non virtual: " << debug_instruction(call_insn)
+          GTRACE << "Non virtual: " << debug_instruction(call_insn)
                  << " - no insn for vtable_ptr_aa=" << *vtable_ptr_aa << LEND;
           continue;
         }
@@ -283,14 +283,14 @@ bool VirtualFunctionCallAnalyzer::analyze() {
         for (const AbstractAccess* object_aa : object_aas) {
           // If we couldn't find where the object was written, fail.
           if (object_aa == NULL) {
-            GDEBUG << "Non virtual: " << debug_instruction(call_insn)
+            GTRACE << "Non virtual: " << debug_instruction(call_insn)
                    << " - no object abstract access =" << debug_instruction(object_insn) << LEND;
             continue;
           }
 
           // All reads of the vtable pointer must be from memory (in the object).
           if (!(object_aa->is_mem())) {
-            GDEBUG << "Non virtual: " << debug_instruction(call_insn)
+            GTRACE << "Non virtual: " << debug_instruction(call_insn)
                    << " - object access not to memory =" << *object_aa << LEND;
             continue;
           }
@@ -300,17 +300,17 @@ bool VirtualFunctionCallAnalyzer::analyze() {
           // logic on each of the possible values.
           SymbolicValuePtr object_sv = object_aa->memory_address;
 
-          GDEBUG << "Possible multi-valued object pointer: " << *object_sv << LEND;
+          GTRACE << "Possible multi-valued object pointer: " << *object_sv << LEND;
 
           // There are probably some major changes that can be made to this logic post-NEWWAY!
           if (object_sv->contains_ite()) {
-            GDEBUG << "VCall ITE: " << *object_sv << LEND;
+            GTRACE << "VCall ITE: " << *object_sv << LEND;
             bool matched = false;
             for (const TreeNodePtr& tn : object_sv->get_possible_values()) {
-              GDEBUG << "VCall ITE this-ptr: " << *tn << LEND;
+              GTRACE << "VCall ITE this-ptr: " << *tn << LEND;
               // The most common non OO condition is the NULL pointer.
               if (tn->isIntegerConstant() && tn->isLeafNode()->bits().isAllClear()) {
-                GDEBUG << "Skipping NULL pointer as possible object pointer." << LEND;
+                GTRACE << "Skipping NULL pointer as possible object pointer." << LEND;
                 continue;
               }
 
@@ -321,7 +321,7 @@ bool VirtualFunctionCallAnalyzer::analyze() {
             if (matched) return true;
           }
           else {
-            GDEBUG << "VCall Non-ITE:" << *object_sv << LEND;
+            GTRACE << "VCall Non-ITE:" << *object_sv << LEND;
             if (resolve_object(object_sv->get_expression(),
                                vtable_ptr, vtable_offset)) return true;
           }
@@ -330,7 +330,7 @@ bool VirtualFunctionCallAnalyzer::analyze() {
     }
   }
 
-  GDEBUG << "Non virtual: " << debug_instruction(call_insn)
+  GTRACE << "Non virtual: " << debug_instruction(call_insn)
          << " - couldn't find offsets in general." << LEND;
   return false;
 }

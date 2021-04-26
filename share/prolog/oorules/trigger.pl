@@ -18,6 +18,10 @@ trigger_hook(factVFTableEntry(A,B,C)) :-
     !,
     assertz(trigger_fact(factVFTableEntry(A,B,C))).
 
+trigger_hook(factMethodInVFTable(A,B,C)) :-
+    !,
+    assertz(trigger_fact(factMethodInVFTable(A,B,C))).
+
 trigger_hook(factVFTableWrite(A,B,C,D)) :-
     !,
     assertz(trigger_fact(factVFTableWrite(A,B,C,D))).
@@ -170,23 +174,21 @@ dispatchTrigger(factVFTableWrite(A,Method1,C,D), Out) :-
     Out = all(ActionSets).
 
 dispatchTrigger(factClassSizeLTE(Class1,LTESize), Out) :-
-    setof((Class1, Class2),
-          GTESize1^GTESize2^((reasonNOTMergeClasses_M(Class1, Class2, GTESize1, LTESize);
-                              reasonNOTMergeClasses_N(Class1, Class2, GTESize2, LTESize)),
-                             iso_dif(Class1, Class2),
-                             not(dynFactNOTMergeClasses(Class1, Class2)),
-                             loginfoln('Concluding ~Q.', factNOTMergeClasses(Class1, Class2))),
+    setof((Class1Sorted, Class2Sorted),
+          GTESize^((reasonNOTMergeClasses_M(Class1, Class1Sorted, Class2Sorted, GTESize, LTESize)),
+                             iso_dif(Class1Sorted, Class2Sorted),
+                             not(dynFactNOTMergeClasses(Class1Sorted, Class2Sorted)),
+                             loginfoln('Concluding ~Q.', factNOTMergeClasses(Class1Sorted, Class2Sorted))),
           ClassSets),
     maplist(try_assert_builder(factNOTMergeClasses), ClassSets, ActionSets),
     Out = all(ActionSets).
 
 dispatchTrigger(factClassSizeGTE(Class1,GTESize), Out) :-
-    setof((Class1, Class2),
-          LTESize1^LTESize2^((reasonNOTMergeClasses_M(Class1, Class2, GTESize, LTESize1);
-                              reasonNOTMergeClasses_N(Class1, Class2, GTESize, LTESize2)),
-                             iso_dif(Class1, Class2),
-                             not(dynFactNOTMergeClasses(Class1, Class2)),
-                             loginfoln('Concluding ~Q.', factNOTMergeClasses(Class1, Class2))),
+    setof((Class1Sorted, Class2Sorted),
+          LTESize^(reasonNOTMergeClasses_M(Class1, Class1Sorted, Class2Sorted, GTESize, LTESize),
+                             iso_dif(Class1Sorted, Class2Sorted),
+                             not(dynFactNOTMergeClasses(Class1Sorted, Class2Sorted)),
+                             loginfoln('Concluding ~Q.', factNOTMergeClasses(Class1Sorted, Class2Sorted))),
           ClassSets),
     maplist(try_assert_builder(factNOTMergeClasses), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -202,6 +204,39 @@ dispatchTrigger(findint(Method, _Class), Out) :-
           ClassSets),
     maplist(try_assert_builder(factNOTMergeClasses), ClassSets, ActionSets),
     Out = all(ActionSets).
+
+% reasonReusedImplementation_A
+dispatchTrigger(findint(Method, Class), Out) :-
+    setof(Method,
+          VFTable1^((reasonReusedImplementation_A(Method, Class, VFTable1),
+                     not(factReusedImplementation(Method)),
+                     loginfoln('Concluding ~Q.', factReusedImplementation(Method)))),
+         MethodSets),
+    maplist(try_assert_builder(factReusedImplementation), MethodSets, ActionSets),
+    Out = all(ActionSets).
+
+dispatchTrigger(factMethodInVFTable(VFTable1, _Offset, Method), Out) :-
+    setof(Method,
+          Class^((reasonReusedImplementation_A(Method, Class, VFTable1),
+                  not(factReusedImplementation(Method)),
+                  loginfoln('Concluding ~Q.', factReusedImplementation(Method)))),
+          MethodSets),
+    maplist(try_assert_builder(factReusedImplementation), MethodSets, ActionSets),
+    Out = all(ActionSets).
+% end reasonReusedImplementation_A
+
+% reasonClassRelatedMethod_B
+dispatchTrigger(findint(FindMethod, FindClass), Out) :-
+    setof((Class1, Method2),
+          Class2^Method1^(((Class1=FindClass, Method1=FindMethod);
+                           (Class2=FindClass, Method2=FindMethod)),
+                          (reasonClassRelatedMethod_B(Class1, Class2, Method1, Method2),
+                           not(factClassRelatedMethod(Class1, Method2)),
+                           loginfoln('Concluding ~Q.', factClassRelatedMethod(Class1, Method2)))),
+          ClassSets),
+    maplist(try_assert_builder(factClassRelatedMethod), ClassSets, ActionSets),
+    Out = all(ActionSets).
+% end reasonClassRelatedMethod_B
 
 concludeTrigger(Out) :-
     reportFirstSeen('concludeTrigger'),

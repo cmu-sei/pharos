@@ -1,7 +1,8 @@
-// Copyright 2018-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2018-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <rose.h>
 #include <boost/range/adaptor/map.hpp>
+#include <libpharos/options.hpp>
 #include <libpharos/funcs.hpp>
 #include <libpharos/descriptors.hpp>
 #include <libpharos/pdg.hpp>
@@ -17,6 +18,8 @@
 const std::string VERSION  = "0.3";
 
 typedef Rose::BinaryAnalysis::ControlFlow::Graph CFG;
+
+namespace bf = boost::filesystem;
 
 using namespace pharos;
 
@@ -119,7 +122,7 @@ class PathAnalyzer : public BottomUpAnalyzer {
   void
   save_graphviz_file() {
 
-    boost::filesystem::path exe_name(exe_file_name_);
+    bf::path exe_name(exe_file_name_);
 
     const PathPtrList& path = path_finder_.get_path();
 
@@ -135,7 +138,7 @@ class PathAnalyzer : public BottomUpAnalyzer {
         const FunctionDescriptor& fd = traversal->call_trace_desc->get_function();
         std::stringstream dot_ss;
         dot_ss << dot_output_dir_
-               << boost::filesystem::path::preferred_separator
+               << bf::path::preferred_separator
                << exe_name.stem().string() << "-"
                << std::hex
                << fd.get_address() << "-" << traversal->call_trace_desc->get_index()
@@ -260,14 +263,14 @@ class PathAnalyzer : public BottomUpAnalyzer {
     save_graphviz_ = false;
     if (opts.count("dot")>0) {
       save_graphviz_ = true;
-      dot_output_dir_ =  opts["dot"].as<std::string>();
+      dot_output_dir_ =  opts["dot"].as<bf::path>().native();
       OINFO << "DOT file will be generated in " << dot_output_dir_ << LEND;
     }
 
     if (opts.count("z3")>0) {
       save_z3_ = true;
       path_finder_.save_z3_output();
-      z3_file_ =  opts["z3"].as<std::string>();
+      z3_file_ =  opts["z3"].as<bf::path>().native();
       OINFO << "Z3 file will be generated " << z3_file_ << LEND;
     }
 
@@ -330,8 +333,8 @@ ProgOptDesc pathanalyzer_options() {
 
   ProgOptDesc pathopt("PathAnalyzer version " + VERSION + " options");
   pathopt.add_options()
-    ("dot,d", po::value<std::string>(),   "The directory to write DOT file(s)")
-    ("z3,z", po::value<std::string>(),    "Save z3 output file (for troubleshooting)")
+    ("dot,d", po::value<bf::path>(),   "The directory to write DOT file(s)")
+    ("z3,z", po::value<bf::path>(),    "Save z3 output file (for troubleshooting)")
     ("goal,g", po::value<std::string>(),  "The goal address")
     ("start,s", po::value<std::string>(), "The starting address");
 

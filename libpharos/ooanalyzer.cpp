@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 // This code represents the new Prolog based approach!
 
@@ -13,7 +13,6 @@
 #include "vcall.hpp"
 #include "oosolver.hpp"
 #include "masm.hpp"
-#include "known_hashes.hpp"
 
 namespace pharos {
 
@@ -23,139 +22,181 @@ namespace pharos {
 // OOSolver
 void analyze_vtable_overlap();
 
-OOAnalyzer::OOAnalyzer(DescriptorSet& ds_, const ProgOptVarMap& vm_, AddrSet& new_addrs_) :
+OOAnalyzer::OOAnalyzer(DescriptorSet& ds_, const ProgOptVarMap& vm_) :
   BottomUpAnalyzer(ds_, vm_) {
-  new_methods_found = 0;
-  delete_methods_found = 0;
-  purecall_methods_found = 0;
-  new_addrs = new_addrs_;
-  delete_addrs = option_addr_list(vm, "delete-method");
-
-  // Initialize the new_hashes string set with the hashes of known methods.
-  initialize_known_method_hashes();
-  find_imported_new_methods();
-  find_imported_delete_methods();
-  find_imported_purecall_methods();
-  //find_imported_nonreturn_methods();
+  user_new_addrs = option_addr_list(vm, "new-method");
+  user_delete_addrs = option_addr_list(vm, "delete-method");
+  user_purecall_addrs = option_addr_list(vm, "purecall");
 
   set_mode(MULTI_THREADED);
 }
 
-bool OOAnalyzer::identify_new_method(FunctionDescriptor const & fd) {
-  std::string sig = fd.get_pic_hash();
-  rose_addr_t fdaddr = fd.get_address();
-  {
-    read_guard<decltype(mutex)> guard{mutex};
-    if (new_addrs.find(fdaddr) != new_addrs.end()) {
-      // This logic is a little strange now.  We used to set the flag on the function
-      // descriptor, and now we're just incrementing the found count since calling
-      // set_new_method() would just attempt to add it to the set (again).  But we still want
-      // to increment the counter rather than just report the length of new_addrs because we
-      // stuck some addresses in there without actually confirming that they exist.  This
-      // should be moot in FunctionFinder.
-      new_methods_found++;
-      return true;
-    }
-  }
-  if (new_hashes.find(sig) != new_hashes.end()) {
-    GINFO << "Function at " << fd.address_string() << " matches hash "
-          << sig << " of known new() method." << LEND;
-    set_new_method(fdaddr);
-    new_methods_found++;
+bool OOAnalyzer::identify_method(
+  FunctionDescriptor const & fd,
+  AddrSet const * user_addrs,
+  check_method_t check,
+  set_method_t set,
+  std::string const & tag)
+{
+  assert(check);
+  assert(set);
+
+  rose_addr_t faddr = fd.get_address();
+
+  // If we're already marked as an identified method we're done.
+  if ((this->*check)(faddr)) return true;
+
+  // If the user has marked this as an identified method, mark it.
+  if (user_addrs && user_addrs->find(faddr) != user_addrs->end()) {
+    GINFO << "Function at " << fd.address_string() << " is a " << tag << "() method"
+          << " because the user explicitly marked it as such." << LEND;
+    (this->*set)(faddr);
     return true;
   }
-  return false;
-}
 
-bool OOAnalyzer::identify_delete_method(FunctionDescriptor const & fd) {
+  // If the signature for the function matches, it is identified.
   std::string sig = fd.get_pic_hash();
-  rose_addr_t fdaddr = fd.get_address();
-  {
-    read_guard<decltype(mutex)> guard{mutex};
-    if (delete_addrs.find(fdaddr) != delete_addrs.end()) {
-      // Same comment as on set_new_method().
-      delete_methods_found++;
+  if (ds.tags().check_hash(sig, tag)) {
+    GINFO << "Function at " << fd.address_string() << " is a " << tag << "() method"
+          << " because it matches hash " << sig << "." << LEND;
+    (this->*set)(faddr);
+    return true;
+  }
+
+  // If this is a thunk to a import descriptor with a name that has the given tag,
+  // this method is identified.
+  if (fd.is_thunk()) {
+    bool endless;
+    rose_addr_t thunk_target = fd.follow_thunks(&endless);
+    if ((this->*check)(thunk_target)) {
+      GINFO << "Function at " << fd.address_string() << " is a " << tag << "() method"
+            << " because it thunks to " << addr_str(thunk_target) << "." << LEND;
+      (this->*set)(faddr);
       return true;
     }
-  }
-  if (delete_hashes.find(sig) != delete_hashes.end()) {
-    // Because the hash for a delete method is basically just a stub that jumps to _free,
-    // we need to do some additional analysis to avoid a bunch of false positives. :-(
-    GINFO << "Function at " << fd.address_string() << " matches hash "
-          << sig << " of known delete() method (but has not been confirmed)." << LEND;
-
-    // Some of the delete hashes are actually short stubs that jump to other implementations of
-    // delete.  An example of this was the statically linked implementation of ??3@YAXPAXI@Z in
-    // our prtscrpp example at 0x406F9B.  It appears that we should accept hashes that call to
-    // known delete methods as well.  There's an example in Lite ooex7 as well.  See the
-    // comment where we force the delete() API onto all functions with this property.
-    for (const CallDescriptor* cd : fd.get_outgoing_calls()) {
-      // This heuristic/hack only applies to tail-caall optimized JMP instructions, and now
-      // that we can test for that we should.  In other words not every function that calls
-      // delete() is a form of delete(), only those that are tail-call optimized are.
-      if (!(cd->is_tail_call())) continue;
-      for (rose_addr_t target : cd->get_targets()) {
-        if (is_delete_method(target)) {
-          GINFO << "Function at " << addr_str(target) << " (and its thunk " << addr_str(fdaddr)
-                << ") matches hash "<< sig << " of known delete() method." << LEND;
-          set_delete_method(fdaddr);
-          delete_methods_found++;
-          return true;
-        }
-      }
-    }
-
-    // This was the original logic for delete hashes that call other stactically linked
-    // implementations of free().
-    const CFG& cfg = fd.get_pharos_cfg();
-    for (CFGVertex vertex : fd.get_return_vertices()) {
-      SgAsmBlock *block = convert_vertex_to_bblock(cfg, vertex);
-      rose_addr_t target = block_get_jmp_target(block);
-      const FunctionDescriptor* free_fd = ds.get_func(target);
-      if (!free_fd) continue;
-      std::string free_sig = free_fd->get_pic_hash();
-      if (free_hashes.find(free_sig) != free_hashes.end()) {
-        GINFO << "Function at " << fd.address_string() << " matches hash "
-              << sig << " of known delete() method." << LEND;
-        set_delete_method(fd.get_address());
-        delete_methods_found++;
+    auto imp = ds.get_import(thunk_target);
+    if (imp && imp->is_name_valid()) {
+      if (ds.tags().check_name(imp->get_name(), tag)) {
+        GINFO << "Function at " << fd.address_string() << " is a " << tag << "() method"
+              << " because it thunks to import \"" << imp->get_name() << "\"." << LEND;
+        (this->*set)(faddr);
         return true;
       }
     }
   }
+
+  // The logic for the tail calls differs slightly for each tag.
+
+  // For purecalls, there's no real reason to apply this logic.
+  if (tag == "purecall") return false;
+  // For free(), the delete case will handle the updates.
+  if (tag == "free") return false;
+  // Delete is more complicated.  In this case, the function is marked as a candidate delete
+  // instead of a known delete, and the criteria is that the function tail calls to either
+  // free, a known delete, or a candidate delete.
+  std::string tailtag = tag;
+  if (tag == "delete") {
+    tailtag = "candidate delete";
+    // Free, delete, or candidate delete.
+    check = &OOAnalyzer::is_free_like_method;
+    set = &OOAnalyzer::set_candidate_delete_method;
+  }
+  // For new() there's no change in the set/check methods -- tail calls to new() are new().
+
+  // If this function is a tail call to identified method, this method is also identified.
+  for (const CallDescriptor* cd : fd.get_outgoing_calls()) {
+    // This requires that the calling relationship be an actual tail call and not a
+    // conventional call.  That distinction is fairly important because it imposes a certain
+    // amount of implied data flow analysis.
+    if (cd->is_tail_call()) {
+      for (rose_addr_t target : cd->get_targets()) {
+        if ((this->*check)(target)) {
+          GINFO << "Function at " << fd.address_string() << " is a " << tailtag << "() method"
+                << " because it tail calls to " << addr_str(target) << "." << LEND;
+          (this->*set)(faddr);
+          return true;
+        }
+      }
+    }
+  }
+
+  // Not all source code tail calls receive the assembly level tail call optimization that
+  // results in a jmp instruction instead of call & ret instructions.  If the function matches
+  // the hash of a call stub and calls an identitified method, then this method is also
+  // identified.
+  if (ds.tags().check_hash(sig, "callstub")) {
+    GDEBUG << "Function at " << fd.address_string() << " matches hash "
+           << sig << " of a callstub." << LEND;
+    for (const CallDescriptor* cd : fd.get_outgoing_calls()) {
+      for (rose_addr_t target : cd->get_targets()) {
+        GDEBUG << "Function at " << fd.address_string() << " calls "
+               << addr_str(target) << "." << LEND;
+        if ((this->*check)(target)) {
+          GINFO << "Function at " << fd.address_string() << " is a " << tailtag
+                << "() method because it stub calls to " << addr_str(target) << "." << LEND;
+          (this->*set)(faddr);
+          return true;
+        }
+      }
+    }
+  }
+
   return false;
 }
 
+bool OOAnalyzer::identify_new_method(FunctionDescriptor const & fd) {
+  return identify_method(
+    fd, &user_new_addrs, &OOAnalyzer::is_new_method,
+    &OOAnalyzer::set_new_method, "new");
+}
+
+bool OOAnalyzer::identify_free_method(FunctionDescriptor const & fd) {
+  return identify_method(
+    fd, &user_new_addrs, &OOAnalyzer::is_free_method,
+    &OOAnalyzer::set_free_method, "free");
+}
+
+bool OOAnalyzer::identify_delete_method(FunctionDescriptor const & fd) {
+  return identify_method(
+    fd, &user_delete_addrs, &OOAnalyzer::is_delete_method,
+    &OOAnalyzer::set_delete_method, "delete");
+}
+
 bool OOAnalyzer::identify_purecall_method(FunctionDescriptor const & fd) {
-  std::string sig = fd.get_pic_hash();
-  rose_addr_t faddr = fd.get_address();
-  {
-    read_guard<decltype(mutex)> guard{mutex};
-    if (purecall_addrs.find(fd.get_address()) != purecall_addrs.end()) {
-      // Same comment as on set_new_method().
-      purecall_methods_found++;
-      return true;
-    }
-  }
-  if (purecall_hashes.find(sig) != purecall_hashes.end()) {
-    GINFO << "Function at " << fd.address_string() << " matches hash "
-          << sig << " of known _purecall() method." << LEND;
-    set_purecall_method(faddr);
-    purecall_methods_found++;
-    return true;
-  }
-  return false;
+  return identify_method(
+    fd, &user_purecall_addrs, &OOAnalyzer::is_purecall_method,
+    &OOAnalyzer::set_purecall_method, "purecall");
 }
 
 bool OOAnalyzer::identify_nonreturn_method(FunctionDescriptor & fd) {
   std::string sig = fd.get_pic_hash();
   //OINFO << "Function at " << fd.address_string() << " hashes to " << sig << LEND;
-  if (nonreturn_hashes.find(sig) != nonreturn_hashes.end()) {
+  if (ds.tags().check_hash(sig, "nonreturn")) {
     //OINFO << "Function at " << fd.address_string() << " matches hash "
     //      << sig << " of function known not to return." << LEND;
     fd.set_never_returns(true);
     return true;
   }
+
+  // If this is a thunk to a import descriptor which a name that has been tagged as nonreturn,
+  // this is a nonreturn method.
+  if (fd.is_thunk()) {
+    auto tfd = fd.get_jmp_fd();
+    if (tfd && tfd->get_never_returns()) {
+      fd.set_never_returns(true);
+      return true;
+    }
+    auto imp = ds.get_import(fd.get_jmp_addr());
+    if (imp && imp->is_name_valid()) {
+      if (ds.tags().check_name(imp->get_name(), "nonreturn")) {
+        GINFO << "Function at " << fd.address_string() << " is a thunk to an import named \""
+              << imp->get_name() << "\" which is known not to return." << LEND;
+        fd.set_never_returns(true);
+        return true;
+      }
+    }
+  }
+
   return false;
 }
 
@@ -170,6 +211,7 @@ bool OOAnalyzer::identify_nonreturn_method(FunctionDescriptor & fd) {
 void OOAnalyzer::visit(FunctionDescriptor* fd) {
   GINFO << "Processing function " << fd->address_string() << LEND;
   identify_new_method(*fd);
+  identify_free_method(*fd);
   identify_delete_method(*fd);
   identify_purecall_method(*fd);
   identify_nonreturn_method(*fd);
@@ -189,7 +231,7 @@ void OOAnalyzer::visit(FunctionDescriptor* fd) {
   // solution to this problems would be to propagate parameters through all tail-call optimized
   // thunklets, but this requires a more complicated analysis of the instructions before the
   // tail-call optimized JMP instruction.
-  if (is_delete_method(fd->get_address())) {
+  if (is_candidate_delete_method(fd->get_address())) {
     // This fetches the API database entry for delete().  This code isn't perfect because it
     // presumes Windows 32-bit MS Visual Studio, but since most delete() implementations have
     // the same prototype, it probably doesn't matter too much.  If we do the right thing wil
@@ -268,15 +310,29 @@ void OOAnalyzer::start() {
 }
 
 void OOAnalyzer::finish() {
-  if (new_methods_found == 0) {
+  size_t new_size = 0;
+  size_t delete_size = 0;
+  size_t purecall_size = 0;
+  for (auto & v : call_addrs) {
+    switch (v.second) {
+     case NEW:      new_size++;      break;
+     case DELETE:   delete_size++;   break;
+     case PURECALL: purecall_size++; break;
+     default: break;
+    }
+  }
+  if (new_size == 0) {
     GERROR << "No new() methods were found.  Heap objects may not be detected." << LEND;
   }
-  if (delete_methods_found == 0) {
+  if (delete_size == 0) {
     GERROR << "No delete() methods were found.  Object analysis may be impaired." << LEND;
   }
+  GINFO << "Found " << new_size << " new() methods, "
+        << delete_size << " delete() methods, and "
+        << purecall_size << " purecall() methods." << LEND;
   time_point end_ts = clock::now();
   duration secs = end_ts - start_ts;
-  OINFO << "Function analysis complete, analyzed " << processed_funcs
+  GINFO << "Function analysis complete, analyzed " << processed_funcs
         << " functions in " << secs.count() << " seconds." << LEND;
 
   // Alternate version of the find_heap_objects() routine, in transition...
@@ -314,257 +370,6 @@ void OOAnalyzer::finish() {
 std::vector<OOClassDescriptorPtr>
 OOAnalyzer::get_result_classes() {
   return ooclasses;
-}
-
-
-// Initialize the list of known methods with some well-known hashes.  It's unclear how big this
-// set will eventually be, but it'll probably be managable regardless.  We should investigate
-// the variation some more and expand the list for real use.
-void OOAnalyzer::initialize_known_method_hashes() {
-
-  // We automatically collected a lot of hashes in known_hashes.hpp, and we need to add them
-  // here.
-  for (hashinfo hi : known_hashes) {
-    if (hi.classification.rfind("new", 0) == 0) {
-      GDEBUG << "Adding new method " << hi.demangled_name << " with hash " << hi.hash << LEND;
-      new_hashes.insert(hi.hash);
-    } else if (hi.classification.rfind("del", 0) == 0) {
-      GDEBUG << "Adding delete method " << hi.demangled_name << " with hash " << hi.hash << LEND;
-      delete_hashes.insert (hi.hash);
-    } else if (hi.classification.rfind("purecall", 0) == 0) {
-      GDEBUG << "Adding purecall method " << hi.demangled_name << " with hash " << hi.hash << LEND;
-      purecall_hashes.insert (hi.hash);
-    } else {
-      GFATAL << "Unknown hash clasification " << hi.classification << LEND;
-      exit (EXIT_FAILURE);
-    }
-  }
-
-  // MSVC 12
-  // operator new()
-  new_hashes.insert("F826EF14E44F7C45D21EEE19865CF7B3");
-  // operator new(nothrow)
-  new_hashes.insert("272852A8B9C637A71D693D7D8D312ACE");
-  // According to Udit Agarwal... (Thanks!)
-  // MVSC 15, 17, & 19.
-  // new_hashes.insert("BACD68267934497D17B3D6E22A7C8425");
-  // MSVC 15 Lite builds
-  //new_hashes.insert("76CECF37598DEFEE4EB5C788775AB032");
-  // MSVC 17 & 19 Lite builds
-  new_hashes.insert("03B27C25F97ACD0EA0EFD996D9EF842C");
-
-  // According to Alina Weber... (Thanks!)
-  // Linux GCC version 7.4.0
-  // _Znwm: operator new(unsigned long)
-  new_hashes.insert("90C074292C033FC0AEA1FE4C0984EFA7");
-  // _ZnwmPv: operator new(unsigned long, void*)
-  new_hashes.insert("A4F4E5D15B7BC69D763DE87D93850EC6");
-  // _Znam : operator new[](unsigned long)
-  //new_hashes.insert("");
-
-  // This appears to be a hash for PLT entry.
-  // plt_hashes.insert("89047698F4380796A13F674942384C0D");
-
-  // new() hashes from OO examples?
-  //new_hashes.insert("9F377A6D9EDE41E4F1B43C475069EE28");
-  //new_hashes.insert("443BABE6802D856C2EF32B80CD14B474");
-
-  // Notepad++5.6.8 ordinary new(), at 0x49FD6E
-  new_hashes.insert("356087289F58C87C27410EFEDA931E4D");
-  // Notepad++5.6.8 new_nothrow(), at 0x4A2C94
-  // void *__cdecl operator new(size_t Size, const struct std::nothrow_t *)
-  //new_hashes.insert("CC883629B7DB64E925D711EC971B8FCA");
-
-  // PIC hashes for delete...
-  // This hash was taken from ooex2 and ooex8 test cases.
-  //delete_hashes.insert("3D3F9E46688A1687E2AB372921A31394");
-  // This is an implementation of ??3@YAXPAXI@Z from prtscrpp at 406F9B.
-  //delete_hashes.insert("3D01B1E1279476F6FFA9296C4E387579");
-
-  // More delete hashes from Alina Weber
-  // _ZdlPv : operator delete(void*)
-  //delete_hashes.insert("");
-  // _ZdlPvS_ : operator delete(void*, void*)
-  delete_hashes.insert("6A95CC300B775FFBCBC62FBCC8EF63F9");
-  // _ZdlPvm : operator delete(void*, unsigned long)
-  //delete_hashes.insert("");
-  // _ZdlPvS_t : operator delete(void*, void*, unsigned short)
-  delete_hashes.insert("A78677F36D9F3DC066AE2DE00EA21276");
-  // _ZdaPv : operator delete[](void*)
-  //delete_hashes.insert("");
-
-  // PIC hashes for free (the more identifiable method that delete calls)
-  // This hash was taken from ooex2 and ooex8 test cases.
-  free_hashes.insert("3F4896D9B44BD7A745E0E5A23753934D");
-
-  // __free() in gcc7.4.0 according to Alina Weber.
-  free_hashes.insert("60CC895C94230005132952EDEE6BC14F");
-
-  // PIC hashes for _purecall
-  // This hash was taken from 2010/Lite/oo test case.
-  //purecall_hashes.insert("0CF963B9B193252F2CDEC4159322921B");
-
-  // _purecall from notepad++5.6.8, at 0x4A0FAA
-  purecall_hashes.insert("3F464C9D7A17BBBB054583A48EE66661");
-
-  // purecall from cncm.exe at 0x8be3ef
-  purecall_hashes.insert("42E82ED5359E75A84005AE5BB0BF78C4");
-
-  // __CxxThrowException@8 from ooex_vs2010/Lite test cases.
-  nonreturn_hashes.insert("DD6F67B0A531EF4450EB8990F6FF3849");
-}
-
-// Find new methods by examining imports.
-void OOAnalyzer::find_imported_new_methods() {
-  GINFO << "Finding imported new methods..." << LEND;
-
-  // Make a list of names that represent new in it's various forms.
-  std::set<std::string> new_method_names;
-  new_method_names.insert("??2@YAPAXI@Z");
-  new_method_names.insert("??2@YAPAXIHPBDH@Z");
-  // From notepad++5.6.8:
-  // void *__cdecl operator new(size_t Size, const struct std::nothrow_t *)
-  new_method_names.insert("??2@YAPAXIABUnothrow_t@std@@@Z");
-
-  // Alina Weber reported the following new method names for GCC:
-  // _Znam: operator new[](unsigned long)
-  new_method_names.insert("_Znam");
-  // _Znwm: operator new(unsigned long)
-  new_method_names.insert("_Znwm");
-  // _ZnwmPv: operator new(unsigned long, void*)
-  new_method_names.insert("_ZnwmPv");
-
-  // Get the import map out of the provided descriptor set.
-  const ImportDescriptorMap& imap = ds.get_import_map();
-
-  // For each new() name...
-  for (const std::string & name : new_method_names) {
-    // Find all the import descriptors that match.
-
-    for (const ImportDescriptor* id : imap.find_name(name)) {
-      GINFO << "Imported new '" << name << "' found at address "
-            << id->address_string() << "."<< LEND;
-      set_new_method(id->get_address());
-      new_methods_found++;
-      // This part is kind-of icky.  Maybe we should make a nice set of backward links to all
-      // the imports from all the thunks that jump to them...  For now Cory's going to brute
-      // force it and move on.
-      const FunctionDescriptorMap& fdmap = ds.get_func_map();
-      for (const FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
-        // If it's not a thunk to the import, move on to the next function.
-        if (fd.get_jmp_addr() != id->get_address()) continue;
-        // If this function is a thunk to the import, it's a new method.
-        GINFO << "Function at " << fd.address_string()
-              << " is a thunk to a new() method." << LEND;
-        set_new_method(fd.get_address());
-        // Also any functions that are thunks to this function are new methods.  This is
-        // another example of why thunks are tricky.  In this case we want to access them
-        // backwards.  We don't currently have an inverted version of follow_thunks().
-        for (FunctionDescriptor* tfd : fd.get_thunks()) {
-          GINFO << "Function at " << tfd->address_string()
-                << " is a thunk to a thunk to a new() method." << LEND;
-          set_new_method(tfd->get_address());
-        }
-      }
-    }
-  }
-}
-
-// Find delete methods by examining imports.  Rather than walking all of the functions twice
-// (or more), we could probably detect new() methods and delete() methods at the same time! ;-)
-void OOAnalyzer::find_imported_delete_methods() {
-  GINFO << "Finding imported delete methods..." << LEND;
-
-  std::set<std::string> del_method_names;
-  del_method_names.insert("??3@YAXPAX@Z");
-  del_method_names.insert("??3@YAXPAXI@Z");
-  // "??_V@YAXPAX@Z" is apparently "operator delete[](void *)
-
-  // Alina Weber reported the following delete() method names for GCC:
-  // _ZdlPv: operator delete(void*)
-  del_method_names.insert("_ZdlPv");
-  // _ZdlPvm: operator delete(void*, unsigned long)
-  del_method_names.insert("_ZdlPvm");
-  // _ZdlPvS_: operator delete(void*, void*)
-  del_method_names.insert("_ZdlPvS_");
-  // _ZdlPvS_t: operator delete(void*, void*, unsigned short)
-  del_method_names.insert("_ZdlPvS_t");
-  // _ZdaPv: operator delete[](void*)
-  del_method_names.insert("_ZdaPv");
-
-  const ImportDescriptorMap& im = ds.get_import_map();
-
-  // For each delete() name...
-  for (const std::string & name : del_method_names) {
-    // Find all the import descriptors that match.
-    for (const ImportDescriptor* id : im.find_name(name)) {
-      GINFO << "Imported delete '" << name << "' found at address "
-            << id->address_string() << "."<< LEND;
-      set_delete_method(id->get_address());
-      delete_methods_found++;
-      // This part is kind-of icky.  Maybe we should make a nice set of backward links to all
-      // the imports from all the thunks that jump to them...  For now Cory's going to brute
-      // force it and move on.
-      const FunctionDescriptorMap& fdmap = ds.get_func_map();
-      for (const FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
-        // If it's not a thunk to the import, move on to the next function.
-        if (fd.get_jmp_addr() != id->get_address()) continue;
-        // If this function is a thunk to the import, it's a delete method.
-        GINFO << "Function at " << fd.address_string()
-              << " is a thunk to a delete() method." << LEND;
-        set_delete_method(fd.get_address());
-        // Also any functions that are thunks to this function are new methods.  This is
-        // another example of why thunks are tricky.  In this case we want to access them
-        // backwards.  We don't currently have an inverted version of follow_thunks().
-        for (FunctionDescriptor* tfd : fd.get_thunks()) {
-          GINFO << "Function at " << tfd->address_string()
-                << " is a thunk to a thunk to a delete() method." << LEND;
-          set_delete_method(tfd->get_address());
-        }
-      }
-    }
-  }
-}
-
-// Find purecall methods by examining imports.
-void OOAnalyzer::find_imported_purecall_methods() {
-  GINFO << "Finding imported purecall methods..." << LEND;
-
-  std::set<std::string> purecall_method_names;
-  purecall_method_names.insert("_purecall");
-
-  const ImportDescriptorMap& im = ds.get_import_map();
-
-  // For each purecall() name...
-  for (const std::string & name : purecall_method_names) {
-    // Find all the import descriptors that match.
-    for (const ImportDescriptor* id : im.find_name(name)) {
-      GINFO << "Imported purecall '" << name << "' found at address "
-            << id->address_string() << "."<< LEND;
-      set_purecall_method(id->get_address());
-      purecall_methods_found++;
-      // This part is kind-of icky.  Maybe we should make a nice set of backward links to all
-      // the imports from all the thunks that jump to them...  For now Cory's going to brute
-      // force it and move on.
-      const FunctionDescriptorMap& fdmap = ds.get_func_map();
-      for (const FunctionDescriptor& fd : boost::adaptors::values(fdmap)) {
-        // If it's not a thunk to the import, move on to the next function.
-        if (fd.get_jmp_addr() != id->get_address()) continue;
-        // If this function is a thunk to the import, it's a delete method.
-        GINFO << "Function at " << fd.address_string()
-              << " is a thunk to a purecall() method." << LEND;
-        set_purecall_method(fd.get_address());
-        // Also any functions that are thunks to this function are new methods.  This is
-        // another example of why thunks are tricky.  In this case we want to access them
-        // backwards.  We don't currently have an inverted version of follow_thunks().
-        for (FunctionDescriptor* tfd : fd.get_thunks()) {
-          GINFO << "Function at " << tfd->address_string()
-                << " is a thunk to a thunk to a purecall() method." << LEND;
-          set_purecall_method(tfd->get_address());
-        }
-      }
-    }
-  }
 }
 
 void OOAnalyzer::handle_heap_allocs(const rose_addr_t saddr) {

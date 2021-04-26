@@ -47,6 +47,7 @@ set(PHAROS_SOURCES
   state.cpp
   stkvar.cpp
   swiimpl.cpp
+  tags.cpp
   threads.cpp
   typedb.cpp
   types.cpp
@@ -55,10 +56,12 @@ set(PHAROS_SOURCES
   vcall.cpp
   vftable.cpp
   wp.cpp
+  yaml.cpp
   znode.cpp
 
   PHAROS_REVISION.ii
   config.yaml.ii
+  tags.yaml.ii
   )
 
 # Packages needed by libpharos
@@ -146,7 +149,25 @@ set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/PHAROS_REVISION.ii"
 add_custom_command(
   OUTPUT config.yaml.ii
   COMMAND xxd -i config.yaml > "${CMAKE_CURRENT_BINARY_DIR}/config.yaml.ii"
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
   MAIN_DEPENDENCY "${CMAKE_CURRENT_BINARY_DIR}/config.yaml")
 set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/config.yaml.ii"
   PROPERTIES HEADER_FILE_ONLY true)
+
+macro(convert_tags_file tags)
+add_custom_command(
+  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${tags}"
+  COMMAND sed -e [=[s/#.*$//g; :a; N; s/#.*$//g; $!ba; s/[[:space:]]//g; s/:/: /g]=]
+  < "${CMAKE_CURRENT_SOURCE_DIR}/${tags}"
+  > "${CMAKE_CURRENT_BINARY_DIR}/${tags}"
+  VERBATIM
+  WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+  MAIN_DEPENDENCY "${CMAKE_CURRENT_SOURCE_DIR}/${tags}")
+add_custom_command(
+  OUTPUT ${tags}.ii
+  COMMAND xxd -i ${tags} > ${tags}.ii
+  WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+  MAIN_DEPENDENCY "${CMAKE_CURRENT_BINARY_DIR}/${tags}")
+endmacro()
+
+convert_tags_file(tags.yaml)

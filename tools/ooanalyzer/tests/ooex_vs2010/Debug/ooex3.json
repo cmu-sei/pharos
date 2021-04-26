@@ -13,7 +13,9 @@
                     "size": 12,
                     "struc": "cls_0x4115f0",
                     "type": "struc",
-                    "usages": []
+                    "usages": [
+                        "0x41151d"
+                    ]
                 },
                 "0x18": {
                     "base": false,
@@ -28,6 +30,18 @@
                         "0x4115af"
                     ]
                 },
+                "0x4": {
+                    "base": true,
+                    "name": "mbr_0x4",
+                    "offset": "0x4",
+                    "parent": false,
+                    "size": 1,
+                    "struc": "",
+                    "type": "",
+                    "usages": [
+                        "0x411516"
+                    ]
+                },
                 "0xc": {
                     "base": false,
                     "name": "cls_0x411650_0xc",
@@ -40,6 +54,13 @@
                 }
             },
             "methods": {
+                "0x4114f0": {
+                    "demangled_name": "",
+                    "ea": "0x4114f0",
+                    "import": false,
+                    "name": "meth_0x4114f0",
+                    "type": "meth"
+                },
                 "0x411540": {
                     "demangled_name": "",
                     "ea": "0x411540",
@@ -64,7 +85,6 @@
                     "struc": "",
                     "type": "",
                     "usages": [
-                        "0x41151d",
                         "0x411616"
                     ]
                 },
@@ -77,7 +97,6 @@
                     "struc": "",
                     "type": "",
                     "usages": [
-                        "0x411516",
                         "0x41161f"
                     ]
                 },
@@ -95,13 +114,6 @@
                 }
             },
             "methods": {
-                "0x4114f0": {
-                    "demangled_name": "",
-                    "ea": "0x4114f0",
-                    "import": false,
-                    "name": "meth_0x4114f0",
-                    "type": "meth"
-                },
                 "0x4115f0": {
                     "demangled_name": "",
                     "ea": "0x4115f0",

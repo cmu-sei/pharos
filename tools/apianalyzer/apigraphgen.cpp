@@ -1,4 +1,4 @@
-// Copyright 2015, 2016 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <rose.h>
 
@@ -9,7 +9,11 @@
 #include <libpharos/apigraph.hpp>
 #include <libpharos/apisig.hpp>
 
+#include <boost/filesystem.hpp>
+
 using namespace pharos;
+
+namespace bf = boost::filesystem;
 
 const std::string VERSION  = "1.01";
 
@@ -21,7 +25,7 @@ ProgOptDesc apianalyzer_options() {
   ProgOptDesc apiopt(version_string.c_str());
 
   apiopt.add_options()
-    ("graphviz,G", po::value<std::string>(), "specify the graphviz output file");
+    ("graphviz,G", po::value<bf::path>(), "specify the graphviz output file");
 
   return apiopt;
 }
@@ -36,9 +40,7 @@ int apigraphgen_main(int argc, char* argv[]) {
 
   ProgOptVarMap vm = parse_cert_options(argc, argv, apiod);
 
-  std::ostringstream file_name;
-  file_name << vm["graphviz"].as<std::string>();
-  std::string gv_file = file_name.str();
+  std::string gv_file = vm["graphviz"].as<bf::path>().native();
 
   // end configuration, begin analysis
 

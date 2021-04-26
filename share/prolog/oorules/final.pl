@@ -67,7 +67,7 @@ classIdentifier(Method, ID) :-
     ((
         % Must be the VFTable at offset zero to be the "master" table for the class.
         reasonPrimaryVFTableForClassFinal(VFTable, Class),
-        logdebugln('Setting classID of ~Q to primary vftable ~Q', [Class, VFTable]),
+        logtraceln('Setting classID of ~Q to primary vftable ~Q', [Class, VFTable]),
         true
     )
     ->
@@ -79,14 +79,14 @@ classIdentifier(Method, ID) :-
         once((findVFTable(VFTable, Class),
               forall(findVFTable(OtherVFTable, Class),
                      VFTable = OtherVFTable),
-              logdebugln('Setting classID of ~Q to only vftable ~Q', [Class, VFTable])))
+              logtraceln('Setting classID of ~Q to only vftable ~Q', [Class, VFTable])))
     ) ->
         ID is VFTable
     ;
     (
         find(RealDestructor, Class),
         factRealDestructor(RealDestructor),
-        logdebugln('Setting classID of ~Q to real destructuor ~Q', [Class, RealDestructor]),
+        logtraceln('Setting classID of ~Q to real destructuor ~Q', [Class, RealDestructor]),
         true
     )
     ->
@@ -99,7 +99,7 @@ classIdentifier(Method, ID) :-
         setof(C, (member(C, MethodSet), factConstructor(C)), ConstructorSet),
         %logwarnln('constructor set was: ~Q', ConstructorSet),
         min_list(ConstructorSet, MinimumConstructor),
-        logdebugln('Setting classID of ~Q to minimum constructor ~Q', [Class, MinimumConstructor]),
+        logtraceln('Setting classID of ~Q to minimum constructor ~Q', [Class, MinimumConstructor]),
         true
     )
     -> ID is MinimumConstructor
@@ -109,7 +109,7 @@ classIdentifier(Method, ID) :-
         %logwarnln('trying to pick class ID from method set2 ...'),
         %logwarnln('picking class ID from method set: ~Q', MethodSet),
         min_list(MethodSet, MinimumMethod),
-        logdebugln('Setting classID of ~Q to minimum method ~Q', [Class, MinimumMethod]),
+        logtraceln('Setting classID of ~Q to minimum method ~Q', [Class, MinimumMethod]),
         true
     )
     -> ID is MinimumMethod).
@@ -161,14 +161,14 @@ worthlessClass(Class) :-
 worthlessClass(Class) :-
     not(usefulClass(Class)),
     !,
-    logdebugln('Rejecting worthless finalClass ~Q', [Class]).
+    logtraceln('Rejecting worthless finalClass ~Q', [Class]).
 
 worthlessClass(Class) :-
-    findall(Class, [Method]),
-    purecall(Method),
+    purecall(Class),
+    is_singleton(Class),
     !,
 
-    logdebugln('Rejecting worthless finalClass ~Q because it contains purecall at ~Q', [Class, Method]).
+    logtraceln('Rejecting worthless finalClass ~Q because it contains purecall and is a singleton', [Class]).
 
 finalFileInfo(FileMD5, Filename) :-
    fileInfo(FileMD5, Filename).

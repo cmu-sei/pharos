@@ -10,9 +10,13 @@
 #include <libpharos/ooanalyzer.hpp>
 #include <libpharos/ooclass.hpp>
 
+#include <boost/filesystem.hpp>
+
 #define VERSION "1.0"
 
 using namespace pharos;
+
+namespace bf = boost::filesystem;
 
 ProgOptDesc digger_options() {
   namespace po = boost::program_options;
@@ -20,7 +24,7 @@ ProgOptDesc digger_options() {
   ProgOptDesc digopt("OOAnalyzer v" VERSION " options");
   digopt.add_options()
     ("json,j",
-     po::value<std::string>(),
+     po::value<bf::path>(),
      "specify the JSON output file")
     ("new-method,n",
      po::value<StrVector>(),
@@ -28,15 +32,18 @@ ProgOptDesc digger_options() {
     ("delete-method",
      po::value<StrVector>(),
      "function at address is a delete() method")
+    ("purecall",
+     po::value<StrVector>(),
+     "function at address is purecall")
     ("no-guessing",
      "do not perform hypothetical reasoning.  never use except for experiments")
     ("ignore-rtti",
      "ignore RTTI metadata if present")
     ("prolog-facts,F",
-     po::value<std::string>(),
+     po::value<bf::path>(),
      "specify the Prolog facts output file")
     ("prolog-results,R",
-     po::value<std::string>(),
+     po::value<bf::path>(),
      "specify the Prolog results output file")
     ("prolog-loglevel", po::value<int>(),
      "sets the prolog logging verbosity (1-7)")
@@ -91,9 +98,6 @@ static int ooanalyzer_main(int argc, char **argv)
     return EXIT_FAILURE;
   }
 
-  // Chuck asked for this...
-  AddrSet new_addrs = option_addr_list(vm, "new-method");
-
   // Find calls, functions, and imports.
   DescriptorSet ds(vm);
   // Resolve imports, load API data, etc.
@@ -104,7 +108,7 @@ static int ooanalyzer_main(int argc, char **argv)
   // =====================================================================================
 
   // Build interprocedural PDGs
-  OOAnalyzer ooa(ds, vm, new_addrs);
+  OOAnalyzer ooa(ds, vm);
   ooa.analyze();
   std::vector<OOClassDescriptorPtr> ooclasses = ooa.get_result_classes();
 

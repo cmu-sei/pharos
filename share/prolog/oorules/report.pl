@@ -80,10 +80,15 @@ writePredicate(P) :-
 % our code as factMergeClasses/2, which seems to be the more natural way to express them.  This
 % little bit of syntactic sugar should help ease that gap.
 reportPredicate(factMergeClasses/2) :-
-    forall(find(C1, C2), writePredicate(factMergeClasses(C1, C2))), !.
+    (setof(factMergeClasses(C1, C2), find(C1, C2), Facts),
+     forall(member(Pred, Facts), writePredicate(Pred)), !
+    ); true.
 
 reportPredicate(Name/Arity) :-
-    functor(Head, Name, Arity), forall(Head, writePredicate(Head)), !.
+    functor(Head, Name, Arity),
+    (setof(Head, Head, Functors),
+     forall(member(Pred, Functors), writePredicate(Pred)), !
+    ); true.
 
 reportResults :-
     reportStage('reportResults'),

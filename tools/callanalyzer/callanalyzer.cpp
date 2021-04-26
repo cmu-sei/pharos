@@ -1,4 +1,4 @@
-// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Analyzes function call points in binaries, attempting to determine
 // their argument values.
@@ -8,10 +8,13 @@
 #include <libpharos/json.hpp>
 #include <libpharos/bua.hpp>
 #include <boost/range/combine.hpp>
+#include <boost/filesystem.hpp>
 
 // Move our code out of the global namespace to avoid a conflict with clog() from complex.h
 namespace {
 using namespace pharos;
+
+namespace bf = boost::filesystem;
 
 // The CallAnalyzer message facility.
 Sawyer::Message::Facility clog;
@@ -34,11 +37,11 @@ ProgOptDesc get_options() {
      "Output call information even when there is no useful parameter information")
     ("show-symbolic", po::bool_switch(),
      "Output symbolic values for <abstr> values")
-    ("json,j", po::value<std::string>(),
+    ("json,j", po::value<bf::path>(),
      "Output json representation to given file ('-' for stdout)")
     ("pretty-json,p", po::value<unsigned>()->implicit_value(4),
      "Pretty-print json.  Argument is the indent width")
-    ("calls", po::value<std::vector<std::string>>(),
+    ("calls", po::value<std::vector<bf::path>>(),
      "File containing a list of calls to output information about")
     ;
 
@@ -343,7 +346,7 @@ JsonOutputter::JsonOutputter(ProgOptVarMap const & vm, std::ostream & stream)
     args->add(arg);
   }
   main->add("invocation", std::move(args));
-  main->add("analyzed_file", vm["file"].as<std::string>());
+  main->add("analyzed_file", vm["file"].as<bf::path>().native());
   calls = builder->array();
   if (vm.count("pretty-json")) {
     out << json::pretty(vm["pretty-json"].as<unsigned>());
@@ -504,14 +507,14 @@ CallAnalyzer::CallAnalyzer(DescriptorSet& ds_, ProgOptVarMap & vm_)
 {
   if (vm_.count("calls")) {
     auto cf = CallFilter();
-    auto & paths = vm_["calls"].as<std::vector<std::string>>();
+    auto & paths = vm_["calls"].as<std::vector<bf::path>>();
     for (auto & path : paths) {
-      if (path == "-") {
+      if (path.compare("-") == 0) {
         cf.from_stream(std::cin);
       } else {
-        std::ifstream stream(path);
+        std::ifstream stream(path.native());
         if (stream.fail()) {
-          throw std::runtime_error("Could not open for reading: " + path);
+          throw std::runtime_error("Could not open for reading: " + path.native());
         }
         cf.from_stream(stream);
       }
@@ -521,11 +524,11 @@ CallAnalyzer::CallAnalyzer(DescriptorSet& ds_, ProgOptVarMap & vm_)
     filter = [](const CallDescriptor &){return true;};
   }
   if (vm_.count("json")) {
-    auto & arg = vm_["json"].as<std::string>();
-    if (arg == "-") {
+    auto & arg = vm_["json"].as<bf::path>();
+    if (arg.compare("-") == 0) {
       outputter = make_unique<JsonOutputter>(vm_, std::cout);
     } else {
-      out = make_unique<std::ofstream>(arg);
+      out = make_unique<std::ofstream>(arg.native());
       outputter = make_unique<JsonOutputter>(vm_, *out);
     }
   } else {

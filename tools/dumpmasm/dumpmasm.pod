@@ -14,13 +14,13 @@ dumpmasm --help
 
 =head1 DESCRIPTION
 
-B<dumpmasm> shows the disassembly and function partitioning results from the
-Pharos platform.  Function partitioning is the assignment of instructions to
-functions.  B<dumpmasm> also reports the control flow graph recovered by the
-Pharos framework.
+The B<dumpmasm> command shows the disassembly and function partitioning
+results from the Pharos framework.  Function partitioning is the assignment of
+instructions to functions.  The dumpmasm command also reports the control flow
+graph recovered by the Pharos framework.
 
 The file format is a comma separated value (CSV) format with three primary
-record formats:
+record record types:
 
 "PART", address, "INSN", function_address, hex_bytes, mnemonic, operands
 
@@ -41,7 +41,7 @@ executable code.
 
 The FLOW record type describes control flow discovered by the Pharos
 framework.  The flow type field is one of several keywords that are documented
-in detail in the PDGEdgeType enumeration in the graph.hopp source file.
+in detail in the PDGEdgeType enumeration in the graph.hpp source file.
 
 =head1 OPTIONS
 

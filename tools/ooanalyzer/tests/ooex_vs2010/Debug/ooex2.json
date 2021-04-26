@@ -13,7 +13,21 @@
                     "size": 12,
                     "struc": "cls_0x411590",
                     "type": "struc",
-                    "usages": []
+                    "usages": [
+                        "0x41161d"
+                    ]
+                },
+                "0x4": {
+                    "base": true,
+                    "name": "mbr_0x4",
+                    "offset": "0x4",
+                    "parent": false,
+                    "size": 1,
+                    "struc": "",
+                    "type": "",
+                    "usages": [
+                        "0x411616"
+                    ]
                 },
                 "0x8": {
                     "base": true,
@@ -50,6 +64,13 @@
                     "name": "ctor_0x4114f0",
                     "type": "ctor"
                 },
+                "0x4115f0": {
+                    "demangled_name": "",
+                    "ea": "0x4115f0",
+                    "import": false,
+                    "name": "meth_0x4115f0",
+                    "type": "meth"
+                },
                 "0x411640": {
                     "demangled_name": "",
                     "ea": "0x411640",
@@ -74,8 +95,7 @@
                     "struc": "",
                     "type": "",
                     "usages": [
-                        "0x4115b6",
-                        "0x41161d"
+                        "0x4115b6"
                     ]
                 },
                 "0x4": {
@@ -87,8 +107,7 @@
                     "struc": "",
                     "type": "",
                     "usages": [
-                        "0x4115bf",
-                        "0x411616"
+                        "0x4115bf"
                     ]
                 },
                 "0x8": {
@@ -111,13 +130,6 @@
                     "import": false,
                     "name": "ctor_0x411590",
                     "type": "ctor"
-                },
-                "0x4115f0": {
-                    "demangled_name": "",
-                    "ea": "0x4115f0",
-                    "import": false,
-                    "name": "meth_0x4115f0",
-                    "type": "meth"
                 }
             },
             "name": "cls_0x411590",

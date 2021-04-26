@@ -273,8 +273,6 @@ rose_addr_t insn_get_fallthru(SgAsmInstruction* insn);
 rose_addr_t insn_get_branch_target(SgAsmInstruction* insn);
 // Get the fixed portion of an instruction in the form: "jmp [X]"
 rose_addr_t insn_get_jump_deref(SgAsmInstruction* insn);
-// Get the fixed portion of a block ending "jmp X".
-rose_addr_t block_get_jmp_target(SgAsmBlock* bb);
 
 const SgAsmInstruction* last_insn_in_block(const SgAsmBlock* bb);
 const SgAsmX86Instruction* last_x86insn_in_block(const SgAsmBlock* bb);

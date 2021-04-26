@@ -26,7 +26,7 @@ set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
   "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 
 include(AddCXXCompilerFlags)
-add_cxx_compiler_flags(-pedantic -pedantic-errors -Wall -Wextra -Wshadow -Wstrict-aliasing -Wno-misleading-indentation "-ftemplate-depth=1024")
+add_cxx_compiler_flags(-pedantic -pedantic-errors -Wall -Wextra -Wshadow -Wstrict-aliasing -Wno-misleading-indentation "-ftemplate-depth=1024" "-ftrack-macro-expansion=0")
 option(PHAROS_FAIL_ON_WARNING "Cause compilation to fail if a warning is generated" OFF)
 if(PHAROS_FAIL_ON_WARNING)
   add_cxx_compiler_flags(-Werror)

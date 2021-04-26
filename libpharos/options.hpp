@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Options_H
 #define Pharos_Options_H
@@ -10,6 +10,22 @@
 
 #include <Sawyer/Message.h>
 #include "config.hpp"
+
+namespace YAML {
+template<>
+struct convert<boost::filesystem::path> {
+  static Node encode(const boost::filesystem::path & path) {
+    return Node(path.native());
+  }
+  static bool decode(const Node & node, boost::filesystem::path & rhs) {
+    if (!node.IsScalar()) {
+      return false;
+    }
+    rhs = node.Scalar();
+    return true;
+  }
+};
+}
 
 namespace pharos {
 
@@ -76,6 +92,13 @@ class ProgOptVarMap : public boost::program_options::variables_map{
 };
 
 } // namespace pharos
+
+namespace boost {
+namespace filesystem {
+void validate(boost::any& v,
+              std::vector<std::string> const & values,
+              boost::filesystem::path *, int);
+}}
 
 #include "misc.hpp"
 #include "util.hpp"

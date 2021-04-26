@@ -17,6 +17,7 @@
 #include "matcher.hpp"
 #include "semantics.hpp"
 #include "descriptors.hpp"
+#include "masm.hpp"
 
 #include <boost/algorithm/string.hpp> // for starts_with
 #include <boost/optional/optional_io.hpp>
@@ -311,10 +312,11 @@ rose_addr_t insn_get_branch_target(SgAsmInstruction* insn) {
   bool complete;
   rose_addr_t fallthru = insn_get_fallthru(insn);
   auto successors = insn->getSuccessors(complete);
+  SgAsmX86Instruction *xinsn = isSgAsmX86Instruction(insn);
+  bool isjmp = (isSgAsmX86Instruction(insn) != NULL && insn_is_jmp(xinsn));
   for (rose_addr_t target : successors.values()) {
     //GDEBUG << "INSN successor: " << addr_str(target) << LEND;
-    if (target == fallthru) continue;
-    else return target;
+    if (isjmp || target != fallthru) return target;
   }
   assert("No non-fall thru edges found.");
   return 0xDEADBEEF;
@@ -834,20 +836,6 @@ const SgAsmX86Instruction* last_x86insn_in_block(const SgAsmBlock* bb) {
   if (insns.size() < 1) return NULL;
   const SgAsmX86Instruction *last_insn = isSgAsmX86Instruction(insns[insns.size() - 1]);
   return last_insn;
-}
-
-rose_addr_t block_get_jmp_target(SgAsmBlock* bb) {
-  // getSuccessors is incorrectly non-const?
-  SgAsmStatementPtrList & insns = bb->get_statementList();
-  if (insns.size() < 1) return 0;
-  SgAsmX86Instruction *last = isSgAsmX86Instruction(insns[insns.size() - 1]);
-  // Instead we shold just do this:
-  // const SgAsmX86Instruction* last = last_x86insn_in_block(bb);
-
-  if (!last) return 0;
-  if (last->get_kind() != x86_jmp && last->get_kind() != x86_farjmp) return 0;
-  bool ignored = false;
-  return last->getSuccessors(ignored).least();
 }
 
 // For situations where the DescriptorSet isn't available.

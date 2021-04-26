@@ -385,7 +385,7 @@ SymbolicValuePtr SymbolicRiscOperators::read_memory(const SymbolicMemoryMapState
   for (SgAsmInstruction* i : defs) {
     retval->add_defining_instructions(i);
   }
-  GDEBUG << "RiscOps::read_memory() retval = " << *retval << LEND;
+  STRACE << "RiscOps::read_memory() retval = " << *retval << LEND;
   return retval;
 }
 

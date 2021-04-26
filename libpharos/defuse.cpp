@@ -843,7 +843,7 @@ DUAnalysis::fake_read(SgAsmX86Instruction* insn, const AbstractAccess& aa) const
   }
 
   // read read value was not there
-  GDEBUG << " The read in " << debug_instruction(insn)
+  GTRACE << " The read in " << debug_instruction(insn)
          << " was a fake read of: " << *(aa.value) << LEND;
   return true;
 }
@@ -1032,6 +1032,24 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
     return;
   }
 
+  // If this is a function that we've explictly been asked to ignore because of a tag on the
+  // called function, do that now.  To ignore the function means to treat the call to the
+  // function as if it had no impact on the machine state at all (skip the rest of this
+  // function).  One reason that the function might need to be ignored, is that it has two
+  // modes of behavior -- one that really does nothing and another that substantially violates
+  // calling convention standards but never returns.  One very common example of this, which
+  // motivated this feature is the _RTC_CheckESP() function.  Because the function descriptor
+  // was obtained from a call descriptor, it's possible for the function pointer to be NULL,
+  // meaning that we can't actually compute the hash, so don't try if that will fail.
+  if (param_fd->get_func()) {
+    std::string sig = param_fd->get_pic_hash();
+    if (ds.tags().check_hash(sig, "ignore")) {
+      GDEBUG << "Call at " << cd->address_string() << " to function "
+             << param_fd->address_string() << " was ignored." << LEND;
+      return;
+    }
+  }
+
   // The parameter definitions for the function that we're calling (including the return code
   // type which we'll need before the other parameter analysis).
   const ParameterList& fparams = param_fd->get_parameters();
@@ -1096,7 +1114,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
         // Mark the register as overwritten.
         SymbolicValuePtr rv = create_return_value(insn, rd.get_nbits(), false);
         create_overwritten_register(rops, ds, rd, false, rv, cd, fparams);
-        GDEBUG << "Setting changed register " << unparseX86Register(rd, NULL)
+        GTRACE << "Setting changed register " << unparseX86Register(rd, NULL)
                << " for insn " << addr_str(insn->get_address())
                << " to value=" << *(rops->read_register(rd)) << LEND;
         // And we're done with this register...
@@ -1109,14 +1127,14 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
         // Read the value of ecx from the current state at the time of the call.
         SymbolicValuePtr ecx_value = cstate->read_register(ecxrd);
         create_overwritten_register(rops, ds, eaxrd, true, ecx_value, cd, fparams);
-        GDEBUG << "Setting return value for " << addr_str(insn->get_address())
+        GTRACE << "Setting return value for " << addr_str(insn->get_address())
                << " to ECX prior to call, value=" << *(rops->read_register(eaxrd)) << LEND;
       }
       else {
         // Create a new symbolic value to represent the modified return code value.
         SymbolicValuePtr eax_value = create_return_value(insn, arch_bits, true);
         create_overwritten_register(rops, ds, eaxrd, true, eax_value, cd, fparams);
-        GDEBUG << "Setting standard return value for " << addr_str(insn->get_address())
+        GTRACE << "Setting standard return value for " << addr_str(insn->get_address())
                << " to " << *(rops->read_register(eaxrd)) << LEND;
       }
     }
@@ -1178,8 +1196,8 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
   // =========================================================================================
 
   // Report the parameters that we expect to find...
-  if (GDEBUG) {
-    GDEBUG << "Parameters for call at: " << debug_instruction(insn) << " are: " << LEND;
+  if (GTRACE) {
+    GTRACE << "Parameters for call at: " << debug_instruction(insn) << " are: " << LEND;
     fparams.debug();
   }
 
@@ -1510,65 +1528,6 @@ void DUAnalysis::update_function_delta() {
   }
   SDEBUG << "Final unified stack delta (reread) for function " << fd->address_string()
          << " is: " << fd->get_stack_delta() << LEND;
-}
-
-// DUPLICATIVE OF FunctionDescriptor::check_saved_register. :-( WRONG! WRONG! WRONG!
-// Is this a sterotypical case of a saved register?  E.g. does this instruction only read the
-// value of a register so that we can subsequently restore it for the caller?
-bool DUAnalysis::saved_register(SgAsmX86Instruction* insn, const Definition& def) {
-  // We're typically looking for the situation in which insn is a push instruction, and the
-  // only other dependent is a pop instruction.  The passed definition will be the register
-  // that's being "saved", and the defining instructon should be NULL.
-
-  // We might have already tested this, but testing it again will make this function useful in
-  // more contexts.
-  if (def.definer != NULL) return false;
-
-  // This isn't really required, since we could be saving the register with a pair of moves,
-  // but it'll be easier to debug I think if I start with push/pop pairs.
-  if (insn->get_kind() != x86_push) return false;
-
-  SDEBUG << "Checking for saved register for:" << debug_instruction(insn) << LEND;
-
-  // We need a register descriptor for ESP, because it's special.
-  const RegisterDictionary& regdict = ds.get_regdict();
-  RegisterDescriptor resp = regdict.find("esp");
-
-  const AbstractAccess* saveloc = NULL;
-
-  assert(insn);
-  rose_addr_t iaddr = insn->get_address();
-  for (const AbstractAccess& aa : get_writes(iaddr)) {
-    // Of course the push updated ESP.  We're not intersted in that.
-    if (aa.is_reg(resp)) continue;
-    if (saveloc == NULL && aa.is_mem()) {
-      saveloc = &aa;
-      continue;
-    }
-    SDEBUG << "Unexpected write to: " << aa.str() << " while checking for saved register"
-           << debug_instruction(insn) << LEND;
-  }
-
-  // If we couldn't find a memory address that we wrote to, we've not a register save.
-  if (saveloc == NULL) return false;
-  SDEBUG << " --- Looking for write to" << saveloc->str() << LEND;
-
-  const DUChain* deps = get_dependents(iaddr);
-  if (deps == NULL) {
-    SDEBUG << "No dependents_of entry for instruction: " << debug_instruction(insn) << LEND;
-    return false;
-  }
-
-  for (const Definition& dx : *deps) {
-    if (dx.access.same_location(*saveloc)) {
-      // The definer field is the instruction that used the saved location on the stack.
-      // Typically this is a pop instruction in the epilog.
-      SDEBUG << " --- Found instruction using saveloc" << dx.access.str() << " | "
-             << debug_instruction(dx.definer) << LEND;
-    }
-  }
-
-  return false;
 }
 
 // Determine whether we return a value at all, and if it's the initial value of ECX.  This
@@ -2199,10 +2158,10 @@ DUAnalysis::loop_over_cfg()
            << " took " << func_limit.get_relative_clock().count() << " seconds." << LEND;
   }
 
-  if (GDEBUG) {
+  if (GTRACE) {
     for (auto& bpair : blocks) {
       const BlockAnalysis& block = bpair.second;
-      GDEBUG << " Basic block: " << block.address_string() << " in function " << fd->address_string()
+      GTRACE << " Basic block: " << block.address_string() << " in function " << fd->address_string()
              << " took " << block.iterations << " iterations." << LEND;
     }
   }
@@ -2305,30 +2264,30 @@ DUAnalysis::analyze_basic_blocks_independently()
     // Create a basic block limit just for tracking time. Perhaps this limit should really be
     // moved to analyze, so it can be evaluated after each instruction?
     ResourceLimit block_limit;
-    GDEBUG << "Starting analysis of block " << addr_str(baddr)
+    GTRACE << "Starting analysis of block " << addr_str(baddr)
            << " Reason " << bblock->reason_str("", bblock->get_reason()) << LEND;
 
     analysis.analyze(false);
 
     const SymbolicStatePtr& cstate = rops->get_sstate();
-    GDEBUG << "-----------------------------------------------------------------" << LEND;
-    GDEBUG << "Machine state before conversion from list to map." << LEND;
-    GDEBUG << "-----------------------------------------------------------------" << LEND;
-    GDEBUG << *cstate;
+    GTRACE << "-----------------------------------------------------------------" << LEND;
+    GTRACE << "Machine state before conversion from list to map." << LEND;
+    GTRACE << "-----------------------------------------------------------------" << LEND;
+    GTRACE << *cstate;
 
     // save the block output state (current state)
     analysis.output_state = cstate;
 
-    GDEBUG << "-----------------------------------------------------------------" << LEND;
+    GTRACE << "-----------------------------------------------------------------" << LEND;
     // const SymbolicMemoryListStatePtr& list_mem = SymbolicMemoryListState::promote(cstate->memoryState());
     // SymbolicMemoryMapStatePtr map_mem = convert_memory_list_to_map(list_mem, 5, false);
 
-    GDEBUG << "-----------------------------------------------------------------" << LEND;
-    GDEBUG << "Memory state after conversion from list to map." << LEND;
-    GDEBUG << "-----------------------------------------------------------------" << LEND;
-    // GDEBUG << *map_mem;
+    GTRACE << "-----------------------------------------------------------------" << LEND;
+    GTRACE << "Memory state after conversion from list to map." << LEND;
+    GTRACE << "-----------------------------------------------------------------" << LEND;
+    // GTRACE << *map_mem;
 
-    GDEBUG << "Analysis of basic block " << addr_str(baddr) << " in function "
+    GTRACE << "Analysis of basic block " << addr_str(baddr) << " in function "
            << current_function->address_string() << ", took "
            << block_limit.get_relative_clock().count() << " seconds." << LEND;
   }

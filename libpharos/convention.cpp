@@ -87,9 +87,28 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, RegisterDesc
 
   const DUChain* deps = du.get_dependents(iaddr);
   if (deps == NULL) {
-    SDEBUG << "Instruction unexpectedly had no dependents!" << LEND;
-    return false;
+    // This test is an attempt to work around the optimization where the compiler pushes a
+    // register _just_ to allocate four bytes for the lcoal stack frame.  That doesn't happen
+    // with MOV instructions, because they're less efficient than SUB and PUSH.  In the cases
+    // where there's an unused MOV, it usually means that the register really is a parameter,
+    // and just isn't used in the function, but that low levels of optimization didn't remove
+    // the reference completely.
+    if (insn->get_kind() == x86_push) {
+      SDEBUG << "Instruction at " << addr_str(iaddr)
+             << " had no dependents so it's not a parameter." << LEND;
+      // Returning true here doesn't mean that this instruction is a saved register, just that
+      // it's not parameter.  Since we don't update the saved register list until later in this
+      // function, it seems that this is ok.  The scenario that we're interested in is kind of
+      // like a special case of saved and restored...
+      return true;
+    }
+    // For MOV instructions, just treat the register as an ordinary parameter.
+    else {
+      return false;
+    }
   }
+
+  SgAsmX86Instruction *restore_insn = nullptr;
 
   // Get the dependents of the push/mov instruction.
   for (const Definition& sdef : *deps) {
@@ -134,22 +153,22 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, RegisterDesc
     // continue.  The reason for this is that it helps ensure that we don't incorrectly label
     // things as saved and restored registers when it gets complicated, and having extra
     // bogus parameters is a better failure scenario than ignoring actual parameters.
-    SgAsmX86Instruction *restore_insn = sdef.definer;
+    SgAsmX86Instruction *candidate_restore_insn = sdef.definer;
 
-    SDEBUG << "The dependent insn is: " << debug_instruction(restore_insn)
+    SDEBUG << "The dependent insn is: " << debug_instruction(candidate_restore_insn)
            << " for: " << *read_node << " (" << read_foo << ")" << LEND;
 
     // This test is required because otherwise, we'll accept call instructions that read pushed
     // parameters, and label them as saved registers.
-    if (restore_insn->get_kind() != x86_pop &&
-        restore_insn->get_kind() != x86_mov &&
+    if (candidate_restore_insn->get_kind() != x86_pop &&
+        candidate_restore_insn->get_kind() != x86_mov &&
         // Perhaps leave should only be a valid restoration instruction when register == ebp?
-        restore_insn->get_kind() != x86_leave) return false;
+        candidate_restore_insn->get_kind() != x86_leave) return false;
 
     // Now confirm that the restore instruction writes the value back into the passed register
     // descriptor.
     bool restored_correctly = false;
-    rose_addr_t raddr = restore_insn->get_address();
+    rose_addr_t raddr = candidate_restore_insn->get_address();
     auto rwrites = du.get_writes(raddr);
     if (std::begin(rwrites) == std::end(rwrites)) return false;
     for (const AbstractAccess& rw : rwrites) {
@@ -159,7 +178,7 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, RegisterDesc
       }
     }
     if (restored_correctly == false) {
-      SDEBUG << "The dependent insn: " << debug_instruction(restore_insn)
+      SDEBUG << "The dependent insn: " << debug_instruction(candidate_restore_insn)
              << " did not restore the value properly!" << LEND;
       // Chuck and Cory concluded that we should NOT be a saved and restored register here.
       // The example is that an instruction like this: "mov some_other_reg, [saved_stack_addr]"
@@ -187,17 +206,35 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, RegisterDesc
     }
 
     if (!restore_used) {
-      GDEBUG << "Saved register: reg=" << unparseX86Register(reg, NULL)
-             << " save=" << debug_instruction(insn)
-             << " restore=" << debug_instruction(restore_insn) << LEND;
-      saved_registers.insert(SavedRegister(reg, insn, restore_insn));
-      return true;
+      // Just because this instruction looks like a valid restore instruction doesn't mean that
+      // there's not another dependent of the save that would prove otherwise.  Specifically,
+      // we found instances where the register was saved with a move and then restored with a
+      // move (because of a complete lack of optimization) then there was no dependency on the
+      // second move because the call that really used the register was not correctly detected.
+      // By moving on to the next instruction we can have another shot at figuring out that
+      // this register is really being used, and it only takes one use to prove that the
+      // register is not a parameter.
+      restore_insn = candidate_restore_insn;
+      continue;
     }
+
     // Following our earlier edict about conservative failures, don't simply continue, instead
     // report that this is NOT a properly saved and restored register.
     return false;
   }
 
+  // Now that we've considered _all_ of the dependents of the save instruction, if we found one
+  // that qualified as a save/restore pair and no evidence to the contrary (e..g having return
+  // false already), then it's time to make the instructions as a save/restore pair.
+  if (restore_insn) {
+    GTRACE << "Saved register: reg=" << unparseX86Register(reg, NULL)
+           << " save=" << debug_instruction(insn)
+           << " restore=" << debug_instruction(restore_insn) << LEND;
+    saved_registers.insert(SavedRegister(reg, insn, restore_insn));
+    return true;
+  }
+
+  // Is this reachable now?  Did we handle this case differntly now with the changes above?
   stack_allocation_insns.insert(insn);
 
   // If we've reached this point in the code, we're not really a saved register because we
@@ -236,7 +273,7 @@ void RegisterUsage::analyze_parameters() {
   // Save some effort by skipping thunks.  Perhaps we should transfer the calling convention
   // information from the target to here, but Cory's not sure about that yet.
   if (fd->is_thunk()) {
-    GDEBUG << "Function " << fd->address_string() << " has parameters from thunk." << LEND;
+    GTRACE << "Function " << fd->address_string() << " has parameters from thunk." << LEND;
     return;
   }
 
@@ -371,7 +408,7 @@ void RegisterUsage::analyze_parameters() {
           RegisterDescriptor initial_reg = regdict.find(cmt.substr(0, clen - 2));
 
           parameter_registers[initial_reg] = insn;
-          GDEBUG << "Function " << fd->address_string() << " uses register "
+          GTRACE << "Function " << fd->address_string() << " uses register "
                  << unparseX86Register(initial_reg, NULL)
                  << " as parameter in " << debug_instruction(insn) << LEND;
           break;
@@ -381,12 +418,12 @@ void RegisterUsage::analyze_parameters() {
   }
 
   // Display for debugging, should probably be a function of it's own.
-  GDEBUG << "Function " << fd->address_string() << " has parameters: ";
+  GTRACE << "Function " << fd->address_string() << " has parameters: ";
   for (const RegisterEvidenceMap::value_type& rpair : parameter_registers) {
     RegisterDescriptor reg = rpair.first;
-    GDEBUG << " " << unparseX86Register(reg, NULL);
+    GTRACE << " " << unparseX86Register(reg, NULL);
   }
-  GDEBUG << LEND;
+  GTRACE << LEND;
 }
 
 void RegisterUsage::analyze_changed() {
@@ -529,28 +566,28 @@ void CallingConvention::add_nonvolatile(const RegisterSet& regs) {
 }
 
 void CallingConvention::report() const {
-  if (!(GDEBUG)) return;
-  GDEBUG << "Calling convention:  " << name << LEND;
-  GDEBUG << "  Architecture size: " << word_size << LEND;
-  GDEBUG << "  Compiler:          " << compiler << LEND;
-  GDEBUG << "  Comment:           " << comment << LEND;
-  GDEBUG << "  Parameter order:   " << Enum2Str(param_order) << LEND;
-  GDEBUG << "  Stack cleanup:     " << Enum2Str(stack_cleanup) << LEND;
-  GDEBUG << "  Return value loc:  " << Enum2Str(retval_location) << LEND;
-  GDEBUG << "  This pointer loc:  " << Enum2Str(this_location) << LEND;
-  GDEBUG << "  Stack alignment:   " << stack_alignment << LEND;
+  if (!(GTRACE)) return;
+  GTRACE << "Calling convention:  " << name << LEND;
+  GTRACE << "  Architecture size: " << word_size << LEND;
+  GTRACE << "  Compiler:          " << compiler << LEND;
+  GTRACE << "  Comment:           " << comment << LEND;
+  GTRACE << "  Parameter order:   " << Enum2Str(param_order) << LEND;
+  GTRACE << "  Stack cleanup:     " << Enum2Str(stack_cleanup) << LEND;
+  GTRACE << "  Return value loc:  " << Enum2Str(retval_location) << LEND;
+  GTRACE << "  This pointer loc:  " << Enum2Str(this_location) << LEND;
+  GTRACE << "  Stack alignment:   " << stack_alignment << LEND;
 
-  GDEBUG << "  Parameter regs:   ";
+  GTRACE << "  Parameter regs:   ";
   for (RegisterDescriptor rd : reg_params) {
-    GDEBUG << " " << unparseX86Register(rd, NULL);
+    GTRACE << " " << unparseX86Register(rd, NULL);
   }
-  GDEBUG << LEND;
+  GTRACE << LEND;
 
-  GDEBUG << "  Nonvolatile regs: ";
+  GTRACE << "  Nonvolatile regs: ";
   for (RegisterDescriptor rd : nonvolatile) {
-    GDEBUG << " " << unparseX86Register(rd, NULL);
+    GTRACE << " " << unparseX86Register(rd, NULL);
   }
-  GDEBUG << LEND;
+  GTRACE << LEND;
 }
 
 // The stack parameter form.
@@ -1005,7 +1042,7 @@ void ParameterList::debug() const {
 }
 
 void CallingConventionMatcher::report() const {
-  if (!(GDEBUG)) return;
+  if (!(GTRACE)) return;
   for (const CallingConvention& cc : conventions) {
     cc.report();
   }
@@ -1129,14 +1166,14 @@ CallingConventionMatcher::match(const FunctionDescriptor* fd,
         temp_params.erase(rd);
       }
       else {
-        GDEBUG << "Function " << fd->address_string() << " does not use parameter register "
+        GTRACE << "Function " << fd->address_string() << " does not use parameter register "
                << unparseX86Register(rd, NULL) << LEND;
         // If there are function parameters that are passed in registers, but not actually
         // used, then breaking here causes a premature end to the consideration of the
         // remaining parameters in the calling convention, leaving any additional parameters
         // that were used in temp_params, and ultimately rejecting this calling convention.
         if (allow_unused_parameters == false) {
-          GDEBUG << "Skipping remaining parameters in calling convention." << LEND;
+          GTRACE << "Skipping remaining parameters in calling convention." << LEND;
           break;
         }
       }
@@ -1144,12 +1181,12 @@ CallingConventionMatcher::match(const FunctionDescriptor* fd,
 
     // Under no circumstances can we match if we're using parameters that are recognized.
     if (temp_params.size() > 0) {
-      GDEBUG << "Unmatched parameter registers: ";
+      GTRACE << "Unmatched parameter registers: ";
       for (const RegisterEvidenceMap::value_type& rpair : temp_params) {
         RegisterDescriptor rd = rpair.first;
-        GDEBUG << " " << unparseX86Register(rd, NULL);
+        GTRACE << " " << unparseX86Register(rd, NULL);
       }
-      GDEBUG << LEND;
+      GTRACE << LEND;
       continue;
     }
 

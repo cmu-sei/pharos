@@ -1,4 +1,4 @@
-// Copyright 2016-2020 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "typedb.hpp"
 #include "descriptors.hpp"
@@ -7,6 +7,8 @@
 #include <locale>
 #include <boost/locale/encoding_utf.hpp>
 #include <boost/range/adaptor/reversed.hpp>
+
+namespace bf = boost::filesystem;
 
 namespace pharos {
 
@@ -78,7 +80,7 @@ bool handle_node(DB & db, const YAML::Node & node, DB::handle_error_t handle)
   switch (node.Type()) {
    case YAML::NodeType::Scalar:
     {
-      auto path = Path(node.Scalar());
+      auto path = bf::path(node.Scalar());
       if (!path.has_root_directory()) {
         path = get_library_path() / path;
       }
@@ -172,8 +174,8 @@ DB DB::create_standard(const ProgOptVarMap &vm, handle_error_t handle)
 
   if (vm.count("typedb")) {
     // If it's listed on the command line, use that.
-    for (auto & filename : vm["typedb"].as<std::vector<std::string>>()) {
-      handle_node(db, YAML::Node(filename), THROW);
+    for (auto & filename : vm["typedb"].as<std::vector<bf::path>>()) {
+      handle_node(db, YAML::Node(filename.native()), THROW);
     }
   }
 
@@ -200,7 +202,7 @@ const std::shared_ptr<Type> & DB::internal_lookup(const std::string & name) {
   return result.first->second;
 }
 
-void DB::load_json(const Path & path)
+void DB::load_json(const bf::path & path)
 {
   auto filename = path.native();
   const auto filenode = YAML::LoadFile(filename);

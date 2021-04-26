@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <unordered_map>
 #include <limits>
@@ -18,13 +18,14 @@
 #define SQLITE_TRACE_V2_EXISTS 1
 #endif
 
+namespace bf = boost::filesystem;
+
 namespace pharos {
 
 namespace {
 
-using Path = boost::filesystem::path;
-using boost::filesystem::is_directory;
-using boost::filesystem::weakly_canonical;
+using bf::is_directory;
+using bf::weakly_canonical;
 using boost::adaptors::values;
 using boost::adaptors::keys;
 
@@ -231,7 +232,7 @@ bool APIDictionary::handle_node(MultiApiDictionary & db, const YAML::Node & node
    case YAML::NodeType::Scalar:
     // Interpret a simple string as a path to api information.
     {
-      auto path = Path(node.Scalar());
+      auto path = bf::path(node.Scalar());
       if (!path.has_root_directory()) {
         // Relative paths will be considered relative to the library path.
         path = get_library_path() / path;
@@ -332,21 +333,20 @@ bool APIDictionary::handle_node(MultiApiDictionary & db, const YAML::Node & node
 
 boost::optional<std::string> APIDictionary::verify_args(const ProgOptVarMap & vm) {
   if (vm.count("apidb")) {
-    for (auto & filename : vm["apidb"].as<std::vector<std::string>>()) {
-      boost::filesystem::path path(filename);
-      auto loc = weakly_canonical(filename);
+    for (auto const & path : vm["apidb"].as<std::vector<bf::path>>()) {
+      auto loc = weakly_canonical(path);
       if (!loc.has_root_directory()) {
         loc = get_library_path() / path;
       }
       if (is_directory(loc)) {
-        // XXX: Well, the directory exists.  We should maybe walk through and make sure the files
-        // are readable?
+        // XXX: Well, the directory exists.  We should maybe walk through and make sure the
+        // files are readable?
       } else {
         try {
           // Open the file to make sure we can.
-          boost::filesystem::ifstream file;
-          file.exceptions(boost::filesystem::ifstream::failbit |
-                          boost::filesystem::ifstream::badbit);
+          bf::ifstream file;
+          file.exceptions(bf::ifstream::failbit |
+                          bf::ifstream::badbit);
           file.open(loc);
           file.close();
         } catch (const std::ios_base::failure &e) {
@@ -356,7 +356,7 @@ boost::optional<std::string> APIDictionary::verify_args(const ProgOptVarMap & vm
         }
       }
     }
-  }  
+  }
 
   return boost::none;
 }
@@ -370,7 +370,7 @@ std::unique_ptr<APIDictionary> APIDictionary::create_standard(
 
   if (vm.count("apidb")) {
     // If it's listed on the command line, use that.
-    for (auto & filename : vm["apidb"].as<std::vector<std::string>>()) {
+    for (auto & filename : vm["apidb"].as<std::vector<bf::path>>()) {
       // Try to resolve with respect to CWD
       auto loc = weakly_canonical(filename).native();
       handle_node(*multidb, YAML::Node(loc), false, THROW);

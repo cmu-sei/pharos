@@ -79,6 +79,7 @@
 :- dynamic factClassHasUnknownBase/1 as incremental.
 :- dynamic factNOTMergeClasses/2 as incremental.
 :- dynamic factClassCallsMethod/2 as incremental.
+:- dynamic factClassRelatedMethod/2 as incremental.
 
 % This fact was a sub-computation of guessMergeClassesB that added a lot of overhead.  By
 % putting it in a separate fact, we can make it a trigger-based fact that is maintained with
@@ -104,6 +105,7 @@ classArgs(factNOTDerivedClass/3, 2).
 classArgs(factClassHasNoBase/1, 1).
 classArgs(factNOTMergeClasses/2, 1).
 classArgs(factNOTMergeClasses/2, 2).
+classArgs(factClassRelatedMethod/2, 1).
 classArgs(factClassCallsMethod/2, 1).
 classArgs(factClassSizeGTE/2, 1).
 classArgs(factClassSizeLTE/2, 1).
@@ -416,7 +418,8 @@ reasonForward :-
           concludeTrigger(Out);
           concludeMergeVFTables(Out);
           concludeMergeClasses(Out);
-          concludeClassCallsMethod(Out)
+          concludeClassCallsMethod(Out);
+          concludeClassRelatedMethod(Out)
         )),
 
     % At this point we have reasoned and produced a fact to assert.  We will not backtrack into
@@ -521,6 +524,7 @@ guess :-
               % Constructors are very important guesses that can sometimes be reasoned soundly
               % in the presence of virtual function tables, but we often have to guess when
               % there are not tables.
+              guessNOTConstructor(Out);
               guessConstructor(Out);
 
               % This is a fairly solid rule that used to be forward reasoning until it was

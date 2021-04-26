@@ -1,9 +1,9 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Descriptors_H
 #define Pharos_Descriptors_H
 
-#include <boost/iterator.hpp>
+#include <iterator>
 #include <rose.h>
 #include <Partitioner2/Engine.h>
 
@@ -29,6 +29,7 @@ class APIDictionary;
 #include "options.hpp"
 #include "misc.hpp"
 #include "graph.hpp"
+#include "tags.hpp"
 
 namespace pharos {
 
@@ -87,7 +88,12 @@ class DescriptorSet
   // A replacement for the global_rops concept?
   SymbolicRiscOperatorsPtr rops;
 
+  // Tag manager mapping names/hashes/addresses to tags
+  std::shared_ptr<TagManager> tag_manager;
+
   void init();
+
+  static std::shared_ptr<TagManager> create_tag_manager(ProgOptVarMap const & vm);
 
   template <typename... Args>
   FunctionDescriptor *add_function_descriptor(rose_addr_t addr, Args &&... args);
@@ -144,6 +150,10 @@ class DescriptorSet
   // method of defuse.cpp (where most of the other updates occur).
   void update_global_variables_for_func(const FunctionDescriptor* fd);
 
+  TagManager const & tags() const {
+    return *tag_manager;
+  }
+
   // Mostly in calls.cpp for updating callers, set_delete_method() in ooanalyzer.cpp
   FunctionDescriptor* get_rw_func(rose_addr_t a) {
     return function_descriptors.get_func(a);
@@ -170,7 +180,7 @@ class DescriptorSet
   //======================================================================================
 
   std::string get_filepath() const {
-    return vm["file"].as<std::string>();
+    return vm["file"].as<boost::filesystem::path>().native();
   }
   std::string get_filename() const;
   std::string get_filemd5() const {

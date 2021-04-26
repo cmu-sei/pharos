@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2018-2019, 2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <map>
 #include <vector>
@@ -24,10 +24,11 @@ using namespace pharos;
 using namespace pharos::ir;
 
 namespace po = boost::program_options;
+namespace bf = boost::filesystem;
 
-std::ostream* getOStream(boost::optional<boost::filesystem::path> dotdir, boost::filesystem::ofstream* filestream, std::string filename) {
+std::ostream* getOStream(boost::optional<bf::path> dotdir, bf::ofstream* filestream, std::string filename) {
   if (dotdir) {
-    boost::filesystem::path filepath = boost::filesystem::path(*dotdir) /= filename;
+    bf::path filepath = bf::path(*dotdir) /= filename;
     filestream->exceptions (~std::ofstream::goodbit);
     filestream->open (filepath, std::ofstream::out);
     return filestream;
@@ -39,7 +40,7 @@ static int mkir_main(int argc, char **argv)
 {
   ProgOptDesc mkiropt("mkir options");
   mkiropt.add_options()
-    ("dot,d", po::value<std::string>(), "directory to write graphviz file(s) instead of stdout");
+    ("dot,d", po::value<bf::path>(), "directory to write graphviz file(s) instead of stdout");
   mkiropt.add (cert_standard_options ());
   ProgOptVarMap vm = parse_cert_options(argc, argv, mkiropt);
 
@@ -58,20 +59,19 @@ static int mkir_main(int argc, char **argv)
                     return std::make_pair(kv->first, &kv->second);
                   });
 
-  boost::optional<boost::filesystem::path> dotdir;
+  boost::optional<bf::path> dotdir;
   if (vm.count ("dot")) {
-    auto dir = vm["dot"].as<std::string>();
-    dotdir = boost::filesystem::path (dir);
+    dotdir = vm["dot"].as<bf::path>();
 
-    if (boost::filesystem::exists (*dotdir)) {
-      if (boost::filesystem::is_directory (*dotdir)) {
+    if (bf::exists (*dotdir)) {
+      if (bf::is_directory (*dotdir)) {
         // already exists
       } else {
         throw std::invalid_argument ("dot directory is not a directory");
       }
     }
     else {
-      boost::filesystem::create_directory (*dotdir);
+      bf::create_directory (*dotdir);
     }
   }
 
@@ -80,7 +80,7 @@ static int mkir_main(int argc, char **argv)
 
   // only write the callgraph if the user doesn't specify any functions
   if (vm.count ("func") == 0) {
-    boost::filesystem::ofstream filestream;
+    bf::ofstream filestream;
     std::cout << "Writing the CG" << std::endl;
     std::ostream *out = getOStream(dotdir, &filestream, std::string ("callgraph.dot"));
     *out << cg;
@@ -96,7 +96,7 @@ static int mkir_main(int argc, char **argv)
     std::cout << "Writing CFG for function " << std::hex << addr << std::dec << std::endl;
 
     // Set the ostream
-    boost::filesystem::ofstream filestream;
+    bf::ofstream filestream;
     //filestream.exceptions (~std::ofstream::goodbit);
     std::stringstream filename;
     filename << std::hex << addr << ".dot";

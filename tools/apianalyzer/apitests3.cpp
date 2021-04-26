@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <rose.h>
 
@@ -16,7 +16,11 @@
 #include <libpharos/apigraph.hpp>
 #include <libpharos/apisig.hpp>
 
+#include <boost/filesystem.hpp>
+
 using namespace pharos;
+
+namespace bf = boost::filesystem;
 
 const DescriptorSet* global_ds = nullptr;
 
@@ -290,7 +294,7 @@ ProgOptDesc apitest3_options() {
 
   ProgOptDesc api3opt("ApiTests3 options");
   api3opt.add_options()
-    ("test-config,t", po::value<std::string>(), "The test signature file");
+    ("test-config,t", po::value<bf::path>(), "The test signature file");
   return api3opt;
 }
 
@@ -312,7 +316,7 @@ int main(int argc, char **argv) {
   // Global for just this test program to make gtest happy.
   global_ds = &ds;
 
-  test_config = vm["test-config"].as<std::string>();
+  test_config = vm["test-config"].as<bf::path>().native();
 
   // Generate PDGs and do the analysis
   BottomUpAnalyzer bua(ds, vm);

@@ -1569,13 +1569,8 @@ TypeSolver::TypeSolver(const DUAnalysis& du, const  FunctionDescriptor* f)
     session_ = NULL;
   }
 
-  // This should call a new class named FunctionFinder() or something like that, but let's at
-  // least not needlessly duplicate the code while the OOAnalyzer class can be mildly abused to
-  // get the job done in the meantime.
-  AddrSet new_addrs = option_addr_list(vm, "new-method");
-
   // Simply calling the constructor does the OO method detection steps.
-  ooa = new OOAnalyzer(du.ds, vm, new_addrs);
+  ooa = new OOAnalyzer(du.ds, vm);
 
   assert_arch_fact();
 }

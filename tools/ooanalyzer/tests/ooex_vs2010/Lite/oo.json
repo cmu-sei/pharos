@@ -10,7 +10,7 @@
                     "name": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@_0x0",
                     "offset": "0x0",
                     "parent": true,
-                    "size": 88,
+                    "size": 60,
                     "struc": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
                     "type": "struc",
                     "usages": [
@@ -31,8 +31,21 @@
                     "type": "",
                     "usages": [
                         "0x4027ab",
+                        "0x402a29",
                         "0x402bdd",
                         "0x402c6d"
+                    ]
+                },
+                "0x14": {
+                    "base": true,
+                    "name": "mbr_0x14",
+                    "offset": "0x14",
+                    "parent": false,
+                    "size": 4,
+                    "struc": "",
+                    "type": "",
+                    "usages": [
+                        "0x402a2c"
                     ]
                 },
                 "0x20": {
@@ -45,6 +58,7 @@
                     "type": "",
                     "usages": [
                         "0x4027be",
+                        "0x402a32",
                         "0x402ba4",
                         "0x402bf3",
                         "0x402bfe",
@@ -66,6 +80,7 @@
                     "struc": "",
                     "type": "",
                     "usages": [
+                        "0x402a35",
                         "0x4032af",
                         "0x4032c7"
                     ]
@@ -80,6 +95,7 @@
                     "type": "",
                     "usages": [
                         "0x4027c3",
+                        "0x402a38",
                         "0x402bad",
                         "0x402bed",
                         "0x402c07",
@@ -97,11 +113,12 @@
                     "struc": "",
                     "type": "",
                     "usages": [
+                        "0x402a3b",
                         "0x4032ba"
                     ]
                 },
                 "0x3c": {
-                    "base": true,
+                    "base": false,
                     "name": "mbr_0x3c",
                     "offset": "0x3c",
                     "parent": false,
@@ -114,7 +131,7 @@
                     ]
                 },
                 "0x40": {
-                    "base": true,
+                    "base": false,
                     "name": "mbr_0x40",
                     "offset": "0x40",
                     "parent": false,
@@ -127,7 +144,7 @@
                     ]
                 },
                 "0x44": {
-                    "base": true,
+                    "base": false,
                     "name": "mbr_0x44",
                     "offset": "0x44",
                     "parent": false,
@@ -135,6 +152,7 @@
                     "struc": "",
                     "type": "",
                     "usages": [
+                        "0x402a46",
                         "0x402ca2",
                         "0x402cf4",
                         "0x402cfc",
@@ -149,7 +167,7 @@
                     ]
                 },
                 "0x48": {
-                    "base": true,
+                    "base": false,
                     "name": "mbr_0x48",
                     "offset": "0x48",
                     "parent": false,
@@ -165,7 +183,7 @@
                     ]
                 },
                 "0x49": {
-                    "base": true,
+                    "base": false,
                     "name": "mbr_0x49",
                     "offset": "0x49",
                     "parent": false,
@@ -173,6 +191,7 @@
                     "struc": "",
                     "type": "",
                     "usages": [
+                        "0x402a16",
                         "0x4031b0",
                         "0x40322f",
                         "0x403265",
@@ -181,7 +200,7 @@
                     ]
                 },
                 "0x4c": {
-                    "base": true,
+                    "base": false,
                     "name": "mbr_0x4c",
                     "offset": "0x4c",
                     "parent": false,
@@ -189,6 +208,7 @@
                     "struc": "",
                     "type": "",
                     "usages": [
+                        "0x402a4a",
                         "0x4030e2",
                         "0x403205",
                         "0x403349",
@@ -199,7 +219,7 @@
                     ]
                 },
                 "0x50": {
-                    "base": true,
+                    "base": false,
                     "name": "mbr_0x50",
                     "offset": "0x50",
                     "parent": false,
@@ -207,12 +227,13 @@
                     "struc": "",
                     "type": "",
                     "usages": [
+                        "0x402a13",
                         "0x403586",
                         "0x4035cb"
                     ]
                 },
                 "0x54": {
-                    "base": true,
+                    "base": false,
                     "name": "mbr_0x54",
                     "offset": "0x54",
                     "parent": false,
@@ -220,6 +241,7 @@
                     "struc": "",
                     "type": "",
                     "usages": [
+                        "0x402a3e",
                         "0x402b54",
                         "0x402b63",
                         "0x402b77",
@@ -256,6 +278,13 @@
                     "ea": "0x4027ab",
                     "import": false,
                     "name": "meth_0x4027ab",
+                    "type": "meth"
+                },
+                "0x402a04": {
+                    "demangled_name": "",
+                    "ea": "0x402a04",
+                    "import": false,
+                    "name": "meth_0x402a04",
                     "type": "meth"
                 },
                 "0x402b54": {
@@ -619,8 +648,7 @@
                     "type": "",
                     "usages": [
                         "0x40281f",
-                        "0x40283c",
-                        "0x402a29"
+                        "0x40283c"
                     ]
                 },
                 "0x14": {
@@ -632,8 +660,7 @@
                     "struc": "",
                     "type": "",
                     "usages": [
-                        "0x40282d",
-                        "0x402a2c"
+                        "0x40282d"
                     ]
                 },
                 "0x18": {
@@ -675,8 +702,7 @@
                         "0x4025ae",
                         "0x4025fd",
                         "0x40280d",
-                        "0x402841",
-                        "0x402a32"
+                        "0x402841"
                     ]
                 },
                 "0x24": {
@@ -691,8 +717,7 @@
                         "0x402677",
                         "0x4026c6",
                         "0x402813",
-                        "0x402832",
-                        "0x402a35"
+                        "0x402832"
                     ]
                 },
                 "0x28": {
@@ -734,8 +759,7 @@
                         "0x4025b5",
                         "0x4025e9",
                         "0x402819",
-                        "0x402846",
-                        "0x402a38"
+                        "0x402846"
                     ]
                 },
                 "0x34": {
@@ -750,8 +774,7 @@
                         "0x40267e",
                         "0x4026b2",
                         "0x402825",
-                        "0x402837",
-                        "0x402a3b"
+                        "0x402837"
                     ]
                 },
                 "0x38": {
@@ -780,66 +803,6 @@
                         "0x4029c9",
                         "0x403ed5",
                         "0x403edc"
-                    ]
-                },
-                "0x44": {
-                    "base": false,
-                    "name": "mbr_0x44",
-                    "offset": "0x44",
-                    "parent": false,
-                    "size": 4,
-                    "struc": "",
-                    "type": "",
-                    "usages": [
-                        "0x402a46"
-                    ]
-                },
-                "0x49": {
-                    "base": false,
-                    "name": "mbr_0x49",
-                    "offset": "0x49",
-                    "parent": false,
-                    "size": 1,
-                    "struc": "",
-                    "type": "",
-                    "usages": [
-                        "0x402a16"
-                    ]
-                },
-                "0x4c": {
-                    "base": false,
-                    "name": "mbr_0x4c",
-                    "offset": "0x4c",
-                    "parent": false,
-                    "size": 4,
-                    "struc": "",
-                    "type": "",
-                    "usages": [
-                        "0x402a4a"
-                    ]
-                },
-                "0x50": {
-                    "base": false,
-                    "name": "mbr_0x50",
-                    "offset": "0x50",
-                    "parent": false,
-                    "size": 1,
-                    "struc": "",
-                    "type": "",
-                    "usages": [
-                        "0x402a13"
-                    ]
-                },
-                "0x54": {
-                    "base": false,
-                    "name": "mbr_0x54",
-                    "offset": "0x54",
-                    "parent": false,
-                    "size": 4,
-                    "struc": "",
-                    "type": "",
-                    "usages": [
-                        "0x402a3e"
                     ]
                 },
                 "0x8": {
@@ -982,13 +945,6 @@
                     "name": "ctor_0x4029b8",
                     "type": "ctor"
                 },
-                "0x402a04": {
-                    "demangled_name": "",
-                    "ea": "0x402a04",
-                    "import": false,
-                    "name": "meth_0x402a04",
-                    "type": "meth"
-                },
                 "0x4074c7": {
                     "demangled_name": "",
                     "ea": "0x4074c7",
@@ -998,7 +954,7 @@
                 }
             },
             "name": ".?AV?$basic_streambuf@DU?$char_traits@D@std@@@std@@",
-            "size": 88,
+            "size": 60,
             "vftables": {
                 "0x4123c4": {
                     "ea": "0x4123c4",

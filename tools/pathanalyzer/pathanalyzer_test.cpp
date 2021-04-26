@@ -1,4 +1,4 @@
-// Copyright 2020 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2020-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/filesystem.hpp>
 
@@ -9,19 +9,21 @@
 
 using namespace pharos;
 
+namespace bf = boost::filesystem;
+
 ProgOptDesc pathanalyzer_test_options() {
   namespace po = boost::program_options;
 
   ProgOptDesc ptopt("PathAnalyzer Test options");
   ptopt.add_options()
     ("seed,s", po::value<int>(), "The random seed for Z3")
-    ("smt-file", po::value<std::string>(),
+    ("smt-file", po::value<bf::path>(),
      "The name of the file to save goal SMT output")
     ("method,m", po::value<std::string>()->required(),
      "The analysis method to use (fs, wp or spacer)")
     ("goal", "search for goal address")
     ("nongoal", "search for non-goal address")
-    ("z3-log", po::value<std::string>(), "z3 log file")
+    ("z3-log", po::value<bf::path>(), "z3 log file")
     ;
 
   return ptopt;
@@ -116,13 +118,10 @@ PATestAnalyzer::PATestAnalyzer(DescriptorSet& ds_, ProgOptVarMap const & vm_)
     exit(EXIT_FAILURE);
   }
 
-  {
-    using namespace boost::filesystem;
-    test_name = basename (path (vm["file"].as<std::string>()));
-  }
+  test_name = basename (vm["file"].as<bf::path>());
 
   if (vm.count("z3-log")) {
-    Z3_open_log(vm["z3-log"].as<std::string>().c_str());
+    Z3_open_log(vm["z3-log"].as<bf::path>().c_str());
   }
 
   std::string method;
@@ -259,7 +258,7 @@ void PATestAnalyzer::finish()
   OINFO << "Setting up problem took " << setup_timer << " seconds." << LEND;
 
   if (vm.count("smt-file")) {
-    auto filename = vm["smt-file"].as<std::string>();
+    auto filename = vm["smt-file"].as<bf::path>().native();
     OINFO << "Writing problem to " << filename << LEND;
     std::ofstream out{filename};
     analyzer->output_problem(out);

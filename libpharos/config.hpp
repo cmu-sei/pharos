@@ -1,12 +1,9 @@
-// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Config_H
 #define Config_H
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
-#include <yaml-cpp/yaml.h>
-#pragma GCC diagnostic pop
+#include "yaml.hpp"
 #include <fstream>
 #include <boost/algorithm/string.hpp>
 #include <boost/optional.hpp>
@@ -115,7 +112,7 @@ class ConfigNode : public YAML::Node {
     if (IsScalar()) {
       c = new_node(YAML::Node());
     } else if (IsDefined()) {
-      c = new_node(cnode(*this)[key]);
+      c = new_node(const_node(*this)[key]);
     } else {
       c = new_node(*this);
     }
@@ -229,19 +226,8 @@ class ConfigNode : public YAML::Node {
   };
   std::shared_ptr<Pathlist> path_;
 
-  /// Merge node 'b' into node 'a', returning 'a'.
-  static
-  Node merge_nodes(Node a, Node b);
-
-  Node merge_nodes(Node a) {
+  Node merge_node(Node a) {
     return merge_nodes(*this, a);
-  }
-
-  /// Return a constant reference to n (used to guarantee calling operator[] const even on
-  /// non-const nodes)
-  static
-  const Node &cnode(const Node &n) {
-    return n;
   }
 
   /// Add an element to this ConfigNode's path

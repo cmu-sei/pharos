@@ -76,7 +76,7 @@ use a different Pharos tool to complete the partitioning step, and then
 save those results to a serialization file.
 
 ```
-fn2hash --serialize=ooprog.ser --maximum-memory=128000 --no-semantics --partitioner=rose ooprog.exe >ooprog.csv
+partition --serialize=ooprog.ser --maximum-memory=128000 --no-semantics --partitioner=rose ooprog.exe
 ```
 
 The primary goal of this command is to create the `ooprog.ser` file,

@@ -4,6 +4,7 @@
 #include <iterator>
 #include <cstring>
 #include <sstream>
+#include <wordexp.h>
 
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
@@ -35,6 +36,27 @@
 #include <cxxabi.h>
 using namespace __cxxabiv1;
 #endif
+
+namespace boost {
+namespace filesystem {
+void validate(boost::any& v,
+              std::vector<std::string> const & values,
+              boost::filesystem::path *, int)
+{
+  using namespace boost::program_options;
+  validators::check_first_occurrence(v);
+  std::string const & s = validators::get_single_string(values);
+  wordexp_t we;
+  int rv = wordexp(s.c_str(), &we, (WRDE_NOCMD | WRDE_UNDEF));
+  if (rv != 0 || we.we_wordc != 1) {
+    throw validation_error(validation_error::invalid_option_value);
+  }
+  auto deleter = [](wordexp_t *w) { wordfree(w); };
+  std::unique_ptr<wordexp_t, decltype(deleter)> we_guard(&we, deleter);
+  v = boost::any(boost::filesystem::path(we.we_wordv[0]));
+}
+
+}}
 
 namespace pharos {
 
@@ -116,7 +138,7 @@ ProgOptDesc cert_standard_options() {
 
     // These are options controlling the configuration of the Pharos system.
     ("config,C",
-     po::value<std::vector<std::string>>()->composing(),
+     po::value<std::vector<bf::path>>()->composing(),
      "pharos configuration file (can be specified multiple times)")
     ("option",
      po::value<std::vector<std::string>>()->composing(),
@@ -127,10 +149,10 @@ ProgOptDesc cert_standard_options() {
      "don't load the user's configuration file")
     ("no-site-file",
      "don't load the site's configuration file")
-    ("apidb", po::value<std::vector<std::string>>(),
+    ("apidb", po::value<std::vector<bf::path>>(),
      "path to sqlite or JSON file containing API and type information")
     ("library,l",
-     po::value<std::string>(),
+     po::value<bf::path>(),
      "specify the path to the pharos library directory")
 
     // Timeouts affecting the "core" analysis pass.
@@ -158,7 +180,7 @@ ProgOptDesc cert_standard_options() {
 
     // Historical...  Do we even need this anymore?
     ("file,f",
-     po::value<std::string>(),
+     po::value<bf::path>(),
      "executable to be analyzed")
     ;
   ;
@@ -171,7 +193,7 @@ ProgOptDesc cert_standard_options() {
   roseopt.add_options()
     ("partitioner", po::value<std::string>(),
      "specify the function parititioner")
-    ("serialize", po::value<std::string>(),
+    ("serialize", po::value<bf::path>(),
      "file which caches function partitioning information")
     ("ignore-serialize-version",
      "reject version mismatch errors when reading a serialized file")
@@ -324,8 +346,8 @@ static ProgOptVarMap parse_cert_options_internal(
               vm.count("no-site-file") ? nullptr : "PHAROS_CONFIG",
               vm.count("no-user-file") ? nullptr : ".pharos.yaml"));
   if (vm.count("config")) {
-    for (auto & filename : vm["config"].as<std::vector<std::string>>()) {
-      vm.config().mergeFile(filename);
+    for (auto & filename : vm["config"].as<std::vector<bf::path>>()) {
+      vm.config().mergeFile(filename.native());
     }
   }
   if (vm.count("option")) {
@@ -350,7 +372,7 @@ static ProgOptVarMap parse_cert_options_internal(
   get_logging_destination()->prefix()->showElapsedTime(vm["timing"].as<bool>());
 
   // Once the command line options have been processed we can determine the library path.
-  auto lv = vm.get<std::string>("library", "pharos.library");
+  auto lv = vm.get<bf::path>("library", "pharos.library");
   library_path = lv ? *lv : lib_root;
 
   // ----------------------------------------------------------------------------------------
@@ -515,7 +537,7 @@ static ProgOptVarMap parse_cert_options_internal(
 
   if (fileopt) {
     if (vm.count("file")) {
-      OINFO << "Analyzing executable: " << vm["file"].as<std::string>() << LEND;
+      OINFO << "Analyzing executable: " << vm["file"].as<bf::path>().native() << LEND;
     } else {
       OFATAL << "You must specify at least one executable to analyze." << LEND;
       exit(3);

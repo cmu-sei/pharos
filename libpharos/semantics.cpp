@@ -690,7 +690,7 @@ void AbstractAccess::set_latest_writers(DescriptorSet const & ds, SymbolicStateP
     // addresses.   The latter probably means that the analysis is bad, but we can't
     // complain too loudly here. :-(   More thought will probably be required.
     if (!cell) {
-      GDEBUG << "No memory cell for address:" << *memory_address << LEND;
+      GTRACE << "No memory cell for address:" << *memory_address << LEND;
       return;
     }
     // Now get the writers for just this one cell.  There's been some recent email discussion

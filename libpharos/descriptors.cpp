@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -24,6 +24,8 @@
 #include "threads.hpp"
 
 #include <mutex>
+
+namespace bf = boost::filesystem;
 
 namespace pharos {
 
@@ -91,12 +93,40 @@ FunctionDescriptor *DescriptorSet::add_function_descriptor(rose_addr_t addr, Arg
   return &fd;
 }
 
+namespace {
+// The following include has the following definitions:
+//
+// unsigned char tags_yaml[];   // YAML tag definitions
+// unsigned int  tags_yaml_len; // length of tags_yaml
+#include "tags.yaml.ii"
+}
+
+std::shared_ptr<TagManager> DescriptorSet::create_tag_manager(ProgOptVarMap const & vm)
+{
+  // Currently we don't have a reason to have multiple tag managers, so we just maintain a
+  // global one here.
+  static std::shared_ptr<TagManager> global_manager;
+  if (!global_manager) {
+    // Create the global tag manager, initialize its built-in defaults, and load any user
+    // modifications on top of that.
+    global_manager = std::make_shared<TagManager>();
+    global_manager->merge(reinterpret_cast<char const *>(tags_yaml), tags_yaml_len);
+    auto const & config = vm.config().path_get("pharos.function_tags");
+    if (config.IsMap()) {
+      global_manager->merge(config);
+    }
+  }
+  return global_manager;
+}
+
 // This is called by all the DescriptorSet::DescriptorSet() constructors (including the "usual"
 // one and the version in tracesem where we pass in an already built engine) but NOT by the
 // super ancient constructor where we "build" a function manually.
 void DescriptorSet::init()
 {
   apidb = APIDictionary::create_standard(vm);
+
+  tag_manager = create_tag_manager(vm);
 
   interp = engine->interpretation();
   if (interp == NULL) {
@@ -208,7 +238,7 @@ void DescriptorSet::init()
 DescriptorSet::DescriptorSet(const ProgOptVarMap& povm) :
   DescriptorSet(povm,
                 povm.count("file")
-                ? std::vector<std::string>({povm["file"].as<std::string>()})
+                ? std::vector<std::string>({povm["file"].as<bf::path>().native()})
                 : std::vector<std::string>())
 {}
 
@@ -219,9 +249,10 @@ void partition(const ProgOptVarMap & vm)
     OFATAL << "No file to partition" << LEND;
     exit(EXIT_FAILURE);
   }
-  auto file = vm["file"].as<std::string>();
+  auto pfile = vm["file"].as<bf::path>();
+  auto file = pfile.native();
   if (!vm.count("serialize")) {
-    auto filename = boost::filesystem::path{file}.filename().native();
+    auto filename = pfile.filename().native();
     auto sername = filename + ".serialized";
     auto vmcopy = vm;
     vmcopy.emplace("serialize"s,
@@ -289,8 +320,7 @@ DescriptorSet::DescriptorSet(const ProgOptVarMap& povm, P2::Engine& eng,
 }
 
 std::string DescriptorSet::get_filename() const {
-  std::string filepath = vm["file"].as<std::string>();
-  return boost::filesystem::path(filepath).filename().string();
+  return vm["file"].as<bf::path>().filename().native();
 }
 
 // Wes needed to be able to create a DescriptorSet from a single function because Wes loaded the
@@ -522,9 +552,9 @@ void DescriptorSet::resolve_imports() {
 
     // This is where we can first report the full prototypes of the imported functions that
     // actually occur in the program being analyzed...
-    if (GDEBUG) {
+    if (GTRACE) {
       const ParameterList& params = id.get_function_descriptor()->get_parameters();
-      GDEBUG << "Import " << id.get_long_name() << " has parameters: ";
+      GTRACE << "Import " << id.get_long_name() << " has parameters: ";
       params.debug();
     }
   }

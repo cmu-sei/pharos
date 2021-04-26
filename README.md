@@ -51,6 +51,13 @@ object attributes.  For more detailed instructons on how to run
 OOAnalyzer on very large executables, see these
 [notes](share/prolog/oorules/README.md).
 
+The Pharos distribution used to include a plugin that imported OO
+information exported by OOAnalayzer into the
+[Ghidra](https://ghidra-sre.org/) reverse engineering tool set.  To get
+that functionality now and in the future, install the
+[Kaiju](https://github.com/CERTCC/kaiju) Ghidra plugin, which includes
+the functionality that was provided by the OOAnalayzer plugin.
+
 ## [CallAnalyzer](tools/callanalyzer/callanalyzer.pod)
 
 CallAnalyzer is a tool for reporting the static parameters to API

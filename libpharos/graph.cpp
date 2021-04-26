@@ -174,9 +174,11 @@ Graph::populate(const DescriptorSet& ds, const P2::Partitioner& p)
         }
 
         // The fallthru address is easy to compute and well defined, so handle it immediately.
-        // This approach will characterize corner cases such as JMP +5 as a fallthru edge.
+        // Corner cases such as JMP +5 would be characterized as a fallthru edge, which can be
+        // confusing to code that wants to analyze every jump target, so let's exclude jump
+        // instructions from this case.
         rose_addr_t fallthru_address = insn->get_address() + insn->get_size();
-        if (successor == fallthru_address) {
+        if (!insn_is_jmp(xinsn) && successor == fallthru_address) {
           insertEdge(fromv, tov, PDGEdge(E_FALLTHRU));
           continue;
         }

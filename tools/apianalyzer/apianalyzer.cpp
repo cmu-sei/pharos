@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Jeff Gennari
 // Date: 2015-06-22
@@ -25,7 +25,7 @@
 
 using namespace pharos;
 
-using Path = boost::filesystem::path;
+namespace bf = boost::filesystem;
 
 const std::string VERSION  = "2.0.07";
 
@@ -37,15 +37,15 @@ ProgOptDesc apianalyzer_options() {
   ProgOptDesc apiopt(version_string.c_str());
 
   apiopt.add_options()
-    ("sig_file,S", po::value<std::string>(),
+    ("sig_file,S", po::value<bf::path>(),
      "Specify the API signature file")
-    ("graphviz,G", po::value<std::string>(),
+    ("graphviz,G", po::value<bf::path>(),
      "Specify the graphviz output file (for troubleshooting)")
     ("path,P", po::value<std::string>(),
      "Set the search path output level (nopath, sigpath, fullpath)")
     ("format,F", po::value<std::string>(),
      "Set output format: json or text")
-    ("out_file,O", po::value<std::string>(),
+    ("out_file,O", po::value<bf::path>(),
      "Set output file")
     ("category,C", po::value<std::string>(),
      "Select signature categories for which to search");
@@ -69,14 +69,14 @@ static int apianalyzer_main(int argc, char* argv[]) {
   // Locate and open the signature fiel to make sure it's valid.
   std::string sig_file;
   if (vm.count("sig_file")) {
-    sig_file = vm["sig_file"].as<std::string>();
+    sig_file = vm["sig_file"].as<bf::path>().native();
   }
   else {
     // Get the path to the lib (share) directory.
-    Path libdir = get_library_path();
+    bf::path libdir = get_library_path();
 
     // Default to apianalyzer/sig.json if there's no config.
-    Path sigpath = libdir / "apianalyzer/sig.json";
+    bf::path sigpath = libdir / "apianalyzer/sig.json";
     // But if there's a configuration value
     auto cfgpath = vm.config().path_get("signature_file");
     if (cfgpath && !cfgpath.Scalar().empty()) {
@@ -87,7 +87,7 @@ static int apianalyzer_main(int argc, char* argv[]) {
       }
     }
     // Convert the resulting path back into a string.
-    sig_file = sigpath.string();
+    sig_file = sigpath.native();
   }
 
   std::unique_ptr<ApiSigManager> sig_manager =
@@ -148,14 +148,14 @@ static int apianalyzer_main(int argc, char* argv[]) {
   }
 
   if (vm.count("out_file")!=0) {
-    std::string ofile_name = vm["out_file"].as<std::string>();
+    std::string ofile_name = vm["out_file"].as<bf::path>().native();
     output_manager.SetOutputFile(ofile_name);
   }
 
   bool create_graphviz = false;
   std::string gv_file = "";
   if (vm.count("graphviz")!=0) {
-    gv_file = vm["graphviz"].as<std::string>();
+    gv_file = vm["graphviz"].as<bf::path>().native();
     create_graphviz = true;
   }
 

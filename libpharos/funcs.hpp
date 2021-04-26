@@ -119,11 +119,15 @@ class FunctionDescriptor : private Immobile {
   // The display name of the function
   std::string display_name;
 
-  // The SgAsmFunction object for the function.  This can be NULL if the function hasn't been
-  // found yet.
+  // The SgAsmFunction object for the function.  This will be NULL if the function descriptor
+  // is one of the "merged" function descriptors on a call descriptor.
   SgAsmFunction* func;
 
-  // the Partitioner2 Function object for the function
+  // The Partitioner2 Function object for the function.  This is intended to be a complete
+  // replacement for the old SgAsmFuction pointer above, but the APIs are not identical, which
+  // has delayed the elimination of the old pointer.  This pointer will be NULL for "merged"
+  // function descriptors on call descriptors as well, although I _think_ that both pointers
+  // should be NULL or non-NULL together.
   P2::FunctionPtr p2func;
 
   // While we've eliminated new and purecall booleans in the function descriptor, there are a
@@ -284,6 +288,8 @@ class FunctionDescriptor : private Immobile {
 
   // Type of vertices
   using CFGVertex = boost::graph_traits<CFG>::vertex_descriptor;
+  // Type of edges
+  using CFGEdge = boost::graph_traits<CFG>::edge_descriptor;
 
   // The entry block is always zero when it exists (see more detailed test in CDG constructor).
   static constexpr CFGVertex entry_vertex = 0;
@@ -484,6 +490,8 @@ class FunctionDescriptor : private Immobile {
   CFGVertexVector get_vertices_in_flow_order() const;
   // Return the connected vertices in flow order in the provided control flow graph.
   static CFGVertexVector get_vertices_in_flow_order(const CFG& cfg, CFGVertex entry = entry_vertex);
+  // Return the entry vertex
+  static CFGVertex get_entry_vertex() { return entry_vertex; }
   // Return the vertices with no successors from the Pharos (filtered) control flow graph.
   CFGVertexVector get_return_vertices() const;
   // Return the vertices with no successors from the provided control flow graph.

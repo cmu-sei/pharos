@@ -13,12 +13,16 @@
 #include <libpharos/masm.hpp>
 #include <libpharos/bua.hpp>
 
+#include <boost/filesystem.hpp>
+
 #define DEFAULT_MIN_INSTRUCTIONS 5
 #define DEFAULT_MAX_BYTES 10000
 
 using namespace pharos;
 
 namespace {
+
+namespace bf = boost::filesystem;
 
 typedef std::vector<std::string> strvec_t;
 
@@ -27,7 +31,7 @@ ProgOptDesc fn2yara_options() {
 
   ProgOptDesc fn2yaraopt("fn2yara 0.06 Options");
   fn2yaraopt.add_options()
-    ("output-filename,o", po::value<std::string>(),
+    ("output-filename,o", po::value<bf::path>(),
      "output filename (defaults to the filename suffixed by .yara")
     ("min-instructions,m",
      po::value<size_t>()->default_value(DEFAULT_MIN_INSTRUCTIONS),
@@ -301,7 +305,7 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
     include_thunks = vm_["include-thunks"].as<bool>();
     address_only = vm_["address-only"].as<bool>();
     oldway = vm_["oldway"].as<bool>();
-    std::string filename = vm_["file"].as<std::string>();
+    std::string filename = vm_["file"].as<bf::path>().native();
     size_t slash = filename.find_last_of('/');
     if (slash == std::string::npos) {
       slash = 0;
@@ -310,7 +314,7 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
     }
     basename = filename.substr(slash);
     if (vm_.count("output-filename")) {
-      outname = vm_["output-filename"].as<std::string>();
+      outname = vm_["output-filename"].as<bf::path>().native();
     } else {
       outname = basename + ".yara";
     }

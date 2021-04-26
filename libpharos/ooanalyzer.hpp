@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 // This code represents the new Prolog based approach!
 
@@ -51,34 +51,18 @@ class OOAnalyzer : public BottomUpAnalyzer {
   // the FunctionDescriptor, which seemed like a good idea when there was only one property,
   // but now is bad for multiple reasons including that it requires inappropriate update access.
 
+
   // The transition plan is to just add the addresses of the matches functions to the address
   // sets.
+  enum call_type { NEW, DELETE, FREE, CANDIDATE_DELETE, PURECALL };
+  std::map<rose_addr_t, call_type> call_addrs;
 
-  // A list of hashes known to be new() methods.  This should really be read from a JSON config
-  // file or something, but for now, we'll just initialize it manually.
-  std::set<std::string> new_hashes;
-
-  // A list of addresses of known new() methods.  This list can be supplemented by the user by
-  // address. It does _not_ include all known new methods, wihch is stored on a property on the
-  // FunctionDescriptor via set_new_method(), and accessed via is_new_method().
-  AddrSet new_addrs;
-
-  // The number of new() methods found.  Just for reporting whether we've found any new methods.
-  std::atomic<int> new_methods_found;
-
-  // A comparable set of variables for tracking delete() methods.
-  std::set<std::string> delete_hashes;
-  std::set<std::string> free_hashes;
-  AddrSet delete_addrs;
-  std::atomic<int> delete_methods_found;
-
-  // A comparable set of variables for tracking _purecall methods.
-  std::set<std::string> purecall_hashes;
-  AddrSet purecall_addrs;
-  std::atomic<int> purecall_methods_found;
-
-  // Yet another hacked up magic list of method hashes, this time for non-returning functions.
-  std::set<std::string> nonreturn_hashes;
+  // The list of new addresses specified on the command line by the user.
+  AddrSet user_new_addrs;
+  // The list of delete addresses specified on the command line by the user.
+  AddrSet user_delete_addrs;
+  // The list of purecall addresses specified on the command line by the user.
+  AddrSet user_purecall_addrs;
 
   time_point start_ts;
 
@@ -86,15 +70,6 @@ class OOAnalyzer : public BottomUpAnalyzer {
   bool analyze_possible_vtable(rose_addr_t address, bool allow_base = true);
   // Find possible virtual tables in a given function.
   void find_vtable_installations(FunctionDescriptor const & fd);
-
-  // Initialize the list of known methods with some well-known hashes.
-  void initialize_known_method_hashes();
-  // Find new() methods by examining imports.
-  void find_imported_new_methods();
-  // Find delete() methods by examining imports.
-  void find_imported_delete_methods();
-  // Find purecall() methods by examining imports.
-  void find_imported_purecall_methods();
 
   // Find heap allocations?
   void find_heap_allocs();
@@ -105,6 +80,7 @@ class OOAnalyzer : public BottomUpAnalyzer {
   void record_this_ptrs_for_calls(FunctionDescriptor* fd);
 
   bool identify_new_method(FunctionDescriptor const & fd);
+  bool identify_free_method(FunctionDescriptor const & fd);
   bool identify_delete_method(FunctionDescriptor const & fd);
   bool identify_purecall_method(FunctionDescriptor const & fd);
   bool identify_nonreturn_method(FunctionDescriptor & fd);
@@ -114,19 +90,39 @@ class OOAnalyzer : public BottomUpAnalyzer {
   // Mark methods as new(), delete(), and purecall() respectively.
   void set_new_method(rose_addr_t addr) {
     write_guard<decltype(mutex)> guard{mutex};
-    new_addrs.insert(addr);
+    call_addrs.emplace(addr, NEW);
   }
   void set_delete_method(rose_addr_t addr) {
-    {
-      write_guard<decltype(mutex)> guard{mutex};
-      delete_addrs.insert(addr);
-    }
+    write_guard<decltype(mutex)> guard{mutex};
+    call_addrs.emplace(addr, DELETE);
   }
-  void set_purecall_method(rose_addr_t addr) { purecall_addrs.insert(addr); }
+  void set_candidate_delete_method(rose_addr_t addr) {
+    write_guard<decltype(mutex)> guard{mutex};
+    call_addrs.emplace(addr, CANDIDATE_DELETE);
+  }
+  void set_free_method(rose_addr_t addr) {
+    write_guard<decltype(mutex)> guard{mutex};
+    call_addrs.emplace(addr, FREE);
+  }
+  void set_purecall_method(rose_addr_t addr) {
+    write_guard<decltype(mutex)> guard{mutex};
+    call_addrs.emplace(addr, PURECALL);
+  }
+
+  using check_method_t = bool (OOAnalyzer::*)(rose_addr_t) const;
+  using set_method_t   = void (OOAnalyzer::*)(rose_addr_t);
+
+  // Helper function to unify identifying various special methods.
+  bool identify_method(
+    FunctionDescriptor const & fd,
+    AddrSet const * user_addrs,
+    check_method_t check,
+    set_method_t set,
+    std::string const & tag);
 
  public:
 
-  OOAnalyzer(DescriptorSet& ds_, const ProgOptVarMap& vm_, AddrSet& new_addrs_);
+  OOAnalyzer(DescriptorSet& ds_, const ProgOptVarMap& vm_);
 
   // External classes need to inspect the tables that we found.
   const VFTableAddrMap& get_vftables() const { return vftables; }
@@ -135,13 +131,43 @@ class OOAnalyzer : public BottomUpAnalyzer {
 
   // Is the provided address a new(), delete(), or purecall() method?
   bool is_new_method(rose_addr_t addr) const {
-    return (new_addrs.find(addr) != new_addrs.end());
+    read_guard<decltype(mutex)> guard{mutex};
+    auto i = call_addrs.find(addr);
+    return i != call_addrs.end() && i->second == NEW;
   }
   bool is_delete_method(rose_addr_t addr) const {
-    return (delete_addrs.find(addr) != delete_addrs.end());
+    read_guard<decltype(mutex)> guard{mutex};
+    auto i = call_addrs.find(addr);
+    return i != call_addrs.end() && i->second == DELETE;
+  }
+  // Free, delete, or delete candidate.
+  bool is_free_like_method(rose_addr_t addr) const {
+    read_guard<decltype(mutex)> guard{mutex};
+    auto i = call_addrs.find(addr);
+    if (i == call_addrs.end()) return false;
+    if (i->second == DELETE) return true;
+    if (i->second == FREE) return true;
+    if (i->second == CANDIDATE_DELETE) return true;
+    return false;
+  }
+  // Either delete or candidate delete.
+  bool is_candidate_delete_method(rose_addr_t addr) const {
+    read_guard<decltype(mutex)> guard{mutex};
+    auto i = call_addrs.find(addr);
+    if (i == call_addrs.end()) return false;
+    if (i->second == DELETE) return true;
+    if (i->second == CANDIDATE_DELETE) return true;
+    return false;
+  }
+  bool is_free_method(rose_addr_t addr) const {
+    read_guard<decltype(mutex)> guard{mutex};
+    auto i = call_addrs.find(addr);
+    return i != call_addrs.end() && i->second == FREE;
   }
   bool is_purecall_method(rose_addr_t addr) const {
-    return (purecall_addrs.find(addr) != purecall_addrs.end());
+    read_guard<decltype(mutex)> guard{mutex};
+    auto i = call_addrs.find(addr);
+    return i != call_addrs.end() && i->second == PURECALL;
   }
 
   ThisCallMethod* get_method_rw(rose_addr_t addr) {

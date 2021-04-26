@@ -65,6 +65,12 @@ namespace pharos {
 
 bool FunctionDescriptorCompare::operator()(const FunctionDescriptor* x,
                                            const FunctionDescriptor* y) const {
+  // If the pointers are the same, the function descriptors are the same.  This test is NOT
+  // just a performance optimization.  The reason is that we need to acquire mutex locks in
+  // order to call get_address(), but checking pointers does not, and so prevents a deadlock.
+  if (x == y) {
+    return true;
+  }
   return (x->get_address() < y->get_address());
 }
 
@@ -907,8 +913,8 @@ void FunctionDescriptor::update_return_values() {
     }
 
     ParameterDefinition & pd = parameters.create_return_reg(retval_reg, retval);
-    if (GDEBUG) {
-      GDEBUG << "The return value for " << _address_string() << " is: " << LEND;
+    if (GTRACE) {
+      GTRACE << "The return value for " << _address_string() << " is: " << LEND;
       pd.debug();
     }
   }
@@ -958,7 +964,7 @@ const PDG * FunctionDescriptor::_get_pdg() {
   // typically calling get_pdg in bottom up order.
 
   if (target_address) {
-    GDEBUG << "Propagating parameters from thunk for " << _address_string() << LEND;
+    GTRACE << "Propagating parameters from thunk for " << _address_string() << LEND;
     _propagate_thunk_info();
   }
   else {

@@ -231,44 +231,14 @@
                     "size": 28,
                     "struc": "cls_0x411f00",
                     "type": "struc",
-                    "usages": []
-                }
-            },
-            "methods": {
-                "0x411b70": {
-                    "demangled_name": "",
-                    "ea": "0x411b70",
-                    "import": false,
-                    "name": "ctor_0x411b70",
-                    "type": "ctor"
-                }
-            },
-            "name": "cls_0x411b70",
-            "size": 28,
-            "vftables": {}
-        },
-        "cls_0x411f00": {
-            "demangled_name": "",
-            "members": {
-                "0x0": {
-                    "base": false,
-                    "name": "mbr_0x0",
-                    "offset": "0x0",
-                    "parent": false,
-                    "size": 4,
-                    "struc": "",
-                    "type": "",
                     "usages": [
-                        "0x411f86",
-                        "0x411f97",
-                        "0x411fa9",
                         "0x41210d",
                         "0x412121",
                         "0x41212f"
                     ]
                 },
                 "0x14": {
-                    "base": false,
+                    "base": true,
                     "name": "mbr_0x14",
                     "offset": "0x14",
                     "parent": false,
@@ -289,7 +259,7 @@
                     ]
                 },
                 "0x18": {
-                    "base": false,
+                    "base": true,
                     "name": "mbr_0x18",
                     "offset": "0x18",
                     "parent": false,
@@ -310,18 +280,8 @@
                         "0x412d37"
                     ]
                 },
-                "0x1c": {
-                    "base": false,
-                    "name": "cls_0x412220_0x1c",
-                    "offset": "0x1c",
-                    "parent": false,
-                    "size": 0,
-                    "struc": "cls_0x412220",
-                    "type": "struc",
-                    "usages": []
-                },
                 "0x4": {
-                    "base": false,
+                    "base": true,
                     "name": "mbr_0x4",
                     "offset": "0x4",
                     "parent": false,
@@ -336,6 +296,13 @@
                 }
             },
             "methods": {
+                "0x411b70": {
+                    "demangled_name": "",
+                    "ea": "0x411b70",
+                    "import": false,
+                    "name": "ctor_0x411b70",
+                    "type": "ctor"
+                },
                 "0x411c40": {
                     "demangled_name": "",
                     "ea": "0x411c40",
@@ -356,13 +323,6 @@
                     "import": false,
                     "name": "meth_0x411dd0",
                     "type": "meth"
-                },
-                "0x411f00": {
-                    "demangled_name": "",
-                    "ea": "0x411f00",
-                    "import": false,
-                    "name": "ctor_0x411f00",
-                    "type": "ctor"
                 },
                 "0x4120a0": {
                     "demangled_name": "",
@@ -447,6 +407,47 @@
                     "import": false,
                     "name": "meth_0x412bb0",
                     "type": "meth"
+                }
+            },
+            "name": "cls_0x411b70",
+            "size": 28,
+            "vftables": {}
+        },
+        "cls_0x411f00": {
+            "demangled_name": "",
+            "members": {
+                "0x0": {
+                    "base": false,
+                    "name": "mbr_0x0",
+                    "offset": "0x0",
+                    "parent": false,
+                    "size": 4,
+                    "struc": "",
+                    "type": "",
+                    "usages": [
+                        "0x411f86",
+                        "0x411f97",
+                        "0x411fa9"
+                    ]
+                },
+                "0x1c": {
+                    "base": false,
+                    "name": "cls_0x412220_0x1c",
+                    "offset": "0x1c",
+                    "parent": false,
+                    "size": 0,
+                    "struc": "cls_0x412220",
+                    "type": "struc",
+                    "usages": []
+                }
+            },
+            "methods": {
+                "0x411f00": {
+                    "demangled_name": "",
+                    "ea": "0x411f00",
+                    "import": false,
+                    "name": "ctor_0x411f00",
+                    "type": "ctor"
                 }
             },
             "name": "cls_0x411f00",

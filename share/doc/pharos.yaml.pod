@@ -288,6 +288,16 @@ messages.
 This configuration value can be modified using the
 B<--verbose> option.
 
+=item B<function_tags> : object
+
+A map of function tags to add or replace.  This map has up to three
+potential keys: C<hashes>, C<names>, and C<addresses>.  Each of these
+keys' values should be a map from key (string hash or name, or a number
+for addresses) to a tag (string) or a list of tags.  These tags augment
+the built-in set of known tags, mapping function hashes, names, or
+addresses to new tag values.  Known sets of tags are: C<new>, for
+operator new; C<del> for operator delete; C<free> for free functions, C<purecall>
+
 =back
 
 =head2 APPLICATION

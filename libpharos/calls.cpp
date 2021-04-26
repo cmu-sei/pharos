@@ -51,12 +51,12 @@ LeafNodePtr CallDescriptor::get_stack_delta_variable() const {
 }
 
 StackDelta CallDescriptor::get_stack_delta() const {
-  GDEBUG << "Getting stack delta for " << *this << LEND;
+  GTRACE << "Getting stack delta for " << *this << LEND;
 
   // Apparently imported descriptor has to be first.  I should be more consistent in describing
   // the contract for which fields are meaningful under what conditions.
   if (import_descriptor != NULL) {
-    GDEBUG << "Call descriptor calls " << *import_descriptor << LEND;
+    GTRACE << "Call descriptor calls " << *import_descriptor << LEND;
     return import_descriptor->get_stack_delta();
   }
   // The cases in which we have a function descriptor are very similar.
@@ -77,17 +77,17 @@ StackDelta CallDescriptor::get_stack_delta() const {
       rose_addr_t thunk_addr = function_descriptor->follow_thunks(NULL);
       const ImportDescriptor* tid = ds.get_import(thunk_addr);
       if (tid != NULL) {
-        GDEBUG << "Call descriptor calls " << tid->get_long_name() << " through missed thunks." << LEND;
+        GTRACE << "Call descriptor calls " << tid->get_long_name() << " through missed thunks." << LEND;
         return tid->get_stack_delta();
       }
 
       // Now see if there's a function at the specified address.
       const FunctionDescriptor *thunk_fd = ds.get_func(thunk_addr);
       if (thunk_fd == NULL) {
-        GDEBUG << "Call descriptor calls " << *function_descriptor << LEND;
+        GTRACE << "Call descriptor calls " << *function_descriptor << LEND;
         merged = function_descriptor->get_stack_delta();
       } else {
-        GDEBUG << "Got stack delta for thunk target " << *thunk_fd << LEND;
+        GTRACE << "Got stack delta for thunk target " << *thunk_fd << LEND;
         merged = thunk_fd->get_stack_delta();
       }
     }
@@ -104,14 +104,14 @@ StackDelta CallDescriptor::get_stack_delta() const {
     // But if we were overriden by the user, use that instead (without regard to the confidence
     // in the rest of our call descriptor data).
     if (function_override != NULL) {
-      GDEBUG << "Call descriptor override " << *function_override << LEND;
+      GTRACE << "Call descriptor override " << *function_override << LEND;
       merged = function_override->get_stack_delta();
     }
 
     // More of the rest of the complex logic should be handlded by the updating of the
     // "concensus" function descriptor in this call descriptor (so it's already built into
     // merged).
-    GDEBUG << "Final stack delta according to call_descriptor" << merged << LEND;
+    GTRACE << "Final stack delta according to call_descriptor" << merged << LEND;
     return merged;
   }
   // We've got no idea where the function calls to, and so we have no idea what the stack delta
@@ -122,19 +122,19 @@ StackDelta CallDescriptor::get_stack_delta() const {
 }
 
 StackDelta CallDescriptor::get_stack_parameters() const {
-  GDEBUG << "Getting stack parameters for " << *this << LEND;
+  GTRACE << "Getting stack parameters for " << *this << LEND;
 
   // Apparently imported descriptor has to be first.  I should be more consistent in describing
   // the contract for which fields are meaningful under what conditions.
   if (import_descriptor != NULL) {
-    GDEBUG << "Call descriptor calls " << *import_descriptor << LEND;
+    GTRACE << "Call descriptor calls " << *import_descriptor << LEND;
     return import_descriptor->get_stack_parameters();
   }
   // The cases in which we have a function descriptor are very similar.
   else if (function_override != NULL || function_descriptor != NULL) {
     // If the user provided a stack parameters override, use it.
     if (function_override != NULL) {
-      GDEBUG << "Call descriptor stack parameters overriden " << *function_override << LEND;
+      GTRACE << "Call descriptor stack parameters overriden " << *function_override << LEND;
       return function_override->get_stack_parameters();
     }
     // Other wise use whatever function descriptor we've got.
@@ -146,33 +146,33 @@ StackDelta CallDescriptor::get_stack_parameters() const {
         rose_addr_t taddr = function_descriptor->follow_thunks(NULL);
         const ImportDescriptor* tid = ds.get_import(taddr);
         if (tid != NULL) {
-          GDEBUG << "Call at " << address_string() << " gets parameters from import "
+          GTRACE << "Call at " << address_string() << " gets parameters from import "
                  << *tid << LEND;
           return tid->get_stack_parameters();
         }
         else {
           const FunctionDescriptor* tfd = ds.get_func(taddr);
           if (tfd != NULL) {
-            GDEBUG << "Call at " << address_string() << " gets parameters from function at "
+            GTRACE << "Call at " << address_string() << " gets parameters from function at "
                    << tfd->address_string() << LEND;
             return tfd->get_stack_parameters();
           }
           else {
-            GDEBUG << "Call at " << address_string()
+            GTRACE << "Call at " << address_string()
                    << " has bad parameters because it's a thunk to a non-function. " << LEND;
             return function_descriptor->get_stack_parameters();
           }
         }
       }
       else {
-        GDEBUG << "Call descriptor calls " << *function_descriptor << LEND;
+        GTRACE << "Call descriptor calls " << *function_descriptor << LEND;
         return function_descriptor->get_stack_parameters();
       }
     }
   }
 
   if (stack_delta.confidence == ConfidenceNone) {
-    GDEBUG << "Call descriptor has no stack parameter data." << LEND;
+    GTRACE << "Call descriptor has no stack parameter data." << LEND;
   }
   return stack_delta;
 }
@@ -346,7 +346,7 @@ void CallDescriptor::_update_connections() {
         // While this message is usually fairly harmless, in some files, the import descriptor
         // contains a very large list of call targets, making this message rather more annoying
         // than helpful unless you're explicitly debugging a call descriptor problem.
-        //GDEBUG << "Resolved thunked call descriptor " << self{*this}
+        //GTRACE << "Resolved thunked call descriptor " << self{*this}
         //       << " to import " << *import_descriptor << LEND;
       }
       // Of course the more likely scenario is that we just call to a normal function.
@@ -433,7 +433,7 @@ void CallDescriptor::analyze() {
   bool complete;
   CallTargetSet successors;
   targets = insn->getSuccessors(complete);
-  //GDEBUG << "CALL: " << debug_instruction(insn) << LEND;
+  //GTRACE << "CALL: " << debug_instruction(insn) << LEND;
 
   SgAsmOperandList *oplist = insn->get_operandList();
   SgAsmExpressionPtrList& elist = oplist->get_operands();

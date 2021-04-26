@@ -292,7 +292,7 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
     // Partitioner data is or will be serialized
 
     // Try reading the serialized file, if it exists
-    bfs::path path(vm["serialize"].as<std::string>());
+    bfs::path path = vm["serialize"].as<bfs::path>();
     if (exists(path)) {
       OINFO << "Reading serialized data from " << path << "." << LEND;
       try {

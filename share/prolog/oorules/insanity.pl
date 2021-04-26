@@ -3,6 +3,16 @@
 % Sanity checking rules
 % ============================================================================================
 
+% If we say we have no base classes, we have no base classes :-)
+:- table insanityNoBaseConsistency/1 as incremental.
+insanityNoBaseConsistency(Out) :-
+    factClassHasNoBase(Class),
+    factDerivedClass(Class, BaseClass, Offset),
+
+    Out = (
+        logwarnln('Consistency checks failed.~n~Q but ~Q', [factClassHasNoBase(Class), factDerivedClass(Class, BaseClass, Offset)])
+    ).
+
 % A virtual function table may not be assigned to two classes.
 % PAPER: Sanity-VFTables
 :- table insanityVFTableOnTwoClasses/1 as incremental.
@@ -302,6 +312,7 @@ insanityEmbeddedAndNot(Out) :-
 
 :- table sanityChecks/1 as incremental.
 sanityChecks(Out) :-
+    insanityNoBaseConsistency(Out);
     insanityEmbeddedAndNot(Out);
     insanityConstructorAndNotConstructor(Out);
     insanityConstructorAndRealDestructor(Out);

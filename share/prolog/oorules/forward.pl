@@ -422,6 +422,21 @@ concludeReusedImplementation(Out) :-
     maplist(try_assert_builder(factReusedImplementation), MethodSets, ActionSets),
     Out = all(ActionSets).
 
+concludeClassRelatedMethod(Out) :-
+    reportFirstSeen('concludeClassRelatedMethod'),
+    setof((Class, Method),
+          ExistingClass^(reasonClassRelatedMethod(Class, Method),
+           iso_dif(Class, Method),
+           find(Method, ExistingClass),
+           iso_dif(Class, ExistingClass),
+           not(factClassRelatedMethod(Class, Method)),
+           %not(factNOTClassRelatedMethod(Class, Method)),
+           loginfoln('Concluding ~Q.',
+                     factClassRelatedMethod(Class, Method))),
+          TupleSets),
+    maplist(try_assert_builder(factClassRelatedMethod), TupleSets, ActionSets),
+    Out = all(ActionSets).
+
 concludeClassCallsMethod(Out) :-
     reportFirstSeen('concludeClassCallsMethod'),
     setof((Class, Method),

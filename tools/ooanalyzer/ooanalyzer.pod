@@ -87,6 +87,17 @@ implementations are automatically recognized.  If no delete
 implementations are detected, it can dramatically affect the detection
 of destructor methods.  This option may be specified multiple times.
 
+=item B<--purecall>=I<ADDRESS>
+
+Mark a specific address as an implementation of the purecall function
+that raises errors when incorrectly called.  While this implementation is
+never supposed to be called during execution, it is present in the
+virtual function tables and can confused OOAnalyzer if it is not properly
+identified.  This option can also be used to suppress merging of the
+specified function into any other class, which is sometimes useful when
+OOAnalyzer is confused about which class the method belongs to.  This
+option may be specified multiple times.
+
 =item B<--ignore-rtti>
 
 Do not use Run Time Type Information (RTTI), even if it is present in
@@ -182,7 +193,7 @@ for details.
 
 =head1 SEE ALSO
 
-oprolog(1)
+ooprolog(1)
 
 =cut
 
