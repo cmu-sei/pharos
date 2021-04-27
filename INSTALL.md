@@ -97,7 +97,7 @@ other important dependencies must be built or installed, including:
 
 ### Boost
 
-We build with Boost version 1.61 currently, but we do not believe that
+We build with Boost version 1.64 currently, but we do not believe that
 either ROSE or Pharos is particularly sensitive which version of Boost
 is used.  It is important to ensure that this Boost distribution is
 the same Boost distribution used to build ROSE.
@@ -127,7 +127,7 @@ You can build Boost using these commands:
 ```
 $ mkdir boost
 $ cd boost
-$ wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.bz2
+$ wget https://boostorg.jfrog.io/artifactory/main/release/1.64.0/source/boost_1_64_0.tar.bz2
 $ tar -xjvf boost_1_64_0.tar.bz2
 $ cd boost_1_64_0
 $ ./bootstrap.sh --prefix=/usr/local
