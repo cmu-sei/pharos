@@ -1114,12 +1114,20 @@ SQLLiteApiDictionary::Data::get_db_function(
 
   // Generate a function for a statement that extracts text strings from that statement,
   // accounting for possible NULLs
-  auto create_textval = [](sqlite3_stmt * stm) {
-    return [stm](int col) {
+  auto create_textval = [this](sqlite3_stmt * stm) {
+    return [this, stm](int col) {
       if (sqlite3_column_type(stm, col) == SQLITE_NULL) {
         return std::string();
       } else {
-        return std::string(reinterpret_cast<const char *>(sqlite3_column_text(stm, col)));
+        // cast converts from const unsigned char * to const char *
+        const char *text = reinterpret_cast<const char *>(sqlite3_column_text(stm, col));
+        if (text == nullptr) {
+          // Unexpected nullptr, check for error
+          maybe_throw_code(sqlite3_errcode(db));
+          // No error found
+          return std::string();
+        }
+        return std::string(text, sqlite3_column_bytes(stm, col));
       }
     };
   };
