@@ -59,6 +59,24 @@ insanityConstructorInVFTable(Out) :-
         logwarnln(' Ctor=~Q', [Constructor])
     ).
 
+% A class may only derive from another class once.
+:- table insanityInheritanceTwice/1 as incremental.
+insanityInheritanceTwice(Out) :-
+    factDerivedClass(A,B,O1),
+    % ejs: Technically this should be factDerivedClass below, since it is possible in theory to
+    % inherit and embed the same class.  But this is pretty unlikely, and would result in us
+    % making some stupid guesses in which we inherit the first instance of a class and then
+    % embed the rest.  Maybe a better fix would be to modify guessDerivedClass so that we don't
+    % make the guess if there are multiple objectInObject facts.
+    factObjectInObject(A,B,O2),
+    iso_dif(O1, O2),
+
+    Out = (
+        logwarnln('Consistency checks failed.'),
+        logwarnln('Class ~Q inherits from ~Q at offsets ~Q and ~Q',
+                  [A,B,O1,O2])
+    ).
+
 % A class may not be derived from itself (even with intermediate classes).
 % PAPER: Sanity-InheritanceLoop
 :- table insanityInheritanceLoop/1 as incremental.
@@ -324,6 +342,7 @@ sanityChecks(Out) :-
     insanityMemberPastEndOfObject(Out);
     insanityBaseVFTableLarger(Out);
     insanityConstructorAndDeletingDestructor(Out);
+    insanityInheritanceTwice(Out);
     insanityInheritanceLoop(Out);
     insanityContradictoryMerges(Out);
     insanityContradictoryNOTConstructor(Out);

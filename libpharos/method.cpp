@@ -1,6 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
-
-#include <rose.h>
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "pdg.hpp"
 #include "method.hpp"
@@ -563,7 +561,7 @@ bool ThisCallMethod::validate_vtable(ConstVirtualTableInstallationPtr install) {
     // If we're an ADD operation, that's what we're looking for.
     if (inode && inode->getOperator() == Rose::BinaryAnalysis::SymbolicExpr::OP_ADD) {
       // Now go through each node and see if one of them is the object pointer.
-      for (const TreeNodePtr ctp : inode->children()) {
+      for (const TreeNodePtr & ctp : inode->children()) {
         if (ctp->isEquivalentTo(leaf)) found_this_ptr = true;
       }
     }

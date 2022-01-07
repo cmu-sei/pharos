@@ -1,9 +1,7 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_VFTable_H
 #define Pharos_VFTable_H
-
-#include <rose.h>
 
 #include "delta.hpp"
 #include "funcs.hpp"

@@ -76,7 +76,7 @@ use a different Pharos tool to complete the partitioning step, and then
 save those results to a serialization file.
 
 ```
-partition --serialize=ooprog.ser --maximum-memory=128000 --no-semantics --partitioner=rose ooprog.exe
+partition --serialize=ooprog.ser --maximum-memory=128000 --no-semantics ooprog.exe
 ```
 
 The primary goal of this command is to create the `ooprog.ser` file,
@@ -138,10 +138,10 @@ long!  For this reason, we often run large executables with
 `--no-semantics`.
 
 On our original sample, which uses `--no-semantics`, the contribution of
-the Pharos partitioning extensions can be seen (because
-`--partition=rose`) was not specified.  These lines first show when the
-stock ROSE partitioner completes, and then after the Pharos partitioner
-has completed:
+the Pharos partitioning extensions can be seen because `--partition=rose`
+was not specified.  These lines first show when the stock ROSE
+partitioner completes, and then after the Pharos partitioner has
+completed:
 
 ```
 OPTI[INFO ]: ROSE stock partitioning took 27.0066 seconds.
@@ -169,10 +169,10 @@ that you might experience, but different input executables can result in
 dramatically different execution times.  In this sample,
 omitting`--no-semantics` was more expensive, but for other input
 executables, the relative cost of omitting the two options may be
-reversed.  We recommend that you start the process with both
-`--no-semantics`, and `--partitioner=rose`, and if you are able to get
-good results from OOAnalyzer, you can repeat the analysis with more
-accurate partitioning options later.
+reversed.  We recommend that you start the process with 
+`--no-semantics` since it can reduce partitioning time for large files,
+but not `--partitioner=rose` since it can lead to less accurate results,
+although that's an oversimplification of the tradeoffs.
 
 The resulting `ooprog.csv` file will contain hashes for each function in
 the program, and has no relevance to the the rest of the process.
@@ -190,7 +190,7 @@ describing the object-oriented features of the program.
 We recommend that you run a command like this:
 
 ```
-ooanalyzer --serialize=ooprog.ser --maximum-memory 128000 --prolog-facts=ooprog-facts.pl --threads=16 --per-function-timeout=60 ooprog.exe
+ooanalyzer --serialize=ooprog.ser --maximum-memory 128000 --no-semantics --prolog-facts=ooprog-facts.pl --threads=16 --per-function-timeout=60 ooprog.exe
 ```
 
 The `--serialize` option causes OOAnalyzer to read the previously

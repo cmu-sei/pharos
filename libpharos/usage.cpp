@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/format.hpp>
 #include <boost/range/adaptor/map.hpp>
@@ -7,8 +7,6 @@
 #include <boost/graph/depth_first_search.hpp>
 #include <boost/graph/graph_utility.hpp>
 #include <boost/graph/filtered_graph.hpp>
-
-#include <rose.h>
 
 #include "misc.hpp"
 #include "masm.hpp"
@@ -34,20 +32,43 @@ using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
 // A hacked up routine to pick the correct object pointer from an ITE expression.  There's much
 // better ways to implement this, but none that will be as easy for demonstrating that this is
 // not a major architectural problem with the ITE expressions.  More NEWWAY fixes are required.
-// Additionally, this function is currently only used in this file, but it might be useful
-// elsewhere as well.
-SymbolicValuePtr pick_this_ptr(SymbolicValuePtr& sv) {
-  InternalNodePtr in = sv->get_expression()->isInteriorNode();
-  if (in && in->getOperator() == OP_ITE) {
-    // For right now, make a complete copy of the symbolic value, maintaining definers and so
-    // forth.  Set the expression to just the half that we're interested in.
-    SymbolicValuePtr newsv = sv->scopy();
-    newsv->set_expression(in->child(1));
-    return newsv;
-  }
-  else {
+SymbolicValuePtr pick_this_ptr(const SymbolicValuePtr& sv) {
+  TreeNodePtr oldexpr = sv->get_expression();
+  TreeNodePtr newexpr = pick_non_null_expr(oldexpr);
+  if (newexpr == oldexpr) {
     return sv;
   }
+  else {
+    // Make a complete copy of the symbolic value, maintaining definers and so forth.  Set the
+    // expression to just the half that we're interested in.
+    SymbolicValuePtr newsv = sv->scopy();
+    newsv->set_expression(newexpr);
+    return newsv;
+  }
+}
+
+TreeNodePtr pick_non_null_expr(const TreeNodePtr& expr) {
+  using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
+  InternalNodePtr in = expr->isInteriorNode();
+  if (in && in->getOperator() == OP_ITE) {
+    // Check whether the parameter was of the form "ite(cond value 0)", if it is, just return
+    // the hash of value so that it matches unconditional uses of the value, since our
+    // primary goal in the OO analysis is to match-up OO pointers, and testing for NULL right
+    // after allocation is a _very_ common paradigm.  We could do better here by exporting
+    // facts for all possible values or something like that.
+
+    // The expression is a conditional, first check for the NULL in child(2).
+    if (in->child(2)->isIntegerConstant() &&
+        in->child(2)->toUnsigned() && *in->child(2)->toUnsigned() == 0) {
+      return in->child(1);
+    }
+    // and then in child(1).
+    else if (in->child(1)->isIntegerConstant()
+             && in->child(1)->toUnsigned() && *in->child(1)->toUnsigned() == 0) {
+      return in->child(2);
+    }
+  }
+  return expr;
 }
 
 ThisPtrUsage::ThisPtrUsage(const FunctionDescriptor* f, SymbolicValuePtr tptr,
@@ -84,9 +105,9 @@ void ThisPtrUsage::analyze_alloc() {
   else if (type == UnknownMem) {
     // This code is really a function of get_memory_type() still being broken.
     // If we're not a constant address (global), skip this function.
-    if (!this_ptr->is_number() || this_ptr->get_width() > 64) return;
+    if (!this_ptr->isConcrete() || this_ptr->get_width() > 64) return;
     // This is a bit hackish, but also reject obviously invalid constants.
-    size_t num = this_ptr->get_number();
+    size_t num = *this_ptr->toUnsigned();
     // Here's a place where we're having the age old debate about how to tell what is an
     // address with absolutely no context.  Cory still likes consistency.  Others have
     // suggested that we should be using the memory map despite all of it's flaws...

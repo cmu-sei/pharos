@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2018-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/graph/topological_sort.hpp>
 #include <z3++.h>
@@ -477,7 +477,11 @@ void WPPathAnalyzer::setup_path_problem(rose_addr_t source, rose_addr_t target) 
 
   IRExprPtr wp = expand_lets (wp_cfg (ir, post));
 
+#if PHAROS_ROSE_MEMOIZATION_HACK
+  solver.memoizer ({});
+#else
   solver.memoization (false);
+#endif
   solver.insert (wp);
   solver.z3Update ();
   assert (solver.z3Assertions ().size () == 1);

@@ -45,7 +45,7 @@ $ sudo apt update
 $ sudo apt install build-essential wget flex ghostscript bzip2 \
   git subversion automake libtool bison python libncurses-dev \
   vim-common sqlite3 libsqlite3-0 libsqlite3-dev zlib1g-dev cmake \
-  libyaml-cpp-dev libboost-all-dev libboost-dev libxml2-dev
+  libyaml-cpp-dev libboost-all-dev libboost-dev libxml2-dev ninja-build
 ```
 
 Then install all dependencies by running:
@@ -223,10 +223,10 @@ $ cd rose
 This version has a reasonable chance of working or only having minor
 issues.  If you want to be conservative and use the version of ROSE
 that was known to compile with the latest major commit to the Pharos
-repository, you can checkout this commit (ROSE version v0.11.11.2):
+repository, you can checkout this commit (ROSE version v0.11.39.6):
 
 ```
-$ git checkout v0.11.11.2
+$ git checkout v0.11.39.6
 ```
 
 ROSE can be configured in a multitude of ways, and some attention to

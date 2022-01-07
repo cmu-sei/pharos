@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Jeff Gennari
 // Date: 2015-06-22
@@ -15,7 +15,6 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/range/adaptors.hpp>
 
-#include <rose.h>
 #include <Sawyer/GraphBoost.h>
 
 #include "pdg.hpp"
@@ -75,7 +74,7 @@ void debug_print_match_table(const ApiParamMatchTable& match_table) {
     assert(plist);
 
     std::ostringstream pstr;;
-    for (const ApiParameterPtr apip : *plist) {
+    for (const ApiParameterPtr & apip : *plist) {
       assert(apip);
       if (apip->value) {
         pstr << *(apip->value->get_expression()) << " | ";
@@ -940,7 +939,7 @@ bool ApiSearchExecutor::EvaluateApiMatchTable(const ApiSigFunc& sig_func,
             assert(sig_list);
 
             bool found_match = false;
-            for (const ApiParameterPtr sig_pd : *sig_list) {
+            for (const ApiParameterPtr & sig_pd : *sig_list) {
               assert(sig_pd);
               if (call_pd.get_value()->can_be_equal(sig_pd->value)) {
                 found_match = true;
@@ -1001,7 +1000,7 @@ bool ApiSearchExecutor::EvaluateApiMatchTable(const ApiSigFunc& sig_func,
           bool rv_found_match = false;
           ApiParamPtrListPtr rlist = ret_entry->second;
           assert(rlist);
-          for (const ApiParameterPtr sig_rv : *rlist) {
+          for (const ApiParameterPtr & sig_rv : *rlist) {
             assert(sig_rv);
 
             if (sig_rv->value && rv.get_value()) {
@@ -2851,7 +2850,7 @@ bool ApiSearchManager::Search(const ApiSigVector &sigs, ApiSearchResultVector &r
   sig_count_ = sigs.size();
   sig_progress_ = 0;
 
-  for (const ApiSig sig : sigs) {
+  for (const ApiSig & sig : sigs) {
     GDEBUG << "Processing signature: " << sig.name << LEND;
 
     UpdateProgress(sig);

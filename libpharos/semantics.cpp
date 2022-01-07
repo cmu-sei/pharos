@@ -1,9 +1,9 @@
-// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/format.hpp>
 
-#include <rose.h>
-#include <BinarySymbolicExpr.h>
+#include "rose.hpp"
+#include <Rose/BinaryAnalysis/SymbolicExpr.h>
 #include <integerOps.h>
 
 #include "semantics.hpp"
@@ -354,7 +354,7 @@ boost::optional<int64_t> SymbolicValue::get_stack_const() const {
   }
   else if (inode->getOperator() == Rose::BinaryAnalysis::SymbolicExpr::OP_ADD) {
     //SDEBUG << "Found add operator." << LEND;
-    for (const TreeNodePtr tp : inode->children()) {
+    for (const TreeNodePtr & tp : inode->children()) {
       LeafNodePtr lp = tp->isLeafNode();
       //if (lp) {
       //  SDEBUG << "Leaf Node in stack delta eval is: " << *lp << LEND;
@@ -695,7 +695,7 @@ void AbstractAccess::set_latest_writers(DescriptorSet const & ds, SymbolicStateP
     }
     // Now get the writers for just this one cell.  There's been some recent email discussion
     // with Robb that this approach is defective, and there's a fix pending in ROSE.
-    const MemoryCell::AddressSet& writers = cell->getWriters();
+    const auto & writers = cell->getWriters();
     for (rose_addr_t addr : writers.values()) {
       //OINFO << "Latest memory writer for " << str() << " was: " << addr_str(addr) << LEND;
       SgAsmInstruction* insn = ds.get_insn(addr);
@@ -705,7 +705,7 @@ void AbstractAccess::set_latest_writers(DescriptorSet const & ds, SymbolicStateP
   else {
     SymbolicRegisterStatePtr rstate = state->get_register_state();
     //OINFO << "Looking for latest register writer for " << str() << LEND;
-    const RegisterStateGeneric::AddressSet& writers = rstate->getWritersUnion(register_descriptor);
+    const auto & writers = rstate->getWritersUnion(register_descriptor);
     for(rose_addr_t addr : writers.values()) {
       //OINFO << "Latest register writer for " << str() << " was: " << addr_str(addr) << LEND;
       SgAsmInstruction* insn = ds.get_insn(addr);

@@ -1,11 +1,10 @@
-// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Michael Duggan
 
 #ifndef Pharos_MATCHER_HPP_
 #define Pharos_MATCHER_HPP_
 
-#include <rose.h>
 #include <cstddef>
 #include <utility>
 #include <functional>

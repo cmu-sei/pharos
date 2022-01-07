@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Ir_H
 #define Pharos_Ir_H
@@ -19,8 +19,8 @@
 #include <boost/graph/iteration_macros.hpp>
 #include <boost/graph/graphviz.hpp>
 
-#include <rose.h>
-#include <SymbolicSemantics2.h>
+#include "rose.hpp"
+#include <Rose/BinaryAnalysis/InstructionSemantics2/SymbolicSemantics.h>
 
 #include "calls.hpp"
 #include "cdg.hpp"

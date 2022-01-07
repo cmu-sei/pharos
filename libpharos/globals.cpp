@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019, 2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "globals.hpp"
 #include "masm.hpp"
@@ -88,7 +88,7 @@ void GlobalMemoryDescriptor::add_value(SymbolicValuePtr new_val) {
     [new_val](SymbolicValuePtr sv)
     {
       if (sv->get_width() != new_val->get_width()) return false;
-      return sv->must_equal(new_val);
+      return sv->mustEqual(new_val);
     });
 
   if (gvi == values.end()) {

@@ -1,10 +1,9 @@
-// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/optional.hpp>
 
-#include <rose.h>
-// For isNOP().
-#include <sageInterfaceAsm.h>
+#include "rose.hpp"
+#include <sageInterfaceAsm.h> // For isNOP().
 
 #include "misc.hpp"
 #include "funcs.hpp"
@@ -374,7 +373,7 @@ void RegisterUsage::analyze_parameters() {
         // exclude the xor in the special cases above, but we end up marking the move as a
         // parameter use, which is compeletely incorrect.  At least one way to have detected
         // this is that the value under consideration is not the "starting" value of any register.
-        const std::string& cmt = aa.value->get_comment();
+        const std::string& cmt = aa.value->comment();
         size_t clen = cmt.size();
         // If there's no comment at all, we're not a starting value, and thus not a parameter.
         // Also, if the comment doesn't look like a starting value comment, then we're also not

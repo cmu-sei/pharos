@@ -1,7 +1,5 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
-
-#include <rose.h>
 #include <libpharos/util.hpp>
 #include <gtest/gtest.h>
 #include <libpharos/apisig.hpp>
@@ -46,10 +44,10 @@ TEST_F(ApiSigTest, TEST_VALID_SIG_PARAMS) {
   ApiSigVector sigs;
   sig_manager_->GetSigs(sigs);
 
-  for (const ApiSig s : sigs) {
+  for (const ApiSig & s : sigs) {
 
     if (boost::iequals(s.name,"TestSig1")) {
-      for (const ApiSigFunc f : s.api_calls) {
+      for (const ApiSigFunc & f : s.api_calls) {
         if (boost::iequals(f.name,"TestAPI2") == true) {
           EXPECT_TRUE(f.has_params);
           EXPECT_FALSE(f.has_retval);
@@ -98,10 +96,10 @@ TEST_F(ApiSigTest, TEST_VALID_SIG_RETVAL) {
   ApiSigVector sigs;
   sig_manager_->GetSigs(sigs);
 
-  for (const ApiSig s : sigs) {
+  for (const ApiSig & s : sigs) {
     if (boost::iequals(s.name,"TestSig1")) {
 
-      for (const ApiSigFunc f : s.api_calls) {
+      for (const ApiSigFunc & f : s.api_calls) {
         if (boost::iequals(f.name,"TestApi1") == true) {
           EXPECT_TRUE(f.has_retval);
 

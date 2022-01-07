@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019, 2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "ir.hpp"
 #include "util.hpp"
@@ -54,8 +54,8 @@ using SymState = IRSemantics2::SymbolicSemantics::State;
 using SymStatePtr = IRSemantics2::SymbolicSemantics::StatePtr;
 using SymRiscOperators = IRSemantics2::SymbolicSemantics::RiscOperators;
 using SymRiscOperatorsPtr = IRSemantics2::SymbolicSemantics::RiscOperatorsPtr;
-using RoseDispatcherX86 = IRSemantics2::DispatcherX86;
-using RoseDispatcherX86Ptr = IRSemantics2::DispatcherX86Ptr;
+using BaseDispatcher = Rose::BinaryAnalysis::InstructionSemantics2::BaseSemantics::Dispatcher;
+using BaseDispatcherPtr = Rose::BinaryAnalysis::InstructionSemantics2::BaseSemantics::DispatcherPtr;
 
 using IRRegisterStatePtr = boost::shared_ptr<class IRRegisterState>;
 using IRRiscOperatorsPtr = boost::shared_ptr<class IRRiscOperators>;
@@ -296,7 +296,7 @@ IR add_datablocks (const IR& ir_) {
         m
         | boost::adaptors::transformed ([&] (const auto &p2) {
           auto addr = SymbolicExpr::makeIntegerConstant (
-            ir.get_ds ()->get_arch_bits (), p2.first);
+            ir.get_ds ()->get_ip_reg ().nBits (), p2.first);
           auto v = SymbolicExpr::makeIntegerConstant (8, p2.second);
           return MemWriteStmt (addr, v);
         }),
@@ -482,18 +482,18 @@ class IRRiscOperators: public SymRiscOperators
 class IRRegisterState: public RegisterStateGeneric
 {
   // Create the register state and initialize the register values.
-  explicit IRRegisterState(const BaseSValuePtr& valueProtoval,
-                           const Rose::BinaryAnalysis::RegisterDictionary *rd,
-                           size_t arch_bits) : RegisterStateGeneric(valueProtoval, rd)
+  explicit IRRegisterState(
+    const BaseSValuePtr& valueProtoval,
+    const Rose::BinaryAnalysis::RegisterDictionary *rd,
+    const RegisterVector init_regs, RegisterDescriptor& ipreg)
+    : RegisterStateGeneric(valueProtoval, rd)
   {
     // Create an X86 instruction dispatcher and initialize the "usual" registers with values.
     // Normally these would be the values in the state, here they're just "names" for the
     // registers.  We're never going to overwrite the registers so this is a completely static
     // dictionary of registers.
-    Semantics2::DispatcherX86Ptr dispatcher = RoseDispatcherX86::instance(arch_bits);
-    dispatcher->set_register_dictionary(rd);
-    initialize_nonoverlapping(dispatcher->get_usual_registers(), false);
-    Reg_IP = rd->findLargestRegister(x86_regclass_ip,  0, arch_bits);
+    initialize_nonoverlapping(init_regs, false);
+    Reg_IP = ipreg;
   }
 
   IRRegisterState(const IRRegisterState &rs)
@@ -508,8 +508,10 @@ class IRRegisterState: public RegisterStateGeneric
   // Construct an instance of an IR register state.
   static IRRegisterStatePtr instance(const SymValuePtr &proto,
                                      const Rose::BinaryAnalysis::RegisterDictionary *rd,
-                                     size_t arch_bits) {
-    return IRRegisterStatePtr(new IRRegisterState(proto, rd, arch_bits));
+                                     const RegisterVector init_regs,
+                                     RegisterDescriptor& ipreg)
+  {
+    return IRRegisterStatePtr(new IRRegisterState(proto, rd, init_regs, ipreg));
   }
 
   // Called every time a register is read.
@@ -909,26 +911,34 @@ IR IR::get_ir(const FunctionDescriptor* fd) {
     }
   }
 
-  size_t arch_bits = fd->ds.get_arch_bits();
-
   //std::cout << "---- Creating analysis domain" << std::endl;
   // Build an instance of our IR analysis domain.  We only need to build it once, because we
   // never actually write to it in any way.
   static SymValuePtr protoval = SymValue::instance();
+
   static pharos::RegisterDictionary regdict = fd->ds.get_regdict();
+  const RegisterVector init_regs = fd->ds.get_usual_registers();
+  RegisterDescriptor ipreg = fd->ds.get_ip_reg();
   static IRRegisterStatePtr rstate = IRRegisterState::instance(
-    protoval, &regdict, fd->ds.get_arch_bits ());
+    protoval, &regdict, init_regs, ipreg);
   static IRMemoryStatePtr mstate = IRMemoryState::instance(protoval, protoval);
   SymStatePtr state = SymState::instance(rstate, mstate);
   IRRiscOperatorsPtr rops = IRRiscOperators::instance(state);
-  RoseDispatcherX86Ptr dispatcher = RoseDispatcherX86::instance(rops, arch_bits, NULL);
+  const P2::Partitioner& partitioner = fd->ds.get_partitioner();
+  BaseDispatcherPtr dispatcher = partitioner.newDispatcher(rops);
+
+  if (!dispatcher) {
+    GFATAL << "This tool requires instruction semantics, which are not currently "
+           << "supported for architecture '" << fd->ds.get_arch_name () << "'." << LEND;
+    exit (EXIT_FAILURE);
+  }
 
   EdgeCondMap edgecondmap;
 
   const CallDescriptorMap &calls = fd->ds.get_call_map ();
 
   // Create the IR
-  for (const PD::Graph::Vertex vertex: cfg.vertices ()) {
+  for (const PD::Graph::Vertex & vertex: cfg.vertices ()) {
     //SgAsmBlock* block = boost::get(boost::vertex_name, cfg, vertex);
 
     //const SgAsmStatementPtrList & insns = block->get_statementList();
@@ -953,9 +963,10 @@ IR IR::get_ir(const FunctionDescriptor* fd) {
     if (calls.count (insn->get_address ())) {
       const CallDescriptor &cd = calls.at (insn->get_address ());
       Call call = InternalCall ();
-      BaseSValuePtr cond = rstate->RegisterStateGeneric::readRegister(rstate->Reg_IP,
-                                                                      SymValue::instance_undefined (arch_bits),
-                                                                      boost::static_pointer_cast<BaseRiscOperators> (rops).get());
+      BaseSValuePtr cond = rstate->RegisterStateGeneric::readRegister(
+        rstate->Reg_IP,
+        SymValue::instance_undefined (rstate->Reg_IP.nBits ()),
+        boost::static_pointer_cast<BaseRiscOperators> (rops).get());
       IRExprPtr targetexp = SymValue::promote (cond)->get_expression ();
 
       // This is a hack to detect calls to PLT entries in ELFs
@@ -1011,7 +1022,7 @@ IR IR::get_ir(const FunctionDescriptor* fd) {
     // } // Each instruction
 
     BaseSValuePtr cond = rstate->RegisterStateGeneric::readRegister(rstate->Reg_IP,
-                                                                    SymValue::instance_undefined (arch_bits),
+                                                                    SymValue::instance_undefined (rstate->Reg_IP.nBits ()),
                                                                     boost::static_pointer_cast<BaseRiscOperators> (rops).get());
 
     SymValuePtr scond = SymValue::promote(cond);

@@ -1,18 +1,18 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Misc_H
 #define Pharos_Misc_H
 
 // This file contains utility functions for ROSE and the like.
 
-#include <rose.h>
+#include "rose.hpp"
 // For TreeNodePtr, LeafNodePtr, etc.
-#include <BinarySymbolicExpr.h>
+#include <Rose/BinaryAnalysis/SymbolicExpr.h>
 // For Semantics2 namespace.
-#include <SymbolicSemantics2.h>
+#include <Rose/BinaryAnalysis/InstructionSemantics2/SymbolicSemantics.h>
 // For P2 namespace.
-#include <Partitioner2/Partitioner.h>
-#include <MemoryMap.h>
+#include <Rose/BinaryAnalysis/Partitioner2/Partitioner.h>
+#include <Rose/BinaryAnalysis/MemoryMap.h>
 
 #include <numeric>
 
@@ -270,7 +270,7 @@ bool insn_is_nop(const SgAsmX86Instruction* insn);
 // Get the fallthru address of this instruction.
 rose_addr_t insn_get_fallthru(SgAsmInstruction* insn);
 // Get the non-fallthru (branch) address of this instruction.
-rose_addr_t insn_get_branch_target(SgAsmInstruction* insn);
+boost::optional<rose_addr_t> insn_get_branch_target(SgAsmInstruction* insn);
 // Get the fixed portion of an instruction in the form: "jmp [X]"
 rose_addr_t insn_get_jump_deref(SgAsmInstruction* insn);
 

@@ -240,8 +240,18 @@ concludeVFTable(Out) :-
     Out = ((all(ActionSets),
             makeObjects(VFTableSets))).
 
-% There's no reasoning for NOT a vftable?  The fact might be asserted by a failed guess, but
-% that's about as close as we would get to reasoning currently...
+% Finally added a factNOTVFTable for completeness and filtering bad VFTable guesses.
+concludeNOTVFTable(Out) :-
+    reportFirstSeen('concludeNOTVFTable'),
+    setof(VFTable,
+          (reasonNOTVFTable(VFTable),
+           not(factNOTVFTable(VFTable)),
+           not(factVFTable(VFTable)),
+           loginfoln('Concluding ~Q.', factNOTVFTable(VFTable))),
+          VFTableSets),
+    maplist(try_assert_builder(factNOTVFTable), VFTableSets, ActionSets),
+    Out = ((all(ActionSets),
+            makeObjects(VFTableSets))).
 
 concludeVFTableWrite(Out) :-
     reportFirstSeen('concludeVFTableWrite'),
@@ -456,8 +466,8 @@ concludeNOTMergeClasses(Out) :-
     reportFirstSeen('concludeNOTMergeClasses'),
     setof((Class1, Class2),
           (reasonNOTMergeClasses_new(Class1, Class2),
-           iso_dif(Class1, Class2),
            not(dynFactNOTMergeClasses(Class1, Class2)),
+           iso_dif(Class1, Class2),
            loginfoln('Concluding ~Q.',
                      factNOTMergeClasses(Class1, Class2))),
           ClassSets),

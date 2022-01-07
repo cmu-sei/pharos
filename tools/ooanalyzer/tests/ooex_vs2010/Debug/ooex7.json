@@ -7,12 +7,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "name": "vftptr_0x0",
+                    "name": "cls_0x41d428_0x0",
                     "offset": "0x0",
-                    "parent": false,
-                    "size": 4,
-                    "struc": "",
-                    "type": "vftptr",
+                    "parent": true,
+                    "size": 0,
+                    "struc": "cls_0x41d428",
+                    "type": "struc",
                     "usages": [
                         "0x413b8c",
                         "0x413bf6",
@@ -418,12 +418,12 @@
             "members": {
                 "0x0": {
                     "base": false,
-                    "name": "mbr_0x0",
+                    "name": "cls_0x41d374_0x0",
                     "offset": "0x0",
-                    "parent": false,
-                    "size": 4,
-                    "struc": "",
-                    "type": "",
+                    "parent": true,
+                    "size": 0,
+                    "struc": "cls_0x41d374",
+                    "type": "struc",
                     "usages": [
                         "0x411f86",
                         "0x411f97",
@@ -434,7 +434,7 @@
                     "base": false,
                     "name": "cls_0x412220_0x1c",
                     "offset": "0x1c",
-                    "parent": false,
+                    "parent": true,
                     "size": 0,
                     "struc": "cls_0x412220",
                     "type": "struc",

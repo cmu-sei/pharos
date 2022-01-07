@@ -1,11 +1,9 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/algorithm/string.hpp>
 
 #include <string>
 #include <vector>
-
-#include <rose.h>
 
 #include "sptrack.hpp"
 #include "cdg.hpp"
@@ -120,7 +118,7 @@ void spTracker::dump_deltas(std::string filename) const {
   for (const FunctionDescriptorMap::value_type& pair : descriptor_set.get_func_map()) {
     rose_addr_t faddr = pair.first;
     const FunctionDescriptor& fd = pair.second;
-    for (SgAsmX86Instruction* insn : fd.get_insns_addr_order()) {
+    for (SgAsmInstruction* insn : fd.get_insns_addr_order()) {
       rose_addr_t iaddr = insn->get_address();
       StackDelta current = get_delta(iaddr);
       fprintf(csv, "%08x,%08x,%d\n", (unsigned int)faddr, (unsigned int)iaddr, -current.delta);

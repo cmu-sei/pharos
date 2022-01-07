@@ -1,9 +1,7 @@
-// Copyright 2017-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2017-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_OOMember_H
 #define Pharos_OOMember_H
-
-#include <rose.h>
 
 #include "ooelement.hpp"
 

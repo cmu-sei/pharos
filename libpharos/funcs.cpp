@@ -1,17 +1,16 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <atomic>
 
 #include <boost/format.hpp>
 #include <boost/optional.hpp>
 
-#include <rose.h>
+#include "rose.hpp"
 #include <AstTraversal.h>
-// For isNOP().
-#include <sageInterfaceAsm.h>
+#include <sageInterfaceAsm.h> // For isNOP().
 
-#include <BinaryUnparser.h>
-#include <BinaryUnparserBase.h>
+#include <Rose/BinaryAnalysis/Unparser/Settings.h>
+#include <Rose/BinaryAnalysis/Unparser/Base.h>
 
 #include "funcs.hpp"
 #include "delta.hpp"
@@ -645,11 +644,13 @@ void FunctionDescriptor::update_stack_parameters() {
 
   // For each instruction in the function in address order.  It might be more correct to use
   // some kind of flow order here, but that's not as convenient right now.
-  for (SgAsmX86Instruction* insn : get_insns_addr_order()) {
+  for (SgAsmInstruction* insn : get_insns_addr_order()) {
+    SgAsmX86Instruction* xinsn = isSgAsmX86Instruction(insn);
+    if (!xinsn) continue;
     // LEA's reference memory but do not "read" them... Therefore, let's determine if the value
     // being moved into the register could reference a function parameter.  This is old Wes
     // code, and Cory has cleaned it up some, but it's still a bit hackish.
-    if (insn->get_kind() == x86_lea) {
+    if (xinsn->get_kind() == x86_lea) {
       // Get the writes for this LEA instruction.
       auto writes = du.get_writes(insn->get_address());
       // Shouldn't happen, but continuing prevents crashes.
@@ -696,7 +697,7 @@ void FunctionDescriptor::update_stack_parameters() {
       // for stack memory parameters is the one we're looking for...
       if (type == StackMemReturnAddress) {
         // Return instructions are supposed to access stack delta zero (the return address).
-        if (insn->get_kind() == x86_ret) continue;
+        if (xinsn->get_kind() == x86_ret) continue;
 
         // All other cases are deeply suspicious.  It appears that when these occur they are
         // generally the result of failed stack delta analysis, in other words the
@@ -988,14 +989,19 @@ const PDG * FunctionDescriptor::_get_pdg() {
 
       // This is the only place we should be calling set_calling_convention().
       parameters.set_calling_convention(cc);
-
-      // Assume that registers always preceed all parameters (always true on Intel platforms?), and
-      // create the register parameters.
-      update_register_parameters();
-
-      // Now create stack parameters based on how many bytes of the previous frame we accessed.
-      update_stack_parameters();
     }
+
+    // We used to disable the creation of register and stack parameters if the calling
+    // convention was invalid, but we found some cases where OOAnalyzer needed to be able to
+    // work around some defects in _EH_prolog and _EH_epilog.  Since it's not clear that
+    // creating these parameters will be harmful in anyway, let's try that.
+
+    // Assume that registers always preceed all parameters (always true on Intel platforms?),
+    // and create the register parameters.
+    update_register_parameters();
+
+    // Now create stack parameters based on how many bytes of the previous frame we accessed.
+    update_stack_parameters();
 
     // Create the set of stack variables
     update_stack_variables();
@@ -1531,15 +1537,14 @@ SgAsmInstruction* FunctionDescriptor::get_insn(const rose_addr_t addr) const {
   return NULL;
 }
 
-// TODO: need an architecture agnostic version of this if we ever support non-x86 stuff
 // explicit sorting of instructions by address using a map:
-X86InsnVector FunctionDescriptor::get_insns_addr_order() const {
+InsnVector FunctionDescriptor::get_insns_addr_order() const {
   read_guard<decltype(mutex)> guard{mutex};
 
   // TODO: do this once & cache on object?  Also, should there be another variant for "only
   // ones in CFG" too?
-  X86InsnVector result;
-  std::map< rose_addr_t, SgAsmX86Instruction* > rmap;
+  InsnVector result;
+  std::map< rose_addr_t, SgAsmInstruction* > rmap;
   // No function means no instructions.
   if (!func) return result;
 
@@ -1552,9 +1557,10 @@ X86InsnVector FunctionDescriptor::get_insns_addr_order() const {
 
     // Iterate through instructions
     for (size_t y = 0; y < insns.size(); y++) {
-      SgAsmX86Instruction *insn = isSgAsmX86Instruction(insns[y]);
-      if (insn != NULL)
+      SgAsmInstruction *insn = isSgAsmInstruction(insns[y]);
+      if (insn) {
         rmap[insn->get_address()] = insn;
+      }
     }
   }
   result.reserve(rmap.size());

@@ -1,10 +1,10 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_CDG_H
 #define Pharos_CDG_H
 
-#include <rose.h>
-#include <Partitioner2/Partitioner.h>
+#include "rose.hpp"
+#include <Rose/BinaryAnalysis/Partitioner2/Partitioner.h>
 
 #include "misc.hpp"
 #include <boost/range/adaptor/transformed.hpp>

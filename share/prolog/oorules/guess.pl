@@ -160,12 +160,18 @@ tryNOTVirtualFunctionCall(Insn, Method, OOffset, VFTable, VOffset) :-
 % Try guessing that a virtual function table is correctly identified.
 % --------------------------------------------------------------------------------------------
 
+possibleVFTable(VFTable) :-
+    possibleVFTableEntry(VFTable, _Offset2, Entry),
+    possibleVFTableWrite(_Insn, Func, _ThisPtr, _Offset1, VFTable),
+    (factMethod(Func); factMethod(Entry)).
+
 guessVFTable(Out) :-
     reportFirstSeen('guessVFTable'),
     % See the commentary at possibleVFTable for how this goal constrains our guesses (and
     % ordering).
     osetof(VFTable,
            (possibleVFTable(VFTable),
+            not(factNOTVFTable(VFTable)),
             doNotGuessHelper(factVFTable(VFTable),
                              factNOTVFTable(VFTable))),
            VFTableSet),
@@ -196,7 +202,7 @@ tryNOTVFTable(VFTable) :-
 % --------------------------------------------------------------------------------------------
 guessVBTable(Out) :-
     reportFirstSeen('guessVBTable'),
-    validVBTableWrite(_Insn, Method, _Offset, VBTable),
+    validVBTableWrite(_Insn, Method, _ThisPtr, _Offset, VBTable),
     factMethod(Method),
     doNotGuessHelper(factVBTable(VBTable),
                      factNOTVBTable(VBTable)),
@@ -412,7 +418,7 @@ guessMethodC(Method) :-
     % factMethod() that is required for the validMethodMemberAccess.
     methodMemberAccess(_Insn1, Method, Offset, _Size1),
     Offset < 100,
-    validFuncOffset(_Insn2, Caller, Method, _Size2),
+    validMethodCallAtOffset(_Insn2, Caller, Method, _Size2),
     factMethod(Caller).
 
 guessMethod(Out) :-
@@ -433,10 +439,10 @@ guessMethodD(Method) :-
                      factNOTMethod(Method)),
     validMethodMemberAccess(_Insn0, Method, Offset, _Size0),
     Offset < 100,
-    validFuncOffset(_Insn1, Caller1, Method, _Size1),
-    validFuncOffset(_Insn2, Caller2, Method, _Size2),
+    validMethodCallAtOffset(_Insn1, Caller1, Method, _Size1),
+    validMethodCallAtOffset(_Insn2, Caller2, Method, _Size2),
     iso_dif(Caller1, Caller2),
-    validFuncOffset(_Insn3, Caller3, Method, _Size3),
+    validMethodCallAtOffset(_Insn3, Caller3, Method, _Size3),
     iso_dif(Caller1, Caller3).
 
 guessMethod(Out) :-
@@ -839,7 +845,7 @@ guessLateMergeClasses_G1(Class1, Class2) :-
 
     find(Method, Class2),
     checkMergeClasses(Class1, Class2),
-    logtraceln('Proposing ~Q.', factLateMergeClasses_G1(Class1, Class2)).
+    logtraceln('Proposing ~Q.', factLateMergeClasses_G1(Class1, Class2, Method)).
 
 guessLateMergeClasses(Out) :-
     reportFirstSeen('guessLateMergeClasses_G1'),
@@ -892,7 +898,7 @@ guessLateMergeClasses(Out) :-
 guessNOTMergeClasses(OuterClass, InnerClass) :-
     reportFirstSeen('guessNOTMergeClasses'),
     % We are certain that this member offset is passed to InnerConstructor.
-    validFuncOffset(_CallInsn, OuterConstructor, InnerConstructor, _Offset),
+    validMethodCallAtOffset(_CallInsn, OuterConstructor, InnerConstructor, _Offset),
     factConstructor(OuterConstructor),
     factConstructor(InnerConstructor),
     iso_dif(InnerConstructor, OuterConstructor),
@@ -943,8 +949,8 @@ guessNOTMergeClasses(Out) :-
 %% guessMergeClassesA(Class1, MethodClass) :-
 %%     factMethod(Method),
 %%     not(purecall(Method)), % Never merge purecall methods into classes.
-%%     validFuncOffset(_Insn1, Constructor1, Method, 0),
-%%     validFuncOffset(_Insn2, Constructor2, Method, 0),
+%%     validMethodCallAtOffset(_Insn1, Constructor1, Method, 0),
+%%     validMethodCallAtOffset(_Insn2, Constructor2, Method, 0),
 %%     iso_dif(Constructor1, Constructor2),
 %%     factConstructor(Constructor1),
 %%     factConstructor(Constructor2),
@@ -1138,6 +1144,86 @@ guessMergeClasses(Out) :-
     OneTuple=[(Class, Method)],
     Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
+% If there are two implementations of the constructor on the same class, they should be merged
+% into a single class.  For example Cls1(int x) and Cls1(char y).  When the class has virtual
+% methods, this case can be easily detected by observing that the same VFTable is written into
+% offset zero of the object.  Unfortunately, the inlining of base class constructors can
+% confuse this simple rule, because there is more than one VFTableWrite in the constructor (one
+% for this class and one for the inlined base class).  The solution is to block this rule from
+% applying in the cases where the VFTable is overwritten (the VFTable from the inlined base
+
+% ejs 6/23/21 This used to be a reasoning rule reasonMergeClasses_D, but we identified a
+% counter-example in YaSSL where the vftable at offset 0 was actually coming from an embedded
+% object.
+guessMergeClassesD(Class1, Class2) :-
+    % We've been back and forth several times about whether the object offset that the VFTable
+    % address is written into should bound to zero or not.  Cory currently believes that while
+    % the rule _might_ apply in cases where the offset is non-zero, the obvious case occurs
+    % when the offset is zero.  Instances of object embedding at non-zero offsets might
+    % coincidentally be unrelated classes that happen to embed something at the same offset.
+    % Instances of multiple inheritance should always be accompanied by a VFTable at offset
+    % zero that will trigger the rule.  The interesting case is when our knowledge is
+    % imperfect because the VFTableWrite at offset zero has not been proven yet.  In those
+    % cases it's unclear if a weaker restriction on ObjectOffset would be helpful.
+    ObjectOffset = 0,
+
+    % Find two different methods that both install the same VFTable at the same offset.
+    factVFTableWrite(Insn1, Method1, ObjectOffset, VFTable),
+
+    % Finally there's what we now think is an optimization and inlining problem where the only
+    % VFTable mentioned in the deleting destructor is a base class' VFTable.  This presumably
+    % occurs because the base class destructor was inlined, and the compiler detected the
+    % overwrite of the current class' VFTable with the base class' VFTable and optimized away
+    % the currrent class' VFTable write.  If this same situation occurred in the constructor,
+    % it would not affect this rule, because the VFTable write that was kept was the correct
+    % one.  Therefore this logic only applies to destructors.  This problem is demonstrated by
+    % 2010/Lite/oo bad_cast at 0x404046 and by codecvt at 0x402249.  Cory has tried several
+    % variations of this clause, and sadly many produce different results.
+    factConstructor(Method1),
+
+    % Neither VFTable write may be overwritten by any other VFTable.  Use the unproven
+    % possibleVFTableOverwrite facts here, because this is an exception to the rule, and we may
+    % not have yet proven the pre-requisites to know that the overwrites are proven.  But we
+    % should not merge classes until we're sure that this exception does NOT apply!
+    % Unfortunately, because there's no way to "disprove" the possible facts, we'll never apply
+    % this rule if the possibilty of an exception exists.  That's ok because we can always
+    % merge for other proven reasons, or guess that this is a legitimate class merge.
+    not(possibleVFTableOverwrite(Insn1, _OtherInsn2, Method1, ObjectOffset, VFTable, _OtherVFTable1)),
+
+    factVFTableWrite(Insn2, Method2, ObjectOffset, VFTable),
+    % Just to block the silliness of picking the same method as early as possible.
+    iso_dif(Method1, Method2),
+    % Method1 and Method2 cannot be purecall already (due to factVFTableWrite)
+
+    factConstructor(Method2),
+
+    not(possibleVFTableOverwrite(Insn2, _OtherInsn3, Method2, ObjectOffset, VFTable, _OtherVFTable2)),
+
+    % And the existing classes are not the same already, which is obviously wrong...
+    % ejs notes that nothing before this point depends on class membership...
+    find(Method1, Class1),
+    find(Method2, Class2),
+    iso_dif(Class1, Class2),
+
+    % Also ensure that the two methods not in a class relationship already.  Merging them would
+    % ultimately result in merging a class with it's own ancestor.
+    not((
+               reasonClassRelationship(Class1, Class2);
+               reasonClassRelationship(Class2, Class1)
+       )),
+
+    checkMergeClasses(Class1, Class2),
+
+    % Debugging
+    logtraceln('Proposing ~Q.', [factMergeClasses_D(Method1, Method2, Class1, Class2)]).
+
+guessMergeClasses(Out) :-
+    reportFirstSeen('guessMergeClassesD'),
+    minof((Class, Method),
+          guessMergeClassesD(Class, Method)),
+    !,
+    OneTuple=[(Class, Method)],
+    Out = tryBinarySearch(tryMergeClasses, tryNOTMergeClasses, OneTuple, 1).
 
 % Try guessing that a VFTable belongs to a method.
 
@@ -1375,6 +1461,27 @@ guessDeletingDestructor(Out) :-
     !,
     Out = tryOrNOTDeletingDestructor(Method).
 
+% We have run out of heuristics.  Blindly guess that anything we know is a destructor is a
+% deleting destructor.  It's probably not, but because of reasonNOTRealDestructor_H/F it makes
+% sense to guess deleting.
+guessDeletingDestructor(Out) :-
+    minof(Method,
+          (mustBeADestructor(Method),
+           doNotGuessHelper(factDeletingDestructor(Method),
+                            factNOTDeletingDestructor(Method)))),
+    !,
+    Out = tryOrNOTDeletingDestructor(Method).
+
+% If we know that it's a destructor, just guess that it's a deleting destructor.  See comment
+% above about reasonNOTRealDestructor_H/F.
+mustBeADestructor(Method) :-
+    % Standard destructor requirement
+    noCallsAfter(Method),
+    % We install a vftable
+    certainConstructorOrDestructor(Method),
+    % And we're not a constructor
+    factNOTConstructor(Method).
+
 tryOrNOTDeletingDestructor(Method) :-
     %likelyDeletingDestructor(Method, _RealDestructor),
     doNotGuessHelper(factDeletingDestructor(Method),
@@ -1460,7 +1567,7 @@ likelyDeletingDestructor(DeletingDestructor, RealDestructor) :-
     % only one has offset zero and we missed it because we're not handling imported OO methods
     % correctly.  A cheap hack to just be a little looser here and accept any calls to
     % destructors. Note we do NOT bind _RealDestructor.  See note below.
-    validFuncOffset(_RealDestructorInsn1, DeletingDestructor, _RealDestructor, _Offset1),
+    validMethodCallAtOffset(_RealDestructorInsn1, DeletingDestructor, _RealDestructor, _Offset1),
 
     % This indicates that the method met some basic criteria in C++.
     possibleDestructor(DeletingDestructor),
@@ -1489,7 +1596,7 @@ likelyDeletingDestructor(DeletingDestructor, RealDestructor) :-
     % Phew. Everything up until this point has been about the _deleting destructor_.  We
     % intentionally did _not_ bind RealDestructor.  Now that we've checked out the deleting
     % destructor, let's look for any possible real destructor.
-    validFuncOffset(_RealDestructorInsn2, DeletingDestructor, RealDestructor, _Offset2),
+    validMethodCallAtOffset(_RealDestructorInsn2, DeletingDestructor, RealDestructor, _Offset2),
 
     % And while it's premature to require the real destructor to be certain, it shouldn't be
     % disproven.

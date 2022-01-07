@@ -1,11 +1,9 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Imports_H
 #define Pharos_Imports_H
 
 #include <boost/format.hpp>
-
-#include <rose.h>
 
 namespace pharos {
 

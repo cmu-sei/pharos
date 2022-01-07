@@ -4,7 +4,6 @@
 // Date: 2015-06-22
 // Version: 2.0
 
-#include <rose.h>
 #include <stdio.h>
 #include <iostream>
 #include <fstream>

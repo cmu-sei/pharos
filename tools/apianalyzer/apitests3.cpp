@@ -1,9 +1,5 @@
 // Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
-#include <rose.h>
-
-#include <gtest/gtest.h>
-
 #include <libpharos/pdg.hpp>
 #include <libpharos/misc.hpp>
 #include <libpharos/descriptors.hpp>
@@ -17,6 +13,8 @@
 #include <libpharos/apisig.hpp>
 
 #include <boost/filesystem.hpp>
+
+#include <gtest/gtest.h>
 
 using namespace pharos;
 

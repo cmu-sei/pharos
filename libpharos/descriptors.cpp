@@ -10,7 +10,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 
-#include <rose.h>
+#include "rose.hpp"
 #include <AstTraversal.h>
 
 #include "misc.hpp"
@@ -117,6 +117,23 @@ std::shared_ptr<TagManager> DescriptorSet::create_tag_manager(ProgOptVarMap cons
     }
   }
   return global_manager;
+}
+
+RegisterVector DescriptorSet::get_usual_registers()
+{
+  RegisterDictionary const & rd = get_regdict();
+  if (arch_name == "i386" || arch_name == "amd64") {
+    SymbolicValuePtr protoval = SymbolicValue::instance();
+    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(protoval, &rd);
+    SymbolicMemoryMapStatePtr mstate = SymbolicMemoryMapState::instance();
+    SymbolicStatePtr state = SymbolicState::instance(rstate, mstate);
+    SymbolicRiscOperatorsPtr lrops = SymbolicRiscOperators::instance(*this, state);
+    DispatcherPtr dispatcher = RoseDispatcherX86::instance(lrops, get_arch_bits(), NULL);
+    return dispatcher->get_usual_registers();
+  }
+  else {
+    return get_regdict().get_largest_registers();
+  }
 }
 
 // This is called by all the DescriptorSet::DescriptorSet() constructors (including the "usual"
@@ -461,8 +478,9 @@ void DescriptorSet::create() {
       if (!insn_is_call_or_jmp(xinsn)) continue;
       // If the instruction was a jump, it also needs to be a jump to a function entry.
       if (insn_is_jmp(xinsn)) {
-        rose_addr_t taddr = insn_get_branch_target(insn);
-        if (!get_func(taddr)) continue;
+        boost::optional<rose_addr_t> taddr = insn_get_branch_target(insn);
+        if (!taddr) continue;
+        if (!get_func(*taddr)) continue;
       }
       // Create a call descriptor for the call, or the tail-call optimized jump instruction.
       map_emplace_or_replace(call_descriptors, insn->get_address(), *this, xinsn);
@@ -618,7 +636,7 @@ std::vector<const FunctionDescriptor*>
 DescriptorSet::get_funcs_containing_address(rose_addr_t addr) const {
   std::vector<const FunctionDescriptor*> funcs;
   const AddressInterval ai(addr);
-  for (const P2::Function::Ptr func : partitioner.functionsOverlapping(ai)) {
+  for (const P2::Function::Ptr & func : partitioner.functionsOverlapping(ai)) {
     const FunctionDescriptor* fd = get_func(func->address());
     if (fd) {
       funcs.push_back(fd);
@@ -637,7 +655,7 @@ std::vector<FunctionDescriptor*>
 DescriptorSet::get_rw_funcs_containing_address(rose_addr_t addr) {
   std::vector<FunctionDescriptor*> funcs;
   const AddressInterval ai(addr);
-  for (const P2::Function::Ptr func : partitioner.functionsOverlapping(ai)) {
+  for (const P2::Function::Ptr & func : partitioner.functionsOverlapping(ai)) {
     FunctionDescriptor* fd = get_rw_func(func->address());
     if (fd) {
       funcs.push_back(fd);

@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2018-2021 Carnegie Mellon University.  See LICENSE file for terms.
 #ifndef Pharos_Path_H
 #define Pharos_Path_H
 
@@ -12,8 +12,8 @@
 #include <boost/algorithm/string.hpp>
 // #include <z3++.h>
 
-#include <rose.h>
 #include <Sawyer/GraphBoost.h>
+// #include "rose.hpp"
 // #include <BinaryZ3Solver.h>
 
 #include "znode.hpp"

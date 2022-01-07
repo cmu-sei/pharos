@@ -1,6 +1,5 @@
 // Copyright 2018-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
-#include <rose.h>
 #include <boost/range/adaptor/map.hpp>
 #include <libpharos/options.hpp>
 #include <libpharos/funcs.hpp>

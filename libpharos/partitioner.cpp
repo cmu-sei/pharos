@@ -1,4 +1,4 @@
-// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <stdarg.h>
 #include <stdexcept>
@@ -7,8 +7,6 @@
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
-
-#include <rose.h>
 
 #include "partitioner.hpp"
 #include "masm.hpp"
@@ -35,14 +33,14 @@ report_partitioner_statistics(const P2::Partitioner& partitioner)
   size_t num_insns = 0;
   size_t num_bytes = 0;
 
-  for (const P2::BasicBlock::Ptr bb : partitioner.basicBlocks()) {
+  for (const P2::BasicBlock::Ptr & bb : partitioner.basicBlocks()) {
     for (const SgAsmInstruction *insn : bb->instructions()) {
       num_insns++;
       num_bytes += insn->get_size();
     }
   }
 
-  for (const P2::DataBlock::Ptr db : partitioner.dataBlocksOverlapping(partitioner.aum().hull())) {
+  for (const P2::DataBlock::Ptr & db : partitioner.dataBlocksOverlapping(partitioner.aum().hull())) {
     num_bytes += db->size();
   }
 
@@ -194,6 +192,9 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
   } catch (SgAsmExecutableFileFormat::FormatError &e) {
     GFATAL << "Error while loading specimen: " << e.what () << LEND;
     std::exit (EXIT_FAILURE);
+  } catch (std::exception const & e) {
+    GFATAL << "Error while loading specimen: " << e.what () << LEND;
+    std::exit (EXIT_FAILURE);
   }
 
   // Get the interpretation.
@@ -318,7 +319,7 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
           }
         }
         if (disable_semantics != semantics_were_disabled) {
-          char const * onoff = disable_semantics ? "disabled" : "enabled";
+          char const * onoff = semantics_were_disabled ? "disabled" : "enabled";
           GWARN << "Serialized data was generated with semantics " << onoff
                 << ", which is which is contrary to how this program was run." << LEND;
         }
@@ -1085,7 +1086,7 @@ CERTEngine::runPartitioner(P2::Partitioner &partitioner) {
     rose_addr_t pre_addr = addr - 1;
 
     const AddressInterval ai(pre_addr);
-    for (const P2::Function::Ptr func : partitioner.functionsOverlapping(ai)) {
+    for (const P2::Function::Ptr & func : partitioner.functionsOverlapping(ai)) {
       // Attach the data block to the function.
       partitioner.attachDataBlockToFunction(
         P2::DataBlock::instanceBytes(addr, db->size()), func);

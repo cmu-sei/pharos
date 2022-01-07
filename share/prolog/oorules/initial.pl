@@ -27,7 +27,7 @@ possibleDestructor(M) :-
 :- table possibleVBTableEntry/3 as opaque.
 
 possibleVFTableEntry(VFTable, 0, Entry) :-
-    possibleVFTableWrite(_Insn, _Method, _ObjectOffset, VFTable),
+    possibleVFTableWrite(_Insn, _Func, _ThisPtr, _ObjectOffset, VFTable),
     initialMemory(VFTable, Entry).
 
 possibleVFTableEntry(VFTable, 0, Entry) :-
@@ -39,14 +39,14 @@ possibleVFTableEntry(VFTable, NewOffset, Entry) :-
     possibleVFTableEntry(VFTable, Offset, _),
     NewOffset is Offset + 4,
     Address is VFTable + NewOffset,
-    not(possibleVFTableWrite(_Insn, _Method, _Offset, Address)),
+    not(possibleVFTableWrite(_Insn, _Func, _ThisPtr, _Offset, Address)),
     initialMemory(Address, Entry),
     % Now that initialMemory facts also include virtual base table entries, we need some
     % additional validation to prevent adding base table entries as methods.
     Entry > 0x1000.
 
 possibleVBTableEntry(VBTable, Offset, Value) :-
-    possibleVBTableWrite(_Insn, _Method, _ObjectOffset, VBTable),
+    possibleVBTableWrite(_Insn, _Func, _ThisPtr, _ObjectOffset, VBTable),
     % This is messed up!  Hardcoding zero in the rule does not work, but this does?
     Offset is 0,
     initialMemory(VBTable, Value).
@@ -55,7 +55,7 @@ possibleVBTableEntry(VBTable, NewOffset, Value) :-
     possibleVBTableEntry(VBTable, Offset, _),
     NewOffset is Offset + 4,
     Address is VBTable + NewOffset,
-    not(possibleVBTableWrite(_Insn, _Method, _Offset, Address)),
+    not(possibleVBTableWrite(_Insn, _Func, _ThisPtr, _Offset, Address)),
     initialMemory(Address, Value).
 
 % --------------------------------------------------------------------------------------------
@@ -71,33 +71,6 @@ possibleMethod(Address) :-
     returnsSelf(Address);
     purecall(Address);
     callTarget(_Insn, Address, _Target2).
-
-
-% --------------------------------------------------------------------------------------------
-:- table possibleVFTable/1 as opaque.
-
-% VFTable writes are sometimes currently missed for a variety of strange reasons.  See 0x40247e
-% in 2010/Lite/oo for an example involving a 'vbase destructor' for basic_ostream.  We're going
-% to use two definitions of possibleVFTable so that an entry and _either_ a vftable write or an
-% RTTI data structure is sufficient to be "possible".  We'll still fail to associate the
-% VFTable with a class unless we've correctly identified the write, but one problem at a time.
-
-% These are more confidently vftables than the rule below because having the RTTI Complete
-% Object Locator data structures at the correct address is a pretty amazing coincidence.  By
-% ordering this rule first do we implicitly control which order the guess are made in as well?
-% PAPER: rTTI-PossibleVFTable
-possibleVFTable(VFTable) :-
-    possibleVFTableEntry(VFTable, _Offset2, _Entry),
-    rTTICompleteObjectLocator(Pointer, _RTTIAddress, _TypeDesc, _ClassDesc, _O1, _O2),
-    VFTable is Pointer + 4.
-
-% PAPER: Write-PossibleVFTable
-possibleVFTable(VFTable) :-
-    possibleVFTableEntry(VFTable, _Offset2, _Entry),
-    possibleVFTableWrite(_Insn, _Method, _Offset1, VFTable).
-
-possibleVFTableSet(Set) :-
-    setof(VFTable, possibleVFTable(VFTable), Set).
 
 % --------------------------------------------------------------------------------------------
 % The rules in this section are still very experimental and are only used in a limited way in
@@ -122,17 +95,18 @@ validVBTableEntry(VBTable, Entry, Offset) :-
     PreviousEntry is Entry - 4,
     validVBTableEntry(VBTable, PreviousEntry, _PreviousOffset),
     % The constructor that the table was installed into will be the derived constructor.
-    possibleVBTableWrite(_Insn1, DerivedConstructor, _BaseOffset, VBTable),
+    possibleVBTableWrite(_Insn1, DerivedConstructor, _ThisPtr, _BaseOffset, VBTable),
     possibleConstructor(DerivedConstructor),
     % And the method invoked at the computed offset will be the base constructor.
     %ObjectOffset is BaseOffset + Offset,
     %logtraceln('Object Offset for ~Q entry ~Q is ~Q', [VBTable, Entry, ObjectOffset]),
 
-    % Intentionally NOT a validFuncOffset because we're speculating fairly widely here.  A
-    % validFuncOffset might be more correct, but that would require that we already know that
-    % BaseConstructor is a validMethod, and we'd like to conclude that from guessing about the
-    % VBTable that is in turn dependent on this fact.  Some more though is needed here...
-    %funcOffset(_Insn2, DerivedConstructor, BaseConstructor, ObjectOffset),
+    % Intentionally NOT a validMethodCallAtOffset because we're speculating fairly widely here.
+    % A validMethodCallAtOffset might be more correct, but that would require that we already
+    % know that BaseConstructor is a validMethod, and we'd like to conclude that from guessing
+    % about the VBTable that is in turn dependent on this fact.  Some more though is needed
+    % here...
+    %methodCallAtOffset(_Insn2, DerivedConstructor, BaseConstructor, ObjectOffset),
     %possibleConstructor(BaseConstructor),
     true.
 
@@ -140,7 +114,7 @@ validVBTableEntry(VBTable, 0, Offset) :-
     % There's a possible entry...
     possibleVBTableEntry(VBTable, 0, Offset),
     % Find out where the table is installed into the object (BaseOffset).
-    possibleVBTableWrite(_Insn1, Constructor, BaseOffset, VBTable),
+    possibleVBTableWrite(_Insn1, Constructor, _ThisPtr, BaseOffset, VBTable),
     % If BaseOffset is non zero...
     iso_dif(BaseOffset, 0),
     % Then the constructor should be a possible consuctor...
@@ -150,37 +124,68 @@ validVBTableEntry(VBTable, 0, Offset) :-
     % offsets correctly in the case where complex virtual base tables exist.  Fortunately, I
     % think that the default presumption (that the BaseOffset is zero) is the most common case.
     FunctionOffset is Offset + BaseOffset,
-    possibleVFTableWrite(_Insn2, Constructor, FunctionOffset, _VFTable).
+    possibleVFTableWrite(_Insn2, Constructor, _ThisPtr2, FunctionOffset, _VFTable).
 
 % If the first entry in the virtual base table is zero, that means that we have no virtual
 % function table, and so there's less to validate.
 validVBTableEntry(VBTable, 0, 0) :-
     possibleVBTableEntry(VBTable, 0, Offset),
-    possibleVBTableWrite(_Insn1, Constructor, Offset, VBTable),
+    possibleVBTableWrite(_Insn1, Constructor, _ThisPtr, Offset, VBTable),
     possibleConstructor(Constructor).
 
-:- table validVBTableWrite/4 as opaque.
+:- table validVBTableWrite/5 as opaque.
 
 % Our only rule right now is that the virtual base table must have at least two valid entries.
-validVBTableWrite(Insn, Method, Offset, VBTable) :-
-    possibleVBTableWrite(Insn, Method, Offset, VBTable),
+validVBTableWrite(Insn, Func, ThisPtr, Offset, VBTable) :-
+    possibleVBTableWrite(Insn, Func, ThisPtr, Offset, VBTable),
+    Offset >= 0,
     validVBTableEntry(VBTable, Entry1, _Value1),
     validVBTableEntry(VBTable, Entry2, _Value2),
     iso_dif(Entry1, Entry2),
     % Debugging
-    %logtrace('~Q.', validVBTableWrite(Insn, Method, Offset, VBTable)),
+    %logtrace('~Q.', validVBTableWrite(Insn, Func, ThisPtr, Offset, VBTable)),
     true.
 
 % --------------------------------------------------------------------------------------------
 % Perhaps these should be filtered before exporting to Prolog...  Or maybe it's better to leave
 % the filtering in Prolog because we could propogate "non-objectness" more effectively.  For
 % right now the primary goal is to prevent the bad records from being used in reasoning.
-:- table validFuncOffset/4 as incremental.
+:- table validMethodCallAtOffset/4 as incremental.
 
-validFuncOffset(Insn, Function, Method, Offset) :-
-    funcOffset(Insn, Function, Method, Offset),
-    factMethod(Method),
+validMethodCallAtOffset(Insn, Caller, Callee, Offset) :-
+    methodCallAtOffset(Insn, Caller, Callee, Offset),
+    factMethod(Callee),
     Offset < 0x100000.
+
+% Replaces the old-style fact named funcOffset.
+:- table methodCallAtOffset/4 as opaque.
+
+methodCallAtOffset(Insn, Caller, Callee, Offset) :-
+    funcParameter(Caller, 'ecx', CallerThisPtr),
+    callParameter(Insn, Caller, 'ecx', CalleeThisPtr),
+    thisPtrOffset(CallerThisPtr, Offset, CalleeThisPtr),
+    callTarget(Insn, Caller, Thunk),
+    dethunk(Thunk, Callee),
+    %loginfoln('~Q.', methodCallAtOffset(Insn, Caller, Callee, Offset)),
+    true.
+
+methodCallAtOffset(Insn, Caller, Callee, 0) :-
+    funcParameter(Caller, 'ecx', ThisPtr),
+    callParameter(Insn, Caller, 'ecx', ThisPtr),
+    callTarget(Insn, Caller, Thunk),
+    dethunk(Thunk, Callee),
+    %loginfoln('~Q.', methodCallAtOffset(Insn, Caller, Callee, 0)),
+    true.
+
+% Replaces an old-style fact of the same name.
+:- table thisPtrUsage/4 as opaque.
+
+thisPtrUsage(Insn, Function, ThisPtr, Method) :-
+    callParameter(Insn, Function, 'ecx', ThisPtr),
+    callTarget(Insn, Function, Thunk),
+    dethunk(Thunk, Method),
+    %loginfoln('~Q.', thisPtrUsage(Insn, Function, ThisPtr, Method)),
+    true.
 
 % Here's an example of how we can use the "invalid" offsets to our advantage.  Defining an
 % invalid access as an offset greater than 100,000 allows us to subsequently observe that
@@ -248,14 +253,14 @@ trivial(Address):-
     not(thisPtrAllocation(_, Address, _, _, _)),
 
     % Implied by no callTargets?
-    not(funcOffset(_, Address, _, _)),
+    not(methodCallAtOffset(_, Address, _, _)),
     not(insnCallsDelete(_, Address, _)),
     % Implied by no methodMemberAccess?
     not(uninitializedReads(Address)),
     not(returnsSelf(Address)),
     not(thisPtrUsage(_, Address, _, _)),
-    not(possibleVFTableWrite(_, Address, _, _)),
-    not(possibleVBTableWrite(_, Address, _, _)),
+    not(possibleVFTableWrite(_, Address, _, _, _)),
+    not(possibleVBTableWrite(_, Address, _, _, _)),
     logtraceln('Reasoning ~Q.', factTrivial(Address)).
 
 % For the second part of our approach, we're going to look for trivial functions that _might_
@@ -358,9 +363,9 @@ possibleConstructorForThisPtr(Method, ThisPtr) :-
 :- table possibleVFTableOverwrite/6 as opaque.
 % Two possible VFTables are written to the same offset of the same object in the same method.
 % VFTable1 which was written by Insn1 is overwritten by VFTable2 in Insn2.
-possibleVFTableOverwrite(Insn1, Insn2, Method, ObjectOffset, VFTable1, VFTable2) :-
-    possibleVFTableWrite(Insn1, Method, ObjectOffset, VFTable1),
-    possibleVFTableWrite(Insn2, Method, ObjectOffset, VFTable2),
+possibleVFTableOverwrite(Insn1, Insn2, Func, ObjectOffset, VFTable1, VFTable2) :-
+    possibleVFTableWrite(Insn1, Func, ThisPtr, ObjectOffset, VFTable1),
+    possibleVFTableWrite(Insn2, Func, ThisPtr, ObjectOffset, VFTable2),
     % This rule should really use can_preceed(Insn1, Insn2) but the VFTable write instruction
     % addresses are not currently included in the preceeds facts.  In the meantime we're going
     % to totally hack this up and use a simple comparison.
@@ -377,7 +382,7 @@ likelyVirtualFunctionCall(Insn, Constructor, ObjectOffset, VFTable, VFTableOffse
     % Do we think we know which constructor constructed the this-pointer?
     possibleConstructorForThisPtr(Constructor, ThisPtr),
     % Did that constructor write a vftable into the appropriate object offset?
-    possibleVFTableWrite(_WriteInsn, Constructor, ObjectOffset, VFTable).
+    possibleVFTableWrite(_WriteInsn, Constructor, _ThisPtr2, ObjectOffset, VFTable).
 
 % Insn is likely to be a real virtual function call.  This version of the rule is tailored to
 % handle multiple inheritance situations where the object pointer (ThisPtr) is not actually the
@@ -394,7 +399,7 @@ likelyVirtualFunctionCall(Insn, Constructor, 0, VFTable, VFTableOffset) :-
     % Do we think we know which constructor constructed the real derived object pointer?
     possibleConstructorForThisPtr(Constructor, RealDerivedPtr),
     % Did that constructor write a vftable into the appropriate object offset?
-    possibleVFTableWrite(_WriteInsn, Constructor, ObjectOffset, VFTable).
+    possibleVFTableWrite(_WriteInsn, Constructor, _ThisPtr2, ObjectOffset, VFTable).
 
 % --------------------------------------------------------------------------------------------
 

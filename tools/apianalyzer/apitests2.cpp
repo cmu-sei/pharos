@@ -1,6 +1,5 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
-#include <rose.h>
 #include <stdio.h>
 #include <iostream>
 #include <boost/graph/adjacency_list.hpp>

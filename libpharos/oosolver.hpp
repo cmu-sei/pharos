@@ -1,10 +1,9 @@
-// Copyright 2016-2020 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2021 Carnegie Mellon University.  See LICENSE file for terms.
 // Author: Cory Cohen
 
 #ifndef Pharos_OOSolver_H
 #define Pharos_OOSolver_H
 
-#include <rose.h>
 #include <Sawyer/ProgressBar.h>
 
 #include "prolog.hpp"

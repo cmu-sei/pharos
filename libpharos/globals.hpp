@@ -1,10 +1,9 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Globals_H
 #define Pharos_Globals_H
 
 #include <boost/format.hpp>
-#include <rose.h>
 #include "state.hpp"
 #include "semantics.hpp"
 #include "delta.hpp"

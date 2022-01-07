@@ -1,4 +1,4 @@
-// Copyright 2016-2020 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Michael Duggan
 
@@ -203,7 +203,11 @@ class Session : public std::enable_shared_from_this<Session>
   template <typename A, typename... T>
   std::enable_if_t<!is_a_fact<std::remove_reference_t<A>>::value, bool>
   add_fact(A && a, T &&... args) {
-    return command("assert", make_term(std::forward<A>(a), std::forward<T>(args)...));
+    auto cmd = functor(
+      "call", functor(":", prolog_default_module,
+                      functor("assert_uniquely",
+                              make_term(std::forward<A>(a), std::forward<T>(args)...))));
+    return command(cmd);
   }
 
   void consult(std::string const & filename) {

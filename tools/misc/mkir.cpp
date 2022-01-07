@@ -1,4 +1,4 @@
-// Copyright 2018-2019, 2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2018-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <map>
 #include <vector>
@@ -9,8 +9,8 @@
 #include <boost/graph/topological_sort.hpp>
 #include <boost/filesystem.hpp>
 
-#include <rose.h>
-#include <Partitioner2/Engine.h>
+#include <libpharos/rose.hpp>
+#include <Rose/BinaryAnalysis/Partitioner2/Partitioner.h>
 
 // For the main pharos infastructure that tracks functions.
 #include <libpharos/descriptors.hpp>
@@ -47,6 +47,12 @@ static int mkir_main(int argc, char **argv)
   DescriptorSet ds(vm);
 
   const FunctionDescriptorMap& fdmap = ds.get_func_map();
+
+  std::string arch_name = ds.get_arch_name();
+  //if (arch_name != "i386" && arch_name != "amd64") {
+  //  GFATAL << "This tool requires 'i386' or 'amd64' architecture." << LEND;
+  //  return(1);
+  //}
 
   std::map<rose_addr_t, FunctionDescriptor const *> selected_fdmap;
   auto selected_funcs = get_selected_funcs (ds, vm);

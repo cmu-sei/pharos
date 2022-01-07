@@ -228,7 +228,10 @@ int apilookup_main(int argc, char **argv) {
       }
       if (dll.empty()) {
         defs = apidb->get_api_definition(sym);
-      } else if (std::all_of(sym.begin(), sym.end(), [](char c) { return std::isdigit(c); })) {
+      } else if (!sym.empty() &&
+                 std::all_of(sym.begin(), sym.end(),
+                             [](char c) { return std::isdigit(c); }))
+      {
         size_t ordinal = std::stoull(sym);
         defs = apidb->get_api_definition(dll, ordinal);
       } else {

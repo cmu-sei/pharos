@@ -21,8 +21,9 @@ ooanalyzer --rose-version
 =head1 DESCRIPTION
 
 B<OOAnalyzer> recovers object oriented constructs from the executable
-file being analyzed.  OOAnalyzer can recover the following kinds of
-information:
+file being analyzed.  OOAnalyzer is currently limited to 32-bit x86
+executables compiled by Microsoft Visual C++.  OOAnalyzer can recover the
+following kinds of information:
 
 =over 4
 
@@ -172,8 +173,8 @@ constructs produced by other compilers, it has not been tested
 extensively with other compilers.
 
 OOAnalyzer has been tested primarily with 32-bit Windows executables.
-64-bit executables, and executables for other operating systems may
-work as well, but have not been tested extensively.
+64-bit Windows executables may work somewhat, but have not been tested
+extensively.
 
 OOAnalyzer is not designed to be re-run using an existing set of fact
 files as an input.  This can be achieved by using the L<ooprolog(1)>

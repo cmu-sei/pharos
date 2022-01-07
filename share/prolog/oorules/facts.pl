@@ -56,12 +56,14 @@ initialFact(uninitializedReads/1).
 %
 initialFact(insnCallsDelete/3).
 
-% funcOffset(Insn, Caller, Callee, Offset).
+% insnCallsNew(Insn, Func, ThisPtr).
 %
-% Instruction Insn in method Caller calls Callee passing Offset of the current object in Caller
-% as the this-pointer to Callee.
+% Instruction Insn in Function Func calls the new method.  The ThisPtr argument is the hash
+% of the this-pointer that was returned by the new method.  Note that the determination of
+% which functions are new() is not 100% correct and has small numbers of both false
+% negatives and false positives, although it's generally better that delete detection.
 %
-initialFact(funcOffset/4).
+initialFact(insnCallsNew/3).
 
 % purecall(Address).
 %
@@ -120,14 +122,6 @@ initialFact(rTTIBaseClassDescriptor/8).
 % delete() detection, but is in general much more accurate.
 initialFact(thisPtrAllocation/5).
 
-% thisPtrUsage(Insn, Function, ThisPtr, Method).
-%
-% Instruction Insn in Function calls Method on the object represented by ThisPtr.  The ThisPtr
-% field can be tested for equivalence to other this pointers, but is otherwise opaque (it's a
-% hash of the TreeNode values representing the object pointer).
-%
-initialFact(thisPtrUsage/4).
-
 % methodMemberAccess(Insn, Method, Offset, Size).
 %
 % Instruction Insn in Method accesses the current Size bytes of memory at Offset in the current
@@ -144,19 +138,19 @@ initialFact(methodMemberAccess/4).
 %
 initialFact(possibleVirtualFunctionCall/5).
 
-% possibleVFTableWrite(Insn, Method, Offset, VFTable).
+% possibleVFTableWrite(Insn, Function, ThisPtr, Offset, VFTable).
 %
-% Instruction Insn in Method writes a possible virtual function table pointer (VFTable) at
-% Offset into the current object for the Method.
+% Instruction Insn in Function writes a possible virtual function table pointer (VFTable) at
+% Offset into the object represented by ThisPtr for the Method.
 %
-initialFact(possibleVFTableWrite/4).
+initialFact(possibleVFTableWrite/5).
 
-% possibleVBTableWrite(Insn, Method, Offset, VBTable).
+% possibleVBTableWrite(Insn, Function, ThisPtr, Offset, VBTable).
 %
-% Instruction Insn in Method writes a possible virtual base table pointer (VBTable) at Offset
-% into the current object for the Method.
+% Instruction Insn in Function writes a possible virtual base table pointer (VBTable) at Offset
+% into the object represent by ThisPtr for the Method.
 %
-initialFact(possibleVBTableWrite/4).
+initialFact(possibleVBTableWrite/5).
 
 % initialMemory(Address, Value).
 %

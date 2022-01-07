@@ -433,10 +433,10 @@ void OOAnalyzer::handle_heap_allocs(const rose_addr_t saddr) {
   const ParameterDefinition* pd = cd->get_parameters().get_stack_parameter(0);
   if (pd != NULL) {
     // And the parameter should usually be a constant value.
-    if (pd->get_value() != NULL && pd->get_value()->is_number()
+    if (pd->get_value() != NULL && pd->get_value()->isConcrete()
         && pd->get_value()->get_width() <= 64)
     {
-      unsigned int size = pd->get_value()->get_number();
+      unsigned int size = *pd->get_value()->toUnsigned();
       if (size > 0 and size < 0xFFFFFFF) {
         tpu.alloc_size = size;
         GDEBUG << "The size parameter to new() at " << cd->address_string()
@@ -571,7 +571,7 @@ void OOAnalyzer::find_vtable_installations(FunctionDescriptor const & fd) {
 
       // We're only interested in writes that write a constant value to the target.
       // This is a reasonably safe presumption for compiler generated code.
-      if (!aa.value->is_number() || aa.value->get_width() > 64) continue;
+      if (!aa.value->isConcrete() || aa.value->get_width() > 64) continue;
 
       // I was doubtful about the requirement that the write must be to memory, but after
       // further consideration, I'm fairly certain that even if we moved the constant value
@@ -581,14 +581,14 @@ void OOAnalyzer::find_vtable_installations(FunctionDescriptor const & fd) {
 
       // We're only interested in constant addresses that are in the memory image.  In some
       // unusual corner cases this might fail, but it should work for compiler generated code.
-      rose_addr_t taddr = aa.value->get_number();
+      rose_addr_t taddr = *aa.value->toUnsigned();
       if (!ds.memory.is_mapped(taddr)) continue;
 
       // We're not interested in writes to fixed memory addresses.  This used to exclude stack
       // addresses, but now it's purpose is a little unclear.  It might prevent vtable updates
       // to global objects while providing no benefit, or it might correctly eliminate many
       // write to fixed memory addresses correctly.  Cory doesn't really know.
-      if (aa.memory_address->is_number()) continue;
+      if (aa.memory_address->isConcrete()) continue;
 
       // This is the instruction we're talking about.
       SgAsmInstruction* insn = fd.ds.get_insn(access.first);

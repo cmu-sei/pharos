@@ -41,10 +41,12 @@ finalDemangledName(0x41d428, '??1exception@std@@UAE@XZ', 'std::exception', '~exc
 finalDemangledName(0x41d42c, '?what@exception@std@@UBEPBDXZ', 'std::exception', what).
 finalDemangledName(0x41d430, '??0exception@std@@QAE@ABQBD@Z', 'std::exception', exception).
 finalDemangledName(0x41d434, '??0exception@std@@QAE@ABV01@@Z', 'std::exception', exception).
-finalEmbeddedObject(0x411f00, 0x1c, 0x412220, likely).
 finalFileInfo('0040A51E006891D4525CC7E566153938', 'ooex7.exe').
 finalInheritance(0x411b70, 0x411f00, 0, 0, false).
+finalInheritance(0x411f00, 0x412220, 0x1c, 0, false).
+finalInheritance(0x411f00, 0x41d374, 0, 0, false).
 finalInheritance(0x413530, 0x4137b0, 0, 0, false).
+finalInheritance(0x419940, 0x41d428, 0, 0x419940, false).
 finalMember(0x411800, 0, [0x4], certain).
 finalMember(0x411800, 0x4, [0x4], certain).
 finalMember(0x411a30, 0, [0x4], certain).

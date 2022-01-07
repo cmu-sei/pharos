@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Funcs_H
 #define Pharos_Funcs_H
@@ -8,9 +8,9 @@
 #include <boost/iterator/filter_iterator.hpp> // for filter_iterator
 #include <boost/range/adaptor/transformed.hpp> // for boost::adaptors::transformed
 
-#include <rose.h>
-#include <BinaryControlFlow.h>
-#include <Partitioner2/Partitioner.h>
+#include "rose.hpp"
+#include <Rose/BinaryAnalysis/ControlFlow.h>
+#include <Rose/BinaryAnalysis/Partitioner2/Partitioner.h>
 
 #include <atomic>
 
@@ -63,6 +63,7 @@ namespace pharos {
 using CFG = Rose::BinaryAnalysis::ControlFlow::Graph;
 using BlockSet = std::set<SgAsmBlock*>; // Deprecated with get_return_blocks()
 using X86InsnVector = std::vector<SgAsmX86Instruction*>;
+using InsnVector = std::vector<SgAsmInstruction*>;
 using AddrSet = std::set<rose_addr_t>;
 
 // A set of ROSE addresses used in analyzing calls and functions.
@@ -499,7 +500,7 @@ class FunctionDescriptor : private Immobile {
   BlockSet get_return_blocks() const; // Deprecated in favor of get_return_vertices()
 
   SgAsmInstruction* get_insn(const rose_addr_t) const;
-  X86InsnVector get_insns_addr_order() const;
+  InsnVector get_insns_addr_order() const;
 
   // Called once we've found all of the functions.
   void update_connections(FunctionDescriptorMap& fdmap);

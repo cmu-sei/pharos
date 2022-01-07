@@ -1,10 +1,15 @@
-// Copyright 2015-2017, 2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_APISIG_H_
 #define Pharos_APISIG_H_
 
 #include <iostream>
 #include <fstream>
+
+// Define to an annoying warning in later versions of Boost that results from including the
+// property_tree stuff.
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS 1
+
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_map/property_map.hpp>

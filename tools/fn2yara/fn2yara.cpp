@@ -2,8 +2,6 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include <rose.h>
-
 #include <libpharos/descriptors.hpp>
 #include <libpharos/misc.hpp>
 #include <libpharos/util.hpp>
@@ -152,7 +150,7 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
    public:
     Block(bool _bblock_split = false) : bblock_split(_bblock_split) {}
 
-    bool add(const SgAsmX86Instruction *insn) {
+    bool add(const SgAsmInstruction *insn) {
       rose_addr_t a = insn->get_address();
       size_t      s = insn->get_size();
       if (addresses.empty()) {
@@ -419,7 +417,7 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
     }
     addrs_processed.insert(fd->get_address());
 
-    X86InsnVector insns = fd->get_insns_addr_order();
+    InsnVector insns = fd->get_insns_addr_order();
     GDEBUG << "(Function " << fd->address_string() << ")" << LEND;
     ++func_count;
 
@@ -429,7 +427,7 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
     assert(!insns.empty());
     blocks.push_back(Block(!coalesce_blocks));
     Block *b = &blocks.back();
-    for (const SgAsmX86Instruction *insn : insns) {
+    for (const SgAsmInstruction *insn : insns) {
       if (!b->add(insn)) {
         blocks.push_back(Block(!coalesce_blocks));
         b = &blocks.back();
@@ -446,7 +444,7 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
     size_t instr_count = 0;
     size_t byte_count = 0;
     std::vector<Block>::const_iterator cblock = blocks.begin();
-    for (SgAsmX86Instruction *insn : insns) {
+    for (SgAsmInstruction *insn : insns) {
       rose_addr_t addr = insn->get_address();
 
       // Iterate to next block, if necessary

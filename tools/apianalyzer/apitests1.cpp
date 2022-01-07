@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <stdio.h>
 #include <iostream>
@@ -11,11 +11,6 @@
 #include <boost/graph/connected_components.hpp>
 #include <boost/foreach.hpp>
 
-// Must be before "stat.h", which is included by "gtest.h"
-#include <rose.h>
-
-#include <gtest/gtest.h>
-
 #include <libpharos/pdg.hpp>
 #include <libpharos/misc.hpp>
 #include <libpharos/descriptors.hpp>
@@ -27,6 +22,8 @@
 
 #include <libpharos/apigraph.hpp>
 #include <libpharos/apisig.hpp>
+
+#include <gtest/gtest.h>
 
 using namespace pharos;
 

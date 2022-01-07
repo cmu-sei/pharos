@@ -1,11 +1,10 @@
-// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2021 Carnegie Mellon University.  See LICENSE file for terms.
 // Author: Jeff Gennari
 
 #ifndef Pharos_Type_Descriptor_H
 #define Pharos_Type_Descriptor_H
 
 #include <vector>
-#include <rose.h>
 
 #include "misc.hpp" // Needed mainly for the typedefs to avoid crazy long names
 #include "util.hpp"

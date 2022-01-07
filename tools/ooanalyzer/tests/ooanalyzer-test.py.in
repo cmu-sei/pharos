@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
@@ -35,9 +35,9 @@ def create_test_output_dir(args):
 
 def report_error(args, context, msg):
     if args.interactive:
-        print "%s" % msg
+        print("%s" % msg)
     else:
-        print >>sys.stderr, "FAILED: %s %s %s" % (args.testcase[0], context, msg)
+        print("FAILED: %s %s %s" % (args.testcase[0], context, msg), file=sys.stderr)
 
 def update_rules(args):
     #os.chdir(args.build_dir)
@@ -84,7 +84,7 @@ def run_ooanalyzer_test(args):
 
     cmd = ' '.join(cmd)
     if args.commands:
-        print cmd
+        print(cmd)
 
     if not args.review:
         rc = subprocess.call(cmd, shell=True)
@@ -98,7 +98,7 @@ def run_ooanalyzer_test(args):
     dir = os.path.dirname(os.path.realpath(__file__))
     cmd = "%s/ooanalyzer-symbolizer.py %s %s -o %s" % (dir, symbols_path, output_path, named_path)
     if args.commands:
-        print cmd
+        print(cmd)
 
     rc = subprocess.call(cmd, shell=True)
     if rc != 0:
@@ -118,7 +118,7 @@ def run_ooanalyzer_test(args):
 def sort_file(args, filename):
     cmd = "sort %s >%s.new && mv %s.new %s" % (filename, filename, filename, filename)
     if args.commands:
-        print cmd
+        print(cmd)
 
     if not args.review:
         rc = subprocess.call(cmd, shell=True)
@@ -153,13 +153,13 @@ def run_prolog_test(args):
     prolog_spew_path = test_output_path(args) + ".swioutput"
 
     redirection = ">%s 2>&1" % (prolog_spew_path,)
-    prolog_cmd = ("%s %s --log-level 5 --facts %s --results %s --json %s %s" %
+    prolog_cmd = ("%s %s --log-level 7 --facts %s --results %s --json %s %s" %
                   (exe_path, script_path,
                    ground_facts_path, gen_results_path, prolog_json_path,
                    redirection))
 
     if args.commands:
-        print prolog_cmd
+        print(prolog_cmd)
 
     failed = 0
     if not args.review:
@@ -183,10 +183,10 @@ def compare_json_answers(args, gen_json_path, pretty_json_path):
     testname = args.testcase[0]
 
     ground_json_path = test_ground_path(args) + ".json"
-    gen_json_lines = open(gen_json_path, 'U').readlines()
+    gen_json_lines = open(gen_json_path, 'r').readlines()
     gen_json = json.loads('\n'.join(gen_json_lines))
     gen_pp_json = json.dumps(gen_json, sort_keys=True, indent=4, separators=(',', ': '))
-    ground_json_lines = open(ground_json_path, 'U').readlines()
+    ground_json_lines = open(ground_json_path, 'r').readlines()
     ground_json = json.loads('\n'.join(ground_json_lines))
     ground_pp_json = json.dumps(ground_json, sort_keys=True, indent=4, separators=(',', ': '))
 
@@ -197,10 +197,10 @@ def compare_json_answers(args, gen_json_path, pretty_json_path):
 
     if args.commands:
         cmd = "diff %s %s" % (ground_json_path, pretty_json_path)
-        print cmd
+        print(cmd)
 
     if gen_pp_json != ground_pp_json:
-        print "JSON files differ!"
+        print("JSON files differ!")
         return 1
 
     return 0
@@ -209,12 +209,12 @@ def compare_prolog_answers(args, gen_fact_path, gen_results_path):
     testname = args.testcase[0]
 
     ground_fact_path = test_ground_path(args) + ".facts"
-    ordered_gen_fact_lines = open(gen_fact_path, 'U').readlines()
-    ground_fact_lines = set(open(ground_fact_path, 'U').readlines())
+    ordered_gen_fact_lines = open(gen_fact_path, 'r').readlines()
+    ground_fact_lines = set(open(ground_fact_path, 'r').readlines())
 
     ground_results_path = test_ground_path(args) + ".results"
-    ordered_gen_results_lines = open(gen_results_path, 'U').readlines()
-    ground_results_lines = set(open(ground_results_path, 'U').readlines())
+    ordered_gen_results_lines = open(gen_results_path, 'r').readlines()
+    ground_results_lines = set(open(ground_results_path, 'r').readlines())
 
     # We used to _assume_ that there were no duplicates in the facts
     # or results, but a choice point bug in Prolog produced duplicates
@@ -240,9 +240,9 @@ def compare_prolog_answers(args, gen_fact_path, gen_results_path):
 
     if args.commands:
         cmd = "diff %s %s" % (ground_fact_path, gen_fact_path)
-        print cmd
+        print(cmd)
         cmd = "diff %s %s" % (ground_results_path, gen_results_path)
-        print cmd
+        print(cmd)
 
     extra_facts =  gen_fact_lines - ground_fact_lines
     missing_facts = ground_fact_lines - gen_fact_lines
@@ -263,7 +263,7 @@ def compare_prolog_answers(args, gen_fact_path, gen_results_path):
         new_missing_facts = new_ground_facts - new_gen_facts
         if len(new_extra_facts) == 0 and len(new_missing_facts) == 0:
             if not args.quiet:
-                print >>sys.stderr, "WARNING: %s ooanalyzer-prolog facts symbolic values changed" % (testname)
+                print("WARNING: %s ooanalyzer-prolog facts symbolic values changed" % (testname), file=sys.stderr)
             extra_facts = new_extra_facts
             missing_facts = new_missing_facts
 
@@ -272,7 +272,7 @@ def compare_prolog_answers(args, gen_fact_path, gen_results_path):
         new_missing_facts = new_ground_facts - new_gen_facts
 
         if not args.quiet:
-            print >>sys.stderr, "WARNING: %s ooanalyzer-prolog facts symbolic values discarded" % (testname)
+            print("WARNING: %s ooanalyzer-prolog facts symbolic values discarded" % (testname), file=sys.stderr)
         extra_facts = new_extra_facts
         missing_facts = new_missing_facts
 
@@ -312,9 +312,9 @@ def accept_test(args):
     ground_json_path = test_ground_path(args) + ".json"
 
     if args.commands:
-        print "cp %s %s" % (gen_facts_path, ground_facts_path)
-        print "cp %s %s" % (gen_results_path, ground_results_path)
-        print "cp %s %s" % (gen_json_path, ground_json_path)
+        print("cp %s %s" % (gen_facts_path, ground_facts_path))
+        print("cp %s %s" % (gen_results_path, ground_results_path))
+        print("cp %s %s" % (gen_json_path, ground_json_path))
 
     if not args.review:
         shutil.copyfile(gen_facts_path, ground_facts_path)
@@ -418,8 +418,8 @@ if __name__ == "__main__":
 
     ground_facts_path = test_ground_path(args) + ".facts"
     if not os.path.exists(ground_facts_path):
-        print >>sys.stderr, "FAILED: Invalid test case '%s'" % (args.testcase[0])
-        print >>sys.stderr, "  No such file or directory: '%s'" % (ground_facts_path)
+        print("FAILED: Invalid test case '%s'" % (args.testcase[0]), file=sys.stderr)
+        print("  No such file or directory: '%s'" % (ground_facts_path), file=sys.stderr)
         sys.exit(1)
 
     if args.accept:

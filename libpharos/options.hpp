@@ -6,8 +6,6 @@
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
-#include <rose.h>
-
 #include <Sawyer/Message.h>
 #include "config.hpp"
 

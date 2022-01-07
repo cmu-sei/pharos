@@ -1,9 +1,8 @@
-// Copyright 2018-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2018-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Bua_H
 #define Pharos_Bua_H
 
-#include <rose.h>
 #include "options.hpp"
 #include <atomic>
 

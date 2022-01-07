@@ -12,7 +12,6 @@
 #include <boost/range/algorithm_ext/insert.hpp>
 #include <boost/range/adaptor/map.hpp>
 
-#include <rose.h>
 #include <Sawyer/ProgressBar.h>
 
 #include "options.hpp"

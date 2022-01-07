@@ -25,8 +25,8 @@
                     "demangled_name": "",
                     "ea": "0x4010e7",
                     "import": false,
-                    "name": "meth_0x4010e7",
-                    "type": "meth"
+                    "name": "dtor_0x4010e7",
+                    "type": "dtor"
                 },
                 "0x4010f2": {
                     "demangled_name": "",
@@ -86,8 +86,8 @@
                     "demangled_name": "",
                     "ea": "0x401ff4",
                     "import": false,
-                    "name": "meth_0x401ff4",
-                    "type": "meth"
+                    "name": "dtor_0x401ff4",
+                    "type": "dtor"
                 },
                 "0x401fff": {
                     "demangled_name": "",

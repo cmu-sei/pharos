@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Jeff Gennari
 // Date: 2015-06-22
@@ -7,13 +7,15 @@
 #ifndef Pharos_APIGRAPH_H_
 #define Pharos_APIGRAPH_H_
 
-#include <rose.h>
-#include <boost/graph/depth_first_search.hpp>
+#include "rose.hpp"
+#include <Rose/BinaryAnalysis/ControlFlow.h>
+
 #include <Sawyer/Message.h>
 #include <Sawyer/ProgressBar.h>
+
+#include <boost/graph/depth_first_search.hpp>
 #include <boost/property_map/property_map.hpp>
 #include <boost/ptr_container/ptr_vector.hpp>
-#include <BinaryControlFlow.h>
 
 #include "descriptors.hpp"
 #include "apisig.hpp"
@@ -493,7 +495,7 @@ class ApiResultJsonFormatter : public ApiResultFormatter {
 
  public:
 
-  ApiResultJsonFormatter() { 
+  ApiResultJsonFormatter() {
       out_json_ = json::simple_builder()->object();
   }
 

@@ -392,6 +392,7 @@ reasonForward :-
           concludeConstructor(Out);
           concludeNOTConstructor(Out);
           concludeVFTable(Out);
+          concludeNOTVFTable(Out);
           concludeVFTableWrite(Out);
           concludeVFTableEntry(Out);
           concludeNOTVFTableEntry(Out);
@@ -406,6 +407,7 @@ reasonForward :-
           concludeEmbeddedObject(Out);
           concludeNOTEmbeddedObject(Out);
           concludeDeletingDestructor(Out);
+          concludeNOTDeletingDestructor(Out);
           concludeRealDestructor(Out);
           concludeNOTRealDestructor(Out);
           concludeClassSizeGTE(Out);

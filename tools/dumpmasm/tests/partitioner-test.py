@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import os
 
 import sys
@@ -32,9 +32,9 @@ def create_test_output_dir(args):
 
 def report_error(args, context, msg):
     if args.interactive:
-        print "%s" % msg
+        print("%s" % msg)
     else:
-        print >>sys.stderr, "FAILED: %s %s %s" % (args.testcase[0], context, msg)
+        print("FAILED: %s %s %s" % (args.testcase[0], context, msg), file=sys.stderr)
 
 def run_test(args):
     create_test_output_dir(args)
@@ -56,7 +56,7 @@ def run_test(args):
 
     cmd = ' '.join(cmd)
     if args.commands:
-        print cmd
+        print(cmd)
 
     if not args.review:
         env = os.environ.copy()
@@ -74,7 +74,7 @@ def run_test(args):
         diff_cmd = diff_cmd + " >%s" % diff_path
 
     if args.commands:
-        print diff_cmd
+        print(diff_cmd)
 
     rc = subprocess.call(diff_cmd, shell=True)
     if rc != 0:
@@ -89,7 +89,7 @@ def accept_test(args):
     ground_path = test_ground_path(args) + "part2prev"
 
     if args.commands:
-        print "cp %s %s" % (gen_path, ground_path)
+        print("cp %s %s" % (gen_path, ground_path))
 
     if not args.review:
         shutil.copyfile(gen_path, ground_path)

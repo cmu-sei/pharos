@@ -1,7 +1,5 @@
 // Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
-#include <rose.h>
-
 #include <libpharos/descriptors.hpp>
 #include <libpharos/options.hpp>
 #include <libpharos/bua.hpp>

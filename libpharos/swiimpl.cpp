@@ -1,4 +1,4 @@
-// Copyright 2020 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2020-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Michael Duggan
 
@@ -201,18 +201,25 @@ bool command(char const * cmd, std::size_t len)
 void init()
 {
   static constexpr auto integers_as_hex1 =
-    "pharos:assert((integers_as_hex(0, _) :- !, false))";
+    "pharos:assertz((integers_as_hex(0, _) :- !, false))";
   static constexpr auto integers_as_hex2 =
-    "pharos:assert((integers_as_hex(X, _) :- integer(X), (X < 0 -> (Y is X * -1, system:format('-0x~16r', [Y])); system:format('0x~16r', [X]))))";
+    "pharos:assertz((integers_as_hex(X, _) :- integer(X), (X < 0 -> (Y is X * -1, system:format('-0x~16r', [Y])); system:format('0x~16r', [X]))))";
   static constexpr auto term_to_string =
-    "pharos:assert((term_to_string(Term, String) :- with_output_to(string(String), write_term(Term, [quoted(true), spacing(next_argument), portray_goal(integers_as_hex)]))))";
+    "pharos:assertz((term_to_string(Term, String) :- with_output_to(string(String), write_term(Term, [quoted(true), spacing(next_argument), portray_goal(integers_as_hex)]))))";
   static constexpr auto register_predicate =
-    "pharos:assert((register_predicate(Module, Name, Arity, Index) :- functor(BaseHead, Name, Arity), BaseHead =.. [_|Vars], Goal =.. [registry_wrapper, Index|Vars], Rule =.. [':-', Module:BaseHead, Goal], assert(Rule), compile_predicates([Module:Name/Arity])))";
+    "pharos:assertz((register_predicate(Module, Name, Arity, Index) :- functor(BaseHead, Name, Arity), BaseHead =.. [_|Vars], Goal =.. [registry_wrapper, Index|Vars], Rule =.. [':-', Module:BaseHead, Goal], assert(Rule), compile_predicates([Module:Name/Arity])))";
+  static constexpr auto assert_uniquely1 =
+    "assertz((pharos:assert_uniquely(A) :- catch(A, _, false), !))";
+  static constexpr auto assert_uniquely2 =
+    "assertz((pharos:assert_uniquely(A) :- assertz(A)))";
   command(integers_as_hex1);
   command(integers_as_hex2);
   command(term_to_string);
   command(register_predicate);
-  command("pharos:compile_predicates([integers_as_hex/2, term_to_string/2, register_predicate/4])");
+  command(assert_uniquely1);
+  command(assert_uniquely2);
+  command("pharos:compile_predicates([integers_as_hex/2, term_to_string/2, "
+          "register_predicate/4, assert_uniquely/1])");
 }
 
 std::ostream & term_to_stream(std::ostream & stream, pl_term pt)

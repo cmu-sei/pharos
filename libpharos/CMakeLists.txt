@@ -124,6 +124,11 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/config.yaml"
   DESTINATION etc
   RENAME pharos.yaml)
 
+# Create version.hpp
+rose_version_from_string(${ROSE_VERSION} ROSE_NUMERIC_VERSION)
+rose_version_from_string(${PHAROS_ROSE_MINIMUM_VERSION} PHAROS_ROSE_MINIMUM_NUMERIC_VERSION)
+configure_file(version.hpp.in version.hpp)
+
 # Generate PHAROS_REVISION in every build
 add_custom_target(generate_pharos_revision ALL)
 add_custom_command(

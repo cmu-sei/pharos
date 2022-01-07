@@ -1,8 +1,7 @@
-// Copyright 2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2019-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/range/adaptors.hpp>
 
-#include <rose.h>
 #include <Sawyer/GraphTraversal.h>
 #include <Sawyer/GraphIteratorSet.h>
 
@@ -496,7 +495,7 @@ Graph Graph::getFunctionCfgByReachability (const FunctionDescriptor *fd) const {
     }
   }
 
-  for (const auto ei : remove_edges) {
+  for (const auto & ei : remove_edges) {
     fcfg.eraseEdge (ei);
   }
 

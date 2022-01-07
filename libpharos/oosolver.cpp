@@ -3,8 +3,6 @@
 
 #include <boost/range/adaptor/map.hpp>
 
-#include <rose.h>
-
 #include "oosolver.hpp"
 #include "ooanalyzer.hpp"
 #include "method.hpp"
@@ -290,10 +288,7 @@ OOSolver::add_method_facts(const OOAnalyzer& ooa)
       session->add_fact("noCallsAfter", tcm->get_address());
     }
 
-    for (const FuncOffset& fo : boost::adaptors::values(tcm->passed_func_offsets)) {
-      session->add_fact("funcOffset", fo.insn->get_address(),
-                        tcm->get_address(), fo.address, fo.offset);
-    }
+    // We used to report funcOffsets here, but they're no longer needed.
 
     for (const Member& member : boost::adaptors::values(tcm->data_members)) {
       for (const SgAsmX86Instruction* insn : member.using_instructions) {
@@ -310,19 +305,22 @@ void
 OOSolver::add_vftable_facts(const OOAnalyzer& ooa)
 {
   const VirtualTableInstallationMap& installs = ooa.virtual_table_installations;
-  for (const VirtualTableInstallationPtr vti : boost::adaptors::values(installs)) {
+  for (const VirtualTableInstallationPtr & vti : boost::adaptors::values(installs)) {
     GDEBUG << "Considering VFTable Install " << addr_str(vti->insn->get_address()) << LEND;
-    const ThisCallMethod* tcm = ooa.get_method(vti->fd->get_address());
-    // Historically, we've only exported VTable facts for this call methods, but hopefully
-    // that's going to change soon.
-    if (tcm == nullptr) continue;
+
+    std::string thisptr_term = "invalid";
+    if (vti->written_to) {
+      thisptr_term = "sv_" + std::to_string(vti->written_to->hash());
+    }
 
     std::string fact_name = "possibleVFTableWrite";
     if (vti->base_table) fact_name = "possibleVBTableWrite";
 
-    // This fact should include the object pointer, but does not currently.
-    session->add_fact(fact_name, vti->insn->get_address(), vti->fd->get_address(),
-                      vti->offset, vti->table_address);
+    // Only export VTableWrites with positive offsets to reduce false positives?
+    if (vti->offset >= 0) {
+      session->add_fact(fact_name, vti->insn->get_address(), vti->fd->get_address(),
+                        thisptr_term, vti->offset, vti->table_address);
+    }
   }
 
   std::set<rose_addr_t> exported;
@@ -489,28 +487,15 @@ OOSolver::add_usage_facts(const OOAnalyzer& ooa)
     rose_addr_t func_addr = obj_use.fd->get_address();
 
     for (const ThisPtrUsage& tpu : boost::adaptors::values(obj_use.references)) {
+      // Report relationships for the this-pointer later.
+      thisptrs.insert(tpu.this_ptr->get_expression());
+
       // Report where this object was allocated.
       if (tpu.alloc_insn != NULL) {
-        // Report relationships for the this-pointer later.
-        thisptrs.insert(tpu.this_ptr->get_expression());
         // Report the allocation fact now though.
         std::string thisptr_term = "sv_" + std::to_string(tpu.this_ptr->get_hash());
         session->add_fact("thisPtrAllocation", tpu.alloc_insn->get_address(), func_addr,
                           thisptr_term, "type_" + Enum2Str(tpu.alloc_type), tpu.alloc_size);
-      }
-
-      for (const MethodEvidenceMap::value_type& mepair : tpu.get_method_evidence()) {
-        SgAsmInstruction* meinsn = mepair.first;
-        rose_addr_t meaddr = meinsn->get_address();
-
-        // Report relationships for the this-pointer later.
-        thisptrs.insert(tpu.this_ptr->get_expression());
-        // Each instruction references multiple methods, since the call have multiple targets.
-        for (const ThisCallMethod* called : mepair.second) {
-          std::string thisptr_term = "sv_" + std::to_string(tpu.this_ptr->get_hash());
-          session->add_fact("thisPtrUsage", meaddr, func_addr,
-                            thisptr_term, called->get_address());
-        }
       }
     }
   }
@@ -536,7 +521,13 @@ OOSolver::add_call_facts(const OOAnalyzer& ooa)
       // FunctionDescriptor* tfd = ooa.ds.get_func(target);
       // if (tfd) real_target = tfd->follow_thunks(&endless);
 
-      session->add_fact("callTarget", cd.get_address(), callfunc->get_address(), target);
+      if (cd.get_address() == callfunc->get_address()
+          && callfunc->is_thunk() && callfunc->get_jmp_addr() == target) {
+        // If the callTarget is just for a thunk, don't export the callTarget fact.
+      }
+      else {
+        session->add_fact("callTarget", cd.get_address(), callfunc->get_address(), target);
+      }
 
       bool isdelete = ooa.is_candidate_delete_method(target);
       std::string thisptr_term = "invalid";
@@ -550,6 +541,15 @@ OOSolver::add_call_facts(const OOAnalyzer& ooa)
                  << thisptr_term << " tn=" << *(value->get_expression()) << LEND;
         }
         session->add_fact("insnCallsDelete", cd.get_address(),
+                          callfunc->get_address(), thisptr_term);
+      }
+
+      bool isnew = ooa.is_new_method(target);
+      thisptr_term = "invalid";
+      if (isnew) {
+        const SymbolicValuePtr& value = cd.get_return_value();
+        if (value) thisptr_term = "sv_" + std::to_string(value->get_hash());
+        session->add_fact("insnCallsNew", cd.get_address(),
                           callfunc->get_address(), thisptr_term);
       }
     }
@@ -566,6 +566,11 @@ OOSolver::add_call_facts(const OOAnalyzer& ooa)
         if (expr->nBits() > 64) continue;
         if (ooa.ds.get_global(*expr->toUnsigned()) == NULL) continue;
       }
+
+      // If the expression is of the form ite(cond value 0), extract just the non-NULL part of
+      // the value.  See additional commentary in usage.cpp for more background.
+      expr = pick_non_null_expr(expr);
+
       std::string term = "sv_" + std::to_string(expr->hash());
       if (cpd.is_reg()) {
         std::string regname = unparseX86Register(cpd.get_register(), NULL);
@@ -816,18 +821,17 @@ OOSolver::dump_facts_private()
   exported += session->print_predicate(facts_file, "noCallsAfter", 1);
   exported += session->print_predicate(facts_file, "uninitializedReads", 1);
   exported += session->print_predicate(facts_file, "insnCallsDelete", 3);
+  exported += session->print_predicate(facts_file, "insnCallsNew", 3);
   exported += session->print_predicate(facts_file, "purecall", 1);
-  exported += session->print_predicate(facts_file, "funcOffset", 4);
   exported += session->print_predicate(facts_file, "methodMemberAccess", 4);
-  exported += session->print_predicate(facts_file, "possibleVFTableWrite", 4);
-  exported += session->print_predicate(facts_file, "possibleVBTableWrite", 4);
+  exported += session->print_predicate(facts_file, "possibleVFTableWrite", 5);
+  exported += session->print_predicate(facts_file, "possibleVBTableWrite", 5);
   exported += session->print_predicate(facts_file, "initialMemory", 2);
   exported += session->print_predicate(facts_file, "rTTICompleteObjectLocator", 6);
   exported += session->print_predicate(facts_file, "rTTITypeDescriptor", 4);
   exported += session->print_predicate(facts_file, "rTTIClassHierarchyDescriptor", 3);
   exported += session->print_predicate(facts_file, "rTTIBaseClassDescriptor", 8);
   exported += session->print_predicate(facts_file, "thisPtrAllocation", 5);
-  exported += session->print_predicate(facts_file, "thisPtrUsage", 4);
   exported += session->print_predicate(facts_file, "possibleVirtualFunctionCall", 5);
   exported += session->print_predicate(facts_file, "thisPtrOffset", 3);
   exported += session->print_predicate(facts_file, "symbolGlobalObject", 3);

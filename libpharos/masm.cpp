@@ -1,6 +1,6 @@
-// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
-#include <rose.h>
+#include <AsmUnparser_compat.h>
 
 #include "masm.hpp"
 #include "util.hpp"
@@ -285,9 +285,28 @@ std::string masm_unparseX86Expression(SgAsmExpression *expr, const RoseLabelMap 
   SgAsmX86Instruction* insn = NULL;
   for (SgNode *node=expr; !insn && node; node=node->get_parent()) {
     insn = isSgAsmX86Instruction(node);
+    if (insn) {
+      return masm_unparseX86Expression(expr, insn, insn->get_kind()==x86_lea, labels);
+    }
   }
-  ROSE_ASSERT(insn!=NULL);
-  return masm_unparseX86Expression(expr, insn, insn->get_kind()==x86_lea, labels);
+  return "?";
+}
+
+// Use our really old and hacky X86 code, but fall back to the standard ROSE routines for all
+// other architectures.
+std::string masm_unparseExpression(
+  const SgAsmInstruction *insn,
+  const SgAsmExpression *expr,
+  const RegisterDictionary *rdict,
+  const RoseLabelMap *labels)
+{
+  // Const casts are to hide sillyness in the ROSE AST API that incorrectly lacks const.
+  if (isSgAsmX86Instruction(insn)) {
+    return masm_unparseX86Expression(const_cast<SgAsmExpression *>(expr), labels);
+  }
+  else {
+    return unparseExpression(const_cast<SgAsmExpression *>(expr), labels, rdict);
+  }
 }
 
 std::string debug_opcode_bytes(const SgUnsignedCharList& data, const unsigned int max_bytes)

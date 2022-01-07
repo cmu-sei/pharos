@@ -1,0 +1,35 @@
+// Copyright 2021 Carnegie Mellon University.  See LICENSE file for terms.
+
+// This file is only meant to be included from rose.hpp.
+
+#ifndef Pharos_VERSION_HPP_
+#define Pharos_VERSION_HPP_
+
+#define PHAROS_ROSE_MINIMUM_VERSION 110390006ul
+#define PHAROS_ROSE_MINIMUM_VERSION_FROM_CMAKE @PHAROS_ROSE_MINIMUM_NUMERIC_VERSION@
+#define PHAROS_ROSE_VERSION @ROSE_NUMERIC_VERSION@
+
+#define PHAROS_GET_VERSION_OFFSET(x, a, b) ((x) / (a) - ((x) / (b)) * (b))
+#define PHAROS_ROSE_MAJOR_VERSION(x) ((x) / 10000000000ul)
+#define PHAROS_ROSE_MINOR_VERSION(x) PHAROS_GET_VERSION_OFFSET(x, 10000000ul, 10000000000ul)
+#define PHAROS_ROSE_WEEKLY_VERSION(x) PHAROS_GET_VERSION_OFFSET(x, 1000ul, 10000000ul)
+#define PHAROS_ROSE_DAILY_VERSION(x) PHAROS_GET_VERSION_OFFSET(x, 1ul, 1000ul)
+
+#if PHAROS_ROSE_MINIMUM_VERSION != PHAROS_ROSE_MINIMUM_VERSION_FROM_CMAKE
+#  error "Minimimum version in Pharos CMakeLists.txt has been updated.  The file libpharos/version.hpp.in needs to be checked and updated manually."
+#endif
+
+// Check to see that the version of ROSE detected by Pharos is the same version Pharos is being
+// compiled against.  The extra checks here are due to the fact that, for ROSE_VERSION, the
+// DAILY and WEEKLY bits aren't updated whenever the WEEKLY number changes.  So, if the version
+// numbers don't match, it checks to see if the daily number is zero and the weekly number is
+// one more than ROSE reports.
+#if (PHAROS_ROSE_VERSION != ROSE_VERSION) && (PHAROS_ROSE_DAILY_VERSION(PHAROS_ROSE_VERSION) == 0) && (PHAROS_ROSE_WEEKLY_VERSION(ROSE_VERSION) + 1 == PHAROS_ROSE_WEEKLY_VERSION(PHAROS_ROSE_VERSION))
+#  error "Compiling against a ROSE version that this was not configured against."
+#endif
+
+#if PHAROS_ROSE_VERSION < PHAROS_ROSE_MINIMUM_VERSION
+#  error "The ROSE version being compiled against is too old."
+#endif
+
+#endif  // Pharos_VERSION_HPP_

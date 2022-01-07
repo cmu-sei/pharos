@@ -581,8 +581,8 @@
                     "demangled_name": "",
                     "ea": "0x40247e",
                     "import": false,
-                    "name": "meth_0x40247e",
-                    "type": "meth"
+                    "name": "dtor_0x40247e",
+                    "type": "dtor"
                 },
                 "0x402766": {
                     "demangled_name": "",
@@ -1732,6 +1732,8 @@
                     "struc": "",
                     "type": "",
                     "usages": [
+                        "0x40217e",
+                        "0x402187",
                         "0x403b2a"
                     ]
                 },
@@ -1761,6 +1763,13 @@
                 }
             },
             "methods": {
+                "0x40216b": {
+                    "demangled_name": "",
+                    "ea": "0x40216b",
+                    "import": false,
+                    "name": "meth_0x40216b",
+                    "type": "meth"
+                },
                 "0x403b17": {
                     "demangled_name": "",
                     "ea": "0x403b17",
@@ -1826,8 +1835,8 @@
                     "demangled_name": "",
                     "ea": "0x401c6d",
                     "import": false,
-                    "name": "meth_0x401c6d",
-                    "type": "meth"
+                    "name": "dtor_0x401c6d",
+                    "type": "dtor"
                 },
                 "0x401c78": {
                     "demangled_name": "",
@@ -1931,8 +1940,8 @@
                     "demangled_name": "",
                     "ea": "0x40517f",
                     "import": false,
-                    "name": "meth_0x40517f",
-                    "type": "meth"
+                    "name": "dtor_0x40517f",
+                    "type": "dtor"
                 },
                 "0x40518a": {
                     "demangled_name": "",
@@ -2231,8 +2240,8 @@
                     "demangled_name": "",
                     "ea": "0x4021d2",
                     "import": false,
-                    "name": "meth_0x4021d2",
-                    "type": "meth"
+                    "name": "dtor_0x4021d2",
+                    "type": "dtor"
                 },
                 "0x402249": {
                     "demangled_name": "",
@@ -2344,8 +2353,8 @@
                     "demangled_name": "",
                     "ea": "0x40228c",
                     "import": false,
-                    "name": "meth_0x40228c",
-                    "type": "meth"
+                    "name": "dtor_0x40228c",
+                    "type": "dtor"
                 },
                 "0x40229c": {
                     "demangled_name": "",
@@ -3607,36 +3616,6 @@
             },
             "name": "cls_0x402134",
             "size": 4,
-            "vftables": {}
-        },
-        "cls_0x40216b": {
-            "demangled_name": "",
-            "members": {
-                "0x4": {
-                    "base": false,
-                    "name": "mbr_0x4",
-                    "offset": "0x4",
-                    "parent": false,
-                    "size": 4,
-                    "struc": "",
-                    "type": "",
-                    "usages": [
-                        "0x40217e",
-                        "0x402187"
-                    ]
-                }
-            },
-            "methods": {
-                "0x40216b": {
-                    "demangled_name": "",
-                    "ea": "0x40216b",
-                    "import": false,
-                    "name": "meth_0x40216b",
-                    "type": "meth"
-                }
-            },
-            "name": "cls_0x40216b",
-            "size": 8,
             "vftables": {}
         },
         "cls_0x402195": {

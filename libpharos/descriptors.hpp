@@ -4,8 +4,9 @@
 #define Pharos_Descriptors_H
 
 #include <iterator>
-#include <rose.h>
-#include <Partitioner2/Engine.h>
+
+#include "rose.hpp"
+#include <Rose/BinaryAnalysis/Partitioner2/Engine.h>
 
 namespace pharos {
 
@@ -37,6 +38,7 @@ namespace pharos {
 // objects that describe those values.
 using ImportVariableMap = std::map<size_t, ImportDescriptor*>;
 using AddrInsnMap = std::map<rose_addr_t, SgAsmInstruction*>;
+using RegisterVector = Rose::BinaryAnalysis::RegisterDictionary::RegisterDescriptors;
 
 class DescriptorSet
 {
@@ -249,6 +251,8 @@ class DescriptorSet
   const std::string& get_arch_name() const { return arch_name; }
   size_t get_arch_bytes() const { return arch_bytes; }
   size_t get_arch_bits() const { return arch_bytes * 8; }
+
+  RegisterVector get_usual_registers();
 
   // Find a general purpose register in an semi-architecture independent way.
   RegisterDescriptor get_arch_reg(const std::string & name) const;

@@ -1,4 +1,4 @@
-// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/algorithm/string.hpp>
 #include <boost/tokenizer.hpp>
@@ -91,7 +91,7 @@ BlockAnalysis::BlockAnalysis(DUAnalysis & _du, const ControlFlowGraph& cfg,
       assert(last_statement);
       addr = last_statement->get_address();
     }
-    cv->set_comment("Cond_from_" + addr_str(addr));
+    cv->comment("Cond_from_" + addr_str(addr));
 
     // Add the variable to the list
     conditions.push_back(cv);
@@ -224,10 +224,10 @@ BlockAnalysis::record_dependencies(
         // InsnSet modifiers;
 
         // We're looking for global fixed memory reads here...
-        if (aa.memory_address->is_number() &&
+        if (aa.memory_address->isConcrete() &&
             aa.memory_address->get_width() <= 64 &&
             !insn_is_control_flow(insn)) {
-          rose_addr_t known_addr = aa.memory_address->get_number();
+          rose_addr_t known_addr = *aa.memory_address->toUnsigned();
           // We're only interested in constants that are likely to be memory addresses.
           if (possible_global_address(known_addr)) {
             const ImportDescriptor *id = du.ds.get_import(known_addr);
@@ -271,8 +271,8 @@ BlockAnalysis::record_dependencies(
       if (!aa.is_reg()) {
         // We're looking for global fixed memory writes here...
 
-        if (aa.memory_address->is_number() && aa.memory_address->get_width() <= 64) {
-          rose_addr_t known_addr = aa.memory_address->get_number();
+        if (aa.memory_address->isConcrete() && aa.memory_address->get_width() <= 64) {
+          rose_addr_t known_addr = *aa.memory_address->toUnsigned();
           // We're only interested in constants that are likely to be memory addresses.
           if (possible_global_address(known_addr)) {
             const ImportDescriptor *id = du.ds.get_import(known_addr);
@@ -923,7 +923,7 @@ SymbolicValuePtr create_return_value(SgAsmX86Instruction* insn,
   // we've been thinking correctly through the scenarios that involve small register return
   // values.
   SymbolicValuePtr value = SymbolicValue::variable_instance(bits);
-  value->set_comment(cmt);
+  value->comment(cmt);
   // This call instruction is now the only definer.
   value->defined_by(insn);
 
@@ -1149,6 +1149,50 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
   }
 
   // =========================================================================================
+  // Handle creation of register parameters first because it's not really dependent on whether
+  // we had stack failures or not.
+  // =========================================================================================
+
+  // Go through each parameter to the call, and create an appropriate dependency for register
+  // parameters.
+  for (const ParameterDefinition& pd : fparams.get_params()) {
+    // We'll handled non-register (memory) parameters a bit later (maybe).
+    if (not pd.is_reg()) continue;
+
+    SDEBUG << "Found register parameter: " << unparseX86Register(pd.get_register(), NULL)
+           << " for call " << cd->address_string() << LEND;
+
+    // Create a dependency between the instructions that last modifier the value of the
+    // register, and the call instruction that uses the value (or the memory at the value?)
+
+    // Read the value out of the current states
+    SymbolicValuePtr rv = cstate->read_register(pd.get_register());
+    // The call reads the register value.
+    AbstractAccess aa = AbstractAccess(ds, true, pd.get_register(), rv, cstate);
+    SgAsmX86Instruction *latest_writer = NULL;
+
+    // Create dependencies between all latest writers and the call instruction.  Converting
+    // this code to use latest writers instead of the modifiers resulted in dependencies,
+    // where the previous approach was producing none (at least at the time).
+    for (SgAsmInstruction* gm : aa.latest_writers) {
+      SDEBUG << "Adding call dependency for " << debug_instruction(insn) << " to "
+             << debug_instruction(gm) << LEND;
+      // Convert from a generic instruction to an X86 instruction (and save last one).
+      latest_writer = isSgAsmX86Instruction(gm);
+      // Now create the actual dependency.
+      add_dependency_pair(insn, latest_writer, aa);
+    }
+
+    // Also we need to find (or create) a parameter for this register on the calling side.
+    // This routine will create the register definition if it doesn't exist and return the
+    // existing parameter if it does.  In a departure from the API I used on the stack side,
+    // I just had the create_reg_parameter() interface update the symbolic value and modified
+    // instruction as well.  Maybe we should change the stack parameter interface to match?
+    SymbolicValuePtr pointed_to = cstate->read_memory(rv, arch_bits);
+    call_params.create_reg_parameter(pd.get_register(), rv, latest_writer, pointed_to);
+  }
+
+  // =========================================================================================
   // Stack dependency analysis.  Move to separate function?
   //
   // This code is mostly about deciding whether our understanding of the stack delta is correct
@@ -1203,51 +1247,8 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
 
   // Go through each parameter to the call, and create an appropriate dependency.
   for (const ParameterDefinition& pd : fparams.get_params()) {
-    // Cory says, this code used to assume that only stack parameters were in the parameter
-    // list. Now that we're also creating parameter definitions for register values, this code
-    // needs to be a little more complicated.  The very first iteration is to simply ignore
-    // register parameters.
-    if (pd.is_reg()) {
-      // =====================================================================================
-      // Register parameter definitions and instruction dependencies (move to a new function?)
-      // =====================================================================================
-
-      SDEBUG << "Found register parameter: " << unparseX86Register(pd.get_register(), NULL)
-             << " for call " << cd->address_string() << LEND;
-
-      // Create a dependency between the instructions that last modifier the value of the
-      // register, and the call instruction that uses the value (or the memory at the value?)
-
-      // Read the value out of the current states
-      SymbolicValuePtr rv = state->read_register(pd.get_register());
-      // The call reads the register value.
-      AbstractAccess aa = AbstractAccess(ds, true, pd.get_register(), rv, state);
-      SgAsmX86Instruction *latest_writer = NULL;
-
-      // Create dependencies between all latest writers and the call instruction.  Converting
-      // this code to use latest writers instead of the modifiers resulted in dependencies,
-      // where the previous approach was producing none (at least at the time).
-      for (SgAsmInstruction* gm : aa.latest_writers) {
-        SDEBUG << "Adding call dependency for " << debug_instruction(insn) << " to "
-               << debug_instruction(gm) << LEND;
-        // Convert from a generic instruction to an X86 instruction (and save last one).
-        latest_writer = isSgAsmX86Instruction(gm);
-        // Now create the actual dependency.
-        add_dependency_pair(insn, latest_writer, aa);
-      }
-
-      // Also we need to find (or create) a parameter for this register on the calling side.
-      // This routine will create the register definition if it doesn't exist and return the
-      // existing parameter if it does.  In a departure from the API I used on the stack side,
-      // I just had the create_reg_parameter() interface update the symbolic value and modified
-      // instruction as well.  Maybe we should change the stack parameter interface to match?
-      SymbolicValuePtr pointed_to = state->read_memory(rv, arch_bits);
-      call_params.create_reg_parameter(pd.get_register(), rv, latest_writer, pointed_to);
-
-      // We're done handling the register parameter.  The rest of the code after here is for
-      // stack parameters.
-      continue;
-    }
+    // We've already handled register parameters earlier.
+    if (pd.is_reg()) continue;
 
     // From the old code for doing this...
     size_t p = pd.get_stack_delta();
@@ -1308,7 +1309,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
     SDEBUG << "Parameter memory address:" << *mca << LEND;
     SDEBUG << "Parameter memory value:" << *mcv << LEND;
 
-    const MemoryCell::AddressSet& writers = memcell->getWriters();
+    const auto & writers = memcell->getWriters();
     // Not having any modifiers is fairly common in at least one binary file we looked at.
     // It's probably caused by stack delta analysis failures, so let's make that a warning.
     if (writers.size() == 0) {
@@ -1370,9 +1371,9 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
 // Unfortunately, there no easy way to update successors on the import.  I presume this
 // function (which is neve called) was left here as a reminder to eventually fix this.
 void update_jump_targets(const DescriptorSet& ds, SgAsmInstruction* insn) {
-  rose_addr_t target = insn_get_jump_deref(insn);
-  if (target != 0) {
-    const ImportDescriptor* id = ds.get_import(target);
+  boost::optional<rose_addr_t> target = insn_get_jump_deref(insn);
+  if (target) {
+    const ImportDescriptor* id = ds.get_import(*target);
     if (id != NULL) {
       // There's NO add_successor()!!!
     }
@@ -1451,7 +1452,10 @@ void DUAnalysis::update_function_delta() {
       }
       // If that failed, maybe we're just a branch directly to some other function.
       else {
-        target = insn_get_branch_target(last);
+        boost::optional<rose_addr_t> opt_target = insn_get_branch_target(last);
+        // If insn_get_branch_target() failed, don't update the stack delta based on that.
+        if (!opt_target) continue;
+        target = *opt_target;
         td = sp_tracker.get_delta(target);
       }
 

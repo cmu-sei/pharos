@@ -38,17 +38,15 @@ like opening a file, writing to it, and the closing it.
 
 ## [OOAnalyzer](tools/ooanalyzer/ooanalyzer.pod)
 
-OOAnalyzer is a tool for the analysis and recovery of object oriented
-constructs. This tool was the subject of a paper titled ["Using Logic
-Programming to Recover C++ Classes and Methods from Compiled
-Executables"](https://edmcman.github.io/papers/ccs18.pdf) which was
-published at the ACM Conference on Computer and Communications
-Security in 2018. The tool identifies object members and methods by
-tracking object pointers between functions in the program.  A previous
-implementation of this tool was named "Objdigger", but it was renamed
-to reflect a substantial redesign using Prolog rules to recover the
-object attributes.  For more detailed instructons on how to run
-OOAnalyzer on very large executables, see these
+OOAnalyzer is a tool for the analysis and recovery of object oriented constructs. This tool was
+the subject of a paper titled ["Using Logic Programming to Recover C++ Classes and Methods from
+Compiled Executables"](https://edmcman.github.io/papers/ccs18.pdf) which was published at the
+ACM Conference on Computer and Communications Security in 2018. The tool identifies object
+members and methods by tracking object pointers between functions in the program.  A previous
+implementation of this tool was named "Objdigger", but it was renamed to reflect a substantial
+redesign using Prolog rules to recover the object attributes.  The current version of the tool
+only supports analysis of 32-bit x86 executables compiled by Microsoft Visual C++.  For more
+detailed instructons on how to run OOAnalyzer on very large executables, see these
 [notes](share/prolog/oorules/README.md).
 
 The Pharos distribution used to include a plugin that imported OO

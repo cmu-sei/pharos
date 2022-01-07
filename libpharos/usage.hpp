@@ -26,7 +26,7 @@ enum AllocType {
 extern template std::string Enum2Str<AllocType>(AllocType);
 
 // Allow others to use our utility function to pick a this-pointer out of an ITE expression.
-SymbolicValuePtr pick_this_ptr(SymbolicValuePtr& sv);
+SymbolicValuePtr pick_this_ptr(const SymbolicValuePtr& sv);
 
 // Track the usage of a specific this-pointer.  This class is now clearly the one that tracks a
 // specific object while it has a given symbolic value for its this-pointer.  There was also
@@ -106,6 +106,9 @@ class ObjectUse {
 
 // Typedef for global map recording the use of various objects.
 using ObjectUseMap = std::map<rose_addr_t, ObjectUse>;
+
+
+TreeNodePtr pick_non_null_expr(const TreeNodePtr& expr);
 
 } // namespace pharos
 

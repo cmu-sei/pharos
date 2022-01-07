@@ -1,14 +1,14 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 // For timing our execution.
 #include <time.h>
 #include <unistd.h>
 
-#include <rose.h>
-#include <BinaryLoader.h>
+#include "rose.hpp"
+#include <Rose/BinaryAnalysis/BinaryLoader.h>
+#include <integerOps.h>
 
 #include <Sawyer/ProgressBar.h>
-#include <integerOps.h>
 
 #include "misc.hpp"
 #include "options.hpp"
@@ -308,7 +308,7 @@ rose_addr_t insn_get_fallthru(SgAsmInstruction* insn) {
 // registers, this could be mutiple targets, but in the case of jumps, there should always be
 // one or two non-fallthru successors.  There should probably be more assertions in this code.
 // Not used now that I've created bb_get_successors()?
-rose_addr_t insn_get_branch_target(SgAsmInstruction* insn) {
+boost::optional<rose_addr_t> insn_get_branch_target(SgAsmInstruction* insn) {
   bool complete;
   rose_addr_t fallthru = insn_get_fallthru(insn);
   auto successors = insn->getSuccessors(complete);
@@ -318,8 +318,7 @@ rose_addr_t insn_get_branch_target(SgAsmInstruction* insn) {
     //GDEBUG << "INSN successor: " << addr_str(target) << LEND;
     if (isjmp || target != fallthru) return target;
   }
-  assert("No non-fall thru edges found.");
-  return 0xDEADBEEF;
+  return boost::none;
 }
 
 std::string insn_get_generic_category(SgAsmInstruction *insn) {
@@ -983,8 +982,15 @@ int64_t AddConstantExtractor::constant_portion() const
 
 bool AddConstantExtractor::well_formed() const
 {
-  // Well formed, right now, means that variable_portion() returns non-null
-  return variable_portion();
+  // Well formed, right now, means that there is only one entry and that the variable_portion()
+  // returns non-null,
+  if (data.size() == 1) {
+    auto const & value = *std::begin(data);
+    if (tget<const TreeNodePtr>(value) && tget<constset_t>(value).size() == 1) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void backtrace(Sawyer::Message::Facility & log, Sawyer::Message::Importance level, int maxlen)

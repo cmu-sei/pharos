@@ -1,12 +1,14 @@
-// Copyright 2018 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2018-2021 Carnegie Mellon University.  See LICENSE file for terms.
 #ifndef Pharos_Z3_H
 #define Pharos_Z3_H
 
 #include <z3++.h>
-#include <rose.h>
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>
-#include <BinaryZ3Solver.h>
+
+#include "rose.hpp"
+#include <Rose/BinaryAnalysis/Z3Solver.h>
+
 #include "misc.hpp"
 
 namespace pharos {

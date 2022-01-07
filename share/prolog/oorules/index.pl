@@ -35,7 +35,7 @@
 :- index(factVFTableWrite/4, [1,2,4,3]).
 :- index(factVirtualFunctionCall/5, [1]).
 :- index(findint/2, [1,2]).
-:- index(funcOffset/4, [2,3,4]).
+:- index(methodCallAtOffset/4, [2,3,4]).
 :- index(funcParameter/3, [1+2]).
 :- index(guessedClassHasNoBase/1, [1]).
 :- index(guessedClassHasUnknownBase/1, [1]).
@@ -56,11 +56,12 @@
 :- index(initialFact/1, [1]).
 :- index(initialMemory/2, [1]).
 :- index(insnCallsDelete/3, [2]).
+:- index(insnCallsNew/3, [2]).
 :- index(methodMemberAccess/4, [2+3,2]).
 :- index(noCallsAfter/1, [1]).
 :- index(noCallsBefore/1, [1]).
-:- index(possibleVBTableWrite/4, [3+4,3,4]).
-:- index(possibleVFTableWrite/4, [2,4]).
+:- index(possibleVBTableWrite/5, [4+5,4,5]).
+:- index(possibleVFTableWrite/5, [2,5]).
 :- index(possibleVirtualFunctionCall/5, [1]).
 :- index(rTTIBaseClassDescriptor/8, [1,2]).
 :- index(rTTIClassHierarchyDescriptor/3, [1]).

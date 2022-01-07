@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2018-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/graph/iteration_macros.hpp>
 #include "znode.hpp"
@@ -359,7 +359,11 @@ PharosZ3Solver::treenode_to_z3(const TreeNodePtr tnp) {
   ctxVariableDeclarations(vs);
   ctxCommonSubexpressions(tnp);
 
+#if PHAROS_ROSE_Z3_RAW_POINTERS_HACK
+  Z3ExprTypePair z3pair = ctxExpression(&*tnp);
+#else
   Z3ExprTypePair z3pair = ctxExpression(tnp);
+#endif
   return z3pair.first;
 }
 

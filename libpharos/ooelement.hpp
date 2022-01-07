@@ -1,9 +1,8 @@
-// Copyright 2017-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2017-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_OOElement_H
 #define Pharos_OOElement_H
 
-#include <rose.h>
 #include "globals.hpp" // for typedef of InsnSet
 
 namespace pharos {

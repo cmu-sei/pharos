@@ -27,13 +27,10 @@ set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
 
 include(AddCXXCompilerFlags)
 add_cxx_compiler_flags(-pedantic -pedantic-errors -Wall -Wextra -Wshadow -Wstrict-aliasing -Wno-misleading-indentation "-ftemplate-depth=1024" "-ftrack-macro-expansion=0")
-option(PHAROS_FAIL_ON_WARNING "Cause compilation to fail if a warning is generated" OFF)
-if(PHAROS_FAIL_ON_WARNING)
-  add_cxx_compiler_flags(-Werror)
-endif()
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH true)
 set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
+set(BUILD_SHARED_LIBS true)
 
 # Load the user's customizations, then the site customization, then
 # the local customization.  This lets the local customization take
@@ -66,7 +63,11 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
 endif()
 
 # Rose
-find_package(Rose 0.11.11.2 REQUIRED)
+
+# Anyone modifying this version should also manually modify libpharos/version.hpp.in.  They should set the PHAORS_ROSE_MINI
+set(PHAROS_ROSE_MINIMUM_VERSION 0.11.39.6)
+
+find_package(Rose ${PHAROS_ROSE_MINIMUM_VERSION} REQUIRED)
 
 # Find git
 find_package(Git REQUIRED)
@@ -97,10 +98,17 @@ if(PHAROS_BROKEN_THREADS)
   add_definitions(-DPHAROS_BROKEN_THREADS)
 endif()
 
+# Add gtests
+add_subdirectory(gtest)
+
+option(PHAROS_FAIL_ON_WARNING "Cause compilation to fail if a warning is generated" OFF)
+if(PHAROS_FAIL_ON_WARNING)
+  add_cxx_compiler_flags(-Werror)
+endif()
+
 # Add directories
 add_subdirectory(libpharos)
 add_subdirectory(tools)
-add_subdirectory(gtest)
 add_subdirectory(share)
 
 install(FILES README.md CONTRIBUTING.md LICENSE.md INSTALL.md DESTINATION share/doc/pharos

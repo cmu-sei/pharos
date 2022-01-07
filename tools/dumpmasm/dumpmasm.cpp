@@ -1,6 +1,5 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
-#include <rose.h>
 #include <libpharos/misc.hpp>
 #include <libpharos/masm.hpp>
 #include <libpharos/options.hpp>
@@ -35,6 +34,7 @@ csv_output_insn(const P2::Partitioner& partitioner, const P2::AddressUser& au)
   }
   std::string opbytes = debug_opcode_bytes(insn->get_raw_bytes(), 99999);
 
+  const RegisterDictionary *rdict = partitioner.instructionProvider().registerDictionary();
   std::string opstr = "";
   SgAsmOperandList *oplist = insn->get_operandList();
   if (!oplist) {
@@ -44,7 +44,7 @@ csv_output_insn(const P2::Partitioner& partitioner, const P2::AddressUser& au)
   else {
     SgAsmExpressionPtrList& elist = oplist->get_operands();
     for (SgAsmExpressionPtrList::iterator exp = elist.begin(); exp != elist.end(); ++exp) {
-      opstr.append(masm_unparseX86Expression(*exp, NULL).c_str());
+      opstr.append(masm_unparseExpression(insn, *exp, rdict, NULL).c_str());
       if(exp != elist.end() - 1)
         opstr.append(", ");
     }

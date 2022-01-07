@@ -1,4 +1,4 @@
-// Copyright 2015-2020 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Calls_H
 #define Pharos_Calls_H
@@ -6,7 +6,6 @@
 #include <boost/format.hpp>
 #include <boost/property_map/property_map.hpp>
 #include <boost/iterator/filter_iterator.hpp> // for filter_iterator
-#include <rose.h>
 
 #include "funcs.hpp"
 #include "imports.hpp"

@@ -74,13 +74,18 @@ reasonMethod_G(Method) :-
     factVFTableEntry(_VFTable, _Offset, Entry),
     dethunk(Entry, Method).
 
-% Because we've already proven that the VFTable write was legitimate.
-% Technically this is not sound, but it should have very low false positives.
+% Because we've already proven that the VFTable write was legitimate.  Since we changed the
+% possibleVFTableWrite facts so that they're not necessarily related to this-pointer of the
+% method, we need to confirm that the VFTable write is into the current this-pointer.
 reasonMethod_H(Method) :-
-    factVFTableWrite(_Insn, Method, _Offset, _VFTable).
+    factVFTableWrite(Insn, Method, Offset, VFTable),
+    possibleVFTableWrite(Insn, Method, ThisPtr, Offset, VFTable),
+    funcParameter(Method, ecx, ThisPtr).
 
 reasonMethod_I(Method) :-
-    factVBTableWrite(_Insn, Method, _Offset, _VBTable).
+    factVBTableWrite(Insn, Method, Offset, VBTable),
+    possibleVBTableWrite(Insn, Method, ThisPtr, Offset, VBTable),
+    funcParameter(Method, ecx, ThisPtr).
 
 % Because the calling convention proves it's on OO method.
 % This is currently weak enough that we're guessing it instead.
@@ -103,8 +108,8 @@ reasonMethod_K(Method) :-
 % Because the thisptr is known to be an object pointer.
 reasonMethod_L(Method) :-
     factMethod(Caller),
-    % Intentionally NOT a validFuncOffset!
-    funcOffset(_Insn1, Caller, Method, 0),
+    % Intentionally NOT a validMethodCallAtOffset!
+    methodCallAtOffset(_Insn1, Caller, Method, 0),
     % Require that the Method also read/use the value.
     funcParameter(Method, ecx, _SymbolicValue),
     logtraceln('~@~Q.', [not(factMethod(Method)), reasonMethod_L(Method)]).
@@ -226,7 +231,7 @@ reasonConstructor(Method) :-
 %    factVFTable(VFTable2),
 %    %
 %    find(Method, Class1),
-%    possibleVFTableWrite(_Insn3, OtherMethod, Offset, VFTable2),
+%    possibleVFTableWrite(_Insn3, OtherMethod, _ThisPtr, Offset, VFTable2),
 %    find(OtherMethod, Class2),
 %    factDerivedClass(DerivedClass, BaseClass, Offset).
 
@@ -304,7 +309,7 @@ reasonNOTConstructor_D(Method) :-
 % ED_PAPER_INTERESTING
 reasonNOTConstructor_F(Method) :-
     factNOTConstructor(OtherMethod),
-    validFuncOffset(_Insn, OtherMethod, Method, _Offset),
+    validMethodCallAtOffset(_Insn, OtherMethod, Method, _Offset),
     % Debugging
     logtraceln('~@~Q.', [not(factNOTConstructor(Method)), reasonNOTConstructor_F(Method, OtherMethod)]).
 
@@ -315,14 +320,16 @@ reasonNOTConstructor_F(Method) :-
 % ED_PAPER_INTERESTING
 reasonNOTConstructor_G(Method) :-
     % There's another method that calls this method on the same object pointer.
-    validFuncOffset(_, Caller, Method, 0),
+    validMethodCallAtOffset(_, Caller, Method, 0),
     % The caller is known to be a constructor or destructor.
     (factConstructor(Caller); factRealDestructor(Caller)),
     % The caller is already known to have a VFTable write.
     factVFTableWrite(_Insn1, Caller, 0, _VFTable1),
     % But this method doesn't have the required write.
-    not(possibleVFTableWrite(_Insn2, Method, 0, _VFTable2)),
-    %
+    not(possibleVFTableWrite(_Insn2, Method, _ThisPtr, 0, _VFTable2)),
+    % Since we don't have visibility into VFTable writes from imported constructors and
+    % destructors this rule does not apply to imported methods.
+    not(symbolClass(Method, _, _, _)),
     % Debugging
     logtraceln('~@~Q.', [not(factNOTConstructor(Method)),
                          reasonNOTConstructor_G(Caller, Method)]).
@@ -335,8 +342,10 @@ reasonNOTConstructor_H(Method) :-
     % There is a method on the class
     findMethod(Method, Class),
     % The method does not install the vftable
-    not(possibleVFTableWrite(_Insn, Method, _, VFTable)),
-
+    not(possibleVFTableWrite(_Insn, Method, _ThisPtr, _, VFTable)),
+    % Since we don't have visibility into VFTable writes from imported constructors and
+    % destructors this rule does not apply to imported methods.
+    not(symbolClass(Method, _, _, _)),
     logtraceln('~@~Q.', [not(factNOTConstructor(Method)),
                          reasonNOTConstructor_H(VFTable, Method)]).
 
@@ -442,7 +451,7 @@ reasonNOTRealDestructor_E(Method) :-
 
 % Because a method on a class cannot destruct itself (unless it's a deleting destructor).
 reasonNOTRealDestructor_F(Method) :-
-    validFuncOffset(_Insn, Caller, Method, 0),
+    validMethodCallAtOffset(_Insn, Caller, Method, 0),
     factMethod(Method),
     find(Method, Class),
     find(Caller, Class),
@@ -455,13 +464,16 @@ reasonNOTRealDestructor_F(Method) :-
 % PAPER: ??? NEW!
 reasonNOTRealDestructor_G(Method) :-
     % There's another method that calls this method on the same object pointer.
-    validFuncOffset(_, Caller, Method, 0),
+    validMethodCallAtOffset(_, Caller, Method, 0),
     % The caller is known to be a constructor or destructor.
     (factConstructor(Caller); factRealDestructor(Caller)),
     % The caller is already known to have a VFTable write.
     factVFTableWrite(_Insn1, Caller, 0, _VFTable1),
     % But this method doesn't have the required write.
-    not(possibleVFTableWrite(_Insn2, Method, 0, _VFTable2)),
+    not(possibleVFTableWrite(_Insn2, Method, _ThisPtr, 0, _VFTable2)),
+    % Since we don't have visibility into VFTable writes from imported constructors and
+    % destructors this rule does not apply to imported methods.
+    not(symbolClass(Method, _, _, _)),
     % Debugging
     logtraceln('~@~Q.', [not(factNOTRealDestructor(Method)),
                          reasonNOTRealDestructor_G(Caller, Method)]).
@@ -476,16 +488,26 @@ reasonNOTRealDestructor_H(Method) :-
     % And ThisPtr was literally "this" for the method.
     funcParameter(Method, ecx, ThisPtr),
     % The presumption about ECX also necessitates this restriction?
-    callingConvention(Method, '__thiscall').
+    callingConvention(Method, '__thiscall'),
+    % Debugging
+    logtraceln('~@~Q.', [not(factNOTRealDestructor(Method)),
+                         reasonNOTRealDestructor_H(Method)]).
+
 
 % Destructors normally have one argument.  According to
 % https://fossies.org/linux/cfe/lib/CodeGen/MicrosoftCXXABI.cpp, deleting destructors have a
 % second argument.  Therefore, any method that has more than two parameters is not a
 % destructor. Any method with more than one parameter is not a real destructor.
-:- table reasonDestructorParams/2 as opaque.
-reasonDestructorParams(Method, MaxParams) :-
+:- table reasonDestructorParams/3 as opaque.
+reasonDestructorParams(Method, MaxParams, Params) :-
     % There is a method
     possibleMethod(Method),
+    % We require thiscall.  This is not so much because the rule is restricted to thiscall, but
+    % requiring excludes some really nasty corner cases when it comes to parameter detection.
+    % Good examples include 0x404714 (EHProlog) and 0x404c6e (tail call save/restore) in
+    % vs2010/Lite/ooex7.
+    callingConvention(Method, '__thiscall'),
+
     % Get params
     setof(Param, Hash^funcParameter(Method, Param, Hash), Params),
     % ejs: It looks like arguments are not reliable
@@ -498,12 +520,12 @@ reasonDestructorParams(Method, MaxParams) :-
     %(ParamLen > MaxParams; ArgLen > MaxParams).
 
 reasonNOTRealDestructor_I(Method) :-
-    Params = 1,
-    reasonDestructorParams(Method, Params),
+    NumParams = 1,
+    reasonDestructorParams(Method, NumParams, Params),
     factMethod(Method),
 
     logtraceln('~@~Q.', [not(factNOTRealDestructor(Method)),
-                         reasonNOTRealDestructor_I(Params, Method)]).
+                         reasonNOTRealDestructor_I(NumParams, Params, Method)]).
 
 reasonNOTRealDestructorSet(Set) :-
     setof(Method, reasonNOTRealDestructor(Method), Set).
@@ -596,12 +618,16 @@ reasonNOTDeletingDestructor_D(Method) :-
 reasonNOTDeletingDestructor_E(Method) :-
     % This rule can be pretty broad, because I'm not aware of any circumstances where passing
     % your own this pointer to a deleting destructor is valid.
-    factMethod(Method),
+    validMethodCallAtOffset(_Insn, Caller, Method, 0),
+
+    % This is already ensured by validMethodCallAtOffset
+    %factMethod(Method),
+
     factMethod(Caller),
     iso_dif(Method, Caller),
-    validFuncOffset(_Insn, Caller, Method, 0),
     % Debugging
-    logtraceln('~Q.', reasonNOTDeletingDestructor_E(Method, Caller)).
+    logtraceln('~@~Q.', [not(factNOTDeletingDestructor(Method)),
+                         reasonNOTDeletingDestructor_E(Method, Caller)]).
 
 % Because we identified at least one call to delete, and this method does not call delete.
 % Unfortunately, there could be multiple delete implementations, in which case we could falsely
@@ -611,17 +637,27 @@ reasonNOTDeletingDestructor_E(Method) :-
 reasonNOTDeletingDestructor_F(Method) :-
     % Have we detected delete() at all in this program?  If not, disable this rule.
     insnCallsDelete(_Insn, _Method, _Ptr),
+
     factMethod(Method),
-    % We use thiscall
-    callingConvention(Method, '__thiscall'),
-    funcParameter(Method, ecx, ThisPtr),
-    % But we don't call delete on ourself
-    not(insnCallsDelete(_Insn2, Method, ThisPtr)).
+
+    % We don't call delete at all...
+    (not(insnCallsDelete(_, Method, _AnyPtr));
+
+     % Or If we have thiscall, ensure we don't delete ourself
+     callingConvention(Method, '__thiscall'),
+     funcParameter(Method, ecx, ThisPtr),
+     % But we don't call delete on ourself
+     not(insnCallsDelete(_Insn2, Method, ThisPtr))),
+
+    logtraceln('~@~Q.', [not(factNOTDeletingDestructor(Method)),
+                         reasonNOTDeletingDestructor_F(Method)]).
+
 
 % Deleting destructors are always virtual, so if we can't possibly be a virtual, then we can't
 % possibly be a deleting destructor.  The primary benefit of this rule compared to some others
 % is that is does not rely on the correct detection of delete() which is sometimes a problem.
 reasonNOTDeletingDestructor_G(Method) :-
+    factMethod(Method),
     not(possiblyVirtual(Method)).
 
 % Destructors normally have one argument.  According to
@@ -629,11 +665,11 @@ reasonNOTDeletingDestructor_G(Method) :-
 % second argument.  Therefore, any method that has more than two parameters is not a
 % destructor. Any method with more than one parameter is not a real destructor.
 reasonNOTDeletingDestructor_H(Method) :-
-    Params = 2,
-    reasonDestructorParams(Method, Params),
+    NumParams = 2,
+    reasonDestructorParams(Method, NumParams, Params),
 
     logtraceln('~@~Q.', [not(factNOTDeletingDestructor(Method)),
-                         reasonNOTDeletingDestructor_H(Params, Method)]).
+                         reasonNOTDeletingDestructor_H(NumParams, Params, Method)]).
 
 reasonNOTDeletingDestructorSet(Set) :-
     setof(Method, reasonNOTDeletingDestructor(Method), Set).
@@ -655,10 +691,14 @@ reasonNOTDeletingDestructorSet(Set) :-
 % PAPER: VFTableWrite-ConstructorDestructor
 % ED_PAPER_INTERESTING
 certainConstructorOrDestructor(Method) :-
-    factVFTableWrite(_Insn, Method, _Offset, _VFTable).
+    factVFTableWrite(Insn, Method, Offset, VFTable),
+    possibleVFTableWrite(Insn, Method, ThisPtr, Offset, VFTable),
+    funcParameter(Method, ecx, ThisPtr).
 
 certainConstructorOrDestructor(Method) :-
-    factVBTableWrite(_Insn, Method, _Offset, _VBTable).
+    factVBTableWrite(Insn, Method, Offset, VBTable),
+    possibleVBTableWrite(Insn, Method, ThisPtr, Offset, VBTable),
+    funcParameter(Method, ecx, ThisPtr).
 
 % When calls to a base constructor/destructor are not inlined, and the child overwrites the
 % vftable, we can tell if both are constructors or destructors by the order in which this
@@ -673,7 +713,7 @@ certainConstructorOrDestructorInheritanceSpecialCase(Method, Type) :-
     % offset
     factVFTableWrite(WriteAddr, Method, Offset, VFTable),
     not((factVFTableWrite(_, Method, Offset, VFTable2), iso_dif(VFTable, VFTable2))),
-    funcOffset(CallAddr, Method, Callee, Offset),
+    methodCallAtOffset(CallAddr, Method, Callee, Offset),
     % Ideally we would check that there is a single call, but it turns out that __RTC_CheckEsp
     % looks like a thiscall to offset 0, so instead we'll just sanity check that the method we
     % are calling looks like a constructor.  Since this special case also assumes vftable
@@ -732,6 +772,72 @@ reasonVFTable(VFTable) :-
 % offsets in oteher class?  Is it possible to conclude the derived class relationship without
 % the being certain of the VFTables (if there are VFTables)?
 
+
+% --------------------------------------------------------------------------------------------
+:- table reasonNOTVFTable/1 as incremental.
+
+:- table reasonNOTVFTable_A/1 as incremental.
+:- table reasonNOTVFTable_B/1 as incremental.
+:- table reasonNOTVFTable_C/1 as opaque.
+:- table reasonNOTVFTable_D/1 as opaque.
+:- table reasonNOTVFTable_E/1 as opaque.
+:- table reasonNOTVFTable_F/1 as opaque.
+:- table reasonNOTVFTable_G/1 as opaque.
+:- table reasonNOTVFTable_H/1 as incremental.
+
+reasonNOTVFTable(Address) :-
+    %logwarnln('Recomputing reasonNOTVFTable...'),
+    or([reasonNOTVFTable_A(Address),
+        reasonNOTVFTable_B(Address),
+        reasonNOTVFTable_C(Address),
+        reasonNOTVFTable_D(Address),
+        reasonNOTVFTable_E(Address),
+        reasonNOTVFTable_F(Address),
+        reasonNOTVFTable_G(Address),
+        reasonNOTVFTable_H(Address)
+      ]).
+
+reasonNOTVFTable_A(Address) :-
+    factMethod(Address),
+    logtraceln('~Q.', reasonNOTVFTable_A(Address)).
+
+reasonNOTVFTable_B(Address) :-
+    factVBTable(Address),
+    logtraceln('~Q.', reasonNOTVFTable_B(Address)).
+
+reasonNOTVFTable_C(Address) :-
+    symbolGlobalObject(Address, _ClassName, _VariableName),
+    logtraceln('~Q.', reasonNOTVFTable_C(Address)).
+
+reasonNOTVFTable_D(Address) :-
+    rTTIEnabled,
+    rTTIValid,
+    rTTITypeDescriptor(Address, _, _, _),
+    logtraceln('~Q.', reasonNOTVFTable_D(Address)).
+
+reasonNOTVFTable_E(Address) :-
+    rTTIEnabled,
+    rTTIValid,
+    rTTICompleteObjectLocator(Address, _, _, _, _, _),
+    logtraceln('~Q.', reasonNOTVFTable_E(Address)).
+
+reasonNOTVFTable_F(Address) :-
+    rTTIEnabled,
+    rTTIValid,
+    rTTIClassHierarchyDescriptor(Address, _, _),
+    logtraceln('~Q.', reasonNOTVFTable_F(Address)).
+
+reasonNOTVFTable_G(Address) :-
+    rTTIEnabled,
+    rTTIValid,
+    rTTIBaseClassDescriptor(Address, _, _, _, _, _, _, _),
+    logtraceln('~Q.', reasonNOTVFTable_G(Address)).
+
+reasonNOTVFTable_H(Address) :-
+    possibleVFTableEntry(Address, 0, Entry),
+    factVFTable(Entry),
+    logtraceln('~Q.', reasonNOTVFTable_C(Address)).
+
 % --------------------------------------------------------------------------------------------
 % The Insn in Method writing to Offset in the current object is known to be writing a certain
 % virtual function table pointer.
@@ -751,7 +857,7 @@ reasonVFTableWrite(Insn, Method, Offset, VFTable) :-
     % The VFTtable itself must already be certain.
     factVFTable(VFTable),
     % And there's a VFTable write that references that VFTable.
-    possibleVFTableWrite(Insn, Method, Offset, VFTable).
+    possibleVFTableWrite(Insn, Method, _ThisPtr, Offset, VFTable).
 
 % It should be possible to use the base table entry at offset zero (the one that the virtual
 % base class uses to find it's virtual funtion table) to prove the existence of the virtual
@@ -1083,11 +1189,17 @@ reasonVFTableSizeGTE(VFTable, Size) :-
 % VFTable size for inherited vftables
 reasonVFTableSizeGTE(VFTable, Size) :-
     % In this rule we're only considering base classes that are NOT at offset zero.
-    factDerivedClass(DerivedClass, BaseClass, Offset),
+    % ejs 5/17/21: We care about the offset of the vftable in the object, and not the offset
+    % of the immediately inherited object.  These may be different if we inherit from a
+    % single base class, and that class (eventually) inherits from multiple bases which
+    % results in multiple vftables.  The long story short is that we want to take the offset
+    % from the vftable write and not the factDerivedClass.
+    factDerivedClass(DerivedClass, BaseClass, ImmediateOffset),
     % Pair the derived table at that offset with the base table at offset zero, and constrain
     % the base table to >= the derived table.
-    findVFTable(DerivedVFTable, Offset, DerivedClass),
-    findVFTable(BaseVFTable, 0, BaseClass),
+    findVFTable(BaseVFTable, Offset, BaseClass),
+    DerivedOffset is Offset + ImmediateOffset,
+    findVFTable(DerivedVFTable, DerivedOffset, DerivedClass),
 
     % This rule only holds for the primary inheritance relationship, and does not work for base
     % cases where there's multiple inheritance.
@@ -1208,7 +1320,7 @@ reasonVBTableWrite(Insn, Method, Offset, VBTable) :-
     % The VBTtable itself must already be certain.
     factVBTable(VBTable),
     % And there's a VBTable write that references that VBTable.
-    possibleVBTableWrite(Insn, Method, Offset, VBTable),
+    possibleVBTableWrite(Insn, Method, _ThisPtr, Offset, VBTable),
     % Debugging
     logtraceln('~Q.', reasonVBTableWrite_A(Insn, Method, Offset, VBTable)).
 
@@ -1242,7 +1354,7 @@ reasonVBTableEntry(VBTable, Offset, Value) :-
     iso_dif(P, 0xffffffff),
     rTTITDA2Class(DerivedTDA, DerivedClass),
     find(Method, DerivedClass),
-    possibleVBTableWrite(_Insn, Method, P, VBTable),
+    possibleVBTableWrite(_Insn, Method, _ThisPtr, P, VBTable),
     possibleVBTableEntry(VBTable, Offset, Value),
     % Debugging
     logtraceln('~Q.', reasonVBTableEntry_A(VBTable, Offset, Value)).
@@ -1301,7 +1413,7 @@ reasonObjectInObject_C(OuterClass, InnerClass, Offset) :-
 % possibility that the two classes are in fact the same class.
 reasonObjectInObject_D(OuterClass, InnerClass, Offset) :-
     % We are certain that this member offset is passed to InnerConstructor.
-    validFuncOffset(_CallInsn, OuterConstructor, InnerConstructor, Offset),
+    validMethodCallAtOffset(_CallInsn, OuterConstructor, InnerConstructor, Offset),
     factConstructor(OuterConstructor),
     factConstructor(InnerConstructor),
     iso_dif(InnerConstructor, OuterConstructor),
@@ -1325,7 +1437,7 @@ reasonObjectInObject_D(OuterClass, InnerClass, Offset) :-
 % ED_PAPER_INTERESTING
 reasonObjectInObject_E(OuterClass, InnerClass, Offset) :-
     % We are certain that this member offset is passed to InnerConstructor.
-    validFuncOffset(_CallInsn, OuterConstructor, InnerConstructor, Offset),
+    validMethodCallAtOffset(_CallInsn, OuterConstructor, InnerConstructor, Offset),
     factConstructor(OuterConstructor),
     find(OuterConstructor, OuterClass),
 
@@ -1441,10 +1553,10 @@ reasonEmbeddedObject_D(Class, EmbeddedClass, Offset) :-
 % and unfortunately they may not always been concluded in the correct order.  This also turned
 % out to be a non-trivial problem with this rule, and no completely satisfactory solution was
 % found (the problem was eventually worked around by making guesses in a better order).  There
-% might be a solution involving ValidFuncOffset, and proving that there can never be an object
-% at a given offset but that's stil proof based on the absence of evidence, which might not be
-% the best plan.  I decided in the end to remove the draft rule entirely, because it was a
-% mess, but to keep the comment because this line of thinking still has merit.
+% might be a solution involving ValidMethodAtOffset, and proving that there can never be an
+% object at a given offset but that's stil proof based on the absence of evidence, which might
+% not be the best plan.  I decided in the end to remove the draft rule entirely, because it was
+% a mess, but to keep the comment because this line of thinking still has merit.
 
 % Add rule for: We must be an embedded object if the table we write was the certain normal
 % (unmodified) table of the embedded constructor.  Duplicate of inheritance NOT rule?
@@ -1492,8 +1604,8 @@ reasonDerivedClass_A(DerivedClass, BaseClass, ObjectOffset) :-
 % Because the derived class constructor calls the base class constructor, and both constructors
 % install VFTables into the same location.  The VFTable overwrite contraint is required because
 % otherwise the rule will match embedded object releationships as well.  Proof that the two
-% VFTable writes are to the same location is provided by the pointer math in validFuncOffset,
-% paried with the appropriatte offsets in the VFTable writes.
+% VFTable writes are to the same location is provided by the pointer math in
+% validMethodCallAtOffset, paried with the appropriatte offsets in the VFTable writes.
 
 % PAPER: Relate-3
 % ED_PAPER_INTERESTING
@@ -1511,7 +1623,7 @@ reasonDerivedClass_B(DerivedClass, BaseClass, ObjectOffset) :-
     % derived class.  There might be other ways of doing this as well, like determining which
     % of the two classes is smaller.  Without this clause we'd just be saying that the two
     % constructors had an inheritance relationship without identifying which was the base.
-    validFuncOffset(_, DerivedConstructor, BaseConstructor, ObjectOffset),
+    validMethodCallAtOffset(_, DerivedConstructor, BaseConstructor, ObjectOffset),
     factConstructor(DerivedConstructor),
     factConstructor(BaseConstructor),
     % A constructor can't be it's own parent.
@@ -1639,7 +1751,7 @@ reasonDerivedClass_E(DerivedClass, BaseClass, Offset) :-
     rTTIValid,
     rTTIInheritsFrom(DerivedTDA, BaseTDA, _Attributes, M, P, V),
     iso_dif(P, 0xffffffff),
-    possibleVBTableWrite(_Insn, Method, P, VBTableAddr),
+    possibleVBTableWrite(_Insn, Method, _ThisPtr, P, VBTableAddr),
     rTTITDA2Class(DerivedTDA, DerivedClass),
     rTTITDA2Class(BaseTDA, BaseClass),
     iso_dif(BaseClass, DerivedClass),
@@ -1976,11 +2088,13 @@ reasonClassHasUnknownBaseSet(Set) :-
 :- table reasonClassRelatedMethod/2 as incremental.
 :- table reasonClassRelatedMethod_A/2 as incremental.
 %:- table reasonClassRelatedMethod_B/2 as incremental.
+:- table reasonClassRelatedMethod_C/2 as incremental.
 
 reasonClassRelatedMethod(Class, Method) :-
-    reasonClassRelatedMethod_A(Class, Method).
+    reasonClassRelatedMethod_A(Class, Method);
     % _B is now a trigger rule
-    %; reasonClassRelatedMethod_B(Class, Method).
+    %reasonClassRelatedMethod_B(Class, Method);
+    reasonClassRelatedMethod_C(Class, Method).
 
 % ClassCallsMethod => ClassRelatedMethod
 reasonClassRelatedMethod_A(Class, Method) :-
@@ -2031,7 +2145,29 @@ reasonClassRelatedMethod_B(Class1, Class2, Method1, Method2) :-
 
     % Debugging
     logtraceln('~@~Q.', [not(factClassRelatedMethod(Class1, Method2)),
-                         reasonClassRelatedMethod_B(Function, Method1, Class1, Method2)]).
+                         reasonClassRelatedMethod_B(function=Function, class1=Class1, class2=Class2, method1=Method1, method2=Method2)]).
+
+% ejs 6/15/21 We made a modification to reasonClassCallsMethod_D that turned out to be
+% incorrect, but improves edit distance by ~0.7% on the paper suite.  This rule is an attempt
+% to re-implement that without the directionality.
+reasonClassRelatedMethod_C(InnerClass, InnerMethod) :-
+    % An outer method calls and inner method on a this pointer.
+    thisPtrUsage(_Insn, OuterMethod, InnerThisPtr, InnerMethod),
+    % There's an offset from the outer this pointer to the inner this pointer.
+    thisPtrOffset(_OuterThisPtr, Offset, InnerThisPtr),
+    % BUG!!! We should really tie the OuterThisPtr to the OuterMethod, but we don't presently
+    % export the facts required to do that, so we'll just assume they're related for right now.
+    find(OuterMethod, OuterClass),
+    % We must know that there's an object within an object at that offset.
+    % See comments in reasonClassCallsMethod_D about using reasonClassAtOffset...
+    reasonClassAtOffset(OuterClass, Offset, InnerClass),
+    iso_dif(OuterClass, InnerClass),
+    iso_dif(InnerClass, InnerMethod),
+    % Debugging
+    logtraceln('~@~Q.', [not(factClassCallsMethod(InnerClass, InnerMethod)),
+                         reasonClassRelatedMethod_C(OuterClass, OuterMethod,
+                                                    InnerClass, InnerMethod)]).
+
 
 % classCallsMethod(Class, Method) means that Method can be called by a method on Class.  The
 % opposite is not necessarily true.
@@ -2072,10 +2208,11 @@ reasonClassCallsMethod_B(Class1, Method2) :-
 
 % Because one method calls another method on the same this-pointer.  This rule is direction
 % safe because we know what class Method1 is associated with, and if that conclusion was
-% correct, this rule will be correct as well.  Does require the FuncOffset offset to be zero.
+% correct, this rule will be correct as well.  Does require the methodCallAtOffset offset to be
+% zero.
 % PAPER: Call-3
 reasonClassCallsMethod_C(Class1, Method2) :-
-    validFuncOffset(_Insn, Method1, Method2, 0),
+    validMethodCallAtOffset(_Insn, Method1, Method2, 0),
     iso_dif(Method1, Method2),
     find(Method1, Class1),
     % Don't propose assignments we already know.
@@ -2115,7 +2252,11 @@ reasonClassCallsMethod_D(InnerClass, InnerMethod) :-
     % ejs 2/12/21 If the compiler inlined behavior from an intermediate object, we might never
     % see it.  So we use reasonClassAtOffset to look through multiple levels of embedding or
     % inheritance.  This was extremely important for merging std::allocator<char> in 2010/Debug/ooex7.
-    reasonClassAtOffset(OuterClass, Offset, InnerClass),
+    % ejs 6/14/21 Oops, turns out the above is not true if InnerMethod is on a derived class.
+    % In malware-67b9, OuterMethod called std::bad_exception, which inherits from
+    % std::exception.  But of course std::exception cannot call std::bad_exception.
+    % old/incorrect: reasonClassAtOffset(OuterClass, Offset, InnerClass),
+    factObjectInObject(OuterClass, Offset, InnerClass),
     iso_dif(OuterClass, InnerClass),
     iso_dif(InnerClass, InnerMethod),
     % Debugging
@@ -2277,7 +2418,7 @@ reasonMergeVFTables(VFTableClass, Class) :-
 %:- table reasonMergeClasses_A/2 as incremental.
 :- table reasonMergeClasses_B/2 as incremental.
 :- table reasonMergeClasses_C/2 as incremental.
-:- table reasonMergeClasses_D/2 as incremental.
+%:- table reasonMergeClasses_D/2 as incremental.
 :- table reasonMergeClasses_E/2 as incremental.
 %:- table reasonMergeClasses_F/2 as incremental.
 :- table reasonMergeClasses_G/2 as incremental.
@@ -2288,7 +2429,7 @@ reasonMergeVFTables(VFTableClass, Class) :-
 reasonMergeClasses(C,M) :-
     or([reasonMergeClasses_B(C,M),
         reasonMergeClasses_C(C,M),
-        reasonMergeClasses_D(C,M),
+        %reasonMergeClasses_D(C,M),
         reasonMergeClasses_E(C,M),
         %reasonMergeClasses_F(C,M),
         reasonMergeClasses_G(C,M),
@@ -2377,77 +2518,6 @@ reasonMergeClasses_C(Class, ExistingClass) :-
     % Debugging
     logtraceln('~@~Q.', [not(find(Class, ExistingClass)),
                          reasonMergeClasses_C(Class, ExistingClass, Method)]).
-
-% If there are two implementations of the constructor on the same class, they should be merged
-% into a single class.  For example Cls1(int x) and Cls1(char y).  When the class has virtual
-% methods, this case can be easily detected by observing that the same VFTable is written into
-% offset zero of the object.  Unfortunately, the inlining of base class constructors can
-% confuse this simple rule, because there is more than one VFTableWrite in the constructor (one
-% for this class and one for the inlined base class).  The solution is to block this rule from
-% applying in the cases where the VFTable is overwritten (the VFTable from the inlined base
-% class constructor).
-% PAPER: Merging-1
-% ED_PAPER_INTERESTING
-reasonMergeClasses_D(Class1, Class2) :-
-    % We've been back and forth several times about whether the object offset that the VFTable
-    % address is written into should bound to zero or not.  Cory currently believes that while
-    % the rule _might_ apply in cases where the offset is non-zero, the obvious case occurs
-    % when the offset is zero.  Instances of object embedding at non-zero offsets might
-    % coincidentally be unrelated classes that happen to embed something at the same offset.
-    % Instances of multiple inheritance should always be accompanied by a VFTable at offset
-    % zero that will trigger the rule.  The interesting case is when our knowledge is
-    % imperfect because the VFTableWrite at offset zero has not been proven yet.  In those
-    % cases it's unclear if a weaker restriction on ObjectOffset would be helpful.
-    ObjectOffset = 0,
-
-    % Find two different methods that both install the same VFTable at the same offset.
-    factVFTableWrite(Insn1, Method1, ObjectOffset, VFTable),
-
-    % Finally there's what we now think is an optimization and inlining problem where the only
-    % VFTable mentioned in the deleting destructor is a base class' VFTable.  This presumably
-    % occurs because the base class destructor was inlined, and the compiler detected the
-    % overwrite of the current class' VFTable with the base class' VFTable and optimized away
-    % the currrent class' VFTable write.  If this same situation occurred in the constructor,
-    % it would not affect this rule, because the VFTable write that was kept was the correct
-    % one.  Therefore this logic only applies to destructors.  This problem is demonstrated by
-    % 2010/Lite/oo bad_cast at 0x404046 and by codecvt at 0x402249.  Cory has tried several
-    % variations of this clause, and sadly many produce different results.
-    factConstructor(Method1),
-
-    % Neither VFTable write may be overwritten by any other VFTable.  Use the unproven
-    % possibleVFTableOverwrite facts here, because this is an exception to the rule, and we may
-    % not have yet proven the pre-requisites to know that the overwrites are proven.  But we
-    % should not merge classes until we're sure that this exception does NOT apply!
-    % Unfortunately, because there's no way to "disprove" the possible facts, we'll never apply
-    % this rule if the possibilty of an exception exists.  That's ok because we can always
-    % merge for other proven reasons, or guess that this is a legitimate class merge.
-    not(possibleVFTableOverwrite(Insn1, _OtherInsn2, Method1, ObjectOffset, VFTable, _OtherVFTable1)),
-
-    factVFTableWrite(Insn2, Method2, ObjectOffset, VFTable),
-    % Just to block the silliness of picking the same method as early as possible.
-    iso_dif(Method1, Method2),
-    % Method1 and Method2 cannot be purecall already (due to factVFTableWrite)
-
-    factConstructor(Method2),
-
-    not(possibleVFTableOverwrite(Insn2, _OtherInsn3, Method2, ObjectOffset, VFTable, _OtherVFTable2)),
-
-    % And the existing classes are not the same already, which is obviously wrong...
-    % ejs notes that nothing before this point depends on class membership...
-    find(Method1, Class1),
-    find(Method2, Class2),
-    iso_dif(Class1, Class2),
-
-    % Also ensure that the two methods not in a class relationship already.  Merging them would
-    % ultimately result in merging a class with it's own ancestor.
-    not((
-               reasonClassRelationship(Class1, Class2);
-               reasonClassRelationship(Class2, Class1)
-       )),
-
-    % Debugging
-    logtraceln('~@~Q.', [not(find(Class1, Class2)),
-                         reasonMergeClasses_D(Method1, Method2, Class1, Class2)]).
 
 % The constructors are certain to be on the exact same class.  The reasoning is that if there's
 % two known classes, and they're both a base class of a single derived class (at the same
@@ -2646,7 +2716,7 @@ reasonMergeClasses_K(Class1, Class2) :-
 :- table reasonNOTMergeClasses_O/2 as incremental.
 :- table reasonNOTMergeClasses_P/2 as incremental.
 :- table reasonNOTMergeClasses_Q/2 as incremental.
-:- table reasonNOTMergeClasses_Qhelper/3 as opaque.
+:- table reasonNOTMergeClasses_Qhelper/3 as incremental.
 :- table reasonNOTMergeClasses_R/2 as incremental.
 
 reasonNOTMergeClasses(M1,M2) :-
@@ -2928,7 +2998,7 @@ reasonNOTMergeClasses_O(Class1Sorted, Class2Sorted) :-
 % ourself would imply exactly that.  It's not obvious that the merger is blocked by any other
 % rule at present.
 reasonNOTMergeClasses_P(Class1Sorted, Class2Sorted) :-
-    validFuncOffset(_Insn, Caller, Method, Offset),
+    validMethodCallAtOffset(_Insn, Caller, Method, Offset),
     Offset > 0,
     find(Method, Class1),
     find(Caller, Class2),

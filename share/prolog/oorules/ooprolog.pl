@@ -240,15 +240,18 @@ run(Opts) :-
 generate_results(Opts) :-
     check_option(facts(Facts), Opts),
     option(results(Results), Opts), !,
-    setup_call_cleanup(
-        open(Facts, read, FactStream),
-        setup_call_cleanup(
-            (var(Results) -> open_null_stream(ResultStream) ;
-             open(Results, write, ResultStream)),
-            with_output_to(ResultStream,
-                           run_with_backtrace(psolve_no_halt(stream(FactStream)))),
-            close(ResultStream)),
-        close(FactStream)).
+    (   current_prolog_flag(break_level, _) % interactive session
+    ->  psolve_no_halt(Facts)
+    ;   setup_call_cleanup(
+            open(Facts, read, FactStream),
+            setup_call_cleanup(
+                (var(Results) -> open_null_stream(ResultStream) ;
+                open(Results, write, ResultStream)),
+                with_output_to(ResultStream,
+                               run_with_backtrace(psolve_no_halt(stream(FactStream)))),
+                close(ResultStream)),
+            close(FactStream))
+    ).
 
 %% Load results when there isn't a facts file
 generate_results(Opts) :-

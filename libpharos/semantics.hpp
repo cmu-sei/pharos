@@ -12,9 +12,10 @@
 #include <map>
 #include <sstream>
 
-#include <rose.h>
-#include <SymbolicSemantics2.h>
-#include <DispatcherX86.h>
+#include "rose.hpp"
+#include <Rose/BinaryAnalysis/InstructionSemantics2/SymbolicSemantics.h>
+#include <Rose/BinaryAnalysis/InstructionSemantics2/DispatcherX86.h>
+#include <Rose/BinaryAnalysis/Unparser/X86.h>
 
 #include <boost/range/adaptor/filtered.hpp>
 #include <boost/range/adaptor/type_erased.hpp>
@@ -22,6 +23,9 @@
 #include "misc.hpp"
 
 namespace pharos {
+
+// This used to be in the global namespace.
+using Rose::BinaryAnalysis::Unparser::unparseX86Register;
 
 class DescriptorSet;
 
@@ -97,14 +101,6 @@ class SymbolicValue: public ParentSValue {
   }
 
  public:
-
-  // Some methods that used to be public have been declared protected in later versions of
-  // Rose.  Here we re-export them as public.
-  using ParentSValue::must_equal;
-  using ParentSValue::get_comment;
-  using ParentSValue::set_comment;
-  using ParentSValue::is_number;
-  using ParentSValue::get_number;
 
   // Conversion to TreeNodePtr
   operator TreeNodePtr() const {

@@ -1,6 +1,4 @@
-// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
-
-#include <rose.h>
+// Copyright 2016-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "stkvar.hpp"
 #include "misc.hpp"
@@ -367,9 +365,10 @@ StackVariableAnalyzer::analyze() {
   //
   // everything left can be evaluated for possible stack variable usage.
 
-  for (SgAsmX86Instruction* insn : fd_->get_insns_addr_order()) {
+  for (SgAsmInstruction* insn : fd_->get_insns_addr_order()) {
+    SgAsmX86Instruction* xinsn = isSgAsmX86Instruction(insn);
 
-    if (insn == NULL) continue;
+    if (xinsn == NULL) continue;
     rose_addr_t iaddr = insn->get_address();
 
     // control flow instructions can't access local variables
@@ -380,14 +379,14 @@ StackVariableAnalyzer::analyze() {
       continue;
     }
 
-    else if (uses_allocation_instruction(insn)) {
+    else if (uses_allocation_instruction(xinsn)) {
       GTRACE << "   Insn " << addr_str(iaddr)
              << " is a stack allocation instruction" << LEND;
       continue;
     }
 
     // Skip saved register instructions
-    else if (uses_saved_register(insn)) {
+    else if (uses_saved_register(xinsn)) {
       GTRACE << "   Insn " << addr_str(iaddr)
              << " uses a saved register" << LEND;
       continue;
@@ -411,8 +410,8 @@ StackVariableAnalyzer::analyze() {
       GTRACE << "Checking reg reads for stack variables" << LEND;
       for (const AbstractAccess &rraa : reg_reads) {
         // The read is on a transient tree node
-        if (du.fake_read(insn, rraa)) continue;
-        accumulate_stkvar_evidence(insn, rraa);
+        if (du.fake_read(xinsn, rraa)) continue;
+        accumulate_stkvar_evidence(xinsn, rraa);
       }
     }
     access_filters::aa_range mem_reads = du.get_mem_reads(iaddr);
@@ -420,8 +419,8 @@ StackVariableAnalyzer::analyze() {
       GTRACE << "Checking mem reads for stack variables" << LEND;
       for (const AbstractAccess &mraa : mem_reads) {
         // The read is on a transient tree node
-        if (du.fake_read(insn, mraa)) continue;
-        accumulate_stkvar_evidence(insn, mraa);
+        if (du.fake_read(xinsn, mraa)) continue;
+        accumulate_stkvar_evidence(xinsn, mraa);
       }
     }
 
@@ -432,14 +431,14 @@ StackVariableAnalyzer::analyze() {
     if (std::begin(reg_writes) != std::end(reg_writes)) {
       GTRACE << "Checking reg writes for stack variables" << LEND;
       for (const AbstractAccess &rwaa : reg_writes) {
-        accumulate_stkvar_evidence(insn, rwaa);
+        accumulate_stkvar_evidence(xinsn, rwaa);
       }
     }
     access_filters::aa_range mem_writes = du.get_mem_writes(iaddr);
     if (std::begin(mem_writes) != std::end(mem_writes)) {
       GTRACE << "Checking writes for stack variables" << LEND;
       for (const AbstractAccess &mwaa : mem_writes) {
-        accumulate_stkvar_evidence(insn, mwaa);
+        accumulate_stkvar_evidence(xinsn, mwaa);
       }
     }
   }

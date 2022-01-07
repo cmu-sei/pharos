@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019, 2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "state.hpp"
 #include "riscops.hpp"
@@ -107,7 +107,7 @@ RegisterSet SymbolicRegisterState::diff(const SymbolicRegisterStatePtr & other) 
       if (!ovalue) continue;
       // Report everything that's not guaranteed to match.  The caller can think harder about
       // the results if they want, but we shouldn't force more analysis than is required here.
-      if (!(value->must_equal(ovalue, SmtSolverPtr()))) {
+      if (!(value->mustEqual(ovalue, SmtSolverPtr()))) {
         changed.insert(rp.desc);
       }
     }
@@ -439,9 +439,9 @@ bool SymbolicMemoryMapState::merge(const BaseMemoryStatePtr& other_,
       if (newValue)
         thisCellChanged = true;
 
-      const MemoryCell::AddressSet & otherWriters = otherCell->getWriters();
-      const MemoryCell::AddressSet & thisWriters = thisCell->getWriters();
-      MemoryCell::AddressSet newWriters = otherWriters | thisWriters;
+      const auto & otherWriters = otherCell->getWriters();
+      const auto & thisWriters = thisCell->getWriters();
+      auto newWriters = otherWriters | thisWriters;
       if (newWriters != thisWriters)
         thisCellChanged = true;
 
@@ -635,7 +635,7 @@ SymbolicMemoryMapStatePtr convert_memory_list_to_map(
     }
 
     // If the correct value is already in the map, then there's nothing to do.
-    if (value->must_equal(evalue)) {
+    if (value->mustEqual(evalue)) {
       OINFO << "Exists: addr=" << *address << " value=" << *value << LEND;
       // Do nothing
       rcursor++;

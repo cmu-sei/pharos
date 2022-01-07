@@ -37,11 +37,20 @@ endforeach()
 mark_as_advanced(ROSE_LIBRARY ROSE_INCLUDE_DIR SAWYER_INCLUDE_DIR)
 
 if(ROSE_INCLUDE_DIR)
+
   file(STRINGS "${ROSE_INCLUDE_DIR}/rosePublicConfig.h" _ver_line
     REGEX "^#define ROSE_PACKAGE_VERSION  *\"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+\""
     LIMIT_COUNT 1)
   string(REGEX MATCH "[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+" ROSE_VERSION "${_ver_line}")
   unset(_ver_line)
+
+  file(STRINGS "${ROSE_INCLUDE_DIR}/rosePublicConfig.h" needs_capstone
+    REGEX "^#define ROSE_HAVE_CAPSTONE"
+    LIMIT_COUNT 1)
+  if(needs_capstone)
+    find_package(Capstone REQUIRED)
+  endif()
+
 endif()
 
 include(FindPackageHandleStandardArgs)
@@ -61,13 +70,33 @@ if(ROSE_FOUND)
     add_library(Rose::Rose UNKNOWN IMPORTED)
     set_property(TARGET Rose::Rose PROPERTY INTERFACE_INCLUDE_DIRECTORIES
       ${ROSE_INCLUDE_DIR} ${Z3_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${YamlCpp_INCLUDE_DIR}
-      ${SAWYER_INCLUDE_DIR})
+      ${SAWYER_INCLUDE_DIR} ${Capstone_INCLUDE_DIR})
     set_property(TARGET Rose::Rose PROPERTY INTERFACE_SYSTEM_INCLUDE_DIRECTORIES
       ${ROSE_INCLUDE_DIR} ${Z3_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${YamlCpp_INCLUDE_DIR}
-      ${SAWYER_INCLUDE_DIR})
+      ${SAWYER_INCLUDE_DIR} ${Capstone_INCLUDE_DIR})
     set_property(TARGET Rose::Rose PROPERTY IMPORTED_LOCATION ${ROSE_LIBRARY})
     set_property(TARGET Rose::Rose PROPERTY INTERFACE_LINK_LIBRARIES
       ${Boost_LIBRARIES} ${Z3_LIBRARIES}
       ${YamlCpp_LIBRARY} ${CMAKE_DL_LIBS} Threads::Threads)
   endif()
 endif()
+
+function(rose_version_from_string version_string version_number)
+  string(REGEX MATCHALL "[0-9]+" parts "${version_string}")
+  list(APPEND parts 0 0 0 0)
+  list(GET parts 0 1 2 3 parts)
+  set(digits 3 3 3 4)
+  set(result)
+  foreach(idx RANGE 3)
+    list(GET parts ${idx} part)
+    list(GET digits ${idx} tgt)
+    string(LENGTH ${part} len)
+    while(len LESS tgt)
+      set(part "0${part}")
+      string(LENGTH ${part} len)
+    endwhile()
+    set(result "${result}${part}")
+  endforeach(idx)
+  string(REGEX REPLACE "^0+" "" result "${result}")
+  set("${version_number}" "${result}ul" PARENT_SCOPE)
+endfunction()

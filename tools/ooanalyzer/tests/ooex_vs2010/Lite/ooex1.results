@@ -1,10 +1,10 @@
 finalClass(0x401000, 0, 0x8, 0x8, 0, [0x401000, 0x401010]).
 finalClass(0x401020, 0, 0x10, 0x10, 0, [0x401020]).
 finalClass(0x40495c, 0, 0xd, 0xd, 0, [0x40495c]).
-finalClass(0x407140, 0x407140, 0x9, 0x9, 0, [0x4010e7, 0x4010f2, 0x401119]).
+finalClass(0x407140, 0x407140, 0x9, 0x9, 0x4010e7, [0x4010e7, 0x4010f2, 0x401119]).
 finalClass(0x40715c, 0x40715c, 0x9, 0x9, 0x40184d, [0x401769, 0x401786, 0x401793, 0x4017d3, 0x4017f1, 0x401818, 0x40184d, 0x401858, 0x40187f]).
 finalClass(0x40717c, 0x40717c, 0x4, 0x4, 0x4018a4, [0x4018a4, 0x4018b4]).
-finalClass(0x4071f0, 0x4071f0, 0x9, 0x9, 0, [0x401ff4, 0x401fff, 0x402bc9]).
+finalClass(0x4071f0, 0x4071f0, 0x9, 0x9, 0x401ff4, [0x401ff4, 0x401fff, 0x402bc9]).
 finalDemangledName(0x407140, '.?AVbad_alloc@std@@', 'std::bad_alloc', '').
 finalDemangledName(0x40715c, '.?AVexception@std@@', 'std::exception', '').
 finalDemangledName(0x40717c, '.?AVtype_info@@', type_info, '').
@@ -42,6 +42,7 @@ finalMemberAccess(0x40717c, 0, 0x4, [0x4018a7]).
 finalMemberAccess(0x4071f0, 0, 0x4, [0x401ff4, 0x402007, 0x402bd9]).
 finalMethodProperty(0x401000, constructor, certain).
 finalMethodProperty(0x401020, constructor, certain).
+finalMethodProperty(0x4010e7, realDestructor, certain).
 finalMethodProperty(0x4010f2, deletingDestructor, certain).
 finalMethodProperty(0x4010f2, virtual, certain).
 finalMethodProperty(0x401119, constructor, certain).
@@ -55,6 +56,7 @@ finalMethodProperty(0x40187f, constructor, certain).
 finalMethodProperty(0x4018a4, realDestructor, certain).
 finalMethodProperty(0x4018b4, deletingDestructor, certain).
 finalMethodProperty(0x4018b4, virtual, certain).
+finalMethodProperty(0x401ff4, realDestructor, certain).
 finalMethodProperty(0x401fff, deletingDestructor, certain).
 finalMethodProperty(0x401fff, virtual, certain).
 finalMethodProperty(0x402bc9, constructor, certain).

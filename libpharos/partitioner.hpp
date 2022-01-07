@@ -1,14 +1,14 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Partitioner_H
 #define Pharos_Partitioner_H
 
-#include <rose.h>
-#include <Partitioner2/Engine.h>
-#include <Partitioner2/Partitioner.h>
-#include <Partitioner2/Modules.h>
-#include <Partitioner2/ModulesX86.h>
-#include <Partitioner2/Utility.h>
+#include "rose.hpp"
+#include <Rose/BinaryAnalysis/Partitioner2/Engine.h>
+#include <Rose/BinaryAnalysis/Partitioner2/Partitioner.h>
+#include <Rose/BinaryAnalysis/Partitioner2/Modules.h>
+#include <Rose/BinaryAnalysis/Partitioner2/ModulesX86.h>
+#include <Rose/BinaryAnalysis/Partitioner2/Utility.h>
 
 #include "limit.hpp"
 #include "misc.hpp"
@@ -153,7 +153,7 @@ class SupersetEngine: public P2::Engine {
  public:
 
   // We're going to override this so that it hardly uses the real partitioner at all...
-  virtual void runPartitioner(P2::Partitioner& partitioner) ROSE_OVERRIDE;
+  virtual void runPartitioner(P2::Partitioner& partitioner) override;
 };
 
 // We want our own engine because we want to override some steps. Specifically, we want to make
