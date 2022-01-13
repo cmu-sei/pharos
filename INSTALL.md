@@ -43,7 +43,7 @@ First, install prerequisite packages:
 ```
 $ sudo apt update
 $ sudo apt install build-essential wget flex ghostscript bzip2 \
-  git subversion automake libtool bison python libncurses-dev \
+  git subversion automake libtool bison python3 libncurses-dev \
   vim-common sqlite3 libsqlite3-0 libsqlite3-dev zlib1g-dev cmake \
   libyaml-cpp-dev libboost-all-dev libboost-dev libxml2-dev ninja-build
 ```
