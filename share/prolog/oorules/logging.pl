@@ -2,8 +2,16 @@
 % Debugging and printing.
 % ============================================================================================
 
+% Identical to ~p (print) and ~q (writeq), except integers are output in hex
 :- format_predicate('P', format_write_hex(_, _)).
 :- format_predicate('Q', format_write_hex_quoted(_, _)).
+
+% The behavior of the ~@ format argument changed in SWIPL after 8.5.6.  Prior to that, the
+% bindings created by ~@ persisted throughout the rest of the argument list.  It was then
+% changed to discard the bindings after evaluation.  Here we override that such that the
+% bindings are not discarded.
+:- format_predicate('@', format_apply_goal(_, _)).
+
 :- dynamic(logLevel/1).
 :- use_module(library(option), [merge_options/3]).
 
@@ -88,7 +96,7 @@ writelnHex(X) :-
 
 % Write to logfatal, logerror, or logwarn instead...
 %errwrite(Fmt, Args) :-
-%    format(user_error, Fmt, Args).
+%    format(user_error, Fmt, Args).m
 %errwriteln(Fmt, Args) :-
 %    format(user_error, Fmt, Args), nl(user_error).
 
@@ -98,6 +106,8 @@ format_write_hex(_, X) :-
 format_write_hex_quoted(_, X) :-
     writeHexQuoted(X).
 
+format_apply_goal(_, Goal) :-
+    call(Goal).
 
 % Enable compile-time transformations so we can leave very expensive debugging statements in
 % the code without incurring a runtime cost.  Because SWI compiles at load time, you can just
