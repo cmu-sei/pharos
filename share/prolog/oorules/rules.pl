@@ -116,7 +116,14 @@ reasonMethod_L(Method) :-
 
 % Because direct data flow from new() makes the function a method.
 reasonMethod_M(Method) :-
-    thisPtrAllocation(_Insn1, Func, ThisPtr, _Type, _Size),
+    thisPtrAllocation(_Insn1, Func, ThisPtr, Type, _Size),
+    % ejs 6/7/22: Originally the Type of allocation was unconstrained here, but
+    % we generally only output heap and global allocations.  As we start to
+    % output more stack allocations due to bug fixes, we should exclude them
+    % here.  The comment on this rule implies that it should only apply to new,
+    % but if we exclude global allocations, the test suite changes.  So for now
+    % I am including global allocations as well.
+    member(Type, [type_Heap, type_Global]),
     thisPtrUsage(_Insn2, Func, ThisPtr, Method),
     % Require that the Method also read/use the value.
     funcParameter(Method, ecx, _SymbolicValue),
@@ -129,7 +136,7 @@ reasonMethod_N(Func) :-
     % This rule needs to permit invalid calling conventions for many correct results in Lite
     % oo, poly, and ooex7 test cases.
     (callingConvention(Func, '__thiscall'); callingConvention(Func, 'invalid')),
-    funcParameter(Func, 'ecx', ThisPtr),
+    funcParameter(Func, ecx, ThisPtr),
     logtraceln('~@~Q.', [not(factMethod(Method)), reasonMethod_N(Func)]).
 
 % Because a known OO __thiscall method passes the this-pointer as parameter zero to a cdecl
@@ -251,6 +258,7 @@ reasonConstructorSet(Set) :-
 :- table reasonNOTConstructor_G/1 as incremental.
 :- table reasonNOTConstructor_H/1 as incremental.
 :- table reasonNOTConstructor_I/1 as incremental.
+:- table reasonNOTConstructor_J/1 as incremental.
 
 reasonNOTConstructor(Method) :-
     %logwarnln('Recomputing reasonNOTConstructor...'),
@@ -262,7 +270,8 @@ reasonNOTConstructor(Method) :-
         reasonNOTConstructor_F(Method),
         reasonNOTConstructor_G(Method),
         reasonNOTConstructor_H(Method),
-        reasonNOTConstructor_I(Method)
+        reasonNOTConstructor_I(Method),
+        reasonNOTConstructor_J(Method)
       ]).
 
 % Because it is already known to NOT be a constructor.
@@ -355,6 +364,15 @@ reasonNOTConstructor_I(Method) :-
     logtraceln('~@~Q.', [not(factNOTConstructor(Method)),
                          reasonNOTConstructor_I(Method)]).
 
+% ejs 1/8/21: I believe that Offset can not be negative for a constructor or destructor
+% because it is not possible to override them.  Even though destructors can be virtual and
+% overridden in a sense, you can not override the destructor of a specific base clas
+reasonNOTConstructor_J(Method) :-
+    validMethodCallAtOffset(_Insn, Method, OtherMethod, NegativeOffset),
+    NegativeOffset < 0,
+    logtraceln('~@~Q.', [not(factNOTConstructor(Method)),
+                         reasonNOTConstructor_J(Method, OtherMethod, NegativeOffset)]).
+
 reasonNOTConstructorSet(Set) :-
     setof(Method, reasonNOTConstructor(Method), Set).
 
@@ -402,6 +420,7 @@ reasonRealDestructorSet(Set) :-
 :- table reasonNOTRealDestructor_G/1 as incremental.
 :- table reasonNOTRealDestructor_H/1 as incremental.
 :- table reasonNOTRealDestructor_I/1 as incremental.
+:- table reasonNOTRealDestructor_J/1 as incremental.
 
 reasonNOTRealDestructor(Method) :-
     %logwarnln('Recomputing reasonNOTRealDestructor...'),
@@ -413,7 +432,8 @@ reasonNOTRealDestructor(Method) :-
         reasonNOTRealDestructor_F(Method),
         reasonNOTRealDestructor_G(Method),
         reasonNOTRealDestructor_H(Method),
-        reasonNOTRealDestructor_I(Method)
+        reasonNOTRealDestructor_I(Method),
+        reasonNOTRealDestructor_J(Method)
       ]).
 
 % Because it is already known to NOT be a real destructor.
@@ -435,7 +455,10 @@ reasonNOTRealDestructor_C(Method) :-
 % PAPER: Order-NotDestructor
 reasonNOTRealDestructor_D(Method) :-
     factMethod(Method),
-    not(possibleDestructor(Method)).
+    not(possibleDestructor(Method)),
+    logtraceln('~@~Q.', [not(factNOTRealDestructor(Method)),
+                         reasonNOTRealDestructor_D(Method)]).
+
 
 % Because a class can have only one real destructor and we've already one for this class.
 % PAPER: Sanity constraints for each class.  Currently: "Each class has one real destructor"
@@ -447,7 +470,10 @@ reasonNOTRealDestructor_E(Method) :-
     % Therefore every other method on the class is NOT a real destructor
     findMethod(Method, Class),
     % Exclude RealDestructor
-    iso_dif(Method, RealDestructor).
+    iso_dif(Method, RealDestructor),
+    logtraceln('~@~Q.', [not(factNOTRealDestructor(Method)),
+                         reasonNOTRealDestructor_E(Method, RealDestructor)]).
+
 
 % Because a method on a class cannot destruct itself (unless it's a deleting destructor).
 reasonNOTRealDestructor_F(Method) :-
@@ -493,7 +519,6 @@ reasonNOTRealDestructor_H(Method) :-
     logtraceln('~@~Q.', [not(factNOTRealDestructor(Method)),
                          reasonNOTRealDestructor_H(Method)]).
 
-
 % Destructors normally have one argument.  According to
 % https://fossies.org/linux/cfe/lib/CodeGen/MicrosoftCXXABI.cpp, deleting destructors have a
 % second argument.  Therefore, any method that has more than two parameters is not a
@@ -526,6 +551,15 @@ reasonNOTRealDestructor_I(Method) :-
 
     logtraceln('~@~Q.', [not(factNOTRealDestructor(Method)),
                          reasonNOTRealDestructor_I(NumParams, Params, Method)]).
+
+% ejs 1/08/21: I believe that Offset can not be negative for a constructor or destructor
+% because it is not possible to override them.  Even though destructors can be virtual and
+% overridden in a sense, you can not override the destructor of a specific base clas
+reasonNOTRealDestructor_J(Method) :-
+    validMethodCallAtOffset(_Insn, Method, OtherMethod, NegativeOffset),
+    NegativeOffset < 0,
+    logtraceln('~@~Q.', [not(factNOTConstructor(Method)),
+                         reasonNOTRealDestructor_J(Method, OtherMethod, NegativeOffset)]).
 
 reasonNOTRealDestructorSet(Set) :-
     setof(Method, reasonNOTRealDestructor(Method), Set).
@@ -579,6 +613,7 @@ reasonDeletingDestructor(Method) :-
 :- table reasonNOTDeletingDestructor_F/1 as incremental.
 :- table reasonNOTDeletingDestructor_G/1 as incremental.
 :- table reasonNOTDeletingDestructor_H/1 as opaque.
+:- table reasonNOTDeletingDestructor_I/1 as incremental.
 
 reasonNOTDeletingDestructor(Method) :-
     %logwarnln('Recomputing reasonNOTDeletingDestructor...'),
@@ -589,8 +624,9 @@ reasonNOTDeletingDestructor(Method) :-
         reasonNOTDeletingDestructor_E(Method),
         reasonNOTDeletingDestructor_F(Method),
         reasonNOTDeletingDestructor_G(Method),
-        reasonNOTDeletingDestructor_H(Method)
-      ]).
+        reasonNOTDeletingDestructor_H(Method),
+        reasonNOTDeletingDestructor_I(Method)
+     ]).
 
 % Because it is already known to NOT be a deleting destructor.
 % PAPER: NA
@@ -671,6 +707,16 @@ reasonNOTDeletingDestructor_H(Method) :-
     logtraceln('~@~Q.', [not(factNOTDeletingDestructor(Method)),
                          reasonNOTDeletingDestructor_H(NumParams, Params, Method)]).
 
+% ejs 1/08/21: I believe that Offset can not be negative for a constructor or destructor
+% because it is not possible to override them.  Even though destructors can be virtual and
+% overridden in a sense, you can not override the destructor of a specific base clas
+reasonNOTDeletingDestructor_I(Method) :-
+    validMethodCallAtOffset(_Insn, Method, OtherMethod, NegativeOffset),
+    NegativeOffset < 0,
+    logtraceln('~@~Q.', [not(factNOTConstructor(Method)),
+                         reasonNOTDeletingDestructor_I(Method, OtherMethod, NegativeOffset)]).
+
+
 reasonNOTDeletingDestructorSet(Set) :-
     setof(Method, reasonNOTDeletingDestructor(Method), Set).
 
@@ -714,6 +760,14 @@ certainConstructorOrDestructorInheritanceSpecialCase(Method, Type) :-
     factVFTableWrite(WriteAddr, Method, Offset, VFTable),
     not((factVFTableWrite(_, Method, Offset, VFTable2), iso_dif(VFTable, VFTable2))),
     methodCallAtOffset(CallAddr, Method, Callee, Offset),
+
+    % ejs 1/08/21: I believe that Offset can not be negative for a constructor or destructor
+    % because it is not possible to override them.  Even though destructors can be virtual and
+    % overridden in a sense, you can not override the destructor of a specific base class.
+    (Offset < 0
+    ->  logwarnln('Negative offset believed to be impossible here: ~Q ~Q ~Q ~Q ~Q', CallAddr, WriteAddr, Method, Callee, Offset), fail
+    ;   true),
+
     % Ideally we would check that there is a single call, but it turns out that __RTC_CheckEsp
     % looks like a thiscall to offset 0, so instead we'll just sanity check that the method we
     % are calling looks like a constructor.  Since this special case also assumes vftable
@@ -914,7 +968,7 @@ reasonVFTableOverwrite(Method, VFTable2, VFTable1, Offset) :-
 
 % reasonVFTableBelongsToClass(VFTable, Offset, Class) means that a method on Class installs a
 % pointer at Offset _in its own object_ (NOT an embedded object) to VFTable.  Roughly, this
-% means a pimary VFTable at offset 0 for the class, and any extra vftables that are used in the
+% means a primary VFTable at offset 0 for the class, and any extra vftables that are used in the
 % case of multiple inheritance.  The "Primary" VFTable is simply defined to be the one at
 % offset 0.
 
@@ -947,7 +1001,35 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
     % Constructors may inline embedded constructors.  If non-offset
     % zero, we must make sure that there is an inherited class at this
     % offset.
-    (Offset = 0 -> true; factDerivedClass(Class, _BaseClass, Offset)),
+    % (Offset = 0 -> true; factDerivedClass(Class, _BaseClass, Offset)),
+
+    % ejs 5/5/22: Basically, there are two operations that can cause a vftable to be installed
+    % at a non-zero offset: inheritance or embedding.  We need to know which because
+    % inheritance results in vftable ownership, but embedding does not!  The old version of
+    % this rule attempts to say that if there is a derived class immediately at Offset then
+    % Class owns the vftable.  Sadly, there are a bunch of problems here:
+
+    % 1. There could be a zero-size derived class without a vftable and an embedded class with
+    % a vftable at Offset
+
+    % 2. There could be a derived class at Offset without a vftable, but containing an embedded
+    % class at (inner) offset 0
+
+    % 3. There could be multiple inheritance, which can cause a vftable that is owned by the
+    % outer class at an offset at which there is not an immediate base
+
+    (
+        % One way for us to own the vftable is if there is an inherited ancestor at Offset that has
+        % a vftable we need to replace
+        (reasonDerivedClassRelationship(Class, AncestorClass, Offset) ->
+             reasonVFTableBelongsToClass(_SomeVFTableWeNeedToReplace, 0, AncestorClass, _Rule, _OtherWrite));
+
+        % The other way for us to own the vftable is if we're starting a new inheritance
+        % hierarchy ourselves.  If this is the case, Offset will be 0.  If there are no
+        % embedded objects at offset 0, then we must own the vftable.
+        (Offset = 0, (factNOTEmbeddedObject(Class, _AnyClass, 0);
+                      % Not ideal...
+                      not(factEmbeddedObject(Class, _AnyClass2, 0))))),
 
     % VFTables from a base class can be reused in a derived class.  If this happens, we know
     % that the VFTable does not belong to the derived class.
@@ -1018,7 +1100,35 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
     % Constructors may inline embedded constructors.  If non-offset
     % zero, we must make sure that there is an inherited class at this
     % offset.
-    (Offset = 0 -> true; factDerivedClass(Class, _BaseClass, Offset)),
+    % (Offset = 0 -> true; factDerivedClass(Class, _BaseClass, Offset)),
+
+    % ejs 5/5/22: Basically, there are two operations that can cause a vftable to be installed
+    % at a non-zero offset: inheritance or embedding.  We need to know which because
+    % inheritance results in vftable ownership, but embedding does not!  The old version of
+    % this rule attempts to say that if there is a derived class immediately at Offset then
+    % Class owns the vftable.  Sadly, there are a bunch of problems here:
+
+    % 1. There could be a zero-size derived class without a vftable and an embedded class with
+    % a vftable at Offset
+
+    % 2. There could be a derived class at Offset without a vftable, but containing an embedded
+    % class at (inner) offset 0
+
+    % 3. There could be multiple inheritance, which can cause a vftable that is owned by the
+    % outer class at an offset at which there is not an immediate base
+
+    (
+        % One way for us to own the vftable is if there is an inherited ancestor at Offset that has
+        % a vftable we need to replace
+        (reasonDerivedClassRelationship(Class, AncestorClass, Offset) ->
+             reasonVFTableBelongsToClass(_SomeVFTableWeNeedToReplace, 0, AncestorClass, _Rule, _OtherWrite));
+
+        % The other way for us to own the vftable is if we're starting a new inheritance
+        % hierarchy ourselves.  If this is the case, Offset will be 0.  If there are no
+        % embedded objects at offset 0, then we must own the vftable.
+        (Offset = 0, (factNOTEmbeddedObject(Class, _AnyClass, 0);
+                      % Not ideal...
+                      not(factEmbeddedObject(Class, _AnyClass2, 0))))),
 
     % VFTables from a base class can be reused in a derived class.  If this happens, we know
     % that the VFTable does not belong to the derived class.
@@ -1374,6 +1484,7 @@ reasonVBTableEntry(VBTable, Offset, Value) :-
 :- table reasonObjectInObject_C/3 as incremental.
 :- table reasonObjectInObject_D/3 as incremental.
 :- table reasonObjectInObject_E/3 as incremental.
+:- table reasonObjectInObject_F/3 as incremental.
 
 reasonObjectInObject(OuterClass, InnerClass, Offset) :-
     %logwarnln('Recomputing reasonObjectInObject...'),
@@ -1381,7 +1492,8 @@ reasonObjectInObject(OuterClass, InnerClass, Offset) :-
         reasonObjectInObject_B(OuterClass, InnerClass, Offset),
         reasonObjectInObject_C(OuterClass, InnerClass, Offset),
         reasonObjectInObject_D(OuterClass, InnerClass, Offset),
-        reasonObjectInObject_E(OuterClass, InnerClass, Offset)
+        reasonObjectInObject_E(OuterClass, InnerClass, Offset),
+        reasonObjectInObject_F(OuterClass, InnerClass, Offset)
       ]).
 
 % Because it is already known to be true.
@@ -1413,7 +1525,14 @@ reasonObjectInObject_C(OuterClass, InnerClass, Offset) :-
 % possibility that the two classes are in fact the same class.
 reasonObjectInObject_D(OuterClass, InnerClass, Offset) :-
     % We are certain that this member offset is passed to InnerConstructor.
-    validMethodCallAtOffset(_CallInsn, OuterConstructor, InnerConstructor, Offset),
+    validMethodCallAtOffset(CallInsn, OuterConstructor, InnerConstructor, Offset),
+    MethodCall=validMethodCallAtOffset(CallInsn, OuterConstructor, InnerConstructor, Offset),
+
+    % ejs 1/8/22 believes that a negative Offset here indicates that OuterConstructor overrides
+    % a method on the non-primary base class.  Since constructors can not be overridden, this
+    % indicates that OuterConstructor can not be a constructor.
+    Offset >= 0,
+
     factConstructor(OuterConstructor),
     factConstructor(InnerConstructor),
     iso_dif(InnerConstructor, OuterConstructor),
@@ -1430,7 +1549,7 @@ reasonObjectInObject_D(OuterClass, InnerClass, Offset) :-
 
     % Debugging
     logtraceln('~@~Q.', [not(factObjectInObject(OuterClass, InnerClass, Offset)),
-                         reasonObjectInObject_D(OuterClass, InnerClass, Offset)]).
+                         reasonObjectInObject_D(OuterClass, InnerClass, Offset, MethodCall)]).
 
 % Because the outer constructor explicitly calls the inner constructor on that offset.
 % PAPER: Relate-1
@@ -1438,6 +1557,12 @@ reasonObjectInObject_D(OuterClass, InnerClass, Offset) :-
 reasonObjectInObject_E(OuterClass, InnerClass, Offset) :-
     % We are certain that this member offset is passed to InnerConstructor.
     validMethodCallAtOffset(_CallInsn, OuterConstructor, InnerConstructor, Offset),
+
+    % ejs 1/8/22 believes that a negative Offset here indicates that OuterConstructor overrides
+    % a method on the non-primary base class.  Since constructors can not be overridden, this
+    % indicates that OuterConstructor can not be a constructor.
+    Offset >= 0,
+
     factConstructor(OuterConstructor),
     find(OuterConstructor, OuterClass),
 
@@ -1472,6 +1597,19 @@ reasonObjectInObject_E(OuterClass, InnerClass, Offset) :-
     % Debugging
     logtraceln('~@~Q.', [not(factObjectInObject(OuterClass, InnerClass, Offset)),
                          reasonObjectInObject_E(OuterClass, InnerClass, Offset)]).
+
+% If a method installs a vftable at two different offsets, it must be embedded or inherited.
+reasonObjectInObject_F(OuterClass, InnerClass, Offset) :-
+    factVFTableWrite(_Insn1, Method, Offset, VFTable),
+    find(Method, OuterClass),
+    find(VFTable, InnerClass),
+    iso_dif(Method, VFTable),
+
+    factVFTableWrite(_Insn2, Method, Offset2, VFTable),
+    iso_dif(Offset, Offset2),
+
+    logtraceln('~@~Q.', [not(factObjectInObject(OuterClass, InnerClass, Offset)),
+                         reasonObjectInObject_F(OuterClass, InnerClass, Offset)]).
 
 % The member at Offset in OuterConstructor is certain to be an object instance of class
 % InnerConstructor.  The reasoning was intended to be based on two different constructors
@@ -1624,6 +1762,10 @@ reasonDerivedClass_B(DerivedClass, BaseClass, ObjectOffset) :-
     % of the two classes is smaller.  Without this clause we'd just be saying that the two
     % constructors had an inheritance relationship without identifying which was the base.
     validMethodCallAtOffset(_, DerivedConstructor, BaseConstructor, ObjectOffset),
+
+    % ejs 1/26/22 believes that child objects must be at at negative offsets compared to the constructor.
+    ObjectOffset >= 0,
+
     factConstructor(DerivedConstructor),
     factConstructor(BaseConstructor),
     % A constructor can't be it's own parent.
@@ -1817,21 +1959,27 @@ reasonNOTDerivedClass(DerivedClass, BaseClass, ObjectOffset) :-
 % --------------------------------------------------------------------------------------------
 % It is certain that there is a derived class relationship between the the two classes,
 % although there might be multiple classes in between them in the inheritance hierarchy.
-:- table reasonDerivedClassRelationship/2 as incremental.
+:- table reasonDerivedClassRelationship/3 as incremental.
 
 % Because there's an immediate relationship.
 % PAPER: NA
-reasonDerivedClassRelationship(DerivedClass, BaseClass) :-
-    factDerivedClass(DerivedClass, BaseClass, _Offset).
+reasonDerivedClassRelationship(DerivedClass, BaseClass, Offset) :-
+    factDerivedClass(DerivedClass, BaseClass, Offset).
 
 % Because there's a relationship with one or more intermediate classes.
+% XXX: What about virtual bases?
 % PAPER: Do we need this in the paper?
-reasonDerivedClassRelationship(DerivedClass, BaseClass) :-
-    reasonDerivedClassRelationship(DerivedClass, MiddleClass),
+reasonDerivedClassRelationship(DerivedClass, BaseClass, Offset) :-
+    reasonDerivedClassRelationship(DerivedClass, MiddleClass, Offset1),
+    (integer(Offset) -> Offset1 < Offset; true),
     iso_dif(DerivedClass, MiddleClass),
-    reasonDerivedClassRelationship(MiddleClass, BaseClass),
-    %factDerivedClass(MiddleClass, BaseClass, _Offset),
+    (integer(Offset) -> Offset2 is Offset - Offset1; true),
+    reasonDerivedClassRelationship(MiddleClass, BaseClass, Offset2),
+    Offset is Offset1 + Offset2,
     iso_dif(MiddleClass, BaseClass).
+
+:- table reasonDerivedClassRelationship/2 as incremental.
+reasonDerivedClassRelationship(D, B) :- reasonDerivedClassRelationship(D, B, _O).
 
 % --------------------------------------------------------------------------------------------
 % It is certain that there is a class relationship between the two classes (either through
@@ -1898,6 +2046,22 @@ reasonClassHasNoBase(Class) :-
 
 reasonClassHasNoBaseSet(Set) :-
     setof(Class, reasonClassHasNoBase(Class), Set).
+
+% --------------------------------------------------------------------------------------------
+% It is certain that no classes derive from this class
+:- table reasonClassHasNoDerived/1 as incremental.
+
+% Because RTTI told us so
+reasonClassHasNoDerived(Class) :-
+    rTTIEnabled,
+    rTTIValid,
+
+    % There is a class in RTTI...
+    rTTITDA2Class(TDA, Class),
+
+    % And there are no ancestors
+    not(rTTIAncestorOf(_DerivedTDA, TDA)),
+    logtraceln('~Q.', reasonClassHasNoDerived_A(TDA, Class)).
 
 % --------------------------------------------------------------------------------------------
 % It is certain that the class has a base class (but we don't know which class it is).
@@ -2183,8 +2347,8 @@ reasonClassCallsMethod(Class, Method) :-
     %logwarnln('Recomputing reasonClassCallsMethod...'),
     or([%reasonClassCallsMethod_A(Class, Method),
         reasonClassCallsMethod_B(Class, Method),
-        reasonClassCallsMethod_C(Class, Method),
-        reasonClassCallsMethod_D(Class, Method)
+        reasonClassCallsMethod_C(Class, Method)
+        %reasonClassCallsMethod_D(Class, Method)
       %        reasonClassCallsMethod_E(Class, Method),
       %        reasonClassCallsMethod_F(Class, Method)
       ]).
@@ -2236,33 +2400,36 @@ reasonClassAtOffset(OuterClass, Offset, InnerClass) :-
     InnerOffset is Offset - MiddleOffset,
     reasonClassAtOffset(MiddleClass, InnerOffset, InnerClass).
 
+% ejs 6/14/22 Isn't this just a more specific version of _C?  It's not clear what the OIO tells
+% us.
+
 % Because a method on an outer class calls a method on a known inner object.  This rule is
 % direction safe because it incorporates ObjectInObject, which has sorted out the inheritance
 % and/or embedding relationships with sufficient confidence that we have confidence in
 % InnerClass.
-reasonClassCallsMethod_D(InnerClass, InnerMethod) :-
-    % An outer method calls and inner method on a this pointer.
-    thisPtrUsage(_Insn, OuterMethod, InnerThisPtr, InnerMethod),
-    % There's an offset from the outer this pointer to the inner this pointer.
-    thisPtrOffset(_OuterThisPtr, Offset, InnerThisPtr),
-    % BUG!!! We should really tie the OuterThisPtr to the OuterMethod, but we don't presently
-    % export the facts required to do that, so we'll just assume they're related for right now.
-    find(OuterMethod, OuterClass),
-    % We must know that there's an object within an object at that offset.
-    % ejs 2/12/21 If the compiler inlined behavior from an intermediate object, we might never
-    % see it.  So we use reasonClassAtOffset to look through multiple levels of embedding or
-    % inheritance.  This was extremely important for merging std::allocator<char> in 2010/Debug/ooex7.
-    % ejs 6/14/21 Oops, turns out the above is not true if InnerMethod is on a derived class.
-    % In malware-67b9, OuterMethod called std::bad_exception, which inherits from
-    % std::exception.  But of course std::exception cannot call std::bad_exception.
-    % old/incorrect: reasonClassAtOffset(OuterClass, Offset, InnerClass),
-    factObjectInObject(OuterClass, Offset, InnerClass),
-    iso_dif(OuterClass, InnerClass),
-    iso_dif(InnerClass, InnerMethod),
-    % Debugging
-    logtraceln('~@~Q.', [not(factClassCallsMethod(InnerClass, InnerMethod)),
-                         reasonClassCallsMethod_D(OuterClass, OuterMethod,
-                                                  InnerClass, InnerMethod)]).
+%% reasonClassCallsMethod_D(InnerClass, InnerMethod) :-
+%%     % An outer method calls and inner method on a this pointer.
+%%     thisPtrUsage(_Insn, OuterMethod, InnerThisPtr, InnerMethod),
+%%     % There's an offset from the outer this pointer to the inner this pointer.
+%%     thisPtrOffset(_OuterThisPtr, Offset, InnerThisPtr),
+%%     % BUG!!! We should really tie the OuterThisPtr to the OuterMethod, but we don't presently
+%%     % export the facts required to do that, so we'll just assume they're related for right now.
+%%     find(OuterMethod, OuterClass),
+%%     % We must know that there's an object within an object at that offset.
+%%     % ejs 2/12/21 If the compiler inlined behavior from an intermediate object, we might never
+%%     % see it.  So we use reasonClassAtOffset to look through multiple levels of embedding or
+%%     % inheritance.  This was extremely important for merging std::allocator<char> in 2010/Debug/ooex7.
+%%     % ejs 6/14/21 Oops, turns out the above is not true if InnerMethod is on a derived class.
+%%     % In malware-67b9, OuterMethod called std::bad_exception, which inherits from
+%%     % std::exception.  But of course std::exception cannot call std::bad_exception.
+%%     % old/incorrect: reasonClassAtOffset(OuterClass, Offset, InnerClass),
+%%     factObjectInObject(OuterClass, Offset, InnerClass),
+%%     iso_dif(OuterClass, InnerClass),
+%%     iso_dif(InnerClass, InnerMethod),
+%%     % Debugging
+%%     logtraceln('~@~Q.', [not(factClassCallsMethod(InnerClass, InnerMethod)),
+%%                          reasonClassCallsMethod_D(OuterClass, OuterMethod,
+%%                                                   InnerClass, InnerMethod)]).
 
 % Because the __thiscall OO method calls the __cdecl OO method with the same-this pointer.
 % This rule is basically a duplicate of the logic in reasonMethod_O that made the cdecl
@@ -3205,6 +3372,83 @@ reasonClassSizeGTE_C(Class, Size) :-
     logtraceln('~@~Q.', [not((factClassSizeGTE(Class, ExistingSize), ExistingSize >= Size)),
                          reasonClassSizeGTE_C(BaseClass, Class, Size)]).
 
+% GTE_D is based on observing a heap allocation and a constructor invoation on the same
+% thisptr.  The question is whether the the constructor belongs on the allocated object's
+% class, or if it (1) belongs to a base class (2) belongs to a derived class or (3) belongs to
+% an embedded class.  See https://github.com/cmu-sei/pharos/issues/209 for more discussion
+
+% Note: Embedded classes are hard and we largely ignore them.  :-(
+
+:- table thisPtrConstructorCommon/3 as incremental.
+thisPtrConstructorCommon(Function, Constructor, ThisPtr) :-
+    factConstructor(Constructor),
+    thisPtrUsage(_, Function, ThisPtr, Constructor),
+    thisPtrAllocation(_, Function, ThisPtr, type_Heap, Size),
+    % We sometimes get bad (zero) class sizes in allocations.  This should really be fixed in
+    % the fact exporter, so that we don't have to deal with it here.
+    Size \= 0.
+
+% The first rule is when there is an inheritance relationship between Derived and Base (at
+% offset 0). There are few possibilities:
+% 1. Derived constructor is not inlined.
+
+% We see: Just a call to a constructor.  No vftable installs.
+
+% 2. Derived constructor is inlined but base constructor is not.
+
+% We see: A call to base constructor at offset 0.  If base has a vftable install, we should see a derived vftable install.
+
+% 3. Derived constructor and base constructor are both inlined.
+
+% We see: Probably no call, but then this rule doesn't apply.  Maybe we see a call to a
+% grand-child constructor, and maybe vftable installations of both derived, base, and
+% grandchild classes.
+
+% So turning this around:
+
+% If we see a call and no vftables, and the constructor has vftables, then:
+
+% We might be seeing #1.
+
+% We aren't seeing #2, because if the base has a vftable, then the derived inlined constructor
+% should as well.
+
+% We aren't seeing #3.  If we were seeing #3, then we are looking at a grand-child constructor.
+% If it had a vftable install, then we should see a vftable install inlined for the derived
+% classes.
+
+thisPtrAssociatedWithConstructor(Function, Constructor, ThisPtr, Debug) :-
+    thisPtrConstructorCommon(Function, Constructor, ThisPtr),
+    find(Constructor, Class),
+
+    % There is inheritance at offset 0.
+    (factDerivedClass(Class, _BaseClass, 0);
+     factDerivedClass(_DerivedClass, Class, 0)),
+
+    % The constructor has a vftable install
+    % XXX: Does this have to be at zero?
+    factVFTableWrite(_Insn1, Constructor, 0, _VFTable1),
+
+    % But there are no vftable installs in Function
+    not(possibleVFTableWrite(_Insn2, Function, ThisPtr, 0, _VFTable2)),
+
+    Debug=inheritance.
+
+% A second rule is that there are no base or derived classes, so there is no way an object
+% could be at offset 0 (except embedding).
+thisPtrAssociatedWithConstructor(Function, Constructor, ThisPtr, Debug) :-
+    thisPtrConstructorCommon(Function, Constructor, ThisPtr),
+    find(Constructor, Class),
+
+    factClassHasNoBase(Class),
+    factClassHasNoDerived(Class),
+
+    % Ideally we'd want a stronger statement here to ensure there is no embedded object.  But
+    % at least make sure we don't currently have one.
+    not(factObjectInObject(_Derived, Class, 0)),
+
+    Debug=nobaseorderived.
+
 % The given class (associated with the constructor) is certain to be of this exact size.  The
 % reasoning is that we're able to track an allocation site with a known size to the constructor
 % associated with the class.  There's a small bit of ambiguity about what the compiler will
@@ -3212,19 +3456,15 @@ reasonClassSizeGTE_C(Class, Size) :-
 % PAPER: CSize-2
 % ED_PAPER_INTERESTING
 reasonClassSizeGTE_D(Class, Size) :-
-    factConstructor(Constructor),
-    thisPtrUsage(_, Function, ThisPtr, Constructor),
+
+    thisPtrAssociatedWithConstructor(Function, Constructor, ThisPtr, Debug),
     thisPtrAllocation(_, Function, ThisPtr, type_Heap, Size),
-    % We sometimes get bad (zero) class sizes in allocations.  This should really be fixed in
-    % the fact exporter, so that we don't have to deal with it here.
-    Size \= 0,
+
     find(Constructor, Class),
-    % ejs 1/5/21: This rule only applies if we know there are no base classes using some of the
-    % allocated object's space.
-    factClassHasNoBase(Class),
+
     % Debugging
     logtraceln('~@~Q.', [not((factClassSizeGTE(Class, ExistingSize), ExistingSize >= Size)),
-                         reasonClassSizeGTE_D(Class, Size)]).
+                         reasonClassSizeGTE_D(Class, Size, Function, ThisPtr, Constructor, Debug)]).
 
 % The given class is certain to be of this size or greater.  The reasoning for this rule is
 % that if we're certain that there's a member at a given offset and size, then the object must
@@ -3307,16 +3547,16 @@ reasonClassSizeLTE_B(Class, 0x0fffffff) :-
 % associated with the class.  There's a small bit of ambiguity about what the compiler will
 % generate for arrays of objects and other unusual cases, but this rule is a good start.
 % PAPER: CSize-2
+% See the significant discussion around reasonClassSizeGTE_D
 reasonClassSizeLTE_C(Class, Size) :-
-    factConstructor(Constructor),
-    find(Constructor, Class),
-    thisPtrUsage(_, Function, ThisPtr, Constructor),
+
+    thisPtrAssociatedWithConstructor(Function, Constructor, ThisPtr, Debug),
     thisPtrAllocation(_, Function, ThisPtr, type_Heap, Size),
-    % We sometimes get bad (zero) class sizes in allocations.  This should really be fixed in
-    % the fact exporter, so that we don't have to deal with it here.
-    Size \= 0,
+
+    find(Constructor, Class),
+
     logtraceln('~@~Q.', [not((factClassSizeLTE(Class, ExistingSize), ExistingSize =< Size)),
-                         reasonClassSizeLTE_C(ThisPtr, Class, Size)]).
+                         reasonClassSizeLTE_C(Class, Size, Function, ThisPtr, Debug)]).
 
 % The given class is certain to be of this size or smaller.  The reasoning is that a base class
 % must always be smaller than or equal in size to it's derived classes.

@@ -48,6 +48,12 @@ class ThisPtrUsage {
   // allocated memory pointer following a call to new(), which is not really the this-pointer.
   SymbolicValuePtr this_ptr;
 
+  // The symbolic expression of the this-pointer expanded to include unknown memory reads as
+  // expressions.  This is used later to export more complete representations of the thisptr in
+  // prolog.  This has to be done before the PDG is released, because otherwise the variables
+  // representing unknown memory will not match the recorded thisptrs.
+  TreeNodePtr expanded_this_ptr;
+
   // How was this object allocated?
   AllocType alloc_type;
   // The size of the memory allocation for this object if dynamically allocated.  This value is
@@ -75,6 +81,9 @@ class ThisPtrUsage {
 
   // Prolog mode constructor destructor test based on call order.
   void update_ctor_dtor(OOAnalyzer& ooa) const;
+
+  // Ed is not sure this really belongs here
+  static TreeNodePtr expand_thisptr(const FunctionDescriptor *fd, SgAsmInstruction*, const SymbolicValuePtr tptr);
 };
 
 // The ThisPtrUsage map is keyed by the get_hash() of the TreeNode, which is a 64-bit hash of

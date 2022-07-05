@@ -1,11 +1,11 @@
-// Copyright 2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2021-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 // This file is only meant to be included from rose.hpp.
 
 #ifndef Pharos_VERSION_HPP_
 #define Pharos_VERSION_HPP_
 
-#define PHAROS_ROSE_MINIMUM_VERSION 110390006ul
+#define PHAROS_ROSE_MINIMUM_VERSION 11'039'0006ul
 #define PHAROS_ROSE_MINIMUM_VERSION_FROM_CMAKE @PHAROS_ROSE_MINIMUM_NUMERIC_VERSION@
 #define PHAROS_ROSE_VERSION @ROSE_NUMERIC_VERSION@
 
@@ -16,7 +16,7 @@
 #define PHAROS_ROSE_DAILY_VERSION(x) PHAROS_GET_VERSION_OFFSET(x, 1ul, 1000ul)
 
 #if PHAROS_ROSE_MINIMUM_VERSION != PHAROS_ROSE_MINIMUM_VERSION_FROM_CMAKE
-#  error "Minimimum version in Pharos CMakeLists.txt has been updated.  The file libpharos/version.hpp.in needs to be checked and updated manually."
+#  error "Minimum version in Pharos CMakeLists.txt has been updated.  The file libpharos/version.hpp.in needs to be checked and updated manually."
 #endif
 
 // Check to see that the version of ROSE detected by Pharos is the same version Pharos is being

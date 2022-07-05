@@ -216,8 +216,8 @@ void OOAnalyzer::visit(FunctionDescriptor* fd) {
   identify_purecall_method(*fd);
   identify_nonreturn_method(*fd);
 
-  const PDG *pdg = fd->get_pdg();
-
+  // Without this we deadlock?!
+  fd->get_pdg();
 
   // For future me, the problem that this code corrects is that delete methods are sometimes
   // tail-call optimized into thunklets (a few instructions plus an unconditional jump to
@@ -247,7 +247,7 @@ void OOAnalyzer::visit(FunctionDescriptor* fd) {
     // Filter to only indeterminate calls (CallRegister and CallUnknown)
     if (true) {
       SgAsmX86Instruction* insn = isSgAsmX86Instruction(cd->get_insn());
-      VirtualFunctionCallAnalyzer vcall(insn, pdg);
+      VirtualFunctionCallAnalyzer vcall(insn, fd);
       if (vcall.analyze()) {
         write_guard<decltype(mutex)> guard{mutex};
         // The creation of entries in the vcalls map is intentional.
@@ -316,6 +316,7 @@ void OOAnalyzer::finish() {
   for (auto & v : call_addrs) {
     switch (v.second) {
      case NEW:      new_size++;      break;
+     case CANDIDATE_DELETE: // fall through
      case DELETE:   delete_size++;   break;
      case PURECALL: purecall_size++; break;
      default: break;
@@ -604,6 +605,9 @@ void OOAnalyzer::find_vtable_installations(FunctionDescriptor const & fd) {
       // stack memory representation gets fixed to include esp properly.
       if (insn_is_call(x86insn)) continue;
 
+      // Expand the representation of the pointer so we can dump the expression to thisPtrDefinition.
+      TreeNodePtr tn_expanded = ThisPtrUsage::expand_thisptr (&fd, insn, aa.memory_address);
+
       // Let's try to extract the object pointer variable, and any offset that's present.
       TreeNodePtr tn = aa.memory_address->get_expression();
       AddConstantExtractor ace(tn);
@@ -631,7 +635,7 @@ void OOAnalyzer::find_vtable_installations(FunctionDescriptor const & fd) {
 
         // It look like we're going to have a valid virtual table.
         VirtualTableInstallationPtr install = std::make_shared<VirtualTableInstallation>(
-          insn, &fd, taddr, vp, offset, base_table);
+          insn, &fd, taddr, vp, offset, tn_expanded, base_table);
         //VirtualTableInstallation* install = NULL;
         //install = new VirtualTableInstallation(insn, taddr, vp, offset);
 

@@ -1,11 +1,24 @@
 #!/bin/bash
 
+SUFFIX=facts
+
+case $1 in
+    --facts)
+        SUFFIX=facts
+        shift
+        ;;
+    --results)
+        SUFFIX=results
+        shift
+        ;;
+esac
+
 if [ -n "$2" ]; then
     arg1=$(realpath "$1")
     arg2=$(realpath "$2")
 else
-    arg1="@CMAKE_SOURCE_DIR@/tools/ooanalyzer/tests/$1.facts"
-    arg2="@CMAKE_BINARY_DIR@/tools/ooanalyzer/tests/$1.facts"
+    arg1="@CMAKE_SOURCE_DIR@/tools/ooanalyzer/tests/$1.$SUFFIX"
+    arg2="@CMAKE_BINARY_DIR@/tools/ooanalyzer/tests/$1.$SUFFIX"
 fi
 
 for file in "$arg1" "$arg2"; do

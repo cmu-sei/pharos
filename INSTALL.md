@@ -196,7 +196,7 @@ The latest release version of Z3 (4.8.7) has passed our testing.
 
 We build Z3 using commands like these:
 ```
-$ git clone -b Z3-4.8.7 https://github.com/Z3Prover/z3.git
+$ git clone -b z3-4.8.7 https://github.com/Z3Prover/z3.git
 $ cd z3
 $ mkdir build
 $ cd build
@@ -272,11 +272,11 @@ SWI Prolog version 8.3.19 or later fixes a bug in Prolog that can be
 triggered by ooanalyzer in some rare cases.  See
 https://github.com/cmu-sei/pharos/issues/156 for more details.
 
-These commands will build and install version 8.3.16 to
+These commands will build and install version 8.5.12 to
 $SWIPL_LOCATION:
 
 ```
-$ git clone --recursive -b V8.3.19 --depth 1 https://github.com/swi-prolog/swipl-devel
+$ git clone --recursive -b V8.5.12 --depth 1 https://github.com/swi-prolog/swipl-devel
 $ cd swipl-devel
 $ mkdir build
 $ cd build

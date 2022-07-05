@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/format.hpp>
 #include <boost/range/adaptor/map.hpp>
@@ -78,6 +78,8 @@ ThisPtrUsage::ThisPtrUsage(const FunctionDescriptor* f, SymbolicValuePtr tptr,
 
   assert(fd != NULL);
 
+  expanded_this_ptr = expand_thisptr (fd, call_insn, this_ptr);
+
   // We don't know anything about our allocation yet.
   alloc_type = AllocUnknown;
   alloc_size = 0;
@@ -85,6 +87,78 @@ ThisPtrUsage::ThisPtrUsage(const FunctionDescriptor* f, SymbolicValuePtr tptr,
 
   add_method(tcm, call_insn);
   analyze_alloc();
+}
+
+// This method takes a thisptr as input, and tries to replace variable references for unknown
+// memory reads with the corresponding read expression.
+TreeNodePtr ThisPtrUsage::expand_thisptr(const FunctionDescriptor *fd, SgAsmInstruction* insn, const SymbolicValuePtr this_ptr_in) {
+
+  auto thisptr = this_ptr_in->get_expression ();
+
+  // Check for more than one definer?
+  if (this_ptr_in->get_defining_instructions ().size () > 1) {
+    GDEBUG << "expand_thisptr: Ignoring expression with more than one defining instruction: " << *this_ptr_in << LEND;
+    return thisptr;
+  }
+
+  const auto &du = fd->get_pdg()->get_usedef();
+
+  auto deps = du.get_dependencies(insn->get_address());
+
+  if (!deps) {
+    // No dependencies
+    return thisptr;
+  }
+
+  std::set<RegisterDescriptor> seen_rds;
+
+  // Look for multiple abstract accesses for the same operand
+  for (const auto & dep : *deps) {
+    const auto aa = dep.access;
+    assert (aa.value);
+    if (!aa.is_mem()) {
+      if (seen_rds.count (aa.register_descriptor)) {
+        GDEBUG << "Multiple dependencies of register " << aa.str () << " detected, bailing out." << aa.str () << LEND;
+        return thisptr;
+      }
+      seen_rds.insert (aa.register_descriptor);
+    }
+  }
+
+  for (const auto & dep : *deps) {
+    const auto aa = dep.access;
+    assert (aa.value);
+
+    // If aa.value is not in the thisptr expression, we can skip it to save time.
+    if (!has_subexp (thisptr, aa.value->get_expression ()))
+      continue;
+
+    if (dep.definer) {
+      // Ok, let's see if we can expand aa.value
+      const auto expanded = expand_thisptr (fd, dep.definer, aa.value);
+      thisptr = thisptr->substitute (aa.value->get_expression (), expanded);
+    } else {
+      // Dependency has no definer.  Hopefully it's a memory read
+      if (aa.is_mem () && aa.memory_address && aa.isRead) {
+        GDEBUG << "Address: " << *aa.memory_address << LEND;
+        GDEBUG << "Value: " << *aa.value << LEND;
+        // Create a mem variable for each bitwidth
+        const auto get_mem_for_bits = [fd] (const unsigned bits) {
+          static std::map<unsigned, TreeNodePtr> m;
+
+          if (!m.count (bits))
+            m [bits] = SymbolicExpr::makeMemoryVariable (fd->ds.get_arch_bits(), bits, "Mem");
+
+          return m.at (bits);
+        };
+        const auto mem = get_mem_for_bits (aa.value->get_expression()->nBits());
+        const auto expanded = SymbolicExpr::makeRead (mem, aa.memory_address->get_expression ());
+        thisptr = thisptr->substitute (aa.value->get_expression (), expanded);
+      }
+    }
+  }
+
+  return thisptr;
 }
 
 // Analyze the allocation type and location of this-pointers.
@@ -229,6 +303,12 @@ class CallOrderVisitor: public boost::default_bfs_visitor {
   bool constructor = true;
   // The current start vertex (so we don't match ourself).
   CFGVertex current;
+
+  // This is pretty hacky.  If tcm is non-NULL, then we are searching for a call to tcm.
+  // Otherwise we are looking normally.  If Ed was non-lazy, he would create a separate visitor
+  // for this.
+  ThisCallMethod *tcm;
+
   CallOrderVisitor(const MethodEvidenceMap &method_evidence_,
                    const OOAnalyzer &ooa_,
                    const FunctionDescriptor *fd_)
@@ -296,9 +376,27 @@ class CallOrderVisitor: public boost::default_bfs_visitor {
         }
       }
 
-      GDEBUG << "The call to constructor/destructor candidate at address " << addr_str(currinsn->get_address ())
-             << " was disproven by the earlier/later call at address " << addr_str(callinsn->get_address ()) << LEND;
-      throw VertexFound ("vertexfound");
+
+      // If tcm is set, then we're searching for a call to tcm specifically. Otherwise we're
+      // searching for any other method call.
+      if (tcm) {
+        auto is_tcm = [&] (const ThisCallMethod *target) {
+          return target == tcm;
+        };
+
+        auto call_targets = method_evidence.find (callinsn)->second;
+        if (boost::find_if (call_targets, is_tcm) != call_targets.end ()) {
+          // We found a call to tcm
+          GDEBUG << "A call to constructor/destructor candidate at address " << addr_str(currinsn->get_address ())
+                 << " was also found at an earlier/later address " << addr_str(callinsn->get_address ())
+                 << " and therefore we will not analyze this callsite." << LEND;
+          throw VertexFound ("tcm");
+        }
+      } else {
+        GDEBUG << "The call to constructor/destructor candidate at address " << addr_str(currinsn->get_address ())
+               << " was disproven by the earlier/later call at address " << addr_str(callinsn->get_address ()) << LEND;
+        throw VertexFound ("vertexfound");
+      }
     }
   }
   // Add an instruction to the bidirectional map.
@@ -438,51 +536,111 @@ void ThisPtrUsage::update_ctor_dtor(OOAnalyzer& ooa) const {
       //OINFO << "Considering method: " << wtcm->address_string() << LEND;
       // If we still think that we're possibly a constructor...
       if (wtcm->no_calls_before) {
-        //OINFO << "Method " << wtcm->address_string() << " is a possible constructor." << LEND;
+        GDEBUG << "Method " << wtcm->address_string() << " is a possible constructor." << LEND;
+
+        bool is_first_call_of_tcm = true;
+
         try {
-          // Mark our starting vertex and then do a breadth first search for one of the other
-          // calls.  Reverse the graph because we want to search backwards in the CFG.
+
+          // First, check to see if this is the "first call to wtcm" on this ptr.
+
           cov.current = s;
           cov.constructor = true;
           cov.this_ptr = this_ptr;
+          cov.tcm = wtcm;
           boost::filtered_graph<CFG, NonReturningCFGFilter> filtered_graph(cfg, nrf);
           auto reversed_graph = boost::make_reverse_graph(filtered_graph);
           boost::breadth_first_search(reversed_graph, s, visitor(cov));
+          // We are okay to continue
+          is_first_call_of_tcm = true;
         }
-        // If the search threw VertexFound, there's another call before this method, so we're
-        // not a constructor.   Update the ThisCallMethod to reflect this.
         catch (VertexFound&) {
-          GINFO << "Method " << wtcm->address_string() << " is NOT a constructor because "
-                << "of the call at " << addr_str(caddr) << LEND;
-          // Mark the method as not a constructor.
-          wtcm->no_calls_before = false;
+          // We found an earlier call of tcm
+          is_first_call_of_tcm = false;
+          GDEBUG << addr_str(caddr) << " is not the first call of method " << wtcm->address_string () << " on thisptr.  Skipping analysis of callsite." << LEND;
         }
         catch (Aborted&) {
-          GDEBUG << "Search to disprove method " << wtcm->address_string() << " is a constructor aborted when examining the call at " << addr_str(caddr) << LEND;
+          // We found a new or delete.  Continue with the normal search.
+          is_first_call_of_tcm = true;
+        }
+
+
+        if (is_first_call_of_tcm) {
+          try {
+            // Mark our starting vertex and then do a breadth first search for one of the other
+            // calls.  Reverse the graph because we want to search backwards in the CFG.
+            cov.current = s;
+            cov.constructor = true;
+            cov.this_ptr = this_ptr;
+            cov.tcm = NULL;
+            boost::filtered_graph<CFG, NonReturningCFGFilter> filtered_graph(cfg, nrf);
+            auto reversed_graph = boost::make_reverse_graph(filtered_graph);
+            boost::breadth_first_search(reversed_graph, s, visitor(cov));
+          }
+          // If the search threw VertexFound, there's another call before this method, so we're
+          // not a constructor.   Update the ThisCallMethod to reflect this.
+          catch (VertexFound&) {
+            GINFO << "Method " << wtcm->address_string() << " is NOT a constructor because "
+                  << "of the call at " << addr_str(caddr) << LEND;
+            // Mark the method as not a constructor.
+            wtcm->no_calls_before = false;
+          }
+          catch (Aborted&) {
+            GDEBUG << "Search to disprove method " << wtcm->address_string() << " is a constructor aborted when examining the call to "
+                   << addr_str(caddr) <<  " because a call to new/delete was reached" << LEND;
+          }
         }
       }
 
       // If we still think that we're possibly a destructor...
       if (wtcm->no_calls_after) {
-        //OINFO << "Method " << wtcm->address_string() << " is a possible destructor." << LEND;
+
+        bool is_last_call_of_tcm = true;
+
         try {
-          // Mark our starting vertex and then do a breadth first search for one of the other
+          // Check to see if this is the last call to this method
           cov.current = s;
           cov.constructor = false;
           cov.this_ptr = this_ptr;
+          cov.tcm = wtcm;
           boost::filtered_graph<CFG, NonReturningCFGFilter> filtered_graph(cfg, nrf);
           boost::breadth_first_search(filtered_graph, s, visitor(cov));
+
+          is_last_call_of_tcm = true;
         }
-        // If the search threw VertexFound, there's another call after this method, so we're
-        // not a destructor.   Update the ThisCallMethod to reflect this.
         catch (VertexFound&) {
-          GINFO << "Method " << wtcm->address_string() << " is NOT a destructor because "
-                << "of the call at " << addr_str(caddr) << LEND;
-          // Mark the method as not a destructor.
-          wtcm->no_calls_after = false;
+          // We found a later call of tcm
+          GDEBUG << addr_str(caddr) << " is not the last call of method " << wtcm->address_string () << " on thisptr.  Skipping analysis of callsite." << LEND;
+          is_last_call_of_tcm = false;
         }
         catch (Aborted&) {
-          GDEBUG << "Search to disprove method " << wtcm->address_string () << " is a destructor aborted when examining the call at " << addr_str(caddr) << LEND;
+          // We found a new or delete.  Continue with the normal search.
+          is_last_call_of_tcm = true;
+        }
+
+        if (is_last_call_of_tcm) {
+          GDEBUG << "Method " << wtcm->address_string() << " is a possible destructor." << LEND;
+          try {
+            // Mark our starting vertex and then do a breadth first search for one of the other
+            cov.current = s;
+            cov.constructor = false;
+            cov.this_ptr = this_ptr;
+            cov.tcm = NULL;
+            boost::filtered_graph<CFG, NonReturningCFGFilter> filtered_graph(cfg, nrf);
+            boost::breadth_first_search(filtered_graph, s, visitor(cov));
+          }
+          // If the search threw VertexFound, there's another call after this method, so we're
+          // not a destructor.   Update the ThisCallMethod to reflect this.
+          catch (VertexFound&) {
+            GINFO << "Method " << wtcm->address_string() << " is NOT a destructor because "
+                  << "of the call at " << addr_str(caddr) << LEND;
+            // Mark the method as not a destructor.
+            wtcm->no_calls_after = false;
+          }
+          catch (Aborted&) {
+            GDEBUG << "Search to disprove method " << wtcm->address_string () << " is a destructor aborted when examining the call to "
+                   << addr_str(caddr) << " because a call to new/delete was reached" << LEND;
+          }
         }
       }
     }

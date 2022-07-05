@@ -1,6 +1,6 @@
 (
- (nil . ((indent-tabs-mode . nil)
-         (fill-column . 95)))
+ (nil . ((indent-tabs-mode . nil)))
+ (prog-mode . ((fill-column . 95)))
  (c-mode . ((c-basic-offset . 2)
             (c-block-comment-prefix . "")
             (comment-start . "// ")

@@ -259,6 +259,7 @@ class DUAnalysis {
   LimitCode evaluate_bblock(SgAsmBlock* bblock);
   void update_call_targets(SgAsmX86Instruction* insn, SymbolicRiscOperatorsPtr& ops);
   void update_function_delta();
+  void guess_function_delta();
   void make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& cstate);
 
   // Report debugging messages.  No analysis.

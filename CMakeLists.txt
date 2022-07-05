@@ -64,7 +64,8 @@ endif()
 
 # Rose
 
-# Anyone modifying this version should also manually modify libpharos/version.hpp.in.  They should set the PHAORS_ROSE_MINI
+# Anyone modifying this version should also manually modify libpharos/version.hpp.in.  They
+# should set the PHAROS_ROSE_MINIMUM_VERSION variable to match.
 set(PHAROS_ROSE_MINIMUM_VERSION 0.11.39.6)
 
 find_package(Rose ${PHAROS_ROSE_MINIMUM_VERSION} REQUIRED)

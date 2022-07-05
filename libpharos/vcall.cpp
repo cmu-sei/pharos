@@ -3,12 +3,13 @@
 #include "vcall.hpp"
 #include "pdg.hpp"
 #include "masm.hpp"
+#include "usage.hpp" // For expand_thisptr
 
 namespace pharos {
 
 VirtualFunctionCallAnalyzer::VirtualFunctionCallAnalyzer(
-  SgAsmX86Instruction *i, const PDG *p)
-  : call_insn(i), pdg(p)
+  SgAsmX86Instruction *i, const FunctionDescriptor *fd_)
+  : call_insn(i), fd(fd_), pdg(fd_->get_pdg())
 {}
 
 VirtualFunctionCallAnalyzer::~VirtualFunctionCallAnalyzer() { /* Nothing to do here */ }
@@ -52,8 +53,8 @@ bool VirtualFunctionCallAnalyzer::resolve_object(const TreeNodePtr& object_expr,
   vci.vtable_ptr = vtable_ptr;
   vci.vtable_offset = object_offset;
   vci.vfunc_offset = vtable_offset;
-  // In NEWWAY is anyone using vc->obj_ptr?
   vci.obj_ptr = SymbolicValue::treenode_instance(object_expr);
+  vci.expanded_obj_ptr = ThisPtrUsage::expand_thisptr (fd, call_insn, vci.obj_ptr);
   vci.lobj_ptr = lobj_ptr;
 
   vcall_infos.push_back(vci);

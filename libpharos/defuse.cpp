@@ -806,35 +806,13 @@ DUAnalysis::fake_read(SgAsmX86Instruction* insn, const AbstractAccess& aa) const
   // This approach is a little lazy but I didn't want to have to write my own visitor class to
   // look for a specific subexpression.
 
-  // JSG updated this with Robb M's guideance on searching for a subexpression.
-  using VisitAction = Rose::BinaryAnalysis::SymbolicExpr::VisitAction;
-  using Visitor = Rose::BinaryAnalysis::SymbolicExpr::Visitor;
-
   TreeNodePtr read_tn = aa.value->get_expression();
-
-  // The visitor needed to search for the fake read (subexpression)
-  struct SubxVisitor : Visitor {
-    TreeNodePtr needle_;
-
-    SubxVisitor(const TreeNodePtr &needle) : needle_(needle) { }
-
-    VisitAction preVisit(const TreeNodePtr &expr) {
-      if (expr->isEquivalentTo(needle_)) {
-        return Rose::BinaryAnalysis::SymbolicExpr::TERMINATE;
-      }
-      return Rose::BinaryAnalysis::SymbolicExpr::CONTINUE;
-    }
-    VisitAction postVisit(const TreeNodePtr&) {
-      return Rose::BinaryAnalysis::SymbolicExpr::CONTINUE;
-    }
-  };
 
   for (const AbstractAccess& waa : get_writes(insn->get_address())) {
     TreeNodePtr write_tn = waa.value->get_expression();
-    SubxVisitor read_subx(read_tn);
 
     // search if this write includes the read. If it does, then it is not fake
-    if (write_tn->depthFirstTraversal(read_subx) == Rose::BinaryAnalysis::SymbolicExpr::TERMINATE) {
+    if (has_subexp (write_tn, read_tn)) {
       // The read was somewhere in the write, so the value was _truly_ read, and we've already
       // established that it was initialized by someone else, so it's not a truly uninitialized
       // read.
@@ -1291,7 +1269,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
     // the parameter onto the stack before the call.  This code is a little bit incorrect in
     // that we're assuming that all four bytes have still been modified by the same instruction
     // as the first byte was.
-    SymbolicValuePtr mca = SymbolicValue::promote(memcell->get_address());
+    SymbolicValuePtr mca = SymbolicValue::promote(memcell->address());
 
     // Use rops->readMemory to read memory to read either 32 or 64 bits depending on the
     // architecture.  In truth, we have no idea how large the object being pointed to is and
@@ -1376,6 +1354,39 @@ void update_jump_targets(const DescriptorSet& ds, SgAsmInstruction* insn) {
     const ImportDescriptor* id = ds.get_import(*target);
     if (id != NULL) {
       // There's NO add_successor()!!!
+    }
+  }
+}
+
+void DUAnalysis::guess_function_delta() {
+  // Because it's shorter than current_function...
+  FunctionDescriptor* fd = current_function;
+
+
+  for (CFGVertex vertex : fd->get_return_vertices()) {
+    const SgAsmBlock *block = convert_vertex_to_bblock(cfg, vertex);
+    // Find the return instruction.
+    const SgAsmStatementPtrList &insns = block->get_statementList();
+    assert(insns.size() > 0);
+    SgAsmX86Instruction *last = isSgAsmX86Instruction(insns[insns.size() - 1]);
+    if (last != NULL and last->get_kind() == x86_ret) {
+      // Get the number of bytes popped off the stack by the return instruction (not counting the
+      // return address).
+      SgAsmExpressionPtrList &ops = last->get_operandList()->get_operands();
+      if (ops.size() > 0) {
+        SgAsmIntegerValueExpression *val = isSgAsmIntegerValueExpression(ops[0]);
+        if (val != NULL) {
+          // This is the number on the RETN instruction and is also our expected stack delta.
+          int64_t retn_size  = val->get_absoluteValue();
+          SDEBUG << "Guessing that function " << fd->address_string() << " pops "
+                 << retn_size << " additional bytes off the stack." << LEND;
+          // Mak a StackDelta() obect and record it as _our_ stack delta.  This value will get
+          // used if the analyzed function is recursive and calls itself.
+          StackDelta guessed = StackDelta(retn_size, ConfidenceGuess);
+          fd->update_stack_delta(guessed);
+          return;
+        }
+      }
     }
   }
 }
@@ -2195,6 +2206,11 @@ DUAnalysis::solve_flow_equation_iteratively()
   // Set the stack delta of the first instruction to zero, with confidence Certain (by definition).
   sp_tracker.update_delta(current_function->get_address(), StackDelta(0, ConfidenceCertain),
                           sd_failures);
+
+  // If this function is recursive, we need a better guess for our own stack delta than just
+  // zero.  Make that guess and store it in the stack delta tracker cache before starting
+  // anlaysis.
+  guess_function_delta();
 
   // Do most of the real work.  Visit each block in the control flow graph, possibly multiple
   // times, merging predecessor states, emulating each block, and updating state histories.

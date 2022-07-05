@@ -11,12 +11,13 @@ namespace pharos {
 
 VirtualTableInstallation::VirtualTableInstallation(
   SgAsmInstruction* i, FunctionDescriptor const * f, rose_addr_t a,
-  TreeNodePtr w, int64_t o, bool b) {
+  TreeNodePtr w, int64_t o, TreeNodePtr pe, bool b) {
   insn = i;
   fd = f;
   table_address = a;
   written_to = w;
   offset = o;
+  expanded_ptr = pe;
   base_table = b;
 }
 

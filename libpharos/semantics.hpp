@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Semantics_H
 #define Pharos_Semantics_H
@@ -13,8 +13,13 @@
 #include <sstream>
 
 #include "rose.hpp"
+#if PHAROS_ROSE_SYMBOLIC_EXTENSION_HACK
+#include <Rose/BinaryAnalysis/InstructionSemantics/SymbolicSemantics.h>
+#include <Rose/BinaryAnalysis/InstructionSemantics/DispatcherX86.h>
+#else
 #include <Rose/BinaryAnalysis/InstructionSemantics2/SymbolicSemantics.h>
 #include <Rose/BinaryAnalysis/InstructionSemantics2/DispatcherX86.h>
+#endif
 #include <Rose/BinaryAnalysis/Unparser/X86.h>
 
 #include <boost/range/adaptor/filtered.hpp>

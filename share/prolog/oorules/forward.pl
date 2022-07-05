@@ -411,6 +411,17 @@ concludeClassHasNoBase(Out) :-
     maplist(try_assert_builder(factClassHasNoBase), ClassSets, ActionSets),
     Out = all(ActionSets).
 
+concludeClassHasNoDerived(Out) :-
+    reportFirstSeen('concludeClassHasNoDerived'),
+    setof(Class,
+          (reasonClassHasNoDerived(Class),
+           not(factClassHasNoDerived(Class)),
+           not(factClassHasUnknownDerived(Class)),
+           loginfoln('Concluding ~Q.', factClassHasNoDerived(Class))),
+          ClassSets),
+    maplist(try_assert_builder(factClassHasNoDerived), ClassSets, ActionSets),
+    Out = all(ActionSets).
+
 concludeClassHasUnknownBase(Out) :-
     reportFirstSeen('concludeClassHasUnknownBase'),
     setof(Class,

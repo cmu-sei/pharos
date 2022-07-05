@@ -28,6 +28,18 @@ countGuess :-
     delta_con(guesses, -1),
     fail.
 
+% Generic try predicate.  E.g., pass 'ClassHasNoDerived' as Pred
+% XXX: Take multiple args
+tryBuilder(Pred, Class) :-
+    countGuess,
+    atom_concat(fact, Pred, FactPred),
+    atom_concat(guessed, Pred, GuessPred),
+    Fact =.. [FactPred, Class],
+    Guess =.. [GuessPred, Class],
+    loginfoln('Guessing ~Q', Fact),
+    try_assert(Fact),
+    try_assert(Guess).
+
 tryBinarySearchInt(_PosPred, _NegPred, []) :-
     logdebugln('tryBinarySearch empty.'),
     fail.
@@ -391,7 +403,7 @@ guessMethodB(Method) :-
     % This rule currently needs to permit the slightly different ECX parameter standard.
     % This bug is wrapped up in std::_Yarn and std::locale in Lite/ooex7 (and oo and poly).
     (callingConvention(Caller, '__thiscall'); callingConvention(Caller, 'invalid')),
-    funcParameter(Caller, 'ecx', ThisPtr1),
+    funcParameter(Caller, ecx, ThisPtr1),
     thisPtrOffset(ThisPtr1, _Offset, ThisPtr2),
     thisPtrUsage(_Insn1, Caller, ThisPtr2, Method),
     doNotGuessHelper(factMethod(Method),
@@ -681,6 +693,39 @@ guessNOTConstructor(Out) :-
     Out = tryBinarySearch(tryNOTConstructor, tryConstructor, MethodSet).
 
 % --------------------------------------------------------------------------------------------
+% Try guessing that constructor has no derived class.
+% --------------------------------------------------------------------------------------------
+
+% If we are a constructor, and no other constructor calls us, then we probably don't have any
+% derived class.
+guessClassHasNoDerivedA(Class) :-
+    factConstructor(Constructor),
+
+    not((
+               factConstructor(OtherConstructor),
+               validMethodCallAtOffset(_Insn, OtherConstructor, Constructor, _AnyOffset)
+       )),
+
+    find(Constructor, Class),
+    not(factDerivedClass(_DerivedClass, Class, _SomeOffset)),
+    doNotGuessHelper(factClassHasNoDerived(Class),
+                     factClassHasUnknownDerived(Class)).
+
+guessClassHasNoDerived(Out) :-
+    reportFirstSeen('guessClassHasNoDerived'),
+    osetof(Class,
+          guessClassHasNoDerivedA(Class),
+          ClassSet),
+    logtraceln('Proposing ~P.', 'ClassHasNoDerived_A'(ClassSet)),
+    Out = tryBinarySearch(tryBuilder('ClassHasNoDerived'), tryBuilder('ClassHasUnknownDerived'), ClassSet).
+
+% --------------------------------------------------------------------------------------------
+% Try guessing that constructor has no derived class.
+% --------------------------------------------------------------------------------------------
+
+% Idea: Someone overwrites our vftable
+
+% --------------------------------------------------------------------------------------------
 % Try guessing that constructor has no base class.
 % --------------------------------------------------------------------------------------------
 
@@ -689,7 +734,6 @@ guessNOTConstructor(Out) :-
 % ED_PAPER_INTERESTING
 guessClassHasNoBaseB(Class) :-
     factConstructor(Constructor),
-    find(Constructor, Class),
 
     factVFTableWrite(_Insn1, Constructor, 0, VFTable),
     not((
@@ -697,6 +741,7 @@ guessClassHasNoBaseB(Class) :-
                iso_dif(VFTable, OtherVFTable)
        )),
 
+    find(Constructor, Class),
     not(factDerivedClass(Class, _BaseClass, _Offset2)),
     doNotGuessHelper(factClassHasNoBase(Class),
                      factClassHasUnknownBase(Class)).
@@ -730,18 +775,8 @@ guessClassHasNoBase(Out) :-
 %%     logtraceln('Proposing ~P.', 'ClassHasNoBase_C'(ClassSet)),
 %%     Out = tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
 
-tryClassHasNoBase(Class) :-
-    countGuess,
-    loginfoln('Guessing ~Q.', factClassHasNoBase(Class)),
-    try_assert(factClassHasNoBase(Class)),
-    try_assert(guessedClassHasNoBase(Class)).
-
-tryClassHasUnknownBase(Class) :-
-    countGuess,
-    loginfoln('Guessing ~Q.', factClassHasUnknownBase(Class)),
-    try_assert(factClassHasUnknownBase(Class)),
-    try_assert(guessedClassHasUnknownBase(Class)).
-
+tryClassHasNoBase(Class) :- tryBuilder('ClassHasNoBase', Class).
+tryClassHasUnknownBase(Class) :- tryBuilder('ClassHasUnknownBase', Class).
 
 % This is also used to guess factClassHasNoBase, but is one of the last guesses made in the
 % system.  The idea is simply to guess factClassHasNoBase for any class that does not have an
@@ -765,6 +800,29 @@ guessCommitClassHasNoBase(Out) :-
            ClassSet),
     logtraceln('Proposing ~P.', 'CommitClassHasNoBase'(ClassSet)),
     Out = tryBinarySearch(tryClassHasNoBase, tryClassHasUnknownBase, ClassSet).
+
+% This is also used to guess factClassHasNoDerived, but is one of the last guesses made in the
+% system.  The idea is simply to guess factClassHasNoDerived for any class that does not have an
+% identified base.
+guessClassHasNoDerivedSpecial(Class) :-
+    % Class is a class
+    find(_, Class),
+
+    % Class does not have any derived classes
+    not(factDerivedClass(_DerivedClass, Class, _Offset)),
+
+    % XXX: If we're at the end of reasoning and there is an unknown derived class, is that OK?
+    % Should we leave it as is?  Try really hard to make a guess?  Or treat it as a failure?
+    doNotGuessHelper(factClassHasNoDerived(Class),
+                     factClassHasUnknownDerived(Class)).
+
+guessCommitClassHasNoDerived(Out) :-
+    reportFirstSeen('guessCommitClassHasNoDerived'),
+    osetof(Class,
+           guessClassHasNoDerivedSpecial(Class),
+           ClassSet),
+    logtraceln('Proposing ~P.', 'CommitClassHasNoDerived'(ClassSet)),
+    Out = tryBinarySearch(tryBuilder('ClassHasNoDerived'), tryBuilder('ClassHasUnknownDerived'), ClassSet).
 
 
 % The following merge guesses should occur late so that we can identify all classes which have
@@ -1074,8 +1132,10 @@ guessMergeClassesC1(DerivedClass, CalledClass) :-
     % ordering dependency.  So we are leaving this rule here.
 
     checkMergeClasses(DerivedClass, CalledClass),
-    logtraceln('Proposing ~Q.', factMergeClasses_C1(DerivedClass, CalledClass, CalledMethod,
-                                                   BaseClass, Offset)).
+    logtraceln('Proposing ~Q.', factMergeClasses_C1(derived=DerivedClass,
+                                                    calledclass=CalledClass,
+                                                    calledmethod=CalledMethod,
+                                                    base=BaseClass, offset=Offset)).
 
 guessMergeClasses(Out) :-
     reportFirstSeen('guessMergeClassesC1'),
@@ -1587,7 +1647,7 @@ likelyDeletingDestructor(DeletingDestructor, RealDestructor) :-
     % This rule currently needs to permit the slightly different ECX parameter standard.  An
     % example is std::basic_filebuf:~basic_filebuf in Lite/oo.
     (callingConvention(DeletingDestructor, '__thiscall'); callingConvention(DeletingDestructor, 'invalid')),
-    funcParameter(DeletingDestructor, 'ecx', ThisPtr),
+    funcParameter(DeletingDestructor, ecx, ThisPtr),
     (
         insnCallsDelete(DeleteInsn, DeletingDestructor, ThisPtr);
         insnCallsDelete(DeleteInsn, DeletingDestructor, invalid)

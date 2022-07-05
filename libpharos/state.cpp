@@ -1,4 +1,4 @@
-// Copyright 2015-2019, 2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "state.hpp"
 #include "riscops.hpp"
@@ -162,7 +162,7 @@ CellMapChunks::CellMapChunks(const DUAnalysis & usedef, bool df_flag) {
   const SymbolicMemoryMapStatePtr& mstate =
     SymbolicMemoryMapState::promote(output_state->memoryState());
   for (const auto & cell : mstate->allCells()) {
-    const SymbolicValuePtr & addr = SymbolicValue::promote(cell->get_address());
+    const SymbolicValuePtr & addr = SymbolicValue::promote(cell->address());
     auto expr = addr->get_expression();
     if (df_tn) {
       // Set references of df in the expression to the value of df_flag, and re-evaluate
@@ -186,7 +186,7 @@ CellMapChunks::CellMapChunks(const DUAnalysis & usedef, bool df_flag) {
       // not extant)
       auto & last_value = iter->second[offset];
       // The value for this memory location
-      const auto & value = SymbolicValue::promote(cell->get_value())->get_expression();
+      const auto & value = SymbolicValue::promote(cell->value())->get_expression();
       if (last_value) {
         // If a value already existed, add this value to it via an ITE
         auto tcond = SymbolicExpr::makeIntegerVariable(1, "", INCOMPLETE);
@@ -359,20 +359,20 @@ void SymbolicMemoryListState::print(std::ostream& stream, Formatter& fmt) const 
   MemoryCellList::print(stream, fmt);
 
   for (const MemoryCellPtr& cell : allCells()) {
-    SymbolicValuePtr address = SymbolicValue::promote(cell->get_address());
-    SymbolicValuePtr value = SymbolicValue::promote(cell->get_value());
+    SymbolicValuePtr address = SymbolicValue::promote(cell->address());
+    SymbolicValuePtr value = SymbolicValue::promote(cell->value());
   }
 }
 
 // Compare to memory states based on their symbolic values.
 bool SymbolicMemoryMapState::equals(const SymbolicMemoryMapStatePtr& other) {
   for (const MemoryCellPtr & cell : allCells()) {
-    SymbolicValuePtr ma = SymbolicValue::promote(cell->get_address());
-    SymbolicValuePtr mv = SymbolicValue::promote(cell->get_value());
+    SymbolicValuePtr ma = SymbolicValue::promote(cell->address());
+    SymbolicValuePtr mv = SymbolicValue::promote(cell->value());
 
     MemoryCellPtr ocell = other->findCell(ma);
     if (ocell) {
-      SymbolicValuePtr omv = SymbolicValue::promote(ocell->get_value());
+      SymbolicValuePtr omv = SymbolicValue::promote(ocell->value());
       if (!mem_compare(ma, mv, omv)) return false;
     }
     else {
@@ -386,12 +386,12 @@ bool SymbolicMemoryMapState::equals(const SymbolicMemoryMapStatePtr& other) {
     }
   }
   for (const MemoryCellPtr & ocell : other->allCells()) {
-    SymbolicValuePtr oma = SymbolicValue::promote(ocell->get_address());
-    SymbolicValuePtr omv = SymbolicValue::promote(ocell->get_value());
+    SymbolicValuePtr oma = SymbolicValue::promote(ocell->address());
+    SymbolicValuePtr omv = SymbolicValue::promote(ocell->value());
 
     MemoryCellPtr cell = findCell(oma);
     if (cell) {
-      SymbolicValuePtr mv = SymbolicValue::promote(cell->get_value());
+      SymbolicValuePtr mv = SymbolicValue::promote(cell->value());
       if (!mem_compare(oma, mv, omv)) return false;
     }
     else {
@@ -431,10 +431,10 @@ bool SymbolicMemoryMapState::merge(const BaseMemoryStatePtr& other_,
 
   for (const MemoryCellPtr &otherCell : other->allCells()) {
     bool thisCellChanged = false;
-    CellKey key = generateCellKey(otherCell->get_address());
+    CellKey key = generateCellKey(otherCell->address());
     if (const MemoryCellPtr &thisCell = cells.getOrDefault(key)) {
-      BaseSValuePtr otherValue = otherCell->get_value();
-      BaseSValuePtr thisValue = thisCell->get_value();
+      BaseSValuePtr otherValue = otherCell->value();
+      BaseSValuePtr thisValue = thisCell->value();
       BaseSValuePtr newValue = thisValue->createOptionalMerge(otherValue, merger(), valOps->solver()).orDefault();
       if (newValue)
         thisCellChanged = true;
@@ -460,7 +460,7 @@ bool SymbolicMemoryMapState::merge(const BaseMemoryStatePtr& other_,
         //OINFO << "Writing to memory 1 ADDR=  "
         //      << *thisCellSV->get_expression() << ", VAL= " << *newValueSV->get_expression() << LEND;
 
-        writeMemory(thisCell->get_address(), newValue, addrOps, valOps);
+        writeMemory(thisCell->address(), newValue, addrOps, valOps);
         latestWrittenCell_->setWriters(newWriters);
         latestWrittenCell_->ioProperties() = newProps;
         changed = true;
@@ -473,7 +473,7 @@ bool SymbolicMemoryMapState::merge(const BaseMemoryStatePtr& other_,
     // SEI added the entire else clause here.  This code merges an incomplete value with a cell
     // in the other memory state that is not in this memory state.
     else {
-      BaseSValuePtr otherValue = otherCell->get_value();
+      BaseSValuePtr otherValue = otherCell->value();
 
       // Create the incomplete value.  But first mark that we want to use the inverted
       // condition, because we're calling other->merge(this) rather than this->merge(other) and
@@ -491,7 +491,7 @@ bool SymbolicMemoryMapState::merge(const BaseMemoryStatePtr& other_,
       //OINFO << "Writing to memory 2 ADDR=  "
       //      << *otherCellSV->get_expression() << ", VAL= " << *newValueSV->get_expression() << LEND;
 
-      writeMemory(otherCell->get_address(), newValue, addrOps, valOps);
+      writeMemory(otherCell->address(), newValue, addrOps, valOps);
       latestWrittenCell_->setWriters(otherCell->getWriters());
       latestWrittenCell_->ioProperties() = otherCell->ioProperties();
       changed = true;
@@ -504,10 +504,10 @@ bool SymbolicMemoryMapState::merge(const BaseMemoryStatePtr& other_,
   // merging any that weren't already processed (found in the other memory state) with an
   // incomplete value.
   for (const MemoryCellPtr &thisCell : allCells()) {
-    CellKey key = generateCellKey(thisCell->get_address());
+    CellKey key = generateCellKey(thisCell->address());
     // If we've already processed this key, we're done.
     if(processed.find(key) != processed.end()) continue;
-    BaseSValuePtr thisValue = thisCell->get_value();
+    BaseSValuePtr thisValue = thisCell->value();
     // This cell must exist only in this memory state.  Merge it with an incomplete value.
     BaseSValuePtr newValue = thisValue->createOptionalMerge(BaseSValuePtr(), merger(), valOps->solver()).orDefault();
     if (!newValue) continue;
@@ -518,7 +518,7 @@ bool SymbolicMemoryMapState::merge(const BaseMemoryStatePtr& other_,
     //OINFO << "Writing to memory 3 ADDR=  "
     //      << *thisCellSV->get_expression() << ", VAL= " << *newValueSV->get_expression() << LEND;
 
-    writeMemory(thisCell->get_address(), newValue, addrOps, valOps);
+    writeMemory(thisCell->address(), newValue, addrOps, valOps);
     latestWrittenCell_->setWriters(thisCell->getWriters());
     latestWrittenCell_->ioProperties() = thisCell->ioProperties();
     changed = true;
@@ -600,8 +600,8 @@ SymbolicMemoryMapStatePtr convert_memory_list_to_map(
   while (rcursor != cells.rend()) {
     // Get the address and the value.
     const MemoryCellPtr& cell = *rcursor;
-    const SymbolicValuePtr& address = SymbolicValue::promote(cell->get_address());
-    const SymbolicValuePtr& value = SymbolicValue::promote(cell->get_value());
+    const SymbolicValuePtr& address = SymbolicValue::promote(cell->address());
+    const SymbolicValuePtr& value = SymbolicValue::promote(cell->value());
 
     // If the cell is a write, no aliasing has occurred, and we just update the map.  Any
     // aliasing that might have occurred will be handled when we subsequently read.
@@ -686,11 +686,11 @@ SymbolicMemoryMapStatePtr convert_memory_list_to_map(
     while (acursor.base() != cells.rbegin()) {
       const MemoryCellPtr& acell = *acursor;
       // If the cell may have aliased the current cell, then add it to the list of aliases.
-      if (cell->may_alias(acell, ops)) {
-        const SymbolicValuePtr& alias_addr = SymbolicValue::promote(acell->get_address());
+      if (cell->mayAlias(acell, ops)) {
+        const SymbolicValuePtr& alias_addr = SymbolicValue::promote(acell->address());
         aliases.insert(alias_addr);
         // If it also must have aliased our current cell, then we're done looking for aliases.
-        if (cell->must_alias(acell, ops)) break;
+        if (cell->mustAlias(acell, ops)) break;
         // Once we've found the maximum number of aliases, sstop looking.
         if ((max_aliases - 1) == aliases.size()) {
           tired = true;

@@ -5,6 +5,7 @@
 
 #include "misc.hpp" // For TreeNodePtr & LeafNodePtr
 #include "semantics.hpp" // SymbolicValuePtr
+#include "funcs.hpp"
 
 namespace pharos {
 
@@ -25,6 +26,9 @@ class VirtualFunctionCallInformation {
   // the symbolic value for the object to which the virtual function belongs
   SymbolicValuePtr obj_ptr;
 
+  // expanded version of obj_ptr
+  TreeNodePtr expanded_obj_ptr;
+
   // The leaf node of the this-pointer to which the virtual function belongs
   LeafNodePtr lobj_ptr;
 };
@@ -40,6 +44,7 @@ class VirtualFunctionCallAnalyzer {
   // the instruction for the call invocation
   SgAsmX86Instruction *call_insn;
 
+  const FunctionDescriptor* fd;
   const PDG* pdg;
 
   // Resolves one of several object pointers to a virtual call.
@@ -52,7 +57,7 @@ class VirtualFunctionCallAnalyzer {
   // The results of the analysis.
   VirtualFunctionCallVector vcall_infos;
 
-  VirtualFunctionCallAnalyzer(SgAsmX86Instruction *i, const PDG *p);
+  VirtualFunctionCallAnalyzer(SgAsmX86Instruction *i, const FunctionDescriptor *fd);
 
   ~VirtualFunctionCallAnalyzer();
 

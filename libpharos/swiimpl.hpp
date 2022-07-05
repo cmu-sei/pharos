@@ -42,7 +42,7 @@ class TypeMismatch : public Error {
     : Error(build_msg(pt, expected)) {}
 };
 
-template <class T>
+template <class T, typename Enable = void>
 struct Convert;
 
 namespace impl {
@@ -120,7 +120,7 @@ struct priority_tag : priority_tag<I-1> {};
 template <>
 struct priority_tag<0> {};
 
-template <class T>
+template <class T, typename Enable = void>
 struct Convert;
 
 template <typename... Ts> struct make_void { using type = void; };
@@ -414,32 +414,34 @@ struct Convert<T *> {
   }
 };
 
-template <typename T>
-struct Convert {
+template <typename S>
+struct Convert<S, std::enable_if_t<!std::is_enum<S>::value
+                                   && std::is_convertible<S, pl_int>::value>>
+{
   // int-like
-  template <typename S>
-  static std::enable_if_t<!std::is_enum<S>::value && std::is_convertible<S, pl_int>::value>
+  static void
   c2p(S const & arg, pl_term pt) {
     prolog::c2p(static_cast<pl_int>(arg), pt);
   }
-  template <typename S>
-  static std::enable_if_t<!std::is_enum<S>::value && std::is_convertible<S, pl_int>::value>
+  static void
   p2c(S & arg, pl_term pt) {
     pl_int val;
     prolog::p2c(val, pt);
     arg = val;
   }
+};
 
+template <typename S>
+struct Convert<S, std::enable_if_t<std::is_enum<S>::value>>
+{
   // Enums
-  template <typename S>
-  static std::enable_if_t<std::is_enum<S>::value>
+  static void
   p2c(S & arg, pl_term pt) {
     std::string val;
     prolog::p2c(val, pt);
-    arg = Str2Enum<T>(val);
+    arg = Str2Enum<S>(val);
   }
-  template <typename S>
-  static std::enable_if_t<std::is_enum<S>::value>
+  static void
   c2p(S arg, pl_term pt) {
     prolog::c2p(Enum2Str(arg), pt);
   }

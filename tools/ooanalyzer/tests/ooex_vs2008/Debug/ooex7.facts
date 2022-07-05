@@ -1555,6 +1555,24 @@ symbolClass(0x4192bc, '??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@
 symbolGlobalObject(0x4192b0, 'std::basic_ostream<char, struct std::char_traits<char> >', 'std::cout').
 symbolProperty(0x4192b4, constructor).
 symbolProperty(0x4192b8, realDestructor).
+thisPtrAllocation(0x411626, 0x411600, sv_1714250384823840210, type_Stack, 0).
+thisPtrAllocation(0x4117b2, 0x411790, sv_6889324075880695000, type_Stack, 0).
+thisPtrDefinition(sv_1605995287302045995, sv(sv_1605995287302045995, ''), 0x4133e8, 0).
+thisPtrDefinition(sv_1665044841603026247, add([sv(sv_663111775187704832, esp_0), 0x4]), 0x411453, 0x411410).
+thisPtrDefinition(sv_1714250384823840210, add([sv(sv_1538253608433679063, esp_0), 0xfffffff0]), 0x411626, 0x411600).
+thisPtrDefinition(sv_17165836246397816255, sv(sv_17165836246397816255, ''), 0x413401, 0).
+thisPtrDefinition(sv_2288515610575324233, sv(sv_2288515610575324233, ''), 0x4133ae, 0).
+thisPtrDefinition(sv_2934547212814620580, sv(sv_2934547212814620580, ''), 0, 0x41101e).
+thisPtrDefinition(sv_5223070029554992329, sv(sv_5223070029554992329, ''), 0x41232b, 0x412130).
+thisPtrDefinition(sv_5223070029554992329, sv(sv_5223070029554992329, ''), 0x412581, 0x412490).
+thisPtrDefinition(sv_5223070029554992329, sv(sv_5223070029554992329, ''), 0x4126d6, 0x4125d0).
+thisPtrDefinition(sv_5223070029554992329, sv(sv_5223070029554992329, ''), 0x4128be, 0x4127e0).
+thisPtrDefinition(sv_5223070029554992329, sv(sv_5223070029554992329, ''), 0x413633, 0x413610).
+thisPtrDefinition(sv_5690386348413715247, xor([add([sv(sv_8623576372339815201, ''), 0xc]), sv(sv_3896630680774826757, '')]), 0x4148bf, 0x4148b2).
+thisPtrDefinition(sv_5733608178531990601, sv(sv_5733608178531990601, ''), 0, 0x4111a4).
+thisPtrDefinition(sv_6889324075880695000, add([sv(sv_7135096619245148412, esp_0), 0xfffffff0]), 0x4117b2, 0x411790).
+thisPtrDefinition(sv_732552632594486902, sv(sv_732552632594486902, ''), 0, 0x4110af).
+thisPtrDefinition(sv_9564375591813833808, sv(sv_9564375591813833808, ''), 0, 0x4111b3).
 thisPtrOffset(sv_663111775187704832, 0x4, sv_1665044841603026247).
 thunk(0x411005, 0x412bf0).
 thunk(0x41100a, 0x412c90).

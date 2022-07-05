@@ -1,4 +1,4 @@
-// Copyright 2015-2019, 2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "ir.hpp"
 #include "util.hpp"
@@ -24,7 +24,7 @@ using namespace pharos;
 using namespace pharos::ir;
 
 namespace {
-namespace IRSemantics2 = Rose::BinaryAnalysis::InstructionSemantics2;
+namespace IRSemantics2 = Rose::BinaryAnalysis::InstructionSemantics;
 
 using SymValue = IRSemantics2::SymbolicSemantics::SValue;
 using SymValuePtr = IRSemantics2::SymbolicSemantics::SValuePtr;
@@ -54,13 +54,13 @@ using SymState = IRSemantics2::SymbolicSemantics::State;
 using SymStatePtr = IRSemantics2::SymbolicSemantics::StatePtr;
 using SymRiscOperators = IRSemantics2::SymbolicSemantics::RiscOperators;
 using SymRiscOperatorsPtr = IRSemantics2::SymbolicSemantics::RiscOperatorsPtr;
-using BaseDispatcher = Rose::BinaryAnalysis::InstructionSemantics2::BaseSemantics::Dispatcher;
-using BaseDispatcherPtr = Rose::BinaryAnalysis::InstructionSemantics2::BaseSemantics::DispatcherPtr;
+using BaseDispatcher = Rose::BinaryAnalysis::InstructionSemantics::BaseSemantics::Dispatcher;
+using BaseDispatcherPtr = Rose::BinaryAnalysis::InstructionSemantics::BaseSemantics::DispatcherPtr;
 
 using IRRegisterStatePtr = boost::shared_ptr<class IRRegisterState>;
 using IRRiscOperatorsPtr = boost::shared_ptr<class IRRiscOperators>;
 
-using SemanticsException = Rose::BinaryAnalysis::InstructionSemantics2::BaseSemantics::Exception;
+using SemanticsException = Rose::BinaryAnalysis::InstructionSemantics::BaseSemantics::Exception;
 
 // Stub implementation
 bool is_register(Register r) {
@@ -1169,7 +1169,7 @@ Register IR::get_reg(RegisterDescriptor rd) const {
     GFATAL << "Unable to find register " << rd << LEND;
     exit(EXIT_FAILURE);
   }
-  Register exp = Rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::SValue::promote(reg_it->value)->get_expression()->isLeafNode();
+  Register exp = Rose::BinaryAnalysis::InstructionSemantics::SymbolicSemantics::SValue::promote(reg_it->value)->get_expression()->isLeafNode();
   assert (exp);
 
   return exp;

@@ -1,4 +1,4 @@
-// Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2022 Carnegie Mellon University.  See LICENSE file for terms.
 // Author: Jeff Gennari
 
 #include <boost/range/adaptor/map.hpp>
@@ -1997,10 +1997,7 @@ OperationContext::OperationContext()
   strategies_.emplace(rbs::Operator::OP_ADD, new AddStrategy());
   strategies_.emplace(rbs::Operator::OP_AND, new AndStrategy());
   strategies_.emplace(rbs::Operator::OP_ASR, new AsrStrategy());
-  strategies_.emplace(rbs::Operator::OP_BV_AND, new BvAndStrategy());
-  strategies_.emplace(rbs::Operator::OP_BV_OR, new BvOrStrategy());
-  strategies_.emplace(rbs::Operator::OP_BV_XOR, new BvXorStrategy());
-  strategies_.emplace(rbs::Operator::OP_CONCAT, new ConcatStrategy());
+    strategies_.emplace(rbs::Operator::OP_CONCAT, new ConcatStrategy());
   strategies_.emplace(rbs::Operator::OP_EQ, new EqStrategy());
   strategies_.emplace(rbs::Operator::OP_EXTRACT, new ExtractStrategy());
   strategies_.emplace(rbs::Operator::OP_INVERT, new InvertStrategy());
@@ -2174,26 +2171,7 @@ void UmulStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Sess
 
 // ------------------------------------------------------------------------------
 
-// OP_BV_AND: Bitwise AND. There may be more than one operands
-void BvAndStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session) {
-
-  if (!session || !in) return;
-
-  MDEBUG << "Generating facts for OP_BV_AND tree node: " << *in << LEND;
-
-  TreeNodePtrVector kids;
-  kids = in->children();
-
-  auto ops = list();
-  for(auto k : kids) {
-    ops.push_back(k->hash());
-  }
-  session->add_fact(op_name_, in, ops);
-}
-
-// ------------------------------------------------------------------------------
-
-// OP_AND: Boolean AND. Operands are all Boolean (1-bit) values. See also OP_BV_AND.
+// OP_AND: Boolean AND. Operands are all Boolean (1-bit) values.
 // JSG doesn't think this tree node will occur at the instruction level (save for flags)
 void AndStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session) {
 
@@ -2399,42 +2377,7 @@ void NoopStrategy::save_facts(std::shared_ptr<prolog::Session>, std::iostream &)
 
 // ------------------------------------------------------------------------------
 
-// OP_BV_XOR: Bitwise XOR. One or more operands, all the same width.
-void BvXorStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session) {
-  if (!session || !in) return;
-
-  MDEBUG << "Generating facts for OP_BV_XOR tree node: " << *in << LEND;
-
-  TreeNodePtrVector kids;
-  kids = in->children();
-
-  auto ops = list();
-  for(auto k : kids) {
-    ops.push_back(k);
-  }
-  session->add_fact(op_name_, in, ops);
-}
-
-// OP_BV_OR: Bitwise OR. One or more operands, all the same width.
-void BvOrStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session) {
-  if (!session || !in) return;
-
-  MDEBUG << "Generating facts for OP_BV_OR tree node: " << *in << LEND;
-
-  TreeNodePtrVector kids;
-  kids = in->children();
-
-  auto ops = list();
-  for(auto k : kids) {
-    ops.push_back(k);
-  }
-  session->add_fact(op_name_, in, ops);
-}
-
-// ------------------------------------------------------------------------------
-
-// OP_BV_OR: Bitwise OR. One or more operands, all the same width.
-// OP_OR: Boolean OR. Operands are all Boolean (1-bit) values. See also OP_BV_OR.
+// OP_OR: Boolean OR. Operands are all Boolean (1-bit) values.
 void OrStrategy::assert_facts(InternalNodePtr in, std::shared_ptr<prolog::Session> session) {
   if (!session || !in) return;
 

@@ -138,19 +138,23 @@ initialFact(methodMemberAccess/4).
 %
 initialFact(possibleVirtualFunctionCall/5).
 
-% possibleVFTableWrite(Insn, Function, ThisPtr, Offset, VFTable).
+% possibleVFTableWrite(Insn, Function, ThisPtr, Offset, ExpandedThisPtr, VFTable).
 %
 % Instruction Insn in Function writes a possible virtual function table pointer (VFTable) at
 % Offset into the object represented by ThisPtr for the Method.
 %
-initialFact(possibleVFTableWrite/5).
+% The ExpandedThisPtr is a thisptr hash that has a corresponding thisPtrDefinition fact.
+%
+initialFact(possibleVFTableWrite/6).
 
-% possibleVBTableWrite(Insn, Function, ThisPtr, Offset, VBTable).
+% possibleVBTableWrite(Insn, Function, ThisPtr, Offset, ExpandedThisPtr, VBTable).
 %
 % Instruction Insn in Function writes a possible virtual base table pointer (VBTable) at Offset
 % into the object represent by ThisPtr for the Method.
 %
-initialFact(possibleVBTableWrite/5).
+% The ExpandedThisPtr is a thisptr hash that has a corresponding thisPtrDefinition fact.
+%
+initialFact(possibleVBTableWrite/6).
 
 % initialMemory(Address, Value).
 %
@@ -166,6 +170,14 @@ initialFact(initialMemory/2).
 % and ThisPtr2 are represented by the their symbolic value hashes.
 %
 initialFact(thisPtrOffset/3).
+
+% thisPtrDefinition(ThisPtr, ThisPtrExpression, DefinerOrNull, Func).
+%
+% This is intended to be a generalization of thisPtrOffset.
+% The main part of this fact is ThisPtrExpression, which allows reasoning of relative thisptr
+% relationships beyond simply a constant offset.  This is important for virtual inheritance,
+% which may cause thisptrs to be accessed via a vbtable lookup.
+initialFact(thisPtrDefinition/4).
 
 % symbolGlobalObject(Address, ClassName, VariableName).
 %

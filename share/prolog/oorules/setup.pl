@@ -75,8 +75,10 @@
 :- dynamic factClassSizeGTE/2 as incremental.
 :- dynamic factClassSizeLTE/2 as incremental.
 :- dynamic factClassHasNoBase/1 as incremental.
+:- dynamic factClassHasNoDerived/1 as incremental.
 :- dynamic factReusedImplementation/1 as incremental.
 :- dynamic factClassHasUnknownBase/1 as incremental.
+:- dynamic factClassHasUnknownDerived/1 as incremental.
 :- dynamic factNOTMergeClasses/2 as incremental.
 :- dynamic factClassCallsMethod/2 as incremental.
 :- dynamic factClassRelatedMethod/2 as incremental.
@@ -103,6 +105,9 @@ classArgs(factDerivedClass/3, 2).
 classArgs(factNOTDerivedClass/3, 1).
 classArgs(factNOTDerivedClass/3, 2).
 classArgs(factClassHasNoBase/1, 1).
+classArgs(factClassHasNoDerived/1, 1).
+classArgs(factClassHasUnknownBase/1, 1).
+classArgs(factClassHasUnknownDerived/1, 1).
 classArgs(factNOTMergeClasses/2, 1).
 classArgs(factNOTMergeClasses/2, 2).
 classArgs(factClassRelatedMethod/2, 1).
@@ -158,7 +163,9 @@ classArgs(factClassSizeLTE/2, 1).
 %:- dynamic guessedClassSizeGTE/2. % Only concluded.
 %:- dynamic guessedClassSizeLTE/2. % Only concluded.
 :- dynamic guessedClassHasNoBase/1 as incremental.
+:- dynamic guessedClassHasNoDerived/1 as incremental.
 :- dynamic guessedClassHasUnknownBase/1 as incremental.
+:- dynamic guessedClassHasUnknownDerived/1 as incremental.
 :- dynamic guessedMergeClasses/2 as incremental.
 :- dynamic guessedNOTMergeClasses/2 as incremental.
 %:- dynamic factClassCallsMethod/2. % Only concluded.
@@ -413,6 +420,7 @@ reasonForward :-
           concludeClassSizeGTE(Out);
           concludeClassSizeLTE(Out);
           concludeClassHasNoBase(Out);
+          concludeClassHasNoDerived(Out);
           concludeClassHasUnknownBase(Out);
           concludeReusedImplementation(Out);
           concludeNOTMergeClasses(Out);
@@ -542,6 +550,10 @@ guess :-
               % which prevent bad no-base guesses.
               guessClassHasNoBase(Out);
 
+              % This is a very unimportant guess that was added because we need a guess for
+              % HasNoDerived.  The more important guess is the very late CommitHasNoDerived.
+              guessClassHasNoDerived(Out);
+
               % Guess some less likely constructors after having finished reasoning through the
               % likely implications of the inheritance of the more likely constuctor guesses.
               guessUnlikelyConstructor(Out);
@@ -565,8 +577,9 @@ guess :-
 
               % As the very last guess, explicitly guess factClassHasNoBase(Class) for any
               % class that we have not identified a base class for.
-              guessCommitClassHasNoBase(Out)
-
+              guessCommitClassHasNoBase(Out);
+              % Same thing for Derived classes
+              guessCommitClassHasNoDerived(Out)
 
              )),
 

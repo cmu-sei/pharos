@@ -39,6 +39,7 @@ set(PHAROS_SOURCES
   pdg.cpp
   prolog.cpp
   prologimpl.cpp
+  prolog_symexp.cpp
   revision.cpp
   riscops.cpp
   semantics.cpp
@@ -65,7 +66,7 @@ set(PHAROS_SOURCES
   )
 
 # Packages needed by libpharos
-find_package(SWIPL "8.2.0" REQUIRED)
+find_package(SWIPL "8.3.16" REQUIRED)
 find_package(SQLite REQUIRED)
 set(CURSES_NEED_NCURSES true)
 find_package(Curses REQUIRED)

@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Ir_H
 #define Pharos_Ir_H
@@ -20,7 +20,11 @@
 #include <boost/graph/graphviz.hpp>
 
 #include "rose.hpp"
+#if PHAROS_ROSE_SYMBOLIC_EXTENSION_HACK
+#include <Rose/BinaryAnalysis/InstructionSemantics/SymbolicSemantics.h>
+#else
 #include <Rose/BinaryAnalysis/InstructionSemantics2/SymbolicSemantics.h>
+#endif
 
 #include "calls.hpp"
 #include "cdg.hpp"
@@ -33,7 +37,7 @@ using CFG = Rose::BinaryAnalysis::ControlFlow::Graph;
 using CFGVertex = boost::graph_traits<CFG>::vertex_descriptor;
 
 namespace SymbolicExpr = Rose::BinaryAnalysis::SymbolicExpr;
-namespace BaseSemantics = Rose::BinaryAnalysis::InstructionSemantics2::BaseSemantics;
+namespace BaseSemantics = Rose::BinaryAnalysis::InstructionSemantics::BaseSemantics;
 using SymbolicExprPtr = SymbolicExpr::Ptr;
 using SymbolicLeaf = SymbolicExpr::Leaf;
 using SymbolicLeafPtr = SymbolicExpr::LeafPtr;

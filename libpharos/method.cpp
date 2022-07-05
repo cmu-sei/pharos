@@ -538,9 +538,12 @@ bool ThisCallMethod::validate_vtable(ConstVirtualTableInstallationPtr install) {
     // embeds another object and the constuctor for the embeded object was inlined into
     // this method, we get misleading results here.
     if (!(vp->isEquivalentTo(leaf))) {
-      GDEBUG << "Rejected virtual function table write for wrong object " << *vp << " != "
-             << *leaf << " at instruction: " << debug_instruction(insn) << LEND;
-      return false;
+
+      // 2/16/22: ejs disabled this to see possibleVFTableWrites that were inlined
+
+      // GDEBUG << "Rejected virtual function table write for wrong object " << *vp << " != "
+      //        << *leaf << " at instruction: " << debug_instruction(insn) << LEND;
+      //return false;
     }
   }
 

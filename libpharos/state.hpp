@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_State_H
 #define Pharos_State_H
@@ -171,7 +171,7 @@ class SymbolicMemoryMapState: public BaseMemoryCellMap {
 
   // Constructors must take custom types to ensure promotion.
   explicit SymbolicMemoryMapState(const MemoryCellPtr &protocell_)
-    : BaseMemoryCellMap(protocell_->get_address(), protocell_->get_value()) {
+    : BaseMemoryCellMap(protocell_->address(), protocell_->value()) {
     merger(CERTMerger::instance());
   }
 
@@ -275,7 +275,7 @@ class SymbolicMemoryListState: public BaseMemoryCellList {
 
   // Constructors must take custom types to ensure promotion.
   explicit SymbolicMemoryListState(const MemoryCellPtr &protocell_)
-    : BaseMemoryCellList(protocell_->get_address(), protocell_->get_value()) {
+    : BaseMemoryCellList(protocell_->address(), protocell_->value()) {
   }
 
   // Constructors must take custom types to ensure promotion.

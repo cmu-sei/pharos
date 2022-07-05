@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -270,7 +270,7 @@ void partition(const ProgOptVarMap & vm)
   auto file = pfile.native();
   if (!vm.count("serialize")) {
     auto filename = pfile.filename().native();
-    auto sername = filename + ".serialized";
+    auto sername = bf::path{filename + ".serialized"};
     auto vmcopy = vm;
     vmcopy.emplace("serialize"s,
                    boost::program_options::variable_value{boost::any{sername}, false});

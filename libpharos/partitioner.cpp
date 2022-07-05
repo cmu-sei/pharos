@@ -182,7 +182,7 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
   // Check the specimens
   if (specimen_names.empty()) {
     GFATAL << "no specimen specified; see --help" << LEND;
-    std::exit (EXIT_FAILURE);
+    std::exit(EXIT_FAILURE);
   }
 
   // Load the specimen as raw data or an ELF or PE container.
@@ -191,10 +191,10 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
     map = engine->loadSpecimens(specimen_names);
   } catch (SgAsmExecutableFileFormat::FormatError &e) {
     GFATAL << "Error while loading specimen: " << e.what () << LEND;
-    std::exit (EXIT_FAILURE);
+    std::exit(EXIT_FAILURE);
   } catch (std::exception const & e) {
     GFATAL << "Error while loading specimen: " << e.what () << LEND;
-    std::exit (EXIT_FAILURE);
+    std::exit(EXIT_FAILURE);
   }
 
   // Get the interpretation.
@@ -240,7 +240,7 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
       // were not aware of this limitation, we felt that it would be better to disable the
       // feature entirely unless you were motivated enough to remove this test. :-)
       GFATAL << "This tool only suppports Windows Portable (PE) executable files." << LEND;
-      exit(1);
+      std::exit(EXIT_FAILURE);
     }
   }
 
@@ -261,7 +261,7 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
       OWARN << "Non 32-bit Windows PE support is still highly experimental for this tool!" << LEND;
       if (not vm.count("allow-64bit")) {
         GFATAL << "Please specify --allow-64bit to allow the analysis of 64-bit executables." << LEND;
-        std::exit (EXIT_FAILURE);
+        std::exit(EXIT_FAILURE);
       }
     }
   }
@@ -297,7 +297,11 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
     if (exists(path)) {
       OINFO << "Reading serialized data from " << path << "." << LEND;
       try {
-        bfs::ifstream file(path);
+        bfs::ifstream file(path, std::ios_base::in | std::ios_base::binary);
+        if (!file) {
+          GFATAL << "Could not open " << path << " for reading." << LEND;
+          std::exit(EXIT_FAILURE);
+        }
         bio::filtering_streambuf<bio::input> in;
         in.push(bio::gzip_decompressor());
         in.push(file);
@@ -315,7 +319,7 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
                    << "If you want to overwrite the file, remove the file " << path << '\n'
                    << "If you want to ignore this, use the --ignore-serialize-version switch."
                    << LEND;
-            exit(EXIT_FAILURE);
+            std::exit(EXIT_FAILURE);
           }
         }
         if (disable_semantics != semantics_were_disabled) {
@@ -329,10 +333,14 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
         OINFO << "Reading serialized data took " << secs.count() << " seconds." << LEND;
       } catch (boost::iostreams::gzip_error &e) {
         OFATAL << "Unable to read serialized data: " << e.what () << LEND;
-        std::exit (EXIT_FAILURE);
+        std::exit(EXIT_FAILURE);
       }
     } else {
-      bfs::ofstream file(path);
+      bfs::ofstream file(path, std::ios_base::out | std::ios_base::binary);
+      if (!file) {
+          GFATAL << "Could not open " << path << " for writing." << LEND;
+          std::exit(EXIT_FAILURE);
+      }
       // This is kind of yucky, but the inner try ensures that we remove the .serialize file.
       // The outer try then allows us to "really" handle the exceptions.
       try {
@@ -363,7 +371,7 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
         }
       } catch (const Monitor::ResourceException &e) {
         OFATAL << "During partitioning: " << e.what () << LEND;
-        std::exit (EXIT_FAILURE);
+        std::exit(EXIT_FAILURE);
       }
     }
   } else {
@@ -372,7 +380,7 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
       engine->runPartitioner(partitioner);
     } catch (const Monitor::ResourceException &e) {
       OFATAL << LEND << "During partitioning: " << e.what () << LEND;
-      std::exit (EXIT_FAILURE);
+      std::exit(EXIT_FAILURE);
     }
     duration secs = clock::now() - start_ts;
     OINFO << "Pharos function partitioning took " << secs.count() << " seconds." << LEND;

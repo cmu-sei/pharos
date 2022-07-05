@@ -21,7 +21,7 @@ rTTITDA2VFTable(TDA, VFTable) :-
     rTTICompleteObjectLocator(Pointer, _COLA, TDA, _CHDA, _Offset, _O2),
     VFTable is Pointer + 4.
 
-% This tule must be table incremental because of the find() clause.
+% This rule must be tabled incremental because of the find() clause.
 :- table rTTITDA2Class/2 as incremental.
 rTTITDA2Class(TDA, Class) :-
     % First turn the TypeDescriptor address into a VFTable address.

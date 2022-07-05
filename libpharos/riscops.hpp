@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_RiscOps_H
 #define Pharos_RiscOps_H
@@ -13,13 +13,13 @@ using SmtSolverPtr = Rose::BinaryAnalysis::SmtSolverPtr;
 using SymRiscOperators = Semantics2::SymbolicSemantics::RiscOperators;
 using SymRiscOperatorsPtr = Semantics2::SymbolicSemantics::RiscOperatorsPtr;
 
-using Rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_ALL_DEFINERS;
-using Rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_NO_DEFINERS;
-using Rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_LATEST_DEFINER;
+using Rose::BinaryAnalysis::InstructionSemantics::SymbolicSemantics::TRACK_ALL_DEFINERS;
+using Rose::BinaryAnalysis::InstructionSemantics::SymbolicSemantics::TRACK_NO_DEFINERS;
+using Rose::BinaryAnalysis::InstructionSemantics::SymbolicSemantics::TRACK_LATEST_DEFINER;
 
-using Rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_ALL_WRITERS;
-using Rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_NO_WRITERS;
-using Rose::BinaryAnalysis::InstructionSemantics2::SymbolicSemantics::TRACK_LATEST_WRITER;
+using Rose::BinaryAnalysis::InstructionSemantics::SymbolicSemantics::TRACK_ALL_WRITERS;
+using Rose::BinaryAnalysis::InstructionSemantics::SymbolicSemantics::TRACK_NO_WRITERS;
+using Rose::BinaryAnalysis::InstructionSemantics::SymbolicSemantics::TRACK_LATEST_WRITER;
 
 //==============================================================================================
 // Symbolic RISC Operators
@@ -194,8 +194,6 @@ class SymbolicRiscOperators: public SymRiscOperators {
   virtual BaseSValuePtr equalToZero(const BaseSValuePtr &a_) override;
   virtual BaseSValuePtr ite(const BaseSValuePtr &sel_, const BaseSValuePtr &a_,
                             const BaseSValuePtr &b_) override;
-  virtual BaseSValuePtr unsignedExtend(const BaseSValuePtr &a_, size_t new_width) override;
-  virtual BaseSValuePtr signExtend(const BaseSValuePtr &a_, size_t new_width) override;
   virtual BaseSValuePtr add(const BaseSValuePtr &a_, const BaseSValuePtr &b_) override;
   virtual BaseSValuePtr addWithCarries(const BaseSValuePtr &a_, const BaseSValuePtr &b_,
                                        const BaseSValuePtr &c_, BaseSValuePtr &carry_out) override;
@@ -206,6 +204,11 @@ class SymbolicRiscOperators: public SymRiscOperators {
   virtual BaseSValuePtr unsignedDivide(const BaseSValuePtr &a_, const BaseSValuePtr &b_) override;
   virtual BaseSValuePtr unsignedModulo(const BaseSValuePtr &a_, const BaseSValuePtr &b_) override;
   virtual BaseSValuePtr unsignedMultiply(const BaseSValuePtr &a_, const BaseSValuePtr &b_) override;
+#endif
+
+#if PHAROS_ROSE_NUMERIC_EXTENSION_HACK
+  virtual BaseSValuePtr unsignedExtend(const BaseSValuePtr &a_, size_t new_width) override;
+  virtual BaseSValuePtr signExtend(const BaseSValuePtr &a_, size_t new_width) override;
 #endif
 
   // -----------------------------------------------------------------------------------------
@@ -243,7 +246,7 @@ struct SingleThreadedAnalysisCallbacks : public SymbolicRiscOperators::Callbacks
 // This class was renamed just for consistency with the overriden classes, even though it was
 // not.  It is used for catching exceptions when emulating instructions, and is needed roughly
 // whereever RISC operators and the instruction dispatcher are.
-using SemanticsException = Rose::BinaryAnalysis::InstructionSemantics2::BaseSemantics::Exception;
+using SemanticsException = Rose::BinaryAnalysis::InstructionSemantics::BaseSemantics::Exception;
 
 // Extern declaration of the global_rops object.  This object is used so that we don't have to
 // carry arround a SymbolicRiscOperatorsPtr everywhere that we want to be able to read from or

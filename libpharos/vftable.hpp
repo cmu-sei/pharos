@@ -29,11 +29,13 @@ class VirtualTableInstallation {
   TreeNodePtr written_to;
   // The constant offset into the symbolic value.
   int64_t offset;
+  // The expanded version of the entire ptr; so we can create thisPtrDefinition facts
+  TreeNodePtr expanded_ptr;
   // True if the table is virtual base table, and false it is a virtual function table.
   bool base_table;
 
   VirtualTableInstallation(SgAsmInstruction* i, FunctionDescriptor const *f,
-                           rose_addr_t a, TreeNodePtr w, int64_t o, bool b);
+                           rose_addr_t a, TreeNodePtr w, int64_t o, TreeNodePtr pe, bool b);
 };
 
 using VirtualTableInstallationPtr = std::shared_ptr<VirtualTableInstallation>;

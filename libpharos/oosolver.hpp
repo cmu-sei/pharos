@@ -172,6 +172,17 @@ class OOSolver {
   // for.  This set has a custom comparator to prevent duplicate facts from being exported.
   std::set<TreeNodePtr, TreeNodePtrHashCompare> thisptrs;
 
+  // Expanded treenodes; each of these turns into a thisPtrDefinition fact.
+  struct ExpandedTreeNodePtr {
+    TreeNodePtr ptr;
+    rose_addr_t defaddr;
+    rose_addr_t funcaddr;
+    bool operator<(const ExpandedTreeNodePtr &other) const {
+      return std::make_tuple (ptr->hash(), defaddr, funcaddr) < std::make_tuple (other.ptr->hash(), defaddr, other.funcaddr);
+    }
+  };
+  std::set<ExpandedTreeNodePtr> expanded_thisptrs;
+
   // list of created classes
   std::vector<OOClassDescriptorPtr> classes;
 
@@ -201,7 +212,8 @@ class OOSolver {
   void add_rtti_chd_facts(const rose_addr_t addr);
   void add_usage_facts(const OOAnalyzer& ooa);
   void add_call_facts(const OOAnalyzer& ooa);
-  void add_thisptr_facts();
+  void add_thisptroffset_facts();
+  void add_thisptrdefinition_facts();
   void add_function_facts(const OOAnalyzer& ooa);
   void add_import_facts(const OOAnalyzer& ooa);
 

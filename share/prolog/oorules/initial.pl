@@ -6,6 +6,15 @@
 % --------------------------------------------------------------------------------------------
 % Convert some new style facts to old style facts.
 
+:- table possibleVFTableWrite/5 as opaque.
+:- table possibleVBTableWrite/5 as opaque.
+
+% For now, ignore the ExpandedThisPtr argument.
+possibleVFTableWrite(Insn, Function, ThisPtr, Offset, VFTable) :-
+  possibleVFTableWrite(Insn, Function, ThisPtr, Offset, _ExpandedThisPtr, VFTable).
+possibleVBTableWrite(Insn, Function, ThisPtr, Offset, VBTable) :-
+  possibleVBTableWrite(Insn, Function, ThisPtr, Offset, _ExpandedThisPtr, VBTable).
+
 :- table possibleConstructor/1 as opaque.
 
 possibleConstructor(M) :-
@@ -161,8 +170,8 @@ validMethodCallAtOffset(Insn, Caller, Callee, Offset) :-
 :- table methodCallAtOffset/4 as opaque.
 
 methodCallAtOffset(Insn, Caller, Callee, Offset) :-
-    funcParameter(Caller, 'ecx', CallerThisPtr),
-    callParameter(Insn, Caller, 'ecx', CalleeThisPtr),
+    funcParameter(Caller, ecx, CallerThisPtr),
+    callParameter(Insn, Caller, ecx, CalleeThisPtr),
     thisPtrOffset(CallerThisPtr, Offset, CalleeThisPtr),
     callTarget(Insn, Caller, Thunk),
     dethunk(Thunk, Callee),
@@ -170,8 +179,8 @@ methodCallAtOffset(Insn, Caller, Callee, Offset) :-
     true.
 
 methodCallAtOffset(Insn, Caller, Callee, 0) :-
-    funcParameter(Caller, 'ecx', ThisPtr),
-    callParameter(Insn, Caller, 'ecx', ThisPtr),
+    funcParameter(Caller, ecx, ThisPtr),
+    callParameter(Insn, Caller, ecx, ThisPtr),
     callTarget(Insn, Caller, Thunk),
     dethunk(Thunk, Callee),
     %loginfoln('~Q.', methodCallAtOffset(Insn, Caller, Callee, 0)),
@@ -181,7 +190,7 @@ methodCallAtOffset(Insn, Caller, Callee, 0) :-
 :- table thisPtrUsage/4 as opaque.
 
 thisPtrUsage(Insn, Function, ThisPtr, Method) :-
-    callParameter(Insn, Function, 'ecx', ThisPtr),
+    callParameter(Insn, Function, ecx, ThisPtr),
     callTarget(Insn, Function, Thunk),
     dethunk(Thunk, Method),
     %loginfoln('~Q.', thisPtrUsage(Insn, Function, ThisPtr, Method)),

@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "riscops.hpp"
 #include "masm.hpp"
@@ -163,7 +163,7 @@ BaseSValuePtr SymbolicRiscOperators::readMemory(RegisterDescriptor segreg,
     // variables that nobody care about, so it's just as valid to replace it with a value of
     // our own that has the correct flag bits set.
     size_t nbits = sdflt->get_width();
-    TreeNodePtr tn = SymbolicExpr::makeIntegerVariable(nbits, "", INCOMPLETE);
+    TreeNodePtr tn = SymbolicExpr::makeIntegerVariable(nbits, "incomplete_read", INCOMPLETE);
     sdflt->set_expression(tn);
 #endif
     SDEBUG << "Marking as incomplete read of incomplete address: " << *saddr
@@ -360,7 +360,7 @@ SymbolicValuePtr SymbolicRiscOperators::read_memory(const SymbolicMemoryMapState
     // If we can't find one of the bytes required to assemble the return value, then signal our
     // failure by returning an invalid value.
     if (!cell) return SymbolicValuePtr();
-    SymbolicValuePtr byte_value = SymbolicValue::promote(cell->get_value());
+    SymbolicValuePtr byte_value = SymbolicValue::promote(cell->value());
     // Not possible?
     if (byte_value->is_invalid()) return SymbolicValuePtr();
 
@@ -621,27 +621,43 @@ BaseSValuePtr SymbolicRiscOperators::ite(const BaseSValuePtr &sel_, const BaseSV
   }
   return retval;
 }
+#endif
 
+#if PHAROS_ROSE_NUMERIC_EXTENSION_HACK
 BaseSValuePtr SymbolicRiscOperators::unsignedExtend(const BaseSValuePtr &a_, size_t new_width) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::unsignedExtend(a_, new_width));
-  if (STRACE) {
-    STRACE << "RiscOps::unsignedExtend() a=" << *a << LEND;
-    STRACE << "RiscOps::unsignedExtend() r=" << *retval << LEND;
+  if (!omit_cur_insn
+      && (computingDefiners() == TRACK_LATEST_DEFINER) && (retval->nBits() == a->nBits()))
+  {
+    // Fix ROSE bug when tracking latest definers
+    retval->add_defining_instructions(a);
   }
+  // if (STRACE) {
+  //   STRACE << "RiscOps::unsignedExtend() a=" << *a << LEND;
+  //   STRACE << "RiscOps::unsignedExtend() r=" << *retval << LEND;
+  // }
   return retval;
 }
 
 BaseSValuePtr SymbolicRiscOperators::signExtend(const BaseSValuePtr &a_, size_t new_width) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::signExtend(a_, new_width));
-  if (STRACE) {
-    STRACE << "RiscOps::signExtend() a=" << *a << LEND;
-    STRACE << "RiscOps::signExtend() r=" << *retval << LEND;
+  if (!omit_cur_insn
+      && (computingDefiners() == TRACK_LATEST_DEFINER) && (retval->nBits() == a->nBits()))
+  {
+    // Fix ROSE bug when tracking latest definers
+    retval->add_defining_instructions(a);
   }
+  // if (STRACE) {
+  //   STRACE << "RiscOps::signExtend() a=" << *a << LEND;
+  //   STRACE << "RiscOps::signExtend() r=" << *retval << LEND;
+  // }
   return retval;
 }
+#endif  // PHAROS_ROSE_NUMERIC_EXTENSION_HACK
 
+#if 0
 BaseSValuePtr SymbolicRiscOperators::add(const BaseSValuePtr &a_, const BaseSValuePtr &b_) {
   SymbolicValuePtr a = SymbolicValue::promote(a_);
   SymbolicValuePtr b = SymbolicValue::promote(b_);

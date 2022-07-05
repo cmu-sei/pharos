@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Misc_H
 #define Pharos_Misc_H
@@ -8,19 +8,29 @@
 #include "rose.hpp"
 // For TreeNodePtr, LeafNodePtr, etc.
 #include <Rose/BinaryAnalysis/SymbolicExpr.h>
-// For Semantics2 namespace.
+// For Semantics namespace.
+#if PHAROS_ROSE_SYMBOLIC_EXTENSION_HACK
+#include <Rose/BinaryAnalysis/InstructionSemantics/SymbolicSemantics.h>
+#else
 #include <Rose/BinaryAnalysis/InstructionSemantics2/SymbolicSemantics.h>
+#endif
 // For P2 namespace.
 #include <Rose/BinaryAnalysis/Partitioner2/Partitioner.h>
 #include <Rose/BinaryAnalysis/MemoryMap.h>
 
 #include <numeric>
 
+#if !PHAROS_ROSE_SYMBOLIC_EXTENSION_HACK
+namespace Rose{ namespace BinaryAnalysis {
+namespace InstructionSemantics = Rose::BinaryAnalysis::InstructionSemantics2;
+}}
+#endif
+
 namespace pharos {
 
 using Rose::BinaryAnalysis::MemoryMap;
 namespace P2 = Rose::BinaryAnalysis::Partitioner2;
-namespace Semantics2 = Rose::BinaryAnalysis::InstructionSemantics2;
+namespace Semantics2 = Rose::BinaryAnalysis::InstructionSemantics;
 namespace SymbolicSemantics = Semantics2::SymbolicSemantics;
 
 // Make sure overload resolution for operator<< can see into the global namespace
@@ -108,7 +118,7 @@ std::string addr_str(rose_addr_t addr);
 rose_addr_t address_from_node(LeafNodePtr tnp);
 
 // Make the ROSE Semantics2 namespace a little shorter to type...
-namespace Semantics2 = Rose::BinaryAnalysis::InstructionSemantics2;
+namespace Semantics2 = Rose::BinaryAnalysis::InstructionSemantics;
 
 // Expression printers (very useful from a debugger)
 void print_expression(std::ostream & stream, TreeNode & e);
@@ -177,6 +187,8 @@ using RegisterSet = std::set<RegisterDescriptor>;
 using Rose::BinaryAnalysis::RegisterDictionary;
 
 void set_glog_name(std::string const & name);
+
+bool has_subexp (const TreeNodePtr haystack, const TreeNodePtr needle);
 
 } // namespace pharos
 
