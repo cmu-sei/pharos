@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <unordered_map>
 #include <limits>
@@ -682,6 +682,8 @@ JSONApiDictionary::get_api_definition(rose_addr_t addr) const
 }
 
 struct SQLLiteApiDictionary::Data {
+  mutable std::recursive_mutex mutex;
+  using lock_guard = std::lock_guard<decltype(mutex)>;
 
   static Sawyer::Message::Facility mlog;
   static Sawyer::Message::Facility & initDiagnostics();
@@ -1001,7 +1003,7 @@ SQLLiteApiDictionary::Data::Data(APIDictionary const & p, const std::string & fi
 {
   // Open the db
   try {
-    constexpr auto flags = SQLITE_OPEN_READONLY;
+    constexpr auto flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX;
     maybe_throw_code(sqlite3_open_v2(filename.c_str(), &db, flags, nullptr));
     enable_trace();
   } catch (const SQLError &) {
@@ -1270,6 +1272,7 @@ APIDefinitionList
 SQLLiteApiDictionary::Data::get_api_definition(
   const std::string & dll_name, size_t ordinal) const
 {
+  lock_guard lock{mutex};
   auto key = ordkey_t(normalize_dll(dll_name), ordinal);
   auto loc = values(ordmap.equal_range(key));
   if (begin(loc) != end(loc)) {
@@ -1289,6 +1292,7 @@ APIDefinitionList
 SQLLiteApiDictionary::Data::get_api_definition(
   const std::string & dll_name, const std::string & func_name) const
 {
+  lock_guard lock{mutex};
   auto key = defkey_t(normalize_dll(dll_name), func_name);
   auto loc = values(defmap.equal_range(key));
   if (begin(loc) != end(loc)) {
@@ -1310,6 +1314,7 @@ APIDefinitionList
 SQLLiteApiDictionary::Data::get_api_definition(
   const std::string & func_name) const
 {
+  lock_guard lock{mutex};
   maybe_throw(sqlite3_reset(lookup_by_name_only));
   maybe_throw(sqlite3_bind_text(lookup_by_name_only, 1, func_name.c_str(), func_name.size(),
                                 SQLITE_TRANSIENT));
@@ -1320,6 +1325,7 @@ APIDefinitionList
 SQLLiteApiDictionary::Data::get_api_definition(
   const regex & func_name) const
 {
+  lock_guard lock{mutex};
   std::int64_t idx;
   {
     write_guard<decltype(regex_mutex)> guard(regex_mutex);
@@ -1338,6 +1344,7 @@ SQLLiteApiDictionary::Data::get_api_definition(
 bool
 SQLLiteApiDictionary::Data::handles_dll(std::string const & dll_name_) const
 {
+  lock_guard lock{mutex};
   auto dll_name = normalize_dll(dll_name_) + ".dll";
   maybe_throw(sqlite3_reset(lookup_dll_exists));
   maybe_throw(sqlite3_bind_text(lookup_dll_exists, 1, dll_name.c_str(),
