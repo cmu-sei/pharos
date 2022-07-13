@@ -816,7 +816,8 @@ void ApiSearchExecutor::UpdateApiMatchTable(rose_addr_t caller, rose_addr_t call
     assert(cur_list);
 
     auto & clist = *cur_list;
-    for (std::size_t i = 0; i < clist.size(); ++i) {
+    auto end = clist.size();
+    for (std::size_t i = 0; i < end; ++i) {
       // for each recorded alias
       ApiParameterPtr cur_pd = clist[i];
       if (!cur_pd) {
@@ -2479,14 +2480,13 @@ rose_addr_t ApiCfgComponent::ConsolidateReturns(BlockSet & retns) {
     return INVALID_ADDRESS;
   }
 
-  ApiVertexInfo &exit_info = (*cfg_)[exit_vertex]; // the vertex that corresponds to exit_
-
   for (const BlockSet::value_type & block : retns) {
     ApiCfgVertex vtx = GetVertexByAddr(block->get_address());
     if (vtx == NULL_VERTEX) {
       continue;
     }
-    if (block->get_address() != exit_info.block->get_address()) { // Not the exit vertex
+    if (block->get_address() != (*cfg_)[exit_vertex].block->get_address()) {
+      // Not the exit vertex
       // make the predecessors of the vertex to remove point to the one true return
       BGL_FORALL_INEDGES(vtx,in_edge,*cfg_,ApiCfg) {
         ApiCfgVertex src = boost::source(in_edge, *cfg_);
