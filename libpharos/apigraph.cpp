@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Author: Jeff Gennari
 // Date: 2015-06-22
@@ -815,7 +815,10 @@ void ApiSearchExecutor::UpdateApiMatchTable(rose_addr_t caller, rose_addr_t call
     ApiParamPtrListPtr cur_list = match_pair.second; // list of aliases
     assert(cur_list);
 
-    for (ApiParameterPtr cur_pd : *cur_list) { // for each recorded alias
+    auto & clist = *cur_list;
+    for (std::size_t i = 0; i < clist.size(); ++i) {
+      // for each recorded alias
+      ApiParameterPtr cur_pd = clist[i];
       if (!cur_pd) {
         continue;
       }
@@ -2497,7 +2500,7 @@ rose_addr_t ApiCfgComponent::ConsolidateReturns(BlockSet & retns) {
 
   KillVertices(kill_list);
 
-  return exit_info.block->get_address();
+  return (*cfg_)[exit_vertex].block->get_address();
 }
 
 
