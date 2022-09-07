@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Partitioner_H
 #define Pharos_Partitioner_H
@@ -14,8 +14,6 @@
 #include "misc.hpp"
 
 namespace pharos {
-
-using RoseDisassembler = Rose::BinaryAnalysis::Disassembler;
 
 #define CODE_THRESHOLD 0.7
 

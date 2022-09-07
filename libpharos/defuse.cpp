@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/algorithm/string.hpp>
 #include <boost/tokenizer.hpp>
@@ -201,7 +201,7 @@ BlockAnalysis::record_dependencies(
         SymbolicValuePtr sv = cstate->read_register(rd);
 
         if (aa.latest_writers.size() == 0) {
-          std::string regname = unparseX86Register(rd, NULL);
+          std::string regname = unparseX86Register(rd, {});
           SDEBUG << "Warning: Use of uninitialized register "
                  << regname << " by " << debug_instruction(insn) << LEND;
           Definition reg_def(NULL, aa);
@@ -692,23 +692,23 @@ DUAnalysis::DUAnalysis(DescriptorSet& ds_, FunctionDescriptor & f)
   SymbolicRiscOperatorsPtr rops;
 
   SymbolicValuePtr proto = SymbolicValue::instance();
-  const RegisterDictionary& regdict = ds.get_regdict();
+  RegisterDictionaryPtrArg regdict = ds.get_regdict();
   if (rigor) {
     // This is the new bit that instantiates the list-based memory state instead of the map based state.
-    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(proto, &regdict);
+    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(proto, regdict);
     SymbolicMemoryListStatePtr mstate = SymbolicMemoryListState::instance();
     SymbolicStatePtr state = SymbolicState::instance(rstate, mstate);
     rops = SymbolicRiscOperators::instance(ds, state, &rops_callbacks);
   }
   else {
-    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(proto, &regdict);
+    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(proto, regdict);
     SymbolicMemoryMapStatePtr mstate = SymbolicMemoryMapState::instance();
     SymbolicStatePtr state = SymbolicState::instance(rstate, mstate);
     rops = SymbolicRiscOperators::instance(ds, state, &rops_callbacks);
   }
 
   size_t arch_bits = ds.get_arch_bits();
-  dispatcher = RoseDispatcherX86::instance(rops, arch_bits, NULL);
+  dispatcher = RoseDispatcherX86::instance(rops, arch_bits, {});
 
   // Configure the limit analysis.  The func_limit instance is local, but we still need to
   // configure the global limits of the analysis of all functions as well.
@@ -927,7 +927,7 @@ void create_overwritten_register(SymbolicRiscOperatorsPtr rops,
     cd->set_return_value(value);
     // Add the return register to the "returns" parameter list as well.
     ParameterList& params = cd->get_rw_parameters();
-    SDEBUG << "Creating return register parameter " << unparseX86Register(rd, NULL)
+    SDEBUG << "Creating return register parameter " << unparseX86Register(rd, {})
            << " with value " << *value << LEND;
     ParameterDefinition & rpd = params.create_return_reg(rd, value);
     // If the upstream parameters list has only a single return value, assume that this is it,
@@ -1092,7 +1092,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
         // Mark the register as overwritten.
         SymbolicValuePtr rv = create_return_value(insn, rd.get_nbits(), false);
         create_overwritten_register(rops, ds, rd, false, rv, cd, fparams);
-        GTRACE << "Setting changed register " << unparseX86Register(rd, NULL)
+        GTRACE << "Setting changed register " << unparseX86Register(rd, {})
                << " for insn " << addr_str(insn->get_address())
                << " to value=" << *(rops->read_register(rd)) << LEND;
         // And we're done with this register...
@@ -1137,7 +1137,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
     // We'll handled non-register (memory) parameters a bit later (maybe).
     if (not pd.is_reg()) continue;
 
-    SDEBUG << "Found register parameter: " << unparseX86Register(pd.get_register(), NULL)
+    SDEBUG << "Found register parameter: " << unparseX86Register(pd.get_register(), {})
            << " for call " << cd->address_string() << LEND;
 
     // Create a dependency between the instructions that last modifier the value of the
@@ -1625,8 +1625,8 @@ DUAnalysis::update_output_state()
   if (out_vertices.size() == 0) {
     SERROR << "Function " << fd->address_string() << " has no out edges." << LEND;
     SymbolicValuePtr proto = SymbolicValue::instance();
-    const RegisterDictionary& regdict = ds.get_regdict();
-    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(proto, &regdict);
+    RegisterDictionaryPtrArg regdict = ds.get_regdict();
+    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(proto, regdict);
     SymbolicMemoryMapStatePtr mstate = SymbolicMemoryMapState::instance();
     output_state = SymbolicState::instance(rstate, mstate);
     output_valid = false;
@@ -1678,8 +1678,8 @@ DUAnalysis::update_output_state()
   if (ret_blocks.size() == 0) {
     SDEBUG << "Function " << fd->address_string() << " has no valid return blocks." << LEND;
     SymbolicValuePtr proto = SymbolicValue::instance();
-    const RegisterDictionary& regdict = ds.get_regdict();
-    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(proto, &regdict);
+    RegisterDictionaryPtrArg regdict = ds.get_regdict();
+    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(proto, regdict);
     SymbolicMemoryMapStatePtr mstate = SymbolicMemoryMapState::instance();
     output_state = SymbolicState::instance(rstate, mstate);
     output_valid = false;

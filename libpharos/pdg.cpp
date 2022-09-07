@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "pdg.hpp"
 #include "md5.hpp"
@@ -98,7 +98,7 @@ AccessMap PDG::chop_full(SgAsmX86Instruction *insn) const {
       // SDEBUG << "Starting chop from " << debug_instruction(insn) << LEND;
       for (const AbstractAccess& aa : du.get_writes(caddr)) {
         if (aa.is_reg() && insn_is_callNF(cur) &&
-            unparseX86Register(aa.register_descriptor, NULL) == "esp") continue;
+            unparseX86Register(aa.register_descriptor, {}) == "esp") continue;
 
         LeafNodePtrSet vars = aa.value->get_expression()->getVariables();
         ids2track.insert(vars.begin(),vars.end());

@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "badcode.hpp"
 #include "descriptors.hpp"
@@ -90,7 +90,7 @@ bool BadCodeMetrics::isBadCode(SgAsmStatementPtrList insns,
 
   SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::instance(ds);
   size_t arch_bits = ds.get_arch_bits();
-  DispatcherPtr dispatcher = RoseDispatcherX86::instance(rops, arch_bits, NULL);
+  DispatcherPtr dispatcher = RoseDispatcherX86::instance(rops, arch_bits, {});
   RegisterDescriptor eiprd = dispatcher->findRegister("eip", arch_bits);
 
   for (size_t q = 0; q < insns.size(); q++) {

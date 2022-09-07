@@ -62,9 +62,7 @@ class CERTMerger: public Semantics2::SymbolicSemantics::Merger {
   using Ptr = CERTMergerPtr;
 
   // Allocating constructor.
-  static Ptr instance() {
-    return Ptr(new CERTMerger);
-  }
+  static Ptr instance();
 };
 
 // Custom class required to implement equals().  At least for a while longer.
@@ -76,7 +74,7 @@ class SymbolicRegisterState: public RegisterStateGeneric {
 
   // Constructors must take custom types to ensure promotion.
   explicit SymbolicRegisterState(const SymbolicValuePtr &proto,
-                                 const RegisterDictionary *rd);
+                                 RegisterDictionaryPtrArg rd);
 
   // Copy constructor should ensure a deep copy.
   // In general this doesn't happen at correct level if we don't implement it, but in this
@@ -90,7 +88,7 @@ class SymbolicRegisterState: public RegisterStateGeneric {
 
   // Instance() methods must take custom types to ensure promotion.
   static SymbolicRegisterStatePtr instance(const SymbolicValuePtr &proto,
-                                           const RegisterDictionary *rd) {
+                                           RegisterDictionaryPtrArg rd) {
     STRACE << "SymbolicRegisterState::instance(SymbolicValuePtr, RegisterDictionary)" << LEND;
     return SymbolicRegisterStatePtr(new SymbolicRegisterState(proto, rd));
   }
@@ -100,7 +98,7 @@ class SymbolicRegisterState: public RegisterStateGeneric {
   // if we didn't get the right kind of protoype value?  Long term we should really support
   // other arbitrary values.
   static SymbolicRegisterStatePtr instance(const BaseSValuePtr &proto,
-                                           const RegisterDictionary *rd) {
+                                           RegisterDictionaryPtrArg rd) {
     STRACE << "SymbolicRegisterState::instance(BaseSValuePtr, RegisterDictionary)" << LEND;
     SymbolicValuePtr sproto = SymbolicValue::promote(proto);
     return SymbolicRegisterStatePtr(new SymbolicRegisterState(sproto, rd));
@@ -114,7 +112,7 @@ class SymbolicRegisterState: public RegisterStateGeneric {
   }
 
   virtual BaseRegisterStatePtr create(
-    const BaseSValuePtr &proto, const RegisterDictionary *rd)
+    const BaseSValuePtr &proto, RegisterDictionaryPtrArg rd)
     const override
   {
     STRACE << "SymbolicRegisterState::create()" << LEND;

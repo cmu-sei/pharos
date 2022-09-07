@@ -832,7 +832,7 @@ void FunctionDescriptor::update_register_parameters() {
       RegisterDescriptor rd = rpair.first;
       // Read the symbolic value for the specified register from input state.
       SymbolicValuePtr rpsv = input_state->read_register(rd);
-      GDEBUG << "Adding reg parameter '" << unparseX86Register(rd, NULL)
+      GDEBUG << "Adding reg parameter '" << unparseX86Register(rd, {})
              << "' to unknown convention for " << _address_string() << " sv=" << *rpsv << LEND;
       // The pointed_to field is probably always NULL for our current system, but there might
       // be a situation in which we would start populating these fields based on types in the
@@ -854,13 +854,13 @@ void FunctionDescriptor::update_register_parameters() {
       // situation is that the calling convention says that there's a parameter, but we haven't
       // actually used it.
       // parameters.create_reg_parameter(rd, rpsv, NULL);
-      GDEBUG << "Unused reg parameter '" << unparseX86Register(rd, NULL)
+      GDEBUG << "Unused reg parameter '" << unparseX86Register(rd, {})
              << "' to convention " << cc->get_name() << " for " << _address_string() << LEND;
     }
     else {
       SymbolicValuePtr rpsv = input_state->read_register(rd);
 
-      GDEBUG << "Adding reg parameter '" << unparseX86Register(rd, NULL) << "' to convention "
+      GDEBUG << "Adding reg parameter '" << unparseX86Register(rd, {}) << "' to convention "
              << cc->get_name() << " for " << _address_string() << " sv=" << *rpsv << LEND;
       const SgAsmInstruction* insn = reg_finder->second;
       // Same pointed_to behavior as mentioned above.

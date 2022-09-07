@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Descriptors_H
 #define Pharos_Descriptors_H
@@ -7,6 +7,9 @@
 
 #include "rose.hpp"
 #include <Rose/BinaryAnalysis/Partitioner2/Engine.h>
+#if PHAROS_ROSE_REGISTERDICTIONARY_PTR_HACK
+#include <Rose/BinaryAnalysis/Disassembler/Base.h>
+#endif
 
 namespace pharos {
 
@@ -39,6 +42,12 @@ namespace pharos {
 using ImportVariableMap = std::map<size_t, ImportDescriptor*>;
 using AddrInsnMap = std::map<rose_addr_t, SgAsmInstruction*>;
 using RegisterVector = Rose::BinaryAnalysis::RegisterDictionary::RegisterDescriptors;
+
+#if PHAROS_ROSE_REGISTERDICTIONARY_PTR_HACK
+using DisassemblerPtr = Rose::BinaryAnalysis::Disassembler::BasePtr;
+#else
+using DisassemblerPtr = Rose::BinaryAnalysis::Disassembler *;
+#endif
 
 class DescriptorSet
 {
@@ -222,12 +231,7 @@ class DescriptorSet
     return partitioner.basicBlockContainingInstruction(a);
   }
 
-  Rose::BinaryAnalysis::Disassembler* get_disassembler() const {
-    // We're const casting here because the disassembler that we return has no ability to
-    // modify anything of importance in the descriptor set.  Arguably, the obtainDisassembler
-    // method ought to be const on the engine as well.
-    return const_cast<DescriptorSet*>(this)->engine->obtainDisassembler();
-  }
+  DisassemblerPtr get_disassembler() const;
 
   void dump(std::ostream &o) const;
 
@@ -240,7 +244,7 @@ class DescriptorSet
   // Here's how you can get access to the new Partitioner 2 engine (maybe)...
   const P2::Engine* get_engine() const { return engine; }
   const P2::Partitioner& get_partitioner() const { return partitioner; }
-  RegisterDictionary const & get_regdict() const;
+  RegisterDictionaryPtr get_regdict() const;
 
   // Pharos API for getting instructions from the Partitioner 2 instruction provider.
   SgAsmInstruction* get_insn(rose_addr_t addr) const {

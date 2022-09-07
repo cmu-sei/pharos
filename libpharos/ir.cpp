@@ -475,7 +475,7 @@ class IRRiscOperators: public SymRiscOperators
 
  protected:
   explicit IRRiscOperators(const SymStatePtr &state)
-    : SymRiscOperators(state) {};
+    : SymRiscOperators(state, {}) {};
 };
 
 // Define how we want to represent a register state.
@@ -484,7 +484,7 @@ class IRRegisterState: public RegisterStateGeneric
   // Create the register state and initialize the register values.
   explicit IRRegisterState(
     const BaseSValuePtr& valueProtoval,
-    const Rose::BinaryAnalysis::RegisterDictionary *rd,
+    RegisterDictionaryPtrArg rd,
     const RegisterVector init_regs, RegisterDescriptor& ipreg)
     : RegisterStateGeneric(valueProtoval, rd)
   {
@@ -507,7 +507,7 @@ class IRRegisterState: public RegisterStateGeneric
 
   // Construct an instance of an IR register state.
   static IRRegisterStatePtr instance(const SymValuePtr &proto,
-                                     const Rose::BinaryAnalysis::RegisterDictionary *rd,
+                                     RegisterDictionaryPtrArg rd,
                                      const RegisterVector init_regs,
                                      RegisterDescriptor& ipreg)
   {
@@ -527,7 +527,7 @@ class IRRegisterState: public RegisterStateGeneric
     SymValuePtr svalue = SymValue::promote(value);
     SymValuePtr sdflt = SymValue::promote(dflt);
 
-    //std::string regname = unparseX86Register(reg, NULL);
+    //std::string regname = unparseX86Register(reg, {});
     //std::cout << *svalue << " = RegRead(" << regname << ")" << std::endl;
 
     SymbolicLeafPtr leaf = sdflt->get_expression()->isLeafNode();
@@ -556,7 +556,7 @@ class IRRegisterState: public RegisterStateGeneric
   void writeRegister(RegisterDescriptor reg, const BaseSValuePtr &value,
                      BaseRiscOperators *ops) override {
     SymValuePtr svalue = SymValue::promote(value);
-    std::string regname = unparseX86Register(reg, NULL);
+    std::string regname = unparseX86Register(reg, {});
 
     IRRiscOperators *irops = IRRiscOperators::promote (ops);
 
@@ -580,7 +580,7 @@ class IRRegisterState: public RegisterStateGeneric
       SymValuePtr regvar = SymValue::promote(RegisterStateGeneric::readRegister(fullreg, dflt, ops));
       SymbolicLeafPtr regleaf = regvar->get_expression()->isLeafNode();
       assert (regleaf);
-      //std::cout << "hmm " << unparseX86Register(reg, NULL) << svalue->get_width() << *regvar << std::endl;
+      //std::cout << "hmm " << unparseX86Register(reg, {}) << svalue->get_width() << *regvar << std::endl;
 
       // regvar is the full variable we are writing to.  But the
       // original value we are writing here was for a sub-register.
@@ -916,11 +916,11 @@ IR IR::get_ir(const FunctionDescriptor* fd) {
   // never actually write to it in any way.
   static SymValuePtr protoval = SymValue::instance();
 
-  static pharos::RegisterDictionary regdict = fd->ds.get_regdict();
+  RegisterDictionaryPtr regdict = fd->ds.get_regdict();
   const RegisterVector init_regs = fd->ds.get_usual_registers();
   RegisterDescriptor ipreg = fd->ds.get_ip_reg();
   static IRRegisterStatePtr rstate = IRRegisterState::instance(
-    protoval, &regdict, init_regs, ipreg);
+    protoval, regdict, init_regs, ipreg);
   static IRMemoryStatePtr mstate = IRMemoryState::instance(protoval, protoval);
   SymStatePtr state = SymState::instance(rstate, mstate);
   IRRiscOperatorsPtr rops = IRRiscOperators::instance(state);

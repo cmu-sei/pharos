@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <AsmUnparser_compat.h>
 
@@ -197,7 +197,7 @@ std::string masm_unparseX86Expression(SgAsmExpression *expr,
    }
    case V_SgAsmDirectRegisterExpression: {
      SgAsmDirectRegisterExpression* rr = isSgAsmDirectRegisterExpression(expr);
-     result = unparseX86Register(rr->get_descriptor(),NULL);
+     result = unparseX86Register(rr->get_descriptor(),{});
      break;
    }
     // Cory says: This case demonstrates how crusty masm.cpp has gotten.  The new floating
@@ -297,7 +297,7 @@ std::string masm_unparseX86Expression(SgAsmExpression *expr, const RoseLabelMap 
 std::string masm_unparseExpression(
   const SgAsmInstruction *insn,
   const SgAsmExpression *expr,
-  const RegisterDictionary *rdict,
+  RegisterDictionaryPtrArg rdict,
   const RoseLabelMap *labels)
 {
   // Const casts are to hide sillyness in the ROSE AST API that incorrectly lacks const.

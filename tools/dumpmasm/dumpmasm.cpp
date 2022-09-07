@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <libpharos/misc.hpp>
 #include <libpharos/masm.hpp>
@@ -34,7 +34,7 @@ csv_output_insn(const P2::Partitioner& partitioner, const P2::AddressUser& au)
   }
   std::string opbytes = debug_opcode_bytes(insn->get_raw_bytes(), 99999);
 
-  const RegisterDictionary *rdict = partitioner.instructionProvider().registerDictionary();
+  auto rdict = partitioner.instructionProvider().registerDictionary();
   std::string opstr = "";
   SgAsmOperandList *oplist = insn->get_operandList();
   if (!oplist) {

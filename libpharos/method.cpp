@@ -1,10 +1,12 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "pdg.hpp"
 #include "method.hpp"
 #include "vftable.hpp"
 #include "masm.hpp"
 #include "ooanalyzer.hpp"
+
+#include <integerOps.h>
 
 namespace pharos {
 
@@ -167,7 +169,7 @@ bool ThisCallMethod::find_this_pointer()
   GDEBUG << "Function " << fd->address_string() << " has parameters: ";
   for (const RegisterEvidenceMap::value_type& rpair : ru.parameter_registers) {
     RegisterDescriptor rd = rpair.first;
-    GDEBUG << " " << unparseX86Register(rd, NULL);
+    GDEBUG << " " << unparseX86Register(rd, {});
   }
   GDEBUG << LEND;
 

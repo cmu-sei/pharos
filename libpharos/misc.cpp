@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 // For timing our execution.
 #include <time.h>
@@ -838,7 +838,7 @@ const SgAsmX86Instruction* last_x86insn_in_block(const SgAsmBlock* bb) {
 }
 
 // For situations where the DescriptorSet isn't available.
-RegisterDescriptor get_arch_reg(RegisterDictionary const &regdict,
+RegisterDescriptor get_arch_reg(RegisterDictionaryPtrArg regdict,
                                 const std::string & name, size_t arch_bytes)
 {
   // Wow.  Horrible embarassing hack.   We'll need to think about this much harder.
@@ -846,10 +846,10 @@ RegisterDescriptor get_arch_reg(RegisterDictionary const &regdict,
   if (name.size() > 1 and name[0] == 'e' and arch_bytes == 8) {
     std::string large_name = name;
     large_name[0] = 'r';
-    return regdict.find(large_name);
+    return regdict->find(large_name);
   }
   // 32-bit (and assorted other failure cases)...
-  return regdict.find(name);
+  return regdict->find(name);
 }
 
 // Merge the expressions represented by "other" into "this"
@@ -1108,7 +1108,7 @@ bool has_subexp (const TreeNodePtr haystack, const TreeNodePtr needle) {
   using Rose::BinaryAnalysis::SymbolicExpr::TERMINATE;
 
   struct SubxVisitor : Visitor {
-    
+
     TreeNodePtr needle_;
 
     SubxVisitor(const TreeNodePtr &needle) : needle_(needle) {}

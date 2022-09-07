@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/optional.hpp>
 
@@ -226,7 +226,7 @@ bool RegisterUsage::check_saved_register(SgAsmX86Instruction *insn, RegisterDesc
   // that qualified as a save/restore pair and no evidence to the contrary (e..g having return
   // false already), then it's time to make the instructions as a save/restore pair.
   if (restore_insn) {
-    GTRACE << "Saved register: reg=" << unparseX86Register(reg, NULL)
+    GTRACE << "Saved register: reg=" << unparseX86Register(reg, {})
            << " save=" << debug_instruction(insn)
            << " restore=" << debug_instruction(restore_insn) << LEND;
     saved_registers.insert(SavedRegister(reg, insn, restore_insn));
@@ -284,8 +284,8 @@ void RegisterUsage::analyze_parameters() {
   const Addr2DUChainMap& dd = p->get_usedef().get_dependencies();
 
   // Get a handle to the stack pointer register, because it's special.
-  const RegisterDictionary regdict = fd->ds.get_regdict();
-  RegisterDescriptor esp = regdict.find("esp");
+  RegisterDictionaryPtrArg regdict = fd->ds.get_regdict();
+  RegisterDescriptor esp = regdict->find("esp");
 
   // This is for keeping track of which stack parameter deltas we've actually used, and which
   // which haven't.  This might be duplicated work, and we've not saved this anywhere.  Here is
@@ -404,11 +404,11 @@ void RegisterUsage::analyze_parameters() {
           // Strictly speaking, I think this means that skipping memory reads earlier could be
           // incorrect as well... :-(
 
-          RegisterDescriptor initial_reg = regdict.find(cmt.substr(0, clen - 2));
+          RegisterDescriptor initial_reg = regdict->find(cmt.substr(0, clen - 2));
 
           parameter_registers[initial_reg] = insn;
           GTRACE << "Function " << fd->address_string() << " uses register "
-                 << unparseX86Register(initial_reg, NULL)
+                 << unparseX86Register(initial_reg, {})
                  << " as parameter in " << debug_instruction(insn) << LEND;
           break;
         }
@@ -420,7 +420,7 @@ void RegisterUsage::analyze_parameters() {
   GTRACE << "Function " << fd->address_string() << " has parameters: ";
   for (const RegisterEvidenceMap::value_type& rpair : parameter_registers) {
     RegisterDescriptor reg = rpair.first;
-    GTRACE << " " << unparseX86Register(reg, NULL);
+    GTRACE << " " << unparseX86Register(reg, {});
   }
   GTRACE << LEND;
 }
@@ -448,12 +448,12 @@ void RegisterUsage::analyze_changed() {
 
   RegisterSet all_changed_registers = routput->diff(rinput);
 
-  const RegisterDictionary regdict = fd->ds.get_regdict();
-  RegisterDescriptor esp = regdict.find("esp");
-  RegisterDescriptor ebp = regdict.find("ebp");
-  RegisterDescriptor esi = regdict.find("esi");
-  RegisterDescriptor edi = regdict.find("edi");
-  RegisterDescriptor ebx = regdict.find("ebx");
+  RegisterDictionaryPtrArg regdict = fd->ds.get_regdict();
+  RegisterDescriptor esp = regdict->find("esp");
+  RegisterDescriptor ebp = regdict->find("ebp");
+  RegisterDescriptor esi = regdict->find("esi");
+  RegisterDescriptor edi = regdict->find("edi");
+  RegisterDescriptor ebx = regdict->find("ebx");
 
   // It turns out that we can't enable this code properly because our system is just too
   // fragile.  If we're incorrect in any low-level function, this propogates that failure
@@ -481,7 +481,7 @@ void RegisterUsage::analyze_changed() {
     // Warn about cases where we reject register changes based on calling convention assumptions.
     if (rd == ebp or rd == esi or rd == edi or rd == ebx) {
       GDEBUG << "Function " << fd->address_string() << " overwrites "
-             << unparseX86Register(rd, NULL)
+             << unparseX86Register(rd, {})
              << " violating all known calling conventions." << LEND;
     }
     else {
@@ -491,7 +491,7 @@ void RegisterUsage::analyze_changed() {
 
   GDEBUG << "Function " << fd->address_string() << " changed registers: ";
   for (RegisterDescriptor rd : changed_registers) {
-    GDEBUG << " " << unparseX86Register(rd, NULL);
+    GDEBUG << " " << unparseX86Register(rd, {});
   }
   GDEBUG << LEND;
 }
@@ -537,8 +537,8 @@ CallingConvention::CallingConvention(size_t word_size_, const std::string &name_
   assert(!name.empty());
 }
 
-void CallingConvention::add_nonvolatile(const RegisterDictionary & dict, std::string rname) {
-  RegisterDescriptor rd = dict.find(rname);
+void CallingConvention::add_nonvolatile(RegisterDictionaryPtrArg dict, std::string rname) {
+  RegisterDescriptor rd = dict->find(rname);
   if (!rd.is_valid()) {
     GFATAL << "Unable to find non-volatile register '" << rname << "'." << LEND;
     assert(rd.is_valid());
@@ -578,13 +578,13 @@ void CallingConvention::report() const {
 
   GTRACE << "  Parameter regs:   ";
   for (RegisterDescriptor rd : reg_params) {
-    GTRACE << " " << unparseX86Register(rd, NULL);
+    GTRACE << " " << unparseX86Register(rd, {});
   }
   GTRACE << LEND;
 
   GTRACE << "  Nonvolatile regs: ";
   for (RegisterDescriptor rd : nonvolatile) {
-    GTRACE << " " << unparseX86Register(rd, NULL);
+    GTRACE << " " << unparseX86Register(rd, {});
   }
   GTRACE << LEND;
 }
@@ -727,7 +727,7 @@ std::string ParameterDefinition::to_string() const {
   std::stringstream out;
   out << "  num=" << d.num;
   if (is_reg()) {
-    out << " reg=" << unparseX86Register(d.reg, NULL);
+    out << " reg=" << unparseX86Register(d.reg, {});
   }
   else {
     out << " sd=" << d.stack_delta;
@@ -786,7 +786,7 @@ void ParameterDefinition::debug() const {
 
   OINFO << "  num=" << d.num;
   if (is_reg()) {
-    OINFO << " reg=" << unparseX86Register(d.reg, NULL);
+    OINFO << " reg=" << unparseX86Register(d.reg, {});
   }
   else {
     OINFO << " sd=" << d.stack_delta;
@@ -1110,7 +1110,7 @@ CallingConventionMatcher::match(const FunctionDescriptor* fd,
       if (ru.changed_registers.find(rd) != ru.changed_registers.end()) {
         GDEBUG << "Function " << fd->address_string() << " can't match "
                << cc.get_name() << " because non-volatile register "
-               << unparseX86Register(rd, NULL) << " was changed." << LEND;
+               << unparseX86Register(rd, {}) << " was changed." << LEND;
         follows_nonvolatile_rule = false;
         break;
       }
@@ -1142,7 +1142,7 @@ CallingConventionMatcher::match(const FunctionDescriptor* fd,
     static char const * allowed_registers[] =
       {"esp", "df", "cs", "ds", "ss", "es", "gs", "fs", nullptr};
     for (char const ** regname = allowed_registers; *regname; ++regname) {
-      RegisterDescriptor rd = regdict.find(*regname);
+      RegisterDescriptor rd = regdict->find(*regname);
       if (temp_params.find(rd) != temp_params.end()) temp_params.erase(rd);
     }
 
@@ -1166,7 +1166,7 @@ CallingConventionMatcher::match(const FunctionDescriptor* fd,
       }
       else {
         GTRACE << "Function " << fd->address_string() << " does not use parameter register "
-               << unparseX86Register(rd, NULL) << LEND;
+               << unparseX86Register(rd, {}) << LEND;
         // If there are function parameters that are passed in registers, but not actually
         // used, then breaking here causes a premature end to the consideration of the
         // remaining parameters in the calling convention, leaving any additional parameters
@@ -1183,7 +1183,7 @@ CallingConventionMatcher::match(const FunctionDescriptor* fd,
       GTRACE << "Unmatched parameter registers: ";
       for (const RegisterEvidenceMap::value_type& rpair : temp_params) {
         RegisterDescriptor rd = rpair.first;
-        GTRACE << " " << unparseX86Register(rd, NULL);
+        GTRACE << " " << unparseX86Register(rd, {});
       }
       GTRACE << LEND;
       continue;
@@ -1213,16 +1213,20 @@ CallingConventionMatcher::match(const FunctionDescriptor* fd,
 CallingConventionMatcher::CallingConventionMatcher()
   // It is presumes that the amd64 register dictionary is a superset of the 32-bit and 16-bit
   // dictionaries
-  : regdict(*Rose::BinaryAnalysis::RegisterDictionary::dictionary_amd64())
+#if PHAROS_ROSE_REGISTERDICTIONARY_PTR_HACK
+  : regdict(Rose::BinaryAnalysis::RegisterDictionary::instanceAmd64())
+#else
+  : regdict(Rose::BinaryAnalysis::RegisterDictionary::dictionary_amd64())
+#endif
 {
   // ================================================================================
   // 16-bit calling conventions...
   // ================================================================================
   // Agner says 16-bit DOS and windows has SI, DI, BP and DS as nonvolatile.
 
-  RegisterDescriptor eax = regdict.find("eax");
-  RegisterDescriptor ecx = regdict.find("ecx");
-  RegisterDescriptor edx = regdict.find("edx");
+  RegisterDescriptor eax = regdict->find("eax");
+  RegisterDescriptor ecx = regdict->find("ecx");
+  RegisterDescriptor edx = regdict->find("edx");
   //RegisterDescriptor st0 = regdict->find("st0");
 
   // Agner says this list is correct for Windows & Unix
@@ -1341,18 +1345,18 @@ CallingConventionMatcher::CallingConventionMatcher()
   // See earlier comment on clearing df being allowed.
   nonvol.add_nonvolatile(regdict, "df");
 
-  RegisterDescriptor rax = regdict.find("rax");
-  RegisterDescriptor rdi = regdict.find("rdi");
-  RegisterDescriptor rsi = regdict.find("rsi");
-  RegisterDescriptor rcx = regdict.find("rcx");
-  RegisterDescriptor rdx = regdict.find("rdx");
-  RegisterDescriptor r8 = regdict.find("r8");
-  RegisterDescriptor r9 = regdict.find("r9");
+  RegisterDescriptor rax = regdict->find("rax");
+  RegisterDescriptor rdi = regdict->find("rdi");
+  RegisterDescriptor rsi = regdict->find("rsi");
+  RegisterDescriptor rcx = regdict->find("rcx");
+  RegisterDescriptor rdx = regdict->find("rdx");
+  RegisterDescriptor r8 = regdict->find("r8");
+  RegisterDescriptor r9 = regdict->find("r9");
 
-  RegisterDescriptor xmm0 = regdict.find("xmm0");
-  RegisterDescriptor xmm1 = regdict.find("xmm1");
-  RegisterDescriptor xmm2 = regdict.find("xmm2");
-  RegisterDescriptor xmm3 = regdict.find("xmm3");
+  RegisterDescriptor xmm0 = regdict->find("xmm0");
+  RegisterDescriptor xmm1 = regdict->find("xmm1");
+  RegisterDescriptor xmm2 = regdict->find("xmm2");
+  RegisterDescriptor xmm3 = regdict->find("xmm3");
 
   cc = CallingConvention(64, "__x64call", "GNU C Compiler");
   cc.set_stack_alignment(64);

@@ -18,8 +18,12 @@ extern SymbolicRiscOperatorsPtr global_rops;
 
 using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
 
+CERTMerger::Ptr CERTMerger::instance() {
+  return Ptr(new CERTMerger{});
+}
+
 SymbolicRegisterState::SymbolicRegisterState(
-  const SymbolicValuePtr &proto, const Rose::BinaryAnalysis::RegisterDictionary *rd):
+  const SymbolicValuePtr &proto, RegisterDictionaryPtrArg rd):
   RegisterStateGeneric(proto, rd)
 {
   // moving the global_rops creation to pharos_main caused this message to always come out:
@@ -55,14 +59,14 @@ bool SymbolicRegisterState::equals(const SymbolicRegisterStatePtr & other) {
       // If both values are in the incomplete state, it doesn't really matter if they're equal.
       // Continue to the next register, effectively returning true for this register.
       if (value->is_incomplete() && ovalue->is_incomplete()) {
-        DSTREAM << "Register " << unparseX86Register(rp.desc, NULL)
+        DSTREAM << "Register " << unparseX86Register(rp.desc, {})
                 << " ignored because both values were incomplete." << LEND;
         continue;
       }
 
       // If one or the other is incomplete (but not both) return false to iterate again.
       if (value->is_incomplete() || ovalue->is_incomplete()) {
-        DSTREAM << "Register " << unparseX86Register(rp.desc, NULL)
+        DSTREAM << "Register " << unparseX86Register(rp.desc, {})
                 << " has differing correctness, iterating "
                 << *value << " != " << *ovalue << LEND;
         return false;
@@ -70,7 +74,7 @@ bool SymbolicRegisterState::equals(const SymbolicRegisterStatePtr & other) {
 
       // For all other situations, the values must mach symbolically.
       if (!(*value == *ovalue)) {
-        DSTREAM << "Register " << unparseX86Register(rp.desc, NULL) << " changed: "
+        DSTREAM << "Register " << unparseX86Register(rp.desc, {}) << " changed: "
                 << *value << " != " << *ovalue << LEND;
         return false;
       }
@@ -152,8 +156,8 @@ CellMapChunks::CellMapChunks(const DUAnalysis & usedef, bool df_flag) {
   }
 
   // The df f should be treated as a constant value when chunking addresses
-  const RegisterDictionary regdict = usedef.ds.get_regdict();
-  RegisterDescriptor df_reg = regdict.find("df");
+  RegisterDictionaryPtrArg regdict = usedef.ds.get_regdict();
+  RegisterDescriptor df_reg = regdict->find("df");
   const auto & df_sym = const_cast<SymbolicStatePtr &>(input_state)->read_register(df_reg);
   const auto & df_tn = df_sym ? df_sym->get_expression() : TreeNodePtr();
   auto df_value = SymbolicExpr::makeBooleanConstant(df_flag);

@@ -121,18 +121,22 @@ std::shared_ptr<TagManager> DescriptorSet::create_tag_manager(ProgOptVarMap cons
 
 RegisterVector DescriptorSet::get_usual_registers()
 {
-  RegisterDictionary const & rd = get_regdict();
+  RegisterDictionaryPtrArg rd = get_regdict();
   if (arch_name == "i386" || arch_name == "amd64") {
     SymbolicValuePtr protoval = SymbolicValue::instance();
-    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(protoval, &rd);
+    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(protoval, rd);
     SymbolicMemoryMapStatePtr mstate = SymbolicMemoryMapState::instance();
     SymbolicStatePtr state = SymbolicState::instance(rstate, mstate);
     SymbolicRiscOperatorsPtr lrops = SymbolicRiscOperators::instance(*this, state);
-    DispatcherPtr dispatcher = RoseDispatcherX86::instance(lrops, get_arch_bits(), NULL);
+    DispatcherPtr dispatcher = RoseDispatcherX86::instance(lrops, get_arch_bits(), {});
     return dispatcher->get_usual_registers();
   }
   else {
-    return get_regdict().get_largest_registers();
+#if PHAROS_ROSE_REGISTERDICTIONARY_PTR_HACK
+    return rd->getLargestRegisters();
+#else
+    return rd->get_largest_registers();
+#endif
   }
 }
 
@@ -157,7 +161,7 @@ void DescriptorSet::init()
   assert(memory);
 
   // The recommended way to determine the architecture size is ask the disassembler.
-  RoseDisassembler *disassembler = engine->obtainDisassembler();
+  auto const disassembler = engine->obtainDisassembler();
   arch_bytes = disassembler->wordSizeBytes();
   set_global_arch_bytes(arch_bytes);
 
@@ -382,8 +386,8 @@ DescriptorSet::~DescriptorSet() {
   if (engine != NULL) delete engine;
 }
 
-RegisterDictionary const & DescriptorSet::get_regdict() const {
-  return *partitioner.instructionProvider().registerDictionary();
+RegisterDictionaryPtr DescriptorSet::get_regdict() const {
+  return partitioner.instructionProvider().registerDictionary();
 }
 
 void DescriptorSet::create() {
@@ -440,7 +444,7 @@ void DescriptorSet::create() {
               // In all of the cases that I looked at, these expressions were of the form [ecx+edx*2]
               GTRACE << "Right hand side of add expression is not constant!"
                      << " insn=" << debug_instruction(xinsn, 0)
-                     << " expr=" << unparseExpression(const_expr, NULL, NULL) << LEND;}
+                     << " expr=" << unparseExpression(const_expr, NULL, {}) << LEND;}
           }
           // The remaning cases appear to be register dereferences e.g. "[eax]".  It appears
           // that V_SgAsmBinarySubtract is not actually used (at least on X86).
@@ -522,6 +526,13 @@ void DescriptorSet::validate(std::ostream &o) {
     id.validate(o);
   }
   // I should probably be doing something here for globals...
+}
+
+DisassemblerPtr DescriptorSet::get_disassembler() const {
+    // We're const casting here because the disassembler that we return has no ability to
+    // modify anything of importance in the descriptor set.  Arguably, the obtainDisassembler
+    // method ought to be const on the engine as well.
+  return const_cast<DescriptorSet*>(this)->engine->obtainDisassembler();
 }
 
 void DescriptorSet::dump(std::ostream &o) const {

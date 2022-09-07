@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2018-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "bua.hpp"
 #include "descriptors.hpp"
@@ -258,6 +258,8 @@ FDG::FDG(DescriptorSet & ds)
     return !not_simple.exists(vertex);
   };
   auto vertices = g_.vertices();
+  using std::begin;
+  using std::end;
   for (auto v = begin(vertices); v != end(vertices); ++v) {
     if (is_simple(v)
         && std::none_of(begin(v->inEdges()), end(v->inEdges()),
@@ -284,6 +286,8 @@ std::vector<FunctionDescriptor *> FDG::bottom_up_order() const
     auto vertices = g.vertices();
 
     // Build a list of vertices that have no outgoing edges, and add them to the result vector
+    using std::end;
+    using std::begin;
     for (auto v = begin(vertices); v != end(vertices); ++v) {
       if (v->nOutEdges() == 0) {
         to_erase.push_back(v);

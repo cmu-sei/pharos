@@ -185,6 +185,13 @@ using RegisterVector = std::vector<RegisterDescriptor>;
 
 using RegisterSet = std::set<RegisterDescriptor>;
 using Rose::BinaryAnalysis::RegisterDictionary;
+#if PHAROS_ROSE_REGISTERDICTIONARY_PTR_HACK
+using RegisterDictionaryPtr = RegisterDictionary::Ptr;
+using RegisterDictionaryPtrArg = const RegisterDictionary::Ptr &;
+#else
+using RegisterDictionaryPtr = RegisterDictionary const *;
+using RegisterDictionaryPtrArg = RegisterDictionary const *;
+#endif
 
 void set_glog_name(std::string const & name);
 
@@ -305,7 +312,7 @@ const std::vector< std::string > get_all_insn_generic_categories();
 
 // A hackish approch to 64-bit support...
 // If you have a descriptor set, it's easier to call the similar method on it.
-RegisterDescriptor get_arch_reg(RegisterDictionary const & regdict,
+RegisterDescriptor get_arch_reg(RegisterDictionaryPtrArg regdict,
                                 const std::string & name, size_t arch_bytes);
 
 // Determine whether an expression contains an additive offset

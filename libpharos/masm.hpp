@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_MASM_H
 #define Pharos_MASM_H
@@ -86,7 +86,7 @@ std::string masm_unparseX86Expression(SgAsmExpression *expr, SgAsmX86Instruction
 std::string masm_unparseExpression(
   const SgAsmInstruction *insn,
   const SgAsmExpression *expr,
-  const RegisterDictionary *rdict,
+  RegisterDictionaryPtrArg rdict,
   const RoseLabelMap *labels = global_label_map.get_labels()
   );
 std::string masm_x86TypeToPtrName(SgAsmType* ty);

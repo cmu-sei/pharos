@@ -333,7 +333,7 @@ class AbstractAccess {
   size_t get_byte_size() const { return (size / 8); }
 
   std::string reg_name() const {
-    assert(!isMemReference); return unparseX86Register(register_descriptor, NULL);
+    assert(!isMemReference); return unparseX86Register(register_descriptor, {});
   }
 
   std::string str() const;

@@ -45,8 +45,8 @@ SymbolicRiscOperatorsPtr SymbolicRiscOperators::instance(
   const SmtSolverPtr & solver_) {
 
   SymbolicValuePtr proto = SymbolicValue::instance();
-  const RegisterDictionary& regdict = ds_.get_regdict();
-  SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(proto, &regdict);
+  RegisterDictionaryPtrArg regdict = ds_.get_regdict();
+  SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(proto, regdict);
   SymbolicMemoryMapStatePtr mstate = SymbolicMemoryMapState::instance();
   SymbolicStatePtr state = SymbolicState::instance(rstate, mstate);
   return instance(ds_, state, callbacks_, solver_);
@@ -82,7 +82,7 @@ void SymbolicRiscOperators::startInstruction(SgAsmInstruction *insn) {
 BaseSValuePtr SymbolicRiscOperators::readRegister(
   RegisterDescriptor reg, const BaseSValuePtr & dflt)
 {
-  STRACE << "RiscOps::readRegister() reg=" << unparseX86Register(reg, NULL) << LEND;
+  STRACE << "RiscOps::readRegister() reg=" << unparseX86Register(reg, {}) << LEND;
 
   // Call the standard ROSE implementation of readRegister().
   BaseSValuePtr bv = SymRiscOperators::readRegister(reg, dflt);
@@ -101,14 +101,14 @@ BaseSValuePtr SymbolicRiscOperators::readRegister(
     // We make a copy because this value isn't supposed to change ever again?  Really needed?
     SymbolicValuePtr svalue = SymbolicValue::promote(bv)->scopy();
     insn_accesses.push_back(AbstractAccess(ds, true, reg, svalue, get_sstate()));
-    STRACE << "RiscOps::readRegister() reg=" << unparseX86Register(reg, NULL)
+    STRACE << "RiscOps::readRegister() reg=" << unparseX86Register(reg, {})
            << " value=" << *svalue << LEND;
   }
   return bv;
 }
 
 void SymbolicRiscOperators::writeRegister(RegisterDescriptor reg, const BaseSValuePtr &v) {
-  STRACE << "RiscOps::writeRegister() reg=" << unparseX86Register(reg, NULL) << " value=" << *v << LEND;
+  STRACE << "RiscOps::writeRegister() reg=" << unparseX86Register(reg, {}) << " value=" << *v << LEND;
 
   // Call the standard ROSE implementation of writeRegister().
   SymRiscOperators::writeRegister(reg, v);
@@ -127,7 +127,7 @@ void SymbolicRiscOperators::writeRegister(RegisterDescriptor reg, const BaseSVal
     // We make a copy because this value isn't supposed to change ever again? Really needed?
     SymbolicValuePtr svalue = SymbolicValue::promote(v)->scopy();
     insn_accesses.push_back(AbstractAccess(ds, false, reg, svalue, get_sstate()));
-    STRACE << "RiscOps::writeRegister() reg=" << unparseX86Register(reg, NULL)
+    STRACE << "RiscOps::writeRegister() reg=" << unparseX86Register(reg, {})
            << " value=" << *svalue << LEND;
   }
 }

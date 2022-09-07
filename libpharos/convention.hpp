@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2019, 2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Convention_H
 #define Pharos_Convention_H
@@ -205,7 +205,7 @@ class CallingConvention {
   void add_reg_param(RegisterDescriptor reg) { reg_params.push_back(reg); }
 
   const RegisterSet& get_nonvolatile() const { return nonvolatile; }
-  void add_nonvolatile(const RegisterDictionary & dict, std::string name);
+  void add_nonvolatile(RegisterDictionaryPtrArg dict, std::string name);
   void add_nonvolatile(RegisterDescriptor rd);
   void add_nonvolatile(const RegisterSet& regs);
 
@@ -614,7 +614,7 @@ using CallingConventionPtrVector = std::vector<const CallingConvention*>;
 class CallingConventionMatcher {
  private:
 
-  RegisterDictionary const & regdict;
+  RegisterDictionaryPtr regdict;
   CallingConventionVector conventions;
 
  public:
@@ -624,7 +624,7 @@ class CallingConventionMatcher {
   // Write information about each calling convention to the debug log stream.
   void report() const;
 
-  const RegisterDictionary & get_regdict() { return regdict; }
+  RegisterDictionaryPtrArg get_regdict() { return regdict; }
   CallingConventionPtrVector match(const FunctionDescriptor* fd,
                                    bool allow_unused_parameters = true) const;
 

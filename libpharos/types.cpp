@@ -648,7 +648,7 @@ TypeSolver::assert_objectness_facts(const CallDescriptor *cd) {
       SymbolicValuePtr new_retval;
       access_filters::aa_range reg_writes = du_analysis_.get_reg_writes(cd->get_address());
       for (const AbstractAccess &rwaa : reg_writes) {
-        std::string regname = unparseX86Register(rwaa.register_descriptor, NULL);
+        std::string regname = unparseX86Register(rwaa.register_descriptor, {});
         if (regname == "eax") {
           new_retval = rwaa.value;
           break;

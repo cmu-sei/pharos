@@ -1,4 +1,4 @@
-// Copyright 2016-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2022 Carnegie Mellon University.  See LICENSE file for terms.
 // Author: Cory Cohen
 
 #include <boost/range/adaptor/map.hpp>
@@ -582,7 +582,7 @@ OOSolver::add_call_facts(const OOAnalyzer& ooa)
 
       std::string term = "sv_" + std::to_string(expr->hash());
       if (cpd.is_reg()) {
-        std::string regname = unparseX86Register(cpd.get_register(), NULL);
+        std::string regname = unparseX86Register(cpd.get_register(), {});
         session->add_fact("callParameter", cd.get_address(),
                           callfunc->get_address(), regname, term);
       }
@@ -605,7 +605,7 @@ OOSolver::add_call_facts(const OOAnalyzer& ooa)
       }
       std::string term = "sv_" + std::to_string(expr->hash());
       if (cpd.is_reg()) {
-        std::string regname = unparseX86Register(cpd.get_register(), NULL);
+        std::string regname = unparseX86Register(cpd.get_register(), {});
         session->add_fact("callReturn", cd.get_address(), callfunc->get_address(), regname, term);
       }
     }
@@ -700,7 +700,7 @@ OOSolver::add_function_facts(const OOAnalyzer& ooa)
       }
       std::string term = "sv_" + std::to_string(expr->hash());
       if (fpd.is_reg()) {
-        std::string regname = unparseX86Register(fpd.get_register(), NULL);
+        std::string regname = unparseX86Register(fpd.get_register(), {});
         session->add_fact("funcParameter", fdaddr, regname, term);
       }
       else {
@@ -721,7 +721,7 @@ OOSolver::add_function_facts(const OOAnalyzer& ooa)
       }
       std::string term = "sv_" + std::to_string(expr->hash());
       if (fpd.is_reg()) {
-        std::string regname = unparseX86Register(fpd.get_register(), NULL);
+        std::string regname = unparseX86Register(fpd.get_register(), {});
         session->add_fact("funcReturn", fdaddr, regname, term);
       }
     }
