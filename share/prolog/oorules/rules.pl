@@ -672,18 +672,18 @@ reasonNOTDeletingDestructor_E(Method) :-
 % to a guessing rule.
 reasonNOTDeletingDestructor_F(Method) :-
     % Have we detected delete() at all in this program?  If not, disable this rule.
-    insnCallsDelete(_Insn, _Method, _Ptr),
+    once(insnCallsDelete(_Insn, _Method, _Ptr)),
 
     factMethod(Method),
 
     % We don't call delete at all...
-    (not(insnCallsDelete(_, Method, _AnyPtr));
+    once((not(insnCallsDelete(_, Method, _AnyPtr));
 
      % Or If we have thiscall, ensure we don't delete ourself
      callingConvention(Method, '__thiscall'),
      funcParameter(Method, ecx, ThisPtr),
      % But we don't call delete on ourself
-     not(insnCallsDelete(_Insn2, Method, ThisPtr))),
+     not(insnCallsDelete(_Insn2, Method, ThisPtr)))),
 
     logtraceln('~@~Q.', [not(factNOTDeletingDestructor(Method)),
                          reasonNOTDeletingDestructor_F(Method)]).
