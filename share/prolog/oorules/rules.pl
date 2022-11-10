@@ -761,6 +761,9 @@ certainConstructorOrDestructorInheritanceSpecialCase(Method, Type) :-
     not((factVFTableWrite(_, Method, Offset, VFTable2), iso_dif(VFTable, VFTable2))),
     methodCallAtOffset(CallAddr, Method, Callee, Offset),
 
+    % And there is no other method call at that offset
+    not((methodCallAtOffset(CallAddr2, Method, _, Offset), iso_dif(CallAddr, CallAddr2))),
+
     % ejs 1/08/21: I believe that Offset can not be negative for a constructor or destructor
     % because it is not possible to override them.  Even though destructors can be virtual and
     % overridden in a sense, you can not override the destructor of a specific base class.
