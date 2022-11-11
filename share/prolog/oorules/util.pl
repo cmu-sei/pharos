@@ -5,6 +5,33 @@
 
 :- use_module(library(lists), [append/3, nth1/4, list_to_set/2]).
 
+:- dynamic negation_queue/1 as incremental.
+:- dynamic negation_fail/1 as incremental.
+:- dynamic negation_commit/1 as incremental.
+
+:- table negation_helper/1 as opaque.
+
+negation_helper(G) :-
+    var(G) -> throw_with_backtrace(user_error(negation_helper)).
+
+% We've already committed to G
+negation_helper(G) :-
+    negation_commit(G),
+    logdebugln('Already committed ~Q', G),
+    !.
+
+% G isn't true right now.
+negation_helper(G) :-
+    not(G), !, fail.
+
+% Queue G and fail.
+negation_helper(G) :-
+    !,
+    negation_queue(G)
+    -> fail
+    ; logdebugln('I am queueing negation ~Q', G), assert(negation_queue(G)), logdebugln('done'), fail.
+
+
 sort_tuple((A,B), (C,D)) :-
     (A < B -> (C=A, D=B); (C=B, D=A)).
 

@@ -579,7 +579,10 @@ guess :-
               % class that we have not identified a base class for.
               guessCommitClassHasNoBase(Out);
               % Same thing for Derived classes
-              guessCommitClassHasNoDerived(Out)
+              guessCommitClassHasNoDerived(Out);
+
+              % Commit to a negation
+              guessNegation(Out)
 
              )),
 

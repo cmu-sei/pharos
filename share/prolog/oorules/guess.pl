@@ -1664,6 +1664,33 @@ likelyDeletingDestructor(DeletingDestructor, RealDestructor) :-
     not(factNOTRealDestructor(RealDestructor)),
     true.
 
+tryNegation(G) :-
+    loginfoln('Guessing ~Q.', negation_commit(G)),
+    try_assert(negation_commit(G)),
+    abolish_all_tables.
+
+tryNOTNegation(G) :-
+    loginfoln('Guessing ~Q.', negation_fail(G)),
+    try_assert(negation_fail(G)).
+
+tryOrNOTNegation(G) :-
+    %likelyDeletingDestructor(Method, _RealDestructor),
+    doNotGuessHelper(negation_commit(G),
+                     negation_fail(G)),
+    (
+        tryNegation(G);
+        tryNOTNegation(G);
+        logwarnln('Something is wrong upstream: ~Q.', negation(Method)),
+        fail
+    ).
+
+guessNegation(Out) :-
+    reportFirstSeen('guessNegation'),
+    retract(negation_queue(G)),
+    % XXX What happens if G is no longer true?
+    G,
+    Out = tryOrNOTNegation(G).
+
 %% Local Variables:
 %% mode: prolog
 %% End:
