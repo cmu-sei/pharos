@@ -5,7 +5,7 @@
 
 :- use_module(library(lists), [append/3, nth1/4, list_to_set/2]).
 
-:- dynamic negation_queue/1 as incremental.
+:- dynamic negation_queue/1.
 :- dynamic negation_fail/1 as incremental.
 :- dynamic negation_commit/1 as incremental.
 
