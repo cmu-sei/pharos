@@ -2302,10 +2302,10 @@ reasonClassRelatedMethod_B(Class1, Class2, Method1, Method2) :-
 
     % ejs 2/12/21 Adding a more conservative (but possibly unnecessary) check for ANY object at
     % offset 0 (instead of Class1).
-    not((find(Function, FunctionClass), factObjectInObject(FunctionClass, _InnerClass1, 0))),
+    negation_helper(not((find(Function, FunctionClass), factObjectInObject(FunctionClass, _InnerClass1, 0)))),
 
     % We also need to verify that Class2 has no object at 0.
-    not((factObjectInObject(Class2, _InnerClass2, 0))),
+    negation_helper(not((factObjectInObject(Class2, _InnerClass2, 0)))),
 
     % Functions that are methods can call base methods
 
@@ -2513,10 +2513,10 @@ reasonReusedImplementation_A(Method, Class1, VFTable1) :-
     find(VFTable1, Class1),
     find(VFTable2, Class2),
     iso_dif(Class1, Class2),
-    not((
+    negation_helper(not((
                reasonClassRelationship(Class1, Class2);
                reasonClassRelationship(Class2, Class1)
-       )),
+       ))),
 
     logtraceln('~@~Q.', [
                    not(factReusedImplementation(Method)),
@@ -2536,10 +2536,10 @@ reasonReusedImplementation_A(Method, Class1, VFTable1) :-
     %possiblyReused(Method),
     factMethodInVFTable(VFTable1, _Offset1, Method),
     factMethodInVFTable(VFTable2, _Offset2, Method),
-    not((
+    negation_helper(not((
                reasonClassRelationship(Class1, Class2);
                reasonClassRelationship(Class2, Class1)
-       )),
+       ))),
 
     logtraceln('~@~Q.', [
                    not(factReusedImplementation(Method)),
@@ -2649,7 +2649,7 @@ reasonMergeClasses_B(BaseClass, MethodClass) :-
     % Which has a Method
     factMethodInVFTable(BaseVFTable, _Offset, Method),
     not(purecall(Method)),
-    not(factReusedImplementation(Method)),
+    negation_helper(not(factReusedImplementation(Method))),
 
     % We don't have to check purecall because factMethodInVFTable does already
 
@@ -2675,14 +2675,14 @@ reasonMergeClasses_C(Class, ExistingClass) :-
     % If we have no bases, it can't be on a base class.
     factClassHasNoBase(Class),
     % And if there's no object (embedded or base?) at offset zero...
-    not(factObjectInObject(Class, _0InnerClass, 0)),
+    negation_helper(not(factObjectInObject(Class, _0InnerClass, 0))),
 
     find(Method, ExistingClass),
     iso_dif(Class, ExistingClass),
     % Confusingly, the method's class must also have no base and no object at offset zero,
     % because the method being called could actually be the base class method...
     factClassHasNoBase(ExistingClass),
-    not(factObjectInObject(ExistingClass, _0InnerClass, 0)),
+    negation_helper(not(factObjectInObject(ExistingClass, _0InnerClass, 0))),
 
     % Debugging
     logtraceln('~@~Q.', [not(find(Class, ExistingClass)),
@@ -2751,7 +2751,7 @@ reasonMergeClasses_H(DerivedClass, MethodClass) :-
     % need to sum the sizes of the base class vftables, be confident in their layout order, and
     % no that there aren't any other complexities involving multiple inheritance.  In the mean
     % time, just disable this rule where there's more than one base class.
-    not((factDerivedClass(DerivedClass, OtherBase, _OtherOffset), iso_dif(OtherBase, BaseClass))),
+    negation_helper(not((factDerivedClass(DerivedClass, OtherBase, _OtherOffset), iso_dif(OtherBase, BaseClass)))),
 
     findVFTable(DerivedVFTable, 0, DerivedClass),
     findVFTable(BaseVFTable, 0, BaseClass),
@@ -2760,7 +2760,7 @@ reasonMergeClasses_H(DerivedClass, MethodClass) :-
     % There's an entry in the derived vftable that's to big to be in the base vftable.
     factVFTableEntry(DerivedVFTable, VOffset, Method),
     not(purecall(Method)),
-    not(factReusedImplementation(Method)),
+    negation_helper(not(factReusedImplementation(Method))),
     VOffset > BaseSize,
     find(Method, MethodClass),
     iso_dif(DerivedClass, MethodClass),
@@ -2995,8 +2995,8 @@ reasonNOTMergeClasses_E(Class1, Class2, Insn1, Method1, 0, VFTable1) :-
     % But one counter example that we need to protect against is the inlining of base class
     % VFTable writes.  The intention here is very similar to factVFTableOverwrite, but without
     % the complications of caring which value overwrote which other value.
-    not((factVFTableWrite(_Insn3, Method1, 0, VFTable2))),
-    not((factVFTableWrite(_Insn4, Method2, 0, VFTable1))),
+    negation_helper(not((factVFTableWrite(_Insn3, Method1, 0, VFTable2)))),
+    negation_helper(not((factVFTableWrite(_Insn4, Method2, 0, VFTable1)))),
     % Debugging
     logtraceln('~@~Q.', [not(dynFactNOTMergeClasses(Class1, Class2)),
                          reasonNOTMergeClasses_E(Class1, Class2)]).
@@ -3176,6 +3176,7 @@ reasonNOTMergeClasses_P(Class1Sorted, Class2Sorted) :-
     factMethod(Method),
     iso_dif(Method, Caller),
     (factConstructor(Method);
+     % XXX negation_helper here?
      (factDeletingDestructor(Method), not(factRealDestructor(Caller)));
      factRealDestructor(Method)),
     % Handle symmetry
@@ -3447,7 +3448,7 @@ thisPtrAssociatedWithConstructor(Function, Constructor, ThisPtr, Debug) :-
 
     % Ideally we'd want a stronger statement here to ensure there is no embedded object.  But
     % at least make sure we don't currently have one.
-    not(factObjectInObject(_Derived, Class, 0)),
+    negation_helper(not(factObjectInObject(_Derived, Class, 0))),
 
     Debug=nobaseorderived.
 
