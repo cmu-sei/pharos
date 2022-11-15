@@ -1546,7 +1546,7 @@ reasonObjectInObject_D(OuterClass, InnerClass, Offset) :-
 
     % Prevent grand ancestors from being decalred object in object.  See commentary below.
     % It's unclear of this constraint is really required in cases where Offset is non-zero.
-    not(reasonClassRelationship(OuterClass, InnerClass)),
+    negation_helper(not(reasonClassRelationship(OuterClass, InnerClass))),
 
     % Debugging
     logtraceln('~@~Q.', [not(factObjectInObject(OuterClass, InnerClass, Offset)),
@@ -1577,7 +1577,8 @@ reasonObjectInObject_E(OuterClass, InnerClass, Offset) :-
     % same class.  And there doesn't appear be any downside either since there's already an
     % ObjectInObject at the appropriate offset, and we can reach the right conclusions through
     % those later class merges.
-    not(factObjectInObject(OuterClass, _, Offset)),
+    % negation: hmm, this rule sounds weird.
+    negation_helper(not(factObjectInObject(OuterClass, _, Offset))),
 
     factConstructor(InnerConstructor),
     iso_dif(InnerConstructor, OuterConstructor),
@@ -1778,11 +1779,11 @@ reasonDerivedClass_B(DerivedClass, BaseClass, ObjectOffset) :-
     factVFTableWrite(_Insn1, DerivedConstructor, ObjectOffset, DerivedVFTable),
 
     % No one overwrites the vftable
-    not(factVFTableOverwrite(DerivedConstructor, DerivedVFTable, _OverwrittenDerivedVFTable, ObjectOffset)),
+    negation_helper(not(factVFTableOverwrite(DerivedConstructor, DerivedVFTable, _OverwrittenDerivedVFTable, ObjectOffset))),
 
     ((factVFTableWrite(_Insn2, BaseConstructor, 0, BaseVFTable),
       % No one overwrites the vftable
-      not(factVFTableOverwrite(BaseConstructor, BaseVFTable, _OverwrittenBaseVFTable, 0)),
+      negation_helper(not(factVFTableOverwrite(BaseConstructor, BaseVFTable, _OverwrittenBaseVFTable, 0))),
       % And the vtables values written were different
       iso_dif(DerivedVFTable, BaseVFTable));
      % Right now we assume that if a class inherits from an imported class, the base class is
@@ -1797,7 +1798,7 @@ reasonDerivedClass_B(DerivedClass, BaseClass, ObjectOffset) :-
     find(BaseConstructor, BaseClass),
 
     % There's not already a relationship.  (Prevent grand ancestors)
-    not(reasonClassRelationship(DerivedClass, BaseClass)),
+    negation_helper(not(reasonClassRelationship(DerivedClass, BaseClass))),
 
     % Debugging
     logtraceln('~@DEBUG Derived VFTable: ~Q~n Base VFTable: ~Q~n Derived Constructor: ~Q~n Base Constructor: ~Q',
@@ -1946,7 +1947,7 @@ reasonNOTDerivedClass(DerivedClass, BaseClass, ObjectOffset) :-
     factConstructor(DerivedConstructor),
 
     % The derived constructor does not write a vftable at offset 0
-    not(factVFTableWrite(_Insn, DerivedConstructor, 0, _DVFTable)),
+    negation_helper(not(factVFTableWrite(_Insn, DerivedConstructor, 0, _DVFTable))),
 
     % The base class has a primary vftable
     find(BaseConstructor, BaseClass),
