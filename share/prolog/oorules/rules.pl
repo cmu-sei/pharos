@@ -758,7 +758,7 @@ certainConstructorOrDestructorInheritanceSpecialCase(Method, Type) :-
     % There is some offset for which there is a single vftable write and a thiscall to the same
     % offset
     factVFTableWrite(WriteAddr, Method, Offset, VFTable),
-    not((factVFTableWrite(_, Method, Offset, VFTable2), iso_dif(VFTable, VFTable2))),
+    negation_helper(not((factVFTableWrite(_, Method, Offset, VFTable2), iso_dif(VFTable, VFTable2)))),
     methodCallAtOffset(CallAddr, Method, Callee, Offset),
 
     % ejs 1/08/21: I believe that Offset can not be negative for a constructor or destructor
@@ -996,7 +996,7 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
     % directly instantiated, because the "no other class trying to install this vftable" will
     % be trivially true, and without this clause, the vftable will simply belong to an
     % arbitrary method that installs it.
-    not(factVFTableOverwrite(Method, VFTable, _OverwriteVFTable, Offset)),
+    negation_helper(not(factVFTableOverwrite(Method, VFTable, _OverwriteVFTable, Offset))),
 
     % Constructors may inline embedded constructors.  If non-offset
     % zero, we must make sure that there is an inherited class at this
@@ -1029,7 +1029,7 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
         % embedded objects at offset 0, then we must own the vftable.
         (Offset = 0, (factNOTEmbeddedObject(Class, _AnyClass, 0);
                       % Not ideal...
-                      not(factEmbeddedObject(Class, _AnyClass2, 0))))),
+                      negation_helper(not(factEmbeddedObject(Class, _AnyClass2, 0)))))),
 
     % VFTables from a base class can be reused in a derived class.  If this happens, we know
     % that the VFTable does not belong to the derived class.
@@ -1059,6 +1059,7 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
         % Alternatively, if we are a destructor, make sure there is no other class trying to
         % install this vftable
         % XXX: Should Offset = Offset2?
+        % Use negation_helper?
         (forall(factVFTableWrite(_Insn5, Method2, Offset2, VFTable),
                % It is ok to ignore overwritten vftables
                (factVFTableOverwrite(Method2, VFTable, _OtherVFTable, Offset2);
@@ -1095,7 +1096,7 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
     % directly instantiated, because the "no other class trying to install this vftable" will
     % be trivially true, and without this clause, the vftable will simply belong to an
     % arbitrary method that installs it.
-    not(factVFTableOverwrite(Method, VFTable, _OverwriteVFTable, Offset)),
+    negation_helper(not(factVFTableOverwrite(Method, VFTable, _OverwriteVFTable, Offset))),
 
     % Constructors may inline embedded constructors.  If non-offset
     % zero, we must make sure that there is an inherited class at this
@@ -1128,7 +1129,7 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
         % embedded objects at offset 0, then we must own the vftable.
         (Offset = 0, (factNOTEmbeddedObject(Class, _AnyClass, 0);
                       % Not ideal...
-                      not(factEmbeddedObject(Class, _AnyClass2, 0))))),
+                      negation_helper(not(factEmbeddedObject(Class, _AnyClass2, 0)))))),
 
     % VFTables from a base class can be reused in a derived class.  If this happens, we know
     % that the VFTable does not belong to the derived class.
