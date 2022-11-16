@@ -9,8 +9,6 @@
 :- dynamic negation_fail/1.
 :- dynamic negation_commit/1 as incremental.
 
-:- table negation_helper/1 as opaque.
-
 negation_helper(G) :-
     var(G) -> throw_with_backtrace(user_error(negation_helper)).
 
@@ -20,7 +18,7 @@ negation_helper(G) :-
     logtraceln('Already committed ~Q', G),
     !.
 
-% G results in a sanit yfailure
+% G results in a sanity failure
 negation_helper(G) :-
     negation_fail(G), !, fail.
 

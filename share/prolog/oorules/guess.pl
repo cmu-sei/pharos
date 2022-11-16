@@ -1668,8 +1668,7 @@ likelyDeletingDestructor(DeletingDestructor, RealDestructor) :-
 
 tryNegation(G) :-
     loginfoln('Guessing ~Q.', negation_commit(G)),
-    try_assert(negation_commit(G)),
-    abolish_all_tables.
+    try_assert(negation_commit(G)).
 
 tryNOTNegation(G) :-
     loginfoln('Guessing ~Q.', negation_fail(G)),
