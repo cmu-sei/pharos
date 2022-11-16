@@ -17,7 +17,7 @@ negation_helper(G) :-
 % We've already committed to G
 negation_helper(G) :-
     negation_commit(G),
-    logdebugln('Already committed ~Q', G),
+    logtraceln('Already committed ~Q', G),
     !.
 
 % G isn't true right now.
