@@ -786,7 +786,8 @@ guessClassHasNoBaseSpecial(Class) :-
     find(_, Class),
 
     % Class does not have any base classes
-    negation_helper(not(factDerivedClass(Class, _Base, _Offset))),
+    % -10: Very low priority negation!
+    negation_helper(not(factDerivedClass(Class, _Base, _Offset)), -10),
 
     % XXX: If we're at the end of reasoning and there is an unknown base, is that OK?  Should
     % we leave it as is?  Try really hard to make a guess?  Or treat it as a failure?
@@ -1687,10 +1688,17 @@ tryOrNOTNegation(G) :-
 
 guessNegation(Out) :-
     reportFirstSeen('guessNegation'),
-    retract(negation_queue(G)),
-    % XXX What happens if G is no longer true?
-    G,
-    Out = tryOrNOTNegation(G).
+
+    %setof(P, negation_queue(_, P), Pset),
+    %max_list(Pset, Pmax),
+
+    % Sorting the queue takes a while.  We should really use a priority queue...
+    % but this hack works ok for now.
+    member(Pmax, [0, -10, _]),
+
+    retract(negation_queue(G, Pmax)),
+    !,
+    (G, not(negation_commit(G)), not(negation_fail(G)) -> Out = tryOrNOTNegation(G); guessNegation(Out)).
 
 %% Local Variables:
 %% mode: prolog
