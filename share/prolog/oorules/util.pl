@@ -31,7 +31,8 @@ negation_helper(G, _) :-
 % Queue G and fail.
 negation_helper(G, P) :-
     !,
-    (negation_queue(G, OldP), P > OldP)
+    (negation_queue(G, OldP), P >= OldP)
+    % There is a better or same priority queued element
     -> fail
     ; logdebugln('I am queueing negation ~Q', G), assert(negation_queue(G, P)), logdebugln('done'), fail.
 
