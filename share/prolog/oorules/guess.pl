@@ -1367,8 +1367,8 @@ checkMergeClasses(Method1, Method2) :-
     % XXX: Check factMergeClasses?
     % Now relationships between the classes are not allowed either.
     % XXX: negation_helper?
-    not(reasonClassRelationship(Class1, Class2)),
-    not(reasonClassRelationship(Class2, Class1)).
+    negation_helper(not(reasonClassRelationship(Class1, Class2))),
+    negation_helper(not(reasonClassRelationship(Class2, Class1))).
 
 tryMergeClasses((Method1, Method2)) :- tryMergeClasses(Method1, Method2).
 % If we are merging classes that have already been merged, just ignore it.
