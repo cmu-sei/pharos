@@ -2253,13 +2253,14 @@ reasonClassHasUnknownBaseSet(Set) :-
 % information about the direction of that relationship.
 :- table reasonClassRelatedMethod/2 as incremental.
 :- table reasonClassRelatedMethod_A/2 as incremental.
-%:- table reasonClassRelatedMethod_B/2 as incremental.
+:- table reasonClassRelatedMethod_B/2 as incremental.
 :- table reasonClassRelatedMethod_C/2 as incremental.
 
 reasonClassRelatedMethod(Class, Method) :-
     reasonClassRelatedMethod_A(Class, Method);
     % _B is now a trigger rule
-    %reasonClassRelatedMethod_B(Class, Method);
+    % Re-enabled (temporarily) for negation branch
+    reasonClassRelatedMethod_B(Class, Method);
     reasonClassRelatedMethod_C(Class, Method).
 
 % ClassCallsMethod => ClassRelatedMethod
@@ -2269,6 +2270,9 @@ reasonClassRelatedMethod_A(Class, Method) :-
 :- table thisPtrUsage/3 as opaque.
 thisPtrUsage(Function, ThisPtr, Method) :-
     thisPtrUsage(_, Function, ThisPtr, Method).
+
+reasonClassRelatedMethod_B(Class1, Method2) :-
+    reasonClassRelatedMethod_B(Class1, _, _, Method2).
 
 % Because two methods are called on the same this-pointer in the same function.  This rule is
 % NOT direction safe, because it simply observes two methods being called on the same object
@@ -2695,6 +2699,7 @@ reasonMergeClasses_C(Class, ExistingClass) :-
 % inverse rule under reasonNOTMergeClasses.
 % PAPER: Merging-4
 reasonMergeClasses_E(Class1, Class2) :-
+    fail,
     factDerivedClass(DerivedClass, Class1, ObjectOffset),
     factDerivedClass(DerivedClass, Class2, ObjectOffset),
     iso_dif(Class1, Class2),
