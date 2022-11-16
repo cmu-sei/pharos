@@ -6,7 +6,7 @@
 :- use_module(library(lists), [append/3, nth1/4, list_to_set/2]).
 
 :- dynamic negation_queue/1.
-:- dynamic negation_fail/1 as incremental.
+:- dynamic negation_fail/1.
 :- dynamic negation_commit/1 as incremental.
 
 :- table negation_helper/1 as opaque.
@@ -19,6 +19,10 @@ negation_helper(G) :-
     negation_commit(G),
     logtraceln('Already committed ~Q', G),
     !.
+
+% G results in a sanit yfailure
+negation_helper(G) :-
+    negation_fail(G), !, fail.
 
 % G isn't true right now.
 negation_helper(G) :-
