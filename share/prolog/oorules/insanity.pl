@@ -3,6 +3,28 @@
 % Sanity checking rules
 % ============================================================================================
 
+:- table haveGround/0 as opaque.
+haveGround :- groundTruth(_, _, _, _, _, _, _, _, _), !.
+
+% If we have ground truth, did we merge two different classes together?
+:- table insanityGroundBadMerge/1 as incremental.
+insanityGroundBadMerge(Out) :-
+
+    find(M1, C),
+    groundTruth(M1, C1, Mname1, _, _, _, _, _, _),
+    find(M2, C),
+    iso_dif(M1, M2),
+    groundTruth(M2, C2, Mname2, _, _, _, _, _, _),
+    iso_dif(C1, C2),
+
+    % Make sure that this method is not on multiple classes
+    not(groundTruth(M2, C1, _, _, _, _, _, _, _)),
+
+    Out = (
+        logwarnln('Consistency checks failed.~n~Q (~Q::~Q) and ~Q (~Q::~Q) are on the same class, but ground truth says they are on ~Q and ~Q.', [M1, C1, Mname1, M2, C2, Mname2, C1, C2])
+    ).
+
+
 % If we say we have no base classes, we have no base classes :-)
 :- table insanityNoBaseConsistency/1 as incremental.
 insanityNoBaseConsistency(Out) :-
@@ -330,6 +352,7 @@ insanityEmbeddedAndNot(Out) :-
 
 :- table sanityChecks/1 as incremental.
 sanityChecks(Out) :-
+    groundSanityChecks(Out);
     insanityNoBaseConsistency(Out);
     insanityEmbeddedAndNot(Out);
     insanityConstructorAndNotConstructor(Out);
@@ -347,6 +370,11 @@ sanityChecks(Out) :-
     insanityContradictoryMerges(Out);
     insanityContradictoryNOTConstructor(Out);
     insanityTwoRealDestructorsOnClass(Out).
+
+groundSanityChecks(Out) :-
+    haveGround,
+
+    insanityGroundBadMerge(Out).
 
 sanityChecks :-
     sanityChecks(Out)
