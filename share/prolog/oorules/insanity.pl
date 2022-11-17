@@ -4,6 +4,7 @@
 % ============================================================================================
 
 :- table haveGround/0 as opaque.
+:- multifile groundTruth/9.
 haveGround :- groundTruth(_, _, _, _, _, _, _, _, _), !.
 
 % If we have ground truth, did we merge two different classes together?
@@ -22,6 +23,18 @@ insanityGroundBadMerge(Out) :-
 
     Out = (
         logwarnln('Consistency checks failed.~n~Q (~Q::~Q) and ~Q (~Q::~Q) are on the same class, but ground truth says they are on ~Q and ~Q.', [M1, C1, Mname1, M2, C2, Mname2, C1, C2])
+    ).
+
+% If we have ground truth, is VFTableBelongsToClass correct?
+:- table insanityVFTableDoesntBelong/1 as incremental.
+insanityVFTableDoesntBelong(Out) :-
+    reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite),
+    groundTruth(VFTable, GVFTableClass, 'vftable', table, vftable, _, _, _, _),
+    groundTruth(Class, GClass, _Method, _, _, _, _, _, _),
+    iso_dif(GVFTableClass, GClass),
+
+    Out = (
+        logwarnln('Consistency checks failed.~n~Q but ground truth says VFTable ~Q is on ~Q and ~Q is on ~Q.', [reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite), VFTable, GVFTableClass, Class, GClass])
     ).
 
 
@@ -374,7 +387,8 @@ sanityChecks(Out) :-
 groundSanityChecks(Out) :-
     haveGround,
 
-    insanityGroundBadMerge(Out).
+    (insanityVFTableDoesntBelong(Out);
+     insanityGroundBadMerge(Out)).
 
 sanityChecks :-
     sanityChecks(Out)
