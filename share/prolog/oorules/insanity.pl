@@ -332,7 +332,7 @@ insanityEmbeddedAndNot(Out) :-
 % that way.
 :- table insanityNegation/1 as incremental.
 insanityNegation(Out) :-
-    negation_commit(G),
+    delay_goal(G, true),
 
     not(G),
 

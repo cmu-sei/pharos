@@ -5,36 +5,54 @@
 
 :- use_module(library(lists), [append/3, nth1/4, list_to_set/2]).
 
-:- dynamic negation_queue/2.
-:- dynamic negation_fail/1.
-:- dynamic negation_commit/1 as incremental.
+% Delayed and committed negations.  The following code is used to indicate a delayed check,
+% which is how it sounds.  A delayed check may optionally be committed to, which ensures that
+% the check can not become false in the future.
 
-negation_helper(G) :- negation_helper(G, 0).
+:- dynamic delay_queue/3.
 
-negation_helper(G, _) :-
-    var(G) -> throw_with_backtrace(user_error(negation_helper)).
+:- dynamic delay_fail/1.
 
-% We've already committed to G
-negation_helper(G, _) :-
-    negation_commit(G),
-    logtraceln('Already committed ~Q', G),
+%:- dynamic delay_commit/1 as incremental.
+
+% delayed_goal(Goal, Commit).  Commit=true iff the goal should never become false in the
+% future.
+:- dynamic delay_goal/2 as incremental.
+
+%delay_helper(G) :- delay_helper(G, 0, false).
+
+delay(G) :- delay_helper(G, 0, false).
+
+delay_and_commit(G) :- delay_and_commit(G, 0).
+
+delay_and_commit(G, P) :- delay_helper(G, P, true).
+
+delay_helper(G, _, _) :-
+    var(G) -> throw_with_backtrace(user_error(delay_helper)).
+
+% We've already delayed for G
+delay_helper(G, _, _) :-
+    delay_goal(G, _),
+    logtraceln('Already delayed ~Q', G),
     !.
 
 % G results in a sanity failure
-negation_helper(G, _) :-
-    negation_fail(G), !, fail.
+delay_helper(G, _, _) :-
+    delay_fail(G), !, fail.
 
 % G isn't true right now.
-negation_helper(G, _) :-
+delay_helper(G, _, _) :-
     not(G), !, fail.
 
 % Queue G and fail.
-negation_helper(G, P) :-
+delay_helper(G, P, Commit) :-
     !,
-    (negation_queue(G, OldP), P >= OldP)
+    (delay_queue(G, OldP, Commit), P >= OldP)
     % There is a better or same priority queued element
     -> fail
-    ; logdebugln('I am queueing negation ~Q', G), assert(negation_queue(G, P)), logdebugln('done'), fail.
+    ; logdebugln('I am queueing delay ~Q', G),
+      assert(delay_queue(G, P, Commit)),
+      fail.
 
 
 sort_tuple((A,B), (C,D)) :-

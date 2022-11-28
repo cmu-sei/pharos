@@ -1667,38 +1667,71 @@ likelyDeletingDestructor(DeletingDestructor, RealDestructor) :-
     negation_helper(not(factNOTRealDestructor(RealDestructor))),
     true.
 
-tryNegation(G) :-
-    loginfoln('Guessing ~Q.', negation_commit(G)),
-    try_assert(negation_commit(G)).
+tryDelay((G,P,Commit)) :-
+    try_retract(delay_queue(G, P, Commit)),
 
-tryNOTNegation(G) :-
-    loginfoln('Guessing ~Q.', negation_fail(G)),
-    try_assert(negation_fail(G)).
+    % Do nothing if we've already committed one way or the other
+    %% (not(G) -> true;
+    %%  delay_goal(G, _) -> true;
+    %%  delay_fail(G) -> true;
 
-tryOrNOTNegation(G) :-
-    %likelyDeletingDestructor(Method, _RealDestructor),
-    doNotGuessHelper(negation_commit(G),
-                     negation_fail(G)),
+     loginfoln('Guessing ~Q.', delay_goal(G, Commit)),
+     try_assert(delay_goal(G, Commit)).
+
+tryNOTDelay((G,P)) :-
+    loginfoln('tryNOTDelay'),
+    try_retract(delay_queue(G, P, Commit)),
+
+    % Do nothing if we've already committed one way or the other
+    %% (not(G) -> true;
+    %%  delay_goal(G, _) -> true;
+    %%  delay_fail(G) -> true;
+
+     loginfoln('Guessing ~Q.', delay_fail(G)),
+     try_assert(delay_fail(G)).
+
+tryOrNOTDelay((G, P)) :-
+    % XXX Optimization for not(G)...
+
+    try_retract(delay_queue(G, P)),
+
+    % Do nothing if we've already committed one way or the other
+    delay_goal(G, _) -> true;
+    delay_fail(G) -> true;
+
     (
-        tryNegation(G);
-        tryNOTNegation(G);
-        logwarnln('Something is wrong upstream: ~Q.', negation(Method)),
+        tryDelay(G);
+        tryNOTDelay(G);
+        logwarnln('Something is wrong upstream: ~Q.', delay(Method)),
         fail
     ).
 
-guessNegation(Out) :-
-    reportFirstSeen('guessNegation'),
+guessDelay(Out) :-
+    reportFirstSeen('guessDelay'),
 
-    %setof(P, negation_queue(_, P), Pset),
-    %max_list(Pset, Pmax),
+    % Remove each false or already committed to delay
+    forall(delay_queue(G, P, Commit),
+           ((not(G);
+            delay_goal(G, _);
+            delay_fail(G))
+           -> (logdebugln('Removing outdated delay goal ~Q', [G]),
+               retract(delay_queue(G, P, Commit)))
+           ; true)),
+
+    !,
+
+    setof(P, delay_queue(_, P, _), Pset),
+    max_list(Pset, Pmax),
 
     % Sorting the queue takes a while.  We should really use a priority queue...
     % but this hack works ok for now.
-    member(Pmax, [0, -10, _]),
+    %member(Pmax, [0, -10, _]),
 
-    retract(negation_queue(G, Pmax)),
-    !,
-    (G, not(negation_commit(G)), not(negation_fail(G)) -> Out = tryOrNOTNegation(G); guessNegation(Out)).
+    setof((G, Pmax, Commit),
+          delay_queue(G, Pmax, Commit),
+          Gset),
+
+    Out = tryBinarySearch(tryDelay, tryNOTDelay, Gset).
 
 %% Local Variables:
 %% mode: prolog
