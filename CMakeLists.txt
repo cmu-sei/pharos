@@ -67,8 +67,13 @@ endif()
 # Anyone modifying this version should also manually modify libpharos/version.hpp.in.  They
 # should set the PHAROS_ROSE_MINIMUM_VERSION variable to match.
 set(PHAROS_ROSE_MINIMUM_VERSION 0.11.39.6)
+set(PHAROS_ROSE_MAXIMUM_VERSION 0.11.103.11)
 
 find_package(Rose ${PHAROS_ROSE_MINIMUM_VERSION} REQUIRED)
+if(ROSE_VERSION VERSION_GREATER_EQUAL ${PHAROS_ROSE_MAXIMUM_VERSION})
+  message(FATAL_ERROR
+    "This version of Pharos does not support versions of ROSE >= ${PHAROS_ROSE_MAXIMUM_VERSION}")
+endif()
 
 # Find git
 find_package(Git REQUIRED)

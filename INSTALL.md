@@ -220,13 +220,16 @@ $ git clone -b develop https://github.com/rose-compiler/rose rose
 $ cd rose
 ```
 
-This version has a reasonable chance of working or only having minor
-issues.  If you want to be conservative and use the version of ROSE
-that was known to compile with the latest major commit to the Pharos
-repository, you can checkout this commit (ROSE version v0.11.39.6):
+~~This version has a reasonable chance of working or only having minor
+issues.~~ ***A major API change occurred in ROSE version 0.11.103.11
+which Pharos has yet to be able accomodate.  This version of Pharos
+will only build against versions 0.11.39.6 through 0.11.103.10.*** If
+you want to be conservative and use the version of ROSE that was known
+to compile with the latest major commit to the Pharos repository, you
+can checkout this commit (ROSE version v0.11.99.12):
 
 ```
-$ git checkout v0.11.39.6
+$ git checkout v0.11.99.12
 ```
 
 ROSE can be configured in a multitude of ways, and some attention to
