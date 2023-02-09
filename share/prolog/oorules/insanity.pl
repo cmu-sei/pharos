@@ -328,6 +328,18 @@ insanityEmbeddedAndNot(Out) :-
                   factEmbeddedObject(A, B, C))
     ).
 
+% We committed to a condition being true (or false).  Make sure that it stays
+% that way.
+:- table insanityNegation/1 as incremental.
+insanityNegation(Out) :-
+    delay_goal(G, true),
+
+    not(G),
+
+    Out = (
+        logwarnln('Consistency checks failed.~nThe condition "~Q" was committed to, but has become false.~n', [G])
+    ).
+
 :- table sanityChecks/1 as incremental.
 sanityChecks(Out) :-
     insanityNoBaseConsistency(Out);
@@ -346,7 +358,8 @@ sanityChecks(Out) :-
     insanityInheritanceLoop(Out);
     insanityContradictoryMerges(Out);
     insanityContradictoryNOTConstructor(Out);
-    insanityTwoRealDestructorsOnClass(Out).
+    insanityTwoRealDestructorsOnClass(Out);
+    insanityNegation(Out).
 
 sanityChecks :-
     sanityChecks(Out)

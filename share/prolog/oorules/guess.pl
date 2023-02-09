@@ -136,7 +136,7 @@ guessVirtualFunctionCall(Out) :-
     reportFirstSeen('guessVirtualFunctionCall'),
     minof((Insn, Constructor, OOffset, VFTable, VOffset),
           (likelyVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset),
-           not(factNOTConstructor(Constructor)),
+           negation_helper(not(factNOTConstructor(Constructor))),
            doNotGuessHelper(
                    factVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset),
                    factNOTVirtualFunctionCall(Insn, Constructor, OOffset, VFTable, VOffset)))),
@@ -183,7 +183,7 @@ guessVFTable(Out) :-
     % ordering).
     osetof(VFTable,
            (possibleVFTable(VFTable),
-            not(factNOTVFTable(VFTable)),
+            negation_helper(not(factNOTVFTable(VFTable))),
             doNotGuessHelper(factVFTable(VFTable),
                              factNOTVFTable(VFTable))),
            VFTableSet),
@@ -701,13 +701,13 @@ guessNOTConstructor(Out) :-
 guessClassHasNoDerivedA(Class) :-
     factConstructor(Constructor),
 
-    not((
+    negation_helper(not((
                factConstructor(OtherConstructor),
                validMethodCallAtOffset(_Insn, OtherConstructor, Constructor, _AnyOffset)
-       )),
+       ))),
 
     find(Constructor, Class),
-    not(factDerivedClass(_DerivedClass, Class, _SomeOffset)),
+    negation_helper(not(factDerivedClass(_DerivedClass, Class, _SomeOffset))),
     doNotGuessHelper(factClassHasNoDerived(Class),
                      factClassHasUnknownDerived(Class)).
 
@@ -736,13 +736,13 @@ guessClassHasNoBaseB(Class) :-
     factConstructor(Constructor),
 
     factVFTableWrite(_Insn1, Constructor, 0, VFTable),
-    not((
+    negation_helper(not((
                factVFTableWrite(_Insn2, Constructor, _Offset1, OtherVFTable),
                iso_dif(VFTable, OtherVFTable)
-       )),
+       ))),
 
     find(Constructor, Class),
-    not(factDerivedClass(Class, _BaseClass, _Offset2)),
+    negation_helper(not(factDerivedClass(Class, _BaseClass, _Offset2))),
     doNotGuessHelper(factClassHasNoBase(Class),
                      factClassHasUnknownBase(Class)).
 
@@ -786,7 +786,8 @@ guessClassHasNoBaseSpecial(Class) :-
     find(_, Class),
 
     % Class does not have any base classes
-    not(factDerivedClass(Class, _Base, _Offset)),
+    % -10: Very low priority negation!
+    negation_helper(not(factDerivedClass(Class, _Base, _Offset)), -10),
 
     % XXX: If we're at the end of reasoning and there is an unknown base, is that OK?  Should
     % we leave it as is?  Try really hard to make a guess?  Or treat it as a failure?
@@ -809,7 +810,7 @@ guessClassHasNoDerivedSpecial(Class) :-
     find(_, Class),
 
     % Class does not have any derived classes
-    not(factDerivedClass(_DerivedClass, Class, _Offset)),
+    negation_helper(not(factDerivedClass(_DerivedClass, Class, _Offset))),
 
     % XXX: If we're at the end of reasoning and there is an unknown derived class, is that OK?
     % Should we leave it as is?  Try really hard to make a guess?  Or treat it as a failure?
@@ -847,7 +848,8 @@ guessLateMergeClassesF2(Class, Method) :-
     factMethodInVFTable(VFTable, _Offset1, Method),
 
     % One of the methods is in a class all by itself right now.
-    is_singleton(Method),
+    % XXX: Is this monotonic?
+    negation_helper(is_singleton(Method)),
 
     findVFTable(VFTable, Class),
 
@@ -858,7 +860,7 @@ guessLateMergeClassesF1(Class, Method) :-
 
     % If a method is in the vftable of a derived and base class, we should give priority to the
     % base class.
-    not(factDerivedClass(Class, _BaseClass, _Offset)).
+    negation_helper(not(factDerivedClass(Class, _BaseClass, _Offset))).
 
 guessLateMergeClasses(Out) :-
     reportFirstSeen('guessLateMergeClassesF1'),
@@ -1111,10 +1113,10 @@ guessMergeClassesC1(DerivedClass, CalledClass) :-
     find(CalledMethod, CalledClass),
 
     % The called method does NOT install any vftables that are on the base class.
-    not((
+    negation_helper(not((
                find(BaseVFTable, BaseClass),
                factVFTableWrite(_Insn, CalledMethod, Offset, BaseVFTable)
-       )),
+       ))),
     % There does NOT exist a distinct class that also calls the called method.  If this
     % happens, there is ambiguity about which derived class the CalledMethod should be placed
     % on, so it should probably go on the base.
@@ -1267,10 +1269,10 @@ guessMergeClassesD(Class1, Class2) :-
 
     % Also ensure that the two methods not in a class relationship already.  Merging them would
     % ultimately result in merging a class with it's own ancestor.
-    not((
+    negation_helper(not((
                reasonClassRelationship(Class1, Class2);
                reasonClassRelationship(Class2, Class1)
-       )),
+       ))),
 
     checkMergeClasses(Class1, Class2),
 
@@ -1314,7 +1316,7 @@ guessMergeClassesG(Class1, Class2) :-
     setof(Class,
           Insn2^Offset2^Method2^(
               factVFTableWrite(Insn2, Method2, Offset2, VFTable),
-              not(factVFTableOverwrite(Method2, _OtherVFTable, VFTable, Offset2)),
+              negation_helper(not(factVFTableOverwrite(Method2, _OtherVFTable, VFTable, Offset2))),
               find(Method2, Class),
               iso_dif(Class1, Class)),
           ClassSet),
@@ -1365,8 +1367,9 @@ checkMergeClasses(Method1, Method2) :-
                      factNOTMergeClasses(Class2, Class1)),
     % XXX: Check factMergeClasses?
     % Now relationships between the classes are not allowed either.
-    not(reasonClassRelationship(Class1, Class2)),
-    not(reasonClassRelationship(Class2, Class1)).
+    % XXX: negation_helper?
+    negation_helper(not(reasonClassRelationship(Class1, Class2))),
+    negation_helper(not(reasonClassRelationship(Class2, Class1))).
 
 tryMergeClasses((Method1, Method2)) :- tryMergeClasses(Method1, Method2).
 % If we are merging classes that have already been merged, just ignore it.
@@ -1564,10 +1567,10 @@ guessFinalDeletingDestructor(Out) :-
     % guessDeletingDestructor requires a call to a real destructor.  This rule relaxes that a
     % bit, by ensuring we don't call any non-real destructors.  So calling a real destructor
     % will trigger this rule, but it is not necessary.
-    not((
+    negation_helper(not((
                callTarget(_Insn1, Method, Called),
                not(factRealDestructor(Called))
-       )),
+       ))),
 
     !,
     Out = tryOrNOTDeletingDestructor(Method).
@@ -1632,7 +1635,7 @@ likelyDeletingDestructor(DeletingDestructor, RealDestructor) :-
     % This indicates that the method met some basic criteria in C++.
     possibleDestructor(DeletingDestructor),
     % That's not already certain to NOT be a deleting destructor.
-    not(factNOTDeletingDestructor(DeletingDestructor)),
+    negation_helper(not(factNOTDeletingDestructor(DeletingDestructor))),
     % And the deleting destructor must also call delete (we think), since that's what makes it
     % deleting.  Using this instead of the more complicated rule below led toa very slight
     % improvement in the fast test suite F=0.43 -> F=0.44.
@@ -1661,8 +1664,74 @@ likelyDeletingDestructor(DeletingDestructor, RealDestructor) :-
     % And while it's premature to require the real destructor to be certain, it shouldn't be
     % disproven.
     possibleDestructor(RealDestructor),
-    not(factNOTRealDestructor(RealDestructor)),
+    negation_helper(not(factNOTRealDestructor(RealDestructor))),
     true.
+
+tryDelay((G,P,Commit)) :-
+    try_retract(delay_queue(G, P, Commit)),
+
+    % Do nothing if we've already committed one way or the other
+    %% (not(G) -> true;
+    %%  delay_goal(G, _) -> true;
+    %%  delay_fail(G) -> true;
+
+     loginfoln('Guessing ~Q.', delay_goal(G, Commit)),
+     try_assert(delay_goal(G, Commit)).
+
+tryNOTDelay((G,P)) :-
+    loginfoln('tryNOTDelay'),
+    try_retract(delay_queue(G, P, Commit)),
+
+    % Do nothing if we've already committed one way or the other
+    %% (not(G) -> true;
+    %%  delay_goal(G, _) -> true;
+    %%  delay_fail(G) -> true;
+
+     loginfoln('Guessing ~Q.', delay_fail(G)),
+     try_assert(delay_fail(G)).
+
+tryOrNOTDelay((G, P)) :-
+    % XXX Optimization for not(G)...
+
+    try_retract(delay_queue(G, P)),
+
+    % Do nothing if we've already committed one way or the other
+    delay_goal(G, _) -> true;
+    delay_fail(G) -> true;
+
+    (
+        tryDelay(G);
+        tryNOTDelay(G);
+        logwarnln('Something is wrong upstream: ~Q.', delay(Method)),
+        fail
+    ).
+
+guessDelay(Out) :-
+    reportFirstSeen('guessDelay'),
+
+    % Remove each false or already committed to delay
+    forall(delay_queue(G, P, Commit),
+           ((not(G);
+            delay_goal(G, _);
+            delay_fail(G))
+           -> (logdebugln('Removing outdated delay goal ~Q', [G]),
+               retract(delay_queue(G, P, Commit)))
+           ; true)),
+
+    !,
+
+    setof(P, delay_queue(_, P, _), Pset),
+    max_list(Pset, Pmax),
+
+    % Sorting the queue takes a while.  We should really use a priority queue...
+    % but this hack works ok for now.
+    %member(Pmax, [0, -10, _]),
+
+    setof((G, Pmax, Commit),
+          delay_queue(G, Pmax, Commit),
+          Gset),
+
+    Out = tryBinarySearch(tryDelay, tryNOTDelay, Gset).
 
 %% Local Variables:
 %% mode: prolog
