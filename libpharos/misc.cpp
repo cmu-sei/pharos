@@ -36,8 +36,8 @@ namespace pharos {
 
 using Rose::BinaryAnalysis::BinaryLoader;
 
-using Rose::BinaryAnalysis::SymbolicExpr::OP_ADD;
-using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
+using Rose::BinaryAnalysis::SymbolicExpression::OP_ADD;
+using Rose::BinaryAnalysis::SymbolicExpression::OP_ITE;
 
 Sawyer::Message::Facility glog;
 
@@ -1102,10 +1102,10 @@ template void debug_print_expression(SymbolicSemantics::SValuePtr const & e);
 
 bool has_subexp (const TreeNodePtr haystack, const TreeNodePtr needle) {
 
-  using Rose::BinaryAnalysis::SymbolicExpr::VisitAction;
-  using Rose::BinaryAnalysis::SymbolicExpr::Visitor;
-  using Rose::BinaryAnalysis::SymbolicExpr::CONTINUE;
-  using Rose::BinaryAnalysis::SymbolicExpr::TERMINATE;
+  using Rose::BinaryAnalysis::SymbolicExpression::VisitAction;
+  using Rose::BinaryAnalysis::SymbolicExpression::Visitor;
+  using Rose::BinaryAnalysis::SymbolicExpression::CONTINUE;
+  using Rose::BinaryAnalysis::SymbolicExpression::TERMINATE;
 
   struct SubxVisitor : Visitor {
 
@@ -1127,7 +1127,7 @@ bool has_subexp (const TreeNodePtr haystack, const TreeNodePtr needle) {
   SubxVisitor read_subx(needle);
 
   // search if this write includes the read. If it does, then it is not fake
-  return (haystack->depthFirstTraversal(read_subx) == Rose::BinaryAnalysis::SymbolicExpr::TERMINATE);
+  return (haystack->depthFirstTraversal(read_subx) == Rose::BinaryAnalysis::SymbolicExpression::TERMINATE);
 }
 
 } // namespace pharos

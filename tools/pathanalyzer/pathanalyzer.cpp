@@ -1,4 +1,4 @@
-// Copyright 2018-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2018-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/range/adaptor/map.hpp>
 #include <libpharos/options.hpp>
@@ -169,7 +169,7 @@ class PathAnalyzer : public BottomUpAnalyzer {
   std::string to_string() {
 
     std::stringstream ss;
-    Rose::BinaryAnalysis::SymbolicExpr::Formatter fmt;
+    Rose::BinaryAnalysis::SymbolicExpression::Formatter fmt;
     fmt.use_hexadecimal = false;
     fmt.show_type = false;
     fmt.show_flags = false;

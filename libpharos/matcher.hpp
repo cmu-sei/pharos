@@ -190,7 +190,7 @@ namespace pharos {
 namespace matcher {
 
 // Simplified name for the SymbolicExpr namespace
-namespace rse = Rose::BinaryAnalysis::SymbolicExpr;
+namespace rse = Rose::BinaryAnalysis::SymbolicExpression;
 
 // Aliases from rose/src/midend/binaryAnalysis/BinarySymbolicExpr.h
 using operator_t = rse::Operator;

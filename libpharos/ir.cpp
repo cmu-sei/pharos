@@ -1,10 +1,12 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "ir.hpp"
 #include "util.hpp"
 #include "masm.hpp"
 #include "descriptors.hpp"
 #include "graph.hpp"
+
+#include <Rose/BinaryAnalysis/Partitioner2/DataBlock.h>
 
 #include <boost/range/algorithm/for_each.hpp>
 #include <boost/range/algorithm/copy.hpp>

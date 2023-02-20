@@ -8,6 +8,8 @@
 #include <Rose/BinaryAnalysis/Partitioner2/Partitioner.h>
 #include <Rose/BinaryAnalysis/Partitioner2/Modules.h>
 #include <Rose/BinaryAnalysis/Partitioner2/ModulesX86.h>
+#include <Rose/BinaryAnalysis/Partitioner2/BasicBlock.h>
+#include <Rose/BinaryAnalysis/Partitioner2/DataBlock.h>
 #include <Rose/BinaryAnalysis/Partitioner2/Utility.h>
 
 #include "limit.hpp"
@@ -47,7 +49,7 @@ class RefuseZeroCode: public P2::BasicBlockCallback {
   // also count against the threshold (for situations with large numbers of zero instructions
   // mixed in with other bad code).  This interface is intended for other users of the same
   // logic as the basic block call back interface (specifically gap analysis).
-  bool check_zeros(const P2::Partitioner& partitioner,
+  bool check_zeros(P2::PartitionerConstPtr const & partitioner,
                    rose_addr_t address, const P2::BasicBlock::Ptr& bblock);
 
 };
@@ -106,7 +108,7 @@ class MatchJmpToPrologue: public P2::BasicBlockCallback {
   }
 
   bool operator()(bool chain, const Args &args) override;
-  void make_functions(P2::Partitioner& partitioner);
+  void make_functions(P2::PartitionerPtr const & partitioner);
 };
 
 // A CFG adjustment callback that might be useful for debugging.
@@ -130,7 +132,7 @@ class MatchThunkPrologue: public P2::ModulesX86::MatchStandardPrologue {
   virtual std::vector<P2::Function::Ptr> functions() const override {
     return std::vector<P2::Function::Ptr>(1, function_);
   }
-  virtual bool match(const P2::Partitioner &partitioner, rose_addr_t anchor) override;
+  virtual bool match(const P2::PartitionerConstPtr &partitioner, rose_addr_t anchor) override;
 };
 
 class NamePredicate :
@@ -149,9 +151,10 @@ class SupersetEngine: public P2::Engine {
  private:
 
  public:
+  SupersetEngine() : P2::Engine(P2::Engine::Settings{}) {}
 
   // We're going to override this so that it hardly uses the real partitioner at all...
-  virtual void runPartitioner(P2::Partitioner& partitioner) override;
+  virtual void runPartitioner(P2::PartitionerPtr const & partitioner) override;
 };
 
 // We want our own engine because we want to override some steps. Specifically, we want to make
@@ -169,37 +172,38 @@ class CERTEngine: public P2::Engine {
   Rose::BinaryAnalysis::AddressSet not_code_gaps;
 
   // A helper for consume thunks.
-  bool try_making_thunk(P2::Partitioner& partitioner, rose_addr_t address);
+  bool try_making_thunk(P2::PartitionerPtr const & partitioner, rose_addr_t address);
 
   // Something a bit prettier to read a byte from the program image.
   uint8_t read_byte(rose_addr_t addr);
 
   // Create a padding data block if the appropriate bytes are found.
   P2::DataBlock::Ptr try_making_padding_block(
-    P2::Partitioner& partitioner, rose_addr_t addr, bool backwards = false);
+    P2::PartitionerPtr const & partitioner, rose_addr_t addr, bool backwards = false);
 
-  bool bad_code(const P2::Partitioner& partitioner, const P2::BasicBlock::Ptr bb) const;
-  bool consume_thunks(P2::Partitioner& partitioner, bool top, bool bottom);
-  bool consume_padding(P2::Partitioner& partitioner, bool top, bool bottom);
-  bool create_arbitrary_code(P2::Partitioner& partitioner);
+  bool bad_code(P2::PartitionerConstPtr const & partitioner, const P2::BasicBlock::Ptr bb) const;
+  bool consume_thunks(P2::PartitionerPtr const & partitioner, bool top, bool bottom);
+  bool consume_padding(P2::PartitionerPtr const & partitioner, bool top, bool bottom);
+  bool create_arbitrary_code(P2::PartitionerPtr const & partitioner);
 
  public:
+  CERTEngine() : P2::Engine(P2::Engine::Settings{}) {}
 
   // Add our extensions to the partitioner.
-  virtual P2::Partitioner createTunedPartitioner() override;
+  virtual P2::PartitionerPtr createTunedPartitioner() override;
 
   // These are the methods that primarily alter the behavior of the partitioner.
-  virtual void runPartitioner(P2::Partitioner &partitioner) override;
-  virtual void runPartitionerRecursive(P2::Partitioner& partitioner) override;
+  virtual void runPartitioner(P2::PartitionerPtr const &partitioner) override;
+  virtual void runPartitionerRecursive(P2::PartitionerPtr const & partitioner) override;
 };
 
 // This is primary mechanism by which the partitioning occurs.  It's called from the global
 // descriptor set, and needs some additional cleanup longer term.
-P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine *engine,
-                                   std::vector<std::string> const & specimen_names);
+P2::PartitionerPtr create_partitioner(const ProgOptVarMap& vm, P2::Engine *engine,
+                                      std::vector<std::string> const & specimen_names);
 
 
-void report_partitioner_statistics(const P2::Partitioner& partitioner);
+void report_partitioner_statistics(P2::PartitionerConstPtr const & partitioner);
 
 } // namespace pharos
 

@@ -1,9 +1,8 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/format.hpp>
 
 #include "rose.hpp"
-#include <Rose/BinaryAnalysis/SymbolicExpr.h>
 #include <integerOps.h>
 
 #include "semantics.hpp"
@@ -22,7 +21,7 @@ namespace pharos {
 Sawyer::Message::Facility slog;
 
 // Used in a couple of places now that we're putting multiple values in an ITE expression.
-using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
+using Rose::BinaryAnalysis::SymbolicExpression::OP_ITE;
 
 // A naughty global variable for controlling the number of times we spew about discarded
 // expressions.  Used in SymbolicValue::scopy().
@@ -217,7 +216,7 @@ bool operator==(const SymbolicValue& a, const SymbolicValue& b) {
 
 // No longer used, but keeping in case we need this code in the future.  The correct
 // implementation would presumably look something like this... (completely untested).
-#define ULT_OP Rose::BinaryAnalysis::SymbolicExpr::OP_ULT
+constexpr auto ULT_OP = Rose::BinaryAnalysis::SymbolicExpression::OP_ULT;
 bool operator<(const SymbolicValue& a, const SymbolicValue& b) {
   GERROR << "Using untested SymbolicValue::operator<() code!" << LEND;
   TreeNodePtr aexpr = a.get_expression();
@@ -247,7 +246,7 @@ bool operator<(const SymbolicValue& a, const SymbolicValue& b) {
 void extract_possible_values(const TreeNodePtr& tn, TreeNodePtrSet& s) {
   const InternalNodePtr in = tn->isInteriorNode();
   if (in && in->getOperator() == OP_ITE) {
-    Rose::BinaryAnalysis::SymbolicExpr::Nodes children = in->children();
+    Rose::BinaryAnalysis::SymbolicExpression::Nodes children = in->children();
     extract_possible_values(children[1], s);
     extract_possible_values(children[2], s);
   }
@@ -352,7 +351,7 @@ boost::optional<int64_t> SymbolicValue::get_stack_const() const {
     }
     return boost::none;
   }
-  else if (inode->getOperator() == Rose::BinaryAnalysis::SymbolicExpr::OP_ADD) {
+  else if (inode->getOperator() == Rose::BinaryAnalysis::SymbolicExpression::OP_ADD) {
     //SDEBUG << "Found add operator." << LEND;
     for (const TreeNodePtr & tp : inode->children()) {
       LeafNodePtr lp = tp->isLeafNode();
@@ -720,7 +719,7 @@ pharos_may_equal(
   const TreeNodePtr &n2,
   UNUSED const SmtSolverPtr &solver)
 {
-  using Rose::BinaryAnalysis::SymbolicExpr::OP_ADD;
+  using Rose::BinaryAnalysis::SymbolicExpression::OP_ADD;
 
   boost::tribool result = boost::indeterminate;
 
@@ -756,7 +755,7 @@ pharos_may_equal(
 
 void set_may_equal_callback() {
   //OINFO << "Setting may_equal callback!" << LEND;
-  Rose::BinaryAnalysis::SymbolicExpr::Node::mayEqualCallback = pharos_may_equal;
+  Rose::BinaryAnalysis::SymbolicExpression::Node::mayEqualCallback = pharos_may_equal;
 }
 
 } // namespace pharos

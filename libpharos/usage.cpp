@@ -1,4 +1,4 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/format.hpp>
 #include <boost/range/adaptor/map.hpp>
@@ -27,7 +27,7 @@ template<> char const* EnumStrings<AllocType>::data[] = {
 };
 template std::string Enum2Str<AllocType>(AllocType);
 
-using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
+using Rose::BinaryAnalysis::SymbolicExpression::OP_ITE;
 
 // A hacked up routine to pick the correct object pointer from an ITE expression.  There's much
 // better ways to implement this, but none that will be as easy for demonstrating that this is
@@ -48,7 +48,7 @@ SymbolicValuePtr pick_this_ptr(const SymbolicValuePtr& sv) {
 }
 
 TreeNodePtr pick_non_null_expr(const TreeNodePtr& expr) {
-  using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
+  using Rose::BinaryAnalysis::SymbolicExpression::OP_ITE;
   InternalNodePtr in = expr->isInteriorNode();
   if (in && in->getOperator() == OP_ITE) {
     // Check whether the parameter was of the form "ite(cond value 0)", if it is, just return

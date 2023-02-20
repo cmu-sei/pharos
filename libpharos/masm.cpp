@@ -10,83 +10,7 @@
 
 namespace pharos {
 
-DebugLabelMap global_label_map;
-
-void DebugLabelMap::preOrderVisit(SgNode* n)
-{
-  if (isSgAsmFunction(n) != NULL) {
-    SgAsmFunction* func = isSgAsmFunction(n);
-    rose_addr_t addr = func->get_entry_va();
-    if (addr != 0) {
-      char buffer[21];
-      snprintf(buffer, sizeof(buffer), "sub_%0" PRIX64, addr);
-      //printf("Label: %0"PRIX64" %s\n", func->get_entry_va(), buffer);
-      std::string cppstr = buffer;
-      labels[func->get_entry_va()] = cppstr;
-    }
-  }
-  else if (isSgAsmPEImportItem(n) != NULL) {
-    SgAsmPEImportItem* item = isSgAsmPEImportItem(n);
-    rose_addr_t iat_va = item->get_iat_entry_va();
-    if (iat_va != 0) {
-      labels[iat_va] = item->get_name()->get_string();
-      imports[iat_va] = item->get_name()->get_string();
-    }
-  }
-}
-
-void DebugLabelMap::dump_labels()
-{
-  RoseLabelMap::const_iterator itr;
-  for (itr = labels.begin(); itr != labels.end(); ++itr){
-    GINFO << "Address: " << addr_str((*itr).first) << " Label: " << (*itr).second << LEND;
-  }
-}
-
-void DebugDisasm::visit(SgNode* n)
-{
-  if (!labels_built) {
-    //printf("First visit! Building labels...!\n");
-    global_label_map.traverse(n);
-    labels_built = true;
-  }
-
-  // Display the instructions from the function in control flow order...
-  if (isSgAsmFunction(n) != NULL) {
-    SgAsmFunction *func = isSgAsmFunction(n);
-    AddrSet::iterator it;
-    rose_addr_t addr = func->get_entry_va();
-    bool found = std::find(target_addrs.begin(), target_addrs.end(), addr) != target_addrs.end();
-    if (target_addrs.size() == 0 || found) {
-      found_addrs.insert(addr);
-      std::cout << "------------------------------------- Func: " << addr_str(func->get_entry_va()) << LEND;
-      fcnt++;
-
-      const FunctionDescriptor* fd = ds.get_func(func->get_address());
-      if (!fd) {
-        GERROR << "Unable to find function " << addr_str(func->get_address()) << LEND;
-      }
-      else {
-        std::string funcstr = debug_function(fd, hex_bytes, basic_block_lines, show_reasons);
-        std::cout << funcstr;
-      }
-    }
-  }
-}
-
-void DebugDisasm::atTraversalEnd()
-{
-  // See if there were any addresses that we missed.
-  //printf("Found %d of %d functions\n", found_addrs.size(), target_addrs.size());
-  if (target_addrs.size() != 0 && target_addrs.size() != found_addrs.size()) {
-    for (AddrSet::iterator ti=target_addrs.begin(); ti!=target_addrs.end(); ++ti) {
-      bool found = std::find(found_addrs.begin(), found_addrs.end(), *ti) != found_addrs.end();
-      if (!found) {
-        printf("ERROR: Target function %" PRIx64 " not found.\n", *ti);
-      }
-    }
-  }
-}
+RoseLabelMap global_label_map{};
 
 std::string masm_x86ValToLabel(uint64_t val, const RoseLabelMap *labels)
 {
@@ -129,6 +53,96 @@ std::string masm_x86TypeToPtrName(SgAsmType* ty) {
   return "BAD_TYPE";
 }
 
+namespace {
+
+// This object looks for expressions of the form [reg1+reg2*I+C], where the expression could be
+// put together in any order.  reg1 is the frame_pointer_reg, reg2 is the index_reg, I is the
+// stride_integer, and C is the offset_integer.  ROSE at one point used the [reg1+reg2*I+C]
+// order internally, but later changed to [reg1+C+reg2*I].  This code catches either order and
+// can output the form in our preferred order.
+struct X86IndirectAddress {
+  SgAsmDirectRegisterExpression const * frame_pointer_reg = nullptr;
+  SgAsmIntegerValueExpression const * offset_integer = nullptr;
+  SgAsmDirectRegisterExpression const * index_reg = nullptr;
+  SgAsmIntegerValueExpression const * stride_integer = nullptr;
+
+  bool complete_ = false;
+
+  explicit operator bool() {
+    return complete_;
+  }
+
+  X86IndirectAddress(SgAsmExpression const * expr) {
+    auto mre = isSgAsmMemoryReferenceExpression(expr);
+    if (!mre) return;
+    auto add1 = isSgAsmBinaryAdd(mre->get_address());
+    if (!add1) return;
+    SgAsmBinaryAdd const * add2 = nullptr;
+    SgAsmExpression const * operand[3];
+    if ((add2 = isSgAsmBinaryAdd(add1->get_lhs()))) {
+      operand[0] = add2->get_lhs();
+      operand[1] = add2->get_rhs();
+      operand[2] = add1->get_rhs();
+    } else if ((add2 = isSgAsmBinaryAdd(add1->get_rhs()))) {
+      operand[0] = add1->get_lhs();
+      operand[1] = add2->get_lhs();
+      operand[2] = add2->get_rhs();
+    }
+    if (!add2) return;
+    for (int i = 0; i < 3; ++i) {
+      auto op = operand[i];
+      if (auto reg = isSgAsmDirectRegisterExpression(op)) {
+        if (frame_pointer_reg) return;
+        frame_pointer_reg = reg;
+      } else if (auto val = isSgAsmIntegerValueExpression(op)) {
+        if (offset_integer) return;
+        offset_integer = val;
+      } else if (auto mul = isSgAsmBinaryMultiply(op)) {
+        SgAsmDirectRegisterExpression const *r;
+        SgAsmExpression const *other;
+        if ((r = isSgAsmDirectRegisterExpression(mul->get_lhs()))) {
+          other = mul->get_rhs();
+        } else if ((r = isSgAsmDirectRegisterExpression(mul->get_rhs()))) {
+          other = mul->get_lhs();
+        } else {
+          return;
+        }
+        if (auto v = isSgAsmIntegerValueExpression(other)) {
+          if (index_reg) return;
+          index_reg = r;
+          stride_integer = v;
+        } else {
+          return;
+        }
+      }
+    }
+    complete_ = true;
+  }
+
+  std::string emit() const {
+    std::ostringstream os;
+    os << std::hex << std::setfill('0');
+    os << '[';
+    os << unparseX86Register(frame_pointer_reg->get_descriptor(),{});
+    os << '+';
+    os << unparseX86Register(index_reg->get_descriptor(),{});
+    auto val = stride_integer->get_absoluteValue();
+    if (val != 1) {
+      os << '*' << val;
+    }
+    auto offset_bv = offset_integer->get_bitVector();
+    bool neg = offset_bv.get(offset_bv.size() - 1);
+    auto offset = offset_integer->get_signedValue();
+    os << (neg ? '-' : '+');
+    os << "0x" << (neg ? -offset : offset);
+    os << ']';
+    return os.str();
+  }
+};
+
+}
+
+
 std::string masm_unparseX86Expression(SgAsmExpression *expr,
                                       SgAsmX86Instruction *insn, bool leaMode,
                                       const RoseLabelMap *labels) {
@@ -168,31 +182,38 @@ std::string masm_unparseX86Expression(SgAsmExpression *expr,
     result = lstr + "*" + rstr;
     break;
    case V_SgAsmMemoryReferenceExpression: {
-     SgAsmMemoryReferenceExpression* mr = isSgAsmMemoryReferenceExpression(expr);
-     if (!leaMode) {
-       // The MASM and NASM assemblers are quite intelligent about
-       // determining the memory size of the operation.  We only need
-       // to explictly display the size if it's ambiguous.  For now,
-       // we're just going to say that it's never ambiguous.  BUG!!!
-       bool ambiguous = false;
+     X86IndirectAddress ia(expr);
+     if (ia) {
+       // If address is of the form [reg1+reg2*I+C], handle that separately.  See the comment
+       // for X86IndirectAddress.
+       return ia.emit();
+     } else {
+       SgAsmMemoryReferenceExpression* mr = isSgAsmMemoryReferenceExpression(expr);
+       if (!leaMode) {
+         // The MASM and NASM assemblers are quite intelligent about
+         // determining the memory size of the operation.  We only need
+         // to explictly display the size if it's ambiguous.  For now,
+         // we're just going to say that it's never ambiguous.  BUG!!!
+         bool ambiguous = false;
 
-       if (ambiguous) {
-         result += masm_x86TypeToPtrName(mr->get_type()) + " ptr ";
-       }
+         if (ambiguous) {
+           result += masm_x86TypeToPtrName(mr->get_type()) + " ptr ";
+         }
 
-       std::string segment_override = "";
-       // We really should be checking for a segment override prefix here, but the
-       // method is private, and I expect overrides to be very rare anyway.  BUG!!!
-       SgAsmExpression* segexpr = mr->get_segment();
-       if (segexpr != NULL) {
-         // The fs override is common enough that we should always print it.
-         std::string segreg = masm_unparseX86Expression(segexpr, insn, false, NULL);
-         if (segreg == "fs") {
-           result += segreg + ":";
+         std::string segment_override = "";
+         // We really should be checking for a segment override prefix here, but the
+         // method is private, and I expect overrides to be very rare anyway.  BUG!!!
+         SgAsmExpression* segexpr = mr->get_segment();
+         if (segexpr != NULL) {
+           // The fs override is common enough that we should always print it.
+           std::string segreg = masm_unparseX86Expression(segexpr, insn, false, NULL);
+           if (segreg == "fs") {
+             result += segreg + ":";
+           }
          }
        }
+       result += "[" + masm_unparseX86Expression(mr->get_address(), insn, false, labels) + "]";
      }
-     result += "[" + masm_unparseX86Expression(mr->get_address(), insn, false, labels) + "]";
      break;
    }
    case V_SgAsmDirectRegisterExpression: {
@@ -222,17 +243,17 @@ std::string masm_unparseX86Expression(SgAsmExpression *expr,
      size_t bits = int_expr->get_significantBits();
      if (bits == 8) {
        if ((v & 0x80) && (v & 0x7f))
-         sprintf(buf, "-%" PRIX64, (~v+1) & 0xff);
+         sprintf(buf, "-%#" PRIx64, (~v+1) & 0xff);
        else
-         sprintf(buf, "%" PRIX64, v);
+         sprintf(buf, "%#" PRIx64, v);
 
        result = buf;
      }
      else if (bits == 16) {
        if ((v & 0x8000) && (v & 0x7fff))
-         sprintf(buf, "-%" PRIX64, (~v+1) & 0xffff);
+         sprintf(buf, "-%#" PRIx64, (~v+1) & 0xffff);
        else
-         sprintf(buf, "%" PRIX64, v);
+         sprintf(buf, "%#" PRIx64, v);
        result = buf;
      }
      else if (bits == 32) {
@@ -240,10 +261,10 @@ std::string masm_unparseX86Expression(SgAsmExpression *expr,
        if (!label.empty()) {
          sprintf(buf, "%s", label.c_str());
        } else if ((v & 0x80000000) && (v & 0x7fffffff)) {
-         sprintf(buf, "-%" PRIX64, (~v+1) & 0xffffffff);
+         sprintf(buf, "-%#" PRIx64, (~v+1) & 0xffffffff);
        }
        else {
-         sprintf(buf, "%" PRIX64, v);
+         sprintf(buf, "%#" PRIx64, v);
        }
        result = buf;
      }
@@ -252,10 +273,10 @@ std::string masm_unparseX86Expression(SgAsmExpression *expr,
        if (!label.empty()) {
          sprintf(buf, "%s", label.c_str());
        } else if ((v & ((uint64_t)1<<63)) && (v & (((uint64_t)1<<63)-1))) {
-         sprintf(buf, "-%" PRIX64, (~v+1));
+         sprintf(buf, "-%#" PRIx64, (~v+1));
        }
        else {
-         sprintf(buf, "%" PRIX64, v);
+         sprintf(buf, "%#" PRIx64, v);
        }
        result = buf;
      }

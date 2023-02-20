@@ -3,11 +3,14 @@ set(_ROSE_SEARCHES)
 find_package(Z3 REQUIRED)
 
 set(Boost_USE_MULTITHREADED on)
+set(_old_FPPC "${CMAKE_FIND_PACKAGE_PREFER_CONFIG}")
+set(CMAKE_FIND_PACKAGE_PREFER_CONFIG true)
 find_package(Boost 1.60.0 REQUIRED
   COMPONENTS system thread program_options iostreams filesystem regex wave)
 if (NOT Boost_FOUND OR (Boost_VERSION LESS 1.60))
   message(FATAL_ERROR "Could not find a usable version of boost")
 endif()
+set(CMAKE_FIND_PACKAGE_PREFER_CONFIG "${_old_FPPC}")
 
 find_package(YamlCpp 0.6 REQUIRED)
 

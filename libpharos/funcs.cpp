@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <atomic>
 
@@ -509,14 +509,10 @@ void FunctionDescriptor::_propagate_thunk_info() {
 
   // Get the import descriptor for that address if there is one.
   const ImportDescriptor* id = ds.get_import(taddr);
+  const FunctionDescriptor* fd = id ? id->get_function_descriptor() : ds.get_func(taddr);
   if (id != NULL) {
     SDEBUG << "Function: " << _address_string() << " is a thunk to an import: "
            << id->get_long_name() << "." << LEND;
-
-    // Propagate the (currently invented) parameters from the import descriptor to the thunk
-    // that calls the import descriptor.
-    const FunctionDescriptor* ifd = id->get_function_descriptor();
-    parameters = ifd->get_parameters();
 
     // In general, the best default assumption for an import is to assume that the function
     // does return a value, because most functions do.  Just forcing a return code of EAX here
@@ -528,36 +524,39 @@ void FunctionDescriptor::_propagate_thunk_info() {
     // there's not way to test that anayway.  This seems good enough for now.
     register_usage.changed_registers.insert(eaxrd);
 
-    return;
-  }
-
-  // Get the function descriptor for that address if there is one.
-  const FunctionDescriptor* fd = ds.get_func(taddr);
-  if (fd != NULL) {
+  } else if (fd) {
+    // Must be the get_func return value
     SDEBUG << "Function: " << _address_string() << " is a thunk to another function at "
            << fd->address_string() << "." << LEND;
 
-    // In this case, just propagate the information from the called function onto the thunk.
-    // These are the "old style" properties, and should probably be phased out.
-    returns_this_pointer = fd->get_returns_this_pointer();
-    never_returns = fd->get_never_returns();
-
-    // Propagate parameters and register usage from the new style approach as well.
-    parameters = fd->get_parameters();
     // Register usage is an embedded object with sets of registers and this makes a copy...  Is
     // that what we wanted?  Should we make thunks point to the functions they reference?
     register_usage = fd->get_register_usage();
-
-    return;
   }
 
-  // The only remaining case is one worth complaining about -- that we're a thunk to a
-  // function that wasn't found during disassembly.  We don't really have any basis for
-  // saying whether we return a value or not, but since it's more common to do so than not,
-  // just wildly guess that we do.
-  SWARN << "Function: " << _address_string()
-        << " is a thunk that jumps to the non-function address " << addr_str(taddr) << LEND;
-  register_usage.changed_registers.insert(eaxrd);
+  if (fd) {
+    // Propagate function descriptor properties that make sense on thunks
+    never_returns = fd->get_never_returns();
+    register_usage = fd->get_register_usage();
+    parameters = fd->get_parameters();
+    returns_this_pointer = fd->get_returns_this_pointer();
+    stack_delta = fd->get_stack_delta();
+    // Copying the stack delta variable causes some problems, such as detecting the size of
+    // object allocations when calling a thunk to ::new.
+    //stack_delta_variable = fd->get_stack_delta_variable();
+    stack_parameters = fd->get_stack_parameters();
+    calling_conventions.clear();
+    auto other_cc = fd->get_calling_conventions();
+    std::copy(other_cc.begin(), other_cc.end(), std::back_inserter(calling_conventions));
+  } else {
+    // The only remaining case is one worth complaining about -- that we're a thunk to a
+    // function that wasn't found during disassembly.  We don't really have any basis for
+    // saying whether we return a value or not, but since it's more common to do so than not,
+    // just wildly guess that we do.
+    SWARN << "Function: " << _address_string()
+          << " is a thunk that jumps to the non-function address " << addr_str(taddr) << LEND;
+    register_usage.changed_registers.insert(eaxrd);
+  }
 }
 
 SgAsmBlock*

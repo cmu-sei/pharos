@@ -1,10 +1,12 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <libpharos/misc.hpp>
 #include <libpharos/masm.hpp>
 #include <libpharos/options.hpp>
 #include <libpharos/riscops.hpp>
 #include <libpharos/descriptors.hpp>
+
+#include <Rose/BinaryAnalysis/Partitioner2/DataBlock.h>
 
 using namespace pharos;
 

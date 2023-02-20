@@ -1,4 +1,4 @@
-// Copyright 2016-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2023 Carnegie Mellon University.  See LICENSE file for terms.
 // Author: Jeff Gennari
 
 #ifndef Pharos_Type_Descriptor_H
@@ -453,7 +453,7 @@ class OperationContext {
  private:
 
   // Map of RISC operation strategies
-  std::map<Rose::BinaryAnalysis::SymbolicExpr::Operator, OperationStrategy*> strategies_;
+  std::map<Rose::BinaryAnalysis::SymbolicExpression::Operator, OperationStrategy*> strategies_;
 
  public:
 
@@ -465,7 +465,7 @@ class OperationContext {
 
   // Analyze the operations by selecting and executing the strategy based on RISC
   // operator
-  void assert_operation_fact(Rose::BinaryAnalysis::SymbolicExpr::Operator op,
+  void assert_operation_fact(Rose::BinaryAnalysis::SymbolicExpression::Operator op,
                              InternalNodePtr tnp,
                              std::shared_ptr<prolog::Session> session);
 

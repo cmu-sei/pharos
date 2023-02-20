@@ -1,4 +1,4 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Misc_H
 #define Pharos_Misc_H
@@ -7,24 +7,14 @@
 
 #include "rose.hpp"
 // For TreeNodePtr, LeafNodePtr, etc.
-#include <Rose/BinaryAnalysis/SymbolicExpr.h>
+#include <Rose/BinaryAnalysis/SymbolicExpression.h>
 // For Semantics namespace.
-#if PHAROS_ROSE_SYMBOLIC_EXTENSION_HACK
 #include <Rose/BinaryAnalysis/InstructionSemantics/SymbolicSemantics.h>
-#else
-#include <Rose/BinaryAnalysis/InstructionSemantics2/SymbolicSemantics.h>
-#endif
 // For P2 namespace.
 #include <Rose/BinaryAnalysis/Partitioner2/Partitioner.h>
 #include <Rose/BinaryAnalysis/MemoryMap.h>
 
 #include <numeric>
-
-#if !PHAROS_ROSE_SYMBOLIC_EXTENSION_HACK
-namespace Rose{ namespace BinaryAnalysis {
-namespace InstructionSemantics = Rose::BinaryAnalysis::InstructionSemantics2;
-}}
-#endif
 
 namespace pharos {
 
@@ -44,7 +34,7 @@ using ::operator<<;
 // Duplicative with funcs.hpp. :-(
 using AddrSet = std::set<rose_addr_t>;
 
-namespace SymbolicExpr = Rose::BinaryAnalysis::SymbolicExpr;
+namespace SymbolicExpr = Rose::BinaryAnalysis::SymbolicExpression;
 using LeafNode = SymbolicExpr::Leaf;
 using LeafNodePtr = SymbolicExpr::LeafPtr;
 using InternalNode = SymbolicExpr::Interior;
@@ -185,13 +175,8 @@ using RegisterVector = std::vector<RegisterDescriptor>;
 
 using RegisterSet = std::set<RegisterDescriptor>;
 using Rose::BinaryAnalysis::RegisterDictionary;
-#if PHAROS_ROSE_REGISTERDICTIONARY_PTR_HACK
 using RegisterDictionaryPtr = RegisterDictionary::Ptr;
 using RegisterDictionaryPtrArg = const RegisterDictionary::Ptr &;
-#else
-using RegisterDictionaryPtr = RegisterDictionary const *;
-using RegisterDictionaryPtrArg = RegisterDictionary const *;
-#endif
 
 void set_glog_name(std::string const & name);
 

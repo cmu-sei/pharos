@@ -1,8 +1,10 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "state.hpp"
 #include "riscops.hpp"
 #include "defuse.hpp"
+
+#include <Rose/BinaryAnalysis/InstructionSemantics/BaseSemantics/MemoryCellList.h>
 
 namespace pharos {
 
@@ -16,7 +18,11 @@ extern SymbolicRiscOperatorsPtr global_rops;
 #define DSTREAM SDEBUG
 #endif
 
-using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
+using Rose::BinaryAnalysis::SymbolicExpression::OP_ITE;
+
+CERTMerger::Ptr CERTMerger::instance() {
+  return Ptr(new CERTMerger{});
+}
 
 CERTMerger::Ptr CERTMerger::instance() {
   return Ptr(new CERTMerger{});
@@ -238,8 +244,8 @@ void CellMapChunks::chunk_iterator::increment()
 
 // Type recovery test!
 
-using TreeNodeVisitor = Rose::BinaryAnalysis::SymbolicExpr::Visitor;
-using VisitAction = Rose::BinaryAnalysis::SymbolicExpr::VisitAction;
+using TreeNodeVisitor = Rose::BinaryAnalysis::SymbolicExpression::Visitor;
+using VisitAction = Rose::BinaryAnalysis::SymbolicExpression::VisitAction;
 
 class TypeRecoveryVisitor: public TreeNodeVisitor {
 
@@ -254,11 +260,11 @@ class TypeRecoveryVisitor: public TreeNodeVisitor {
   virtual VisitAction preVisit(const TreeNodePtr& tn) {
     OINFO << indent << tn->hash() << ": "<< *tn << LEND;
     indent = indent + "  ";
-    return Rose::BinaryAnalysis::SymbolicExpr::CONTINUE;
+    return Rose::BinaryAnalysis::SymbolicExpression::CONTINUE;
   }
   virtual VisitAction postVisit(UNUSED const TreeNodePtr& tn) {
     indent = indent.substr(0, indent.size() - 2);
-    return Rose::BinaryAnalysis::SymbolicExpr::CONTINUE;
+    return Rose::BinaryAnalysis::SymbolicExpression::CONTINUE;
   }
 };
 
@@ -551,9 +557,9 @@ SymbolicValuePtr create_equality(
   OINFO << "Equality d=" << *d << LEND;
 
   // Construct the new expression.
-  using Rose::BinaryAnalysis::SymbolicExpr::OP_XOR;
-  using Rose::BinaryAnalysis::SymbolicExpr::OP_ZEROP;
-  using Rose::BinaryAnalysis::SymbolicExpr::OP_ITE;
+  using Rose::BinaryAnalysis::SymbolicExpression::OP_XOR;
+  using Rose::BinaryAnalysis::SymbolicExpression::OP_ZEROP;
+  using Rose::BinaryAnalysis::SymbolicExpression::OP_ITE;
   TreeNodePtr xor_expr = InternalNode::instance(OP_XOR, atn, btn);
   TreeNodePtr zerop_expr = InternalNode::instance(OP_ZEROP, xor_expr);
   TreeNodePtr ite_expr = InternalNode::instance(OP_ITE, zerop_expr, ctn, dtn);
@@ -579,7 +585,7 @@ using Semantics2::BaseSemantics::IO_READ_AFTER_WRITE;   // read after being writ
 using Semantics2::BaseSemantics::IO_READ_UNINITIALIZED; // read without having IO_WRITE or IO_INIT.
 
 // From the base list-based memory representation.
-using CellList = Semantics2::BaseSemantics::MemoryCellList::CellList;
+using CellList = Semantics2::BaseSemantics::CellList;
 
 // Rose::BinaryAnalysis::InstructionSemantics2::BaseSemantics::MemoryCellList’ is not a namespace or unscoped enum
 

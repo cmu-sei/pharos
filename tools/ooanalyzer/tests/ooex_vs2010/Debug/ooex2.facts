@@ -1,98 +1,234 @@
-callingConvention(0x411005, invalid).
-callingConvention(0x41100a, invalid).
-callingConvention(0x41100f, invalid).
-callingConvention(0x411014, invalid).
-callingConvention(0x411019, invalid).
-callingConvention(0x41101e, invalid).
-callingConvention(0x411023, invalid).
-callingConvention(0x411028, invalid).
-callingConvention(0x41102d, invalid).
-callingConvention(0x411032, invalid).
-callingConvention(0x411037, invalid).
-callingConvention(0x41103c, invalid).
-callingConvention(0x411041, invalid).
-callingConvention(0x411046, invalid).
-callingConvention(0x41104b, invalid).
-callingConvention(0x411050, invalid).
-callingConvention(0x411055, invalid).
-callingConvention(0x41105a, invalid).
-callingConvention(0x41105f, invalid).
-callingConvention(0x411064, invalid).
-callingConvention(0x411069, invalid).
-callingConvention(0x41106e, invalid).
+callingConvention(0x411005, '__cdecl').
+callingConvention(0x411005, '__fastcall').
+callingConvention(0x411005, '__stdcall').
+callingConvention(0x411005, '__thiscall').
+callingConvention(0x411005, '__vectorcall').
+callingConvention(0x41100a, '__fastcall').
+callingConvention(0x41100a, '__thiscall').
+callingConvention(0x41100a, '__vectorcall').
+callingConvention(0x41100f, '__fastcall').
+callingConvention(0x41100f, '__thiscall').
+callingConvention(0x41100f, '__vectorcall').
+callingConvention(0x411014, '__cdecl').
+callingConvention(0x411014, '__fastcall').
+callingConvention(0x411014, '__stdcall').
+callingConvention(0x411014, '__thiscall').
+callingConvention(0x411014, '__vectorcall').
+callingConvention(0x411019, '__cdecl').
+callingConvention(0x411019, '__fastcall').
+callingConvention(0x411019, '__stdcall').
+callingConvention(0x411019, '__thiscall').
+callingConvention(0x411019, '__vectorcall').
+callingConvention(0x41101e, '__fastcall').
+callingConvention(0x41101e, '__thiscall').
+callingConvention(0x41101e, '__vectorcall').
+callingConvention(0x411023, '__stdcall').
+callingConvention(0x411028, '__cdecl').
+callingConvention(0x411028, '__fastcall').
+callingConvention(0x411028, '__stdcall').
+callingConvention(0x411028, '__thiscall').
+callingConvention(0x411028, '__vectorcall').
+callingConvention(0x41102d, '__stdcall').
+callingConvention(0x411032, '__fastcall').
+callingConvention(0x411032, '__vectorcall').
+callingConvention(0x411037, '__cdecl').
+callingConvention(0x411037, '__fastcall').
+callingConvention(0x411037, '__stdcall').
+callingConvention(0x411037, '__thiscall').
+callingConvention(0x411037, '__vectorcall').
+callingConvention(0x41103c, '__cdecl').
+callingConvention(0x41103c, '__fastcall').
+callingConvention(0x41103c, '__stdcall').
+callingConvention(0x41103c, '__thiscall').
+callingConvention(0x41103c, '__vectorcall').
+callingConvention(0x411041, '__cdecl').
+callingConvention(0x411046, '__stdcall').
+callingConvention(0x41104b, '__stdcall').
+callingConvention(0x411050, '__cdecl').
+callingConvention(0x411050, '__fastcall').
+callingConvention(0x411050, '__stdcall').
+callingConvention(0x411050, '__thiscall').
+callingConvention(0x411050, '__vectorcall').
+callingConvention(0x411055, '__stdcall').
+callingConvention(0x41105a, '__cdecl').
+callingConvention(0x41105f, '__cdecl').
+callingConvention(0x411064, '__stdcall').
+callingConvention(0x411069, '__cdecl').
+callingConvention(0x411069, '__fastcall').
+callingConvention(0x411069, '__stdcall').
+callingConvention(0x411069, '__thiscall').
+callingConvention(0x411069, '__vectorcall').
+callingConvention(0x41106e, '__stdcall').
 callingConvention(0x411073, invalid).
-callingConvention(0x411078, invalid).
-callingConvention(0x41107d, invalid).
-callingConvention(0x411082, invalid).
-callingConvention(0x411087, invalid).
+callingConvention(0x411078, '__cdecl').
+callingConvention(0x411078, '__fastcall').
+callingConvention(0x411078, '__stdcall').
+callingConvention(0x411078, '__thiscall').
+callingConvention(0x411078, '__vectorcall').
+callingConvention(0x41107d, '__cdecl').
+callingConvention(0x411082, '__stdcall').
+callingConvention(0x411087, '__fastcall').
+callingConvention(0x411087, '__vectorcall').
 callingConvention(0x41108c, '__cdecl').
-callingConvention(0x411096, invalid).
-callingConvention(0x41109b, invalid).
-callingConvention(0x4110a0, invalid).
-callingConvention(0x4110a5, invalid).
-callingConvention(0x4110aa, invalid).
-callingConvention(0x4110af, invalid).
-callingConvention(0x4110b4, invalid).
-callingConvention(0x4110b9, invalid).
-callingConvention(0x4110be, invalid).
-callingConvention(0x4110c3, invalid).
-callingConvention(0x4110c8, invalid).
-callingConvention(0x4110cd, invalid).
-callingConvention(0x4110d2, invalid).
-callingConvention(0x4110d7, invalid).
-callingConvention(0x4110dc, invalid).
-callingConvention(0x4110e1, invalid).
-callingConvention(0x4110e6, invalid).
-callingConvention(0x4110eb, invalid).
-callingConvention(0x4110f0, invalid).
-callingConvention(0x4110f5, invalid).
-callingConvention(0x4110fa, invalid).
-callingConvention(0x4110ff, invalid).
-callingConvention(0x411104, invalid).
-callingConvention(0x411109, invalid).
-callingConvention(0x41110e, invalid).
-callingConvention(0x411113, invalid).
-callingConvention(0x411118, invalid).
-callingConvention(0x41111d, invalid).
-callingConvention(0x411122, invalid).
-callingConvention(0x411127, invalid).
-callingConvention(0x41112c, invalid).
-callingConvention(0x411131, invalid).
-callingConvention(0x411136, invalid).
-callingConvention(0x41113b, invalid).
-callingConvention(0x411140, invalid).
+callingConvention(0x411096, '__cdecl').
+callingConvention(0x41109b, '__cdecl').
+callingConvention(0x4110a0, '__stdcall').
+callingConvention(0x4110a5, '__cdecl').
+callingConvention(0x4110aa, '__stdcall').
+callingConvention(0x4110af, '__cdecl').
+callingConvention(0x4110af, '__fastcall').
+callingConvention(0x4110af, '__stdcall').
+callingConvention(0x4110af, '__thiscall').
+callingConvention(0x4110af, '__vectorcall').
+callingConvention(0x4110b4, '__cdecl').
+callingConvention(0x4110b4, '__fastcall').
+callingConvention(0x4110b4, '__stdcall').
+callingConvention(0x4110b4, '__thiscall').
+callingConvention(0x4110b4, '__vectorcall').
+callingConvention(0x4110b9, '__cdecl').
+callingConvention(0x4110b9, '__fastcall').
+callingConvention(0x4110b9, '__stdcall').
+callingConvention(0x4110b9, '__thiscall').
+callingConvention(0x4110b9, '__vectorcall').
+callingConvention(0x4110be, '__stdcall').
+callingConvention(0x4110c3, '__stdcall').
+callingConvention(0x4110c8, '__cdecl').
+callingConvention(0x4110cd, '__cdecl').
+callingConvention(0x4110cd, '__fastcall').
+callingConvention(0x4110cd, '__stdcall').
+callingConvention(0x4110cd, '__thiscall').
+callingConvention(0x4110cd, '__vectorcall').
+callingConvention(0x4110d2, '__cdecl').
+callingConvention(0x4110d2, '__fastcall').
+callingConvention(0x4110d2, '__stdcall').
+callingConvention(0x4110d2, '__thiscall').
+callingConvention(0x4110d2, '__vectorcall').
+callingConvention(0x4110d7, '__stdcall').
+callingConvention(0x4110dc, '__fastcall').
+callingConvention(0x4110dc, '__thiscall').
+callingConvention(0x4110dc, '__vectorcall').
+callingConvention(0x4110e1, '__cdecl').
+callingConvention(0x4110e6, '__cdecl').
+callingConvention(0x4110e6, '__fastcall').
+callingConvention(0x4110e6, '__stdcall').
+callingConvention(0x4110e6, '__thiscall').
+callingConvention(0x4110e6, '__vectorcall').
+callingConvention(0x4110eb, '__stdcall').
+callingConvention(0x4110f0, '__stdcall').
+callingConvention(0x4110f5, '__cdecl').
+callingConvention(0x4110f5, '__fastcall').
+callingConvention(0x4110f5, '__stdcall').
+callingConvention(0x4110f5, '__thiscall').
+callingConvention(0x4110f5, '__vectorcall').
+callingConvention(0x4110fa, '__cdecl').
+callingConvention(0x4110fa, '__fastcall').
+callingConvention(0x4110fa, '__stdcall').
+callingConvention(0x4110fa, '__thiscall').
+callingConvention(0x4110fa, '__vectorcall').
+callingConvention(0x4110ff, '__cdecl').
+callingConvention(0x4110ff, '__fastcall').
+callingConvention(0x4110ff, '__stdcall').
+callingConvention(0x4110ff, '__thiscall').
+callingConvention(0x4110ff, '__vectorcall').
+callingConvention(0x411104, '__stdcall').
+callingConvention(0x411109, '__cdecl').
+callingConvention(0x411109, '__fastcall').
+callingConvention(0x411109, '__stdcall').
+callingConvention(0x411109, '__thiscall').
+callingConvention(0x411109, '__vectorcall').
+callingConvention(0x41110e, '__cdecl').
+callingConvention(0x41110e, '__fastcall').
+callingConvention(0x41110e, '__stdcall').
+callingConvention(0x41110e, '__thiscall').
+callingConvention(0x41110e, '__vectorcall').
+callingConvention(0x411113, '__stdcall').
+callingConvention(0x411118, '__cdecl').
+callingConvention(0x41111d, '__cdecl').
+callingConvention(0x41111d, '__fastcall').
+callingConvention(0x41111d, '__stdcall').
+callingConvention(0x41111d, '__thiscall').
+callingConvention(0x41111d, '__vectorcall').
+callingConvention(0x411122, '__fastcall').
+callingConvention(0x411122, '__stdcall').
+callingConvention(0x411122, '__thiscall').
+callingConvention(0x411122, '__vectorcall').
+callingConvention(0x411127, '__cdecl').
+callingConvention(0x411127, '__fastcall').
+callingConvention(0x411127, '__stdcall').
+callingConvention(0x411127, '__thiscall').
+callingConvention(0x411127, '__vectorcall').
+callingConvention(0x41112c, '__stdcall').
+callingConvention(0x411131, '__cdecl').
+callingConvention(0x411136, '__stdcall').
+callingConvention(0x41113b, '__fastcall').
+callingConvention(0x41113b, '__vectorcall').
+callingConvention(0x411140, '__cdecl').
 callingConvention(0x411145, invalid).
-callingConvention(0x41114a, invalid).
-callingConvention(0x41114f, invalid).
-callingConvention(0x411154, invalid).
-callingConvention(0x411159, invalid).
-callingConvention(0x41115e, invalid).
-callingConvention(0x411163, invalid).
-callingConvention(0x411168, invalid).
-callingConvention(0x41116d, invalid).
-callingConvention(0x411172, invalid).
-callingConvention(0x411177, invalid).
-callingConvention(0x41117c, invalid).
-callingConvention(0x411181, invalid).
-callingConvention(0x411186, invalid).
-callingConvention(0x41118b, invalid).
-callingConvention(0x411190, invalid).
-callingConvention(0x411195, invalid).
-callingConvention(0x41119a, invalid).
-callingConvention(0x41119f, invalid).
-callingConvention(0x4111a4, invalid).
-callingConvention(0x4111a9, invalid).
-callingConvention(0x4111ae, invalid).
-callingConvention(0x4111b3, invalid).
-callingConvention(0x4111b8, invalid).
-callingConvention(0x4111bd, invalid).
-callingConvention(0x4111c2, invalid).
-callingConvention(0x4111c7, invalid).
-callingConvention(0x4111cc, invalid).
-callingConvention(0x4111d1, invalid).
-callingConvention(0x4111d6, invalid).
-callingConvention(0x4111db, invalid).
-callingConvention(0x4111e0, invalid).
+callingConvention(0x41114a, '__cdecl').
+callingConvention(0x41114a, '__fastcall').
+callingConvention(0x41114a, '__stdcall').
+callingConvention(0x41114a, '__thiscall').
+callingConvention(0x41114a, '__vectorcall').
+callingConvention(0x41114f, '__stdcall').
+callingConvention(0x411154, '__cdecl').
+callingConvention(0x411154, '__fastcall').
+callingConvention(0x411154, '__stdcall').
+callingConvention(0x411154, '__thiscall').
+callingConvention(0x411154, '__vectorcall').
+callingConvention(0x411159, '__fastcall').
+callingConvention(0x411159, '__thiscall').
+callingConvention(0x411159, '__vectorcall').
+callingConvention(0x41115e, '__cdecl').
+callingConvention(0x411163, '__stdcall').
+callingConvention(0x411168, '__stdcall').
+callingConvention(0x41116d, '__cdecl').
+callingConvention(0x411172, '__cdecl').
+callingConvention(0x411172, '__fastcall').
+callingConvention(0x411172, '__stdcall').
+callingConvention(0x411172, '__thiscall').
+callingConvention(0x411172, '__vectorcall').
+callingConvention(0x411177, '__cdecl').
+callingConvention(0x41117c, '__stdcall').
+callingConvention(0x411181, '__cdecl').
+callingConvention(0x411181, '__fastcall').
+callingConvention(0x411181, '__stdcall').
+callingConvention(0x411181, '__thiscall').
+callingConvention(0x411181, '__vectorcall').
+callingConvention(0x411186, '__cdecl').
+callingConvention(0x41118b, '__stdcall').
+callingConvention(0x411190, '__cdecl').
+callingConvention(0x411195, '__cdecl').
+callingConvention(0x41119a, '__cdecl').
+callingConvention(0x41119f, '__cdecl').
+callingConvention(0x4111a4, '__stdcall').
+callingConvention(0x4111a9, '__stdcall').
+callingConvention(0x4111ae, '__cdecl').
+callingConvention(0x4111b3, '__cdecl').
+callingConvention(0x4111b3, '__fastcall').
+callingConvention(0x4111b3, '__stdcall').
+callingConvention(0x4111b3, '__thiscall').
+callingConvention(0x4111b3, '__vectorcall').
+callingConvention(0x4111b8, '__cdecl').
+callingConvention(0x4111bd, '__stdcall').
+callingConvention(0x4111c2, '__cdecl').
+callingConvention(0x4111c2, '__fastcall').
+callingConvention(0x4111c2, '__stdcall').
+callingConvention(0x4111c2, '__thiscall').
+callingConvention(0x4111c2, '__vectorcall').
+callingConvention(0x4111c7, '__cdecl').
+callingConvention(0x4111c7, '__fastcall').
+callingConvention(0x4111c7, '__stdcall').
+callingConvention(0x4111c7, '__thiscall').
+callingConvention(0x4111c7, '__vectorcall').
+callingConvention(0x4111cc, '__cdecl').
+callingConvention(0x4111d1, '__cdecl').
+callingConvention(0x4111d6, '__stdcall').
+callingConvention(0x4111db, '__cdecl').
+callingConvention(0x4111e0, '__cdecl').
+callingConvention(0x4111e0, '__fastcall').
+callingConvention(0x4111e0, '__stdcall').
+callingConvention(0x4111e0, '__thiscall').
+callingConvention(0x4111e0, '__vectorcall').
 callingConvention(0x4113d0, '__cdecl').
 callingConvention(0x4113d0, '__fastcall').
 callingConvention(0x4113d0, '__stdcall').
@@ -111,8 +247,8 @@ callingConvention(0x411640, '__fastcall').
 callingConvention(0x411640, '__thiscall').
 callingConvention(0x411640, '__vectorcall').
 callingConvention(0x411680, '__cdecl').
-callingConvention(0x411686, invalid).
-callingConvention(0x41168c, invalid).
+callingConvention(0x411686, '__cdecl').
+callingConvention(0x41168c, '__cdecl').
 callingConvention(0x4116a0, '__fastcall').
 callingConvention(0x4116a0, '__thiscall').
 callingConvention(0x4116a0, '__vectorcall').
@@ -132,7 +268,7 @@ callingConvention(0x411900, '__fastcall').
 callingConvention(0x411900, '__stdcall').
 callingConvention(0x411900, '__thiscall').
 callingConvention(0x411900, '__vectorcall').
-callingConvention(0x411918, invalid).
+callingConvention(0x411918, '__cdecl').
 callingConvention(0x411920, '__cdecl').
 callingConvention(0x411920, '__fastcall').
 callingConvention(0x411920, '__stdcall').
@@ -233,7 +369,7 @@ callingConvention(0x412940, '__fastcall').
 callingConvention(0x412940, '__stdcall').
 callingConvention(0x412940, '__thiscall').
 callingConvention(0x412940, '__vectorcall').
-callingConvention(0x412946, invalid).
+callingConvention(0x412946, '__cdecl').
 callingConvention(0x412950, '__fastcall').
 callingConvention(0x412950, '__stdcall').
 callingConvention(0x412950, '__thiscall').
@@ -243,7 +379,7 @@ callingConvention(0x4129d0, '__fastcall').
 callingConvention(0x4129d0, '__stdcall').
 callingConvention(0x4129d0, '__thiscall').
 callingConvention(0x4129d0, '__vectorcall').
-callingConvention(0x4129ea, invalid).
+callingConvention(0x4129ea, '__cdecl').
 callingConvention(0x4129f0, '__cdecl').
 callingConvention(0x4129f0, '__fastcall').
 callingConvention(0x4129f0, '__stdcall').
@@ -254,7 +390,7 @@ callingConvention(0x412a40, '__fastcall').
 callingConvention(0x412a40, '__stdcall').
 callingConvention(0x412a40, '__thiscall').
 callingConvention(0x412a40, '__vectorcall').
-callingConvention(0x412a72, invalid).
+callingConvention(0x412a72, '__cdecl').
 callingConvention(0x412a80, '__cdecl').
 callingConvention(0x412a80, '__fastcall').
 callingConvention(0x412a80, '__stdcall').
@@ -290,19 +426,19 @@ callingConvention(0x412c30, '__fastcall').
 callingConvention(0x412c30, '__stdcall').
 callingConvention(0x412c30, '__thiscall').
 callingConvention(0x412c30, '__vectorcall').
-callingConvention(0x412c54, invalid).
-callingConvention(0x412c5a, invalid).
-callingConvention(0x412c60, invalid).
+callingConvention(0x412c54, '__cdecl').
+callingConvention(0x412c5a, '__cdecl').
+callingConvention(0x412c60, '__cdecl').
 callingConvention(0x412c70, '__cdecl').
 callingConvention(0x412c70, '__fastcall').
 callingConvention(0x412c70, '__stdcall').
 callingConvention(0x412c70, '__thiscall').
 callingConvention(0x412c70, '__vectorcall').
-callingConvention(0x412d88, invalid).
-callingConvention(0x412d8e, invalid).
-callingConvention(0x412d94, invalid).
-callingConvention(0x412d9a, invalid).
-callingConvention(0x412da0, invalid).
+callingConvention(0x412d88, '__cdecl').
+callingConvention(0x412d8e, '__cdecl').
+callingConvention(0x412d94, '__cdecl').
+callingConvention(0x412d9a, '__cdecl').
+callingConvention(0x412da0, '__cdecl').
 callingConvention(0x412db0, '__cdecl').
 callingConvention(0x412db0, '__fastcall').
 callingConvention(0x412db0, '__stdcall').
@@ -318,15 +454,15 @@ callingConvention(0x412ed0, '__fastcall').
 callingConvention(0x412ed0, '__stdcall').
 callingConvention(0x412ed0, '__thiscall').
 callingConvention(0x412ed0, '__vectorcall').
-callingConvention(0x413026, invalid).
-callingConvention(0x41302c, invalid).
-callingConvention(0x413032, invalid).
+callingConvention(0x413026, '__cdecl').
+callingConvention(0x41302c, '__cdecl').
+callingConvention(0x413032, '__cdecl').
 callingConvention(0x413040, '__cdecl').
 callingConvention(0x413040, '__fastcall').
 callingConvention(0x413040, '__stdcall').
 callingConvention(0x413040, '__thiscall').
 callingConvention(0x413040, '__vectorcall').
-callingConvention(0x413074, invalid).
+callingConvention(0x413074, '__cdecl').
 callingConvention(0x413080, '__cdecl').
 callingConvention(0x413080, '__fastcall').
 callingConvention(0x413080, '__stdcall').
@@ -337,72 +473,72 @@ callingConvention(0x4133f0, '__fastcall').
 callingConvention(0x4133f0, '__stdcall').
 callingConvention(0x4133f0, '__thiscall').
 callingConvention(0x4133f0, '__vectorcall').
-callingConvention(0x413656, invalid).
-callingConvention(0x41365c, invalid).
-callingConvention(0x413662, invalid).
-callingConvention(0x413668, invalid).
-callingConvention(0x41366e, invalid).
-callingConvention(0x413674, invalid).
-callingConvention(0x41367a, invalid).
-callingConvention(0x413680, invalid).
-callingConvention(0x413686, invalid).
-callingConvention(0x41368c, invalid).
-callingConvention(0x413692, invalid).
-callingConvention(0x413698, invalid).
-callingConvention(0x41369e, invalid).
-callingConvention(0x4136a4, invalid).
-callingConvention(0x4136aa, invalid).
-callingConvention(0x4136b0, invalid).
-callingConvention(0x4136b6, invalid).
-callingConvention(0x4136bc, invalid).
-callingConvention(0x4136c2, invalid).
-callingConvention(0x4136c8, invalid).
-callingConvention(0x4136ce, invalid).
-callingConvention(0x4136d4, invalid).
-callingConvention(0x4136da, invalid).
-callingConvention(0x4136e0, invalid).
-callingConvention(0x4136e6, invalid).
-callingConvention(0x4136ec, invalid).
-callingConvention(0x4136f2, invalid).
-callingConvention(0x4136f8, invalid).
-callingConvention(0x4136fe, invalid).
-callingConvention(0x413704, invalid).
-callingConvention(0x41370a, invalid).
-callingConvention(0x413710, invalid).
-callingConvention(0x413716, invalid).
-callingConvention(0x41371c, invalid).
-callingConvention(0x413722, invalid).
+callingConvention(0x413656, '__cdecl').
+callingConvention(0x41365c, '__cdecl').
+callingConvention(0x413662, '__cdecl').
+callingConvention(0x413668, '__cdecl').
+callingConvention(0x41366e, '__cdecl').
+callingConvention(0x413674, '__cdecl').
+callingConvention(0x41367a, '__cdecl').
+callingConvention(0x413680, '__stdcall').
+callingConvention(0x413686, '__stdcall').
+callingConvention(0x41368c, '__stdcall').
+callingConvention(0x413692, '__stdcall').
+callingConvention(0x413698, '__stdcall').
+callingConvention(0x41369e, '__stdcall').
+callingConvention(0x4136a4, '__stdcall').
+callingConvention(0x4136aa, '__stdcall').
+callingConvention(0x4136b0, '__stdcall').
+callingConvention(0x4136b6, '__stdcall').
+callingConvention(0x4136bc, '__stdcall').
+callingConvention(0x4136c2, '__stdcall').
+callingConvention(0x4136c8, '__stdcall').
+callingConvention(0x4136ce, '__stdcall').
+callingConvention(0x4136d4, '__stdcall').
+callingConvention(0x4136da, '__stdcall').
+callingConvention(0x4136e0, '__stdcall').
+callingConvention(0x4136e6, '__stdcall').
+callingConvention(0x4136ec, '__stdcall').
+callingConvention(0x4136f2, '__stdcall').
+callingConvention(0x4136f8, '__stdcall').
+callingConvention(0x4136fe, '__stdcall').
+callingConvention(0x413704, '__stdcall').
+callingConvention(0x41370a, '__stdcall').
+callingConvention(0x413710, '__stdcall').
+callingConvention(0x413716, '__stdcall').
+callingConvention(0x41371c, '__stdcall').
+callingConvention(0x413722, '__stdcall').
 callingConvention(0x41469e, '__cdecl').
 callingConvention(0x41469e, '__fastcall').
 callingConvention(0x41469e, '__stdcall').
 callingConvention(0x41469e, '__thiscall').
 callingConvention(0x41469e, '__vectorcall').
-callParameter(0x411433, 0x4113d0, ecx, sv_13660297102401723425).
-callParameter(0x411469, 0x4113d0, ecx, sv_13660297102401723425).
-callParameter(0x411481, 0x4113d0, 0, sv_13660297102401723425).
-callParameter(0x411516, 0x4114f0, ecx, sv_4478188426263053484).
-callParameter(0x411539, 0x4114f0, ecx, sv_4478188426263053484).
-callParameter(0x4116d4, 0x4116c0, 0, sv_9884238938339840706).
-callParameter(0x411738, 0x4116f0, 0, sv_12466532982060294255).
-callParameter(0x411738, 0x4116f0, 0x1, sv_5381588847855337673).
-callParameter(0x4117f8, 0x4117b0, 0, sv_12424001164144869836).
-callParameter(0x4117f8, 0x4117b0, 0x1, sv_4692783958038722350).
-callParameter(0x41184a, 0x4117b0, 0, sv_6932937479093714469).
-callParameter(0x41184a, 0x4117b0, 0x1, sv_4282185319687428832).
-callParameter(0x41184a, 0x4117b0, 0x2, sv_17453328432025543950).
-callParameter(0x411866, 0x4117b0, 0, sv_6932937479093714469).
-callParameter(0x411866, 0x4117b0, 0x1, sv_4282185319687428832).
-callParameter(0x411866, 0x4117b0, 0x2, sv_17453328432025543950).
-callParameter(0x4118e0, 0x4118c0, 0, sv_9952602399378933467).
+callParameter(0x411433, 0x4113d0, ecx, sv_11574206222690169963).
+callParameter(0x411469, 0x4113d0, ecx, sv_11574206222690169963).
+callParameter(0x411481, 0x4113d0, 0, sv_11574206222690169963).
+callParameter(0x411516, 0x4114f0, ecx, sv_13906897802353150882).
+callParameter(0x411539, 0x4114f0, ecx, sv_13906897802353150882).
+callParameter(0x4116d4, 0x4116c0, 0, sv_18385493748527249928).
+callParameter(0x411738, 0x4116f0, 0, sv_16150412617760787850).
+callParameter(0x411738, 0x4116f0, 0x1, sv_15593496682961951269).
+callParameter(0x4117f8, 0x4117b0, 0, sv_4431602643075319793).
+callParameter(0x4117f8, 0x4117b0, 0x1, sv_7687133134725481584).
+callParameter(0x41184a, 0x4117b0, 0, sv_3871520058537344442).
+callParameter(0x41184a, 0x4117b0, 0x1, sv_5976238032524897927).
+callParameter(0x41184a, 0x4117b0, 0x2, sv_6929036971927409096).
+callParameter(0x411866, 0x4117b0, 0, sv_3871520058537344442).
+callParameter(0x411866, 0x4117b0, 0x1, sv_5976238032524897927).
+callParameter(0x411866, 0x4117b0, 0x2, sv_6929036971927409096).
+callParameter(0x4118e0, 0x4118c0, 0, sv_7651959963324575578).
 callParameter(0x411984, 0x411920, 0, sv_3162144035974466999).
 callParameter(0x4119da, 0x4119d0, 0, sv_14996022493592569772).
 callParameter(0x411a07, 0x4119d0, 0, sv_12652741279416262384).
 callParameter(0x411a07, 0x4119d0, 0x1, sv_11974338865516576860).
 callParameter(0x411a07, 0x4119d0, 0x2, sv_2072369543251150647).
-callParameter(0x411a07, 0x4119d0, 0x3, sv_18026601016904619872).
+callParameter(0x411a07, 0x4119d0, 0x3, sv_10388702413570451862).
 callParameter(0x411a07, 0x4119d0, 0x4, sv_17818193215518651225).
 callParameter(0x411ad7, 0x411a60, 0, sv_10560434764219057507).
-callParameter(0x411ad7, 0x411a60, 0x1, sv_760881912381872071).
+callParameter(0x411ad7, 0x411a60, 0x1, sv_5752848536958596816).
 callParameter(0x411b36, 0x411a60, 0, sv_3628639069591891614).
 callParameter(0x411b36, 0x411a60, 0x1, sv_3861169496900251489).
 callParameter(0x411b77, 0x411a60, 0, sv_7218865496250612232).
@@ -412,202 +548,202 @@ callParameter(0x411ba5, 0x411a60, 0x4, sv_2875869634523325110).
 callParameter(0x411bc1, 0x411a60, 0, sv_10560434764219057507).
 callParameter(0x411bd5, 0x411a60, 0, sv_11810702001404785480).
 callParameter(0x411edf, 0x411e00, 0, sv_10082440950938573591).
-callParameter(0x411f04, 0x411e00, 0, sv_16193052169733190407).
-callParameter(0x411f87, 0x411f60, 0, sv_7257954533808343910).
-callParameter(0x411f87, 0x411f60, 0x1, sv_3674319958360957814).
-callParameter(0x411f87, 0x411f60, 0x2, sv_8482404517742605882).
-callParameter(0x411f87, 0x411f60, 0x3, sv_3342246323886306240).
-callParameter(0x411fa7, 0x411f60, 0, sv_12773941128284470118).
+callParameter(0x411f04, 0x411e00, 0, sv_2998618887348406437).
+callParameter(0x411f87, 0x411f60, 0, sv_18215844204660222496).
+callParameter(0x411f87, 0x411f60, 0x1, sv_2594418986759984304).
+callParameter(0x411f87, 0x411f60, 0x2, sv_16746843634712051504).
+callParameter(0x411f87, 0x411f60, 0x3, sv_14959105026130737487).
+callParameter(0x411fa7, 0x411f60, 0, sv_2056087998619766611).
 callParameter(0x411fa7, 0x411f60, 0x3, sv_3278621765560336806).
-callParameter(0x41203d, 0x411fd0, 0x2, sv_8739870322433320051).
-callParameter(0x412058, 0x411fd0, 0x2, sv_8739870322433320051).
-callParameter(0x412058, 0x411fd0, 0x4, sv_18011957340320008231).
-callParameter(0x412058, 0x411fd0, 0x5, sv_10444398147163990394).
-callParameter(0x41209e, 0x411fd0, 0, sv_1669835000665069688).
-callParameter(0x41209e, 0x411fd0, 0x1, sv_8391682776851554805).
-callParameter(0x41209e, 0x411fd0, 0x2, sv_2268779942531302009).
-callParameter(0x41209e, 0x411fd0, 0x3, sv_2072908259093575699).
-callParameter(0x412100, 0x411fd0, 0, sv_13042115526673067043).
-callParameter(0x412100, 0x411fd0, 0x1, sv_17606251297768032546).
-callParameter(0x412100, 0x411fd0, 0x3, sv_14100783472762749690).
-callParameter(0x412100, 0x411fd0, 0x4, sv_6283516557678763127).
-callParameter(0x412164, 0x411fd0, 0x2, sv_17606251297768032546).
-callParameter(0x412164, 0x411fd0, 0x4, sv_12925230398485403820).
-callParameter(0x412195, 0x411fd0, 0x2, sv_6283516557678763127).
-callParameter(0x412195, 0x411fd0, 0x4, sv_17342646830080041880).
+callParameter(0x41203d, 0x411fd0, 0x2, sv_17383894844977426981).
+callParameter(0x412058, 0x411fd0, 0x2, sv_17383894844977426981).
+callParameter(0x412058, 0x411fd0, 0x4, sv_1641860330432900273).
+callParameter(0x412058, 0x411fd0, 0x5, sv_14840670509819412750).
+callParameter(0x41209e, 0x411fd0, 0, sv_13543619791603702727).
+callParameter(0x41209e, 0x411fd0, 0x1, sv_14488617367395068221).
+callParameter(0x41209e, 0x411fd0, 0x2, sv_17636202897113823737).
+callParameter(0x41209e, 0x411fd0, 0x3, sv_5993458300806670161).
+callParameter(0x412100, 0x411fd0, 0, sv_6887595709107962135).
+callParameter(0x412100, 0x411fd0, 0x1, sv_4735660962097597227).
+callParameter(0x412100, 0x411fd0, 0x3, sv_4665951077637699520).
+callParameter(0x412100, 0x411fd0, 0x4, sv_10741844436204692837).
+callParameter(0x412164, 0x411fd0, 0x2, sv_4735660962097597227).
+callParameter(0x412164, 0x411fd0, 0x4, sv_15829597562672925298).
+callParameter(0x412195, 0x411fd0, 0x2, sv_10741844436204692837).
+callParameter(0x412195, 0x411fd0, 0x4, sv_13166914923873230011).
 callParameter(0x4122cc, 0x412270, 0, sv_2350992866519821324).
-callParameter(0x4122cc, 0x412270, 0x3, sv_17327069991961645429).
+callParameter(0x4122cc, 0x412270, 0x3, sv_14116332672885065844).
 callParameter(0x41238e, 0x412320, 0, sv_2350992866519821324).
-callParameter(0x41238e, 0x412320, 0x3, sv_15837774158654910085).
-callParameter(0x4124d4, 0x4123f0, 0, sv_14770254271720580619).
-callParameter(0x4124d4, 0x4123f0, 0x1, sv_6343588178304103438).
-callParameter(0x4124d4, 0x4123f0, 0x3, sv_18151457596292123088).
+callParameter(0x41238e, 0x412320, 0x3, sv_1212029139354782838).
+callParameter(0x4124d4, 0x4123f0, 0, sv_1676448691390190687).
+callParameter(0x4124d4, 0x4123f0, 0x1, sv_9678681646351314860).
+callParameter(0x4124d4, 0x4123f0, 0x3, sv_9068037100182552612).
 callParameter(0x412568, 0x412530, 0, sv_6668320837607369819).
-callParameter(0x41257c, 0x412530, 0, sv_3409138328668994254).
+callParameter(0x41257c, 0x412530, 0, sv_6266112695274170847).
 callParameter(0x41257c, 0x412530, 0x1, sv_14315734300131349301).
-callParameter(0x4125dd, 0x412530, 0, sv_12882816269647758434).
-callParameter(0x4125dd, 0x412530, 0x1, sv_2411457909140310194).
-callParameter(0x4125dd, 0x412530, 0x2, sv_5592774783784620559).
-callParameter(0x4125dd, 0x412530, 0x3, sv_3514316734097630894).
-callParameter(0x412603, 0x412530, 0, sv_2725193917589246907).
-callParameter(0x412628, 0x412530, 0, sv_13927694436985505668).
-callParameter(0x412628, 0x412530, 0x1, sv_17224985336712934207).
-callParameter(0x412628, 0x412530, 0x3, sv_2725193917589246907).
-callParameter(0x41264a, 0x412530, 0, sv_13927694436985505668).
-callParameter(0x41264a, 0x412530, 0x1, sv_17224985336712934207).
+callParameter(0x4125dd, 0x412530, 0, sv_5172038864876807116).
+callParameter(0x4125dd, 0x412530, 0x1, sv_12572530062381746632).
+callParameter(0x4125dd, 0x412530, 0x2, sv_925500532479564191).
+callParameter(0x4125dd, 0x412530, 0x3, sv_14386684977435981468).
+callParameter(0x412603, 0x412530, 0, sv_2055052669481067917).
+callParameter(0x412628, 0x412530, 0, sv_12694003954082477504).
+callParameter(0x412628, 0x412530, 0x1, sv_145481092447760815).
+callParameter(0x412628, 0x412530, 0x3, sv_2055052669481067917).
+callParameter(0x41264a, 0x412530, 0, sv_12694003954082477504).
+callParameter(0x41264a, 0x412530, 0x1, sv_145481092447760815).
 callParameter(0x41264a, 0x412530, 0x3, sv_6789248926175953872).
-callParameter(0x412811, 0x412740, 0, sv_2280754820494531292).
-callParameter(0x412811, 0x412740, 0x1, sv_1587998529201700011).
-callParameter(0x412811, 0x412740, 0x3, sv_17530807196443351771).
+callParameter(0x412811, 0x412740, 0, sv_11208873032977948635).
+callParameter(0x412811, 0x412740, 0x1, sv_9295163380266619089).
+callParameter(0x412811, 0x412740, 0x3, sv_5073586182483051736).
 callParameter(0x4129da, 0x4129d0, 0, sv_4379363614965727937).
 callParameter(0x412a14, 0x4129f0, 0x1, sv_17024033202257265744).
 callParameter(0x412a14, 0x4129f0, 0x2, sv_14123344781540164320).
-callParameter(0x412a1d, 0x4129f0, 0, sv_17677349353355222).
+callParameter(0x412a1d, 0x4129f0, 0, sv_13847617422970066260).
 callParameter(0x412a1d, 0x4129f0, 0x1, sv_15063546136516371498).
 callParameter(0x412a1d, 0x4129f0, 0x2, sv_3458770783364155378).
 callParameter(0x412a1d, 0x4129f0, 0x3, sv_12969490442583203196).
-callParameter(0x412a61, 0x412a40, 0, sv_10524975759114174327).
-callParameter(0x412a61, 0x412a40, 0x1, sv_12141337750515258934).
-callParameter(0x412a61, 0x412a40, 0x2, sv_13438225034482186019).
-callParameter(0x412a61, 0x412a40, 0x3, sv_2553611743979267880).
-callParameter(0x412a61, 0x412a40, 0x4, sv_3654803603805251992).
-callParameter(0x412b38, 0x412b00, 0, sv_8635998572686819474).
-callParameter(0x412b4b, 0x412b00, 0, sv_15051341204973897993).
-callParameter(0x412b71, 0x412b00, 0, sv_8635998572686819474).
-callParameter(0x412b80, 0x412b00, 0, sv_1739642723647990242).
-callParameter(0x412b95, 0x412b00, 0, sv_11071114848378576630).
-callParameter(0x412b9c, 0x412b00, 0, sv_7545076389531720740).
-callParameter(0x412b9c, 0x412b00, 0x1, sv_12769493682175037151).
-callParameter(0x412b9c, 0x412b00, 0x2, sv_7072666840509201699).
-callParameter(0x412bab, 0x412b00, 0, sv_16148116570206203268).
-callParameter(0x412bba, 0x412b00, 0, sv_7020114086947775690).
-callParameter(0x412c39, 0x412c30, 0, sv_6931215206829074033).
-callParameter(0x412cb5, 0x412c70, 0, sv_2160534774895913145).
-callParameter(0x412cf2, 0x412c70, 0, sv_11512499418358682135).
+callParameter(0x412a61, 0x412a40, 0, sv_7557275708175957676).
+callParameter(0x412a61, 0x412a40, 0x1, sv_6931034961856417581).
+callParameter(0x412a61, 0x412a40, 0x2, sv_11578241818760711686).
+callParameter(0x412a61, 0x412a40, 0x3, sv_10975281901906174930).
+callParameter(0x412a61, 0x412a40, 0x4, sv_17572015326205937811).
+callParameter(0x412b38, 0x412b00, 0, sv_1287977008720887007).
+callParameter(0x412b4b, 0x412b00, 0, sv_9131794533807491256).
+callParameter(0x412b71, 0x412b00, 0, sv_1287977008720887007).
+callParameter(0x412b80, 0x412b00, 0, sv_17995724598899047687).
+callParameter(0x412b95, 0x412b00, 0, sv_5769630568966110162).
+callParameter(0x412b9c, 0x412b00, 0, sv_4679644634128864806).
+callParameter(0x412b9c, 0x412b00, 0x1, sv_8347878872519933241).
+callParameter(0x412b9c, 0x412b00, 0x2, sv_17574649120822633744).
+callParameter(0x412bab, 0x412b00, 0, sv_10293254065909322701).
+callParameter(0x412bba, 0x412b00, 0, sv_722304372678636289).
+callParameter(0x412c39, 0x412c30, 0, sv_10305283292404416574).
+callParameter(0x412cb5, 0x412c70, 0, sv_11783789535922589959).
+callParameter(0x412cf2, 0x412c70, 0, sv_5271521867173877860).
 callParameter(0x412f17, 0x412ed0, 0, sv_2311200588060312592).
 callParameter(0x412f4a, 0x412ed0, 0, sv_2311200588060312592).
-callParameter(0x412f4a, 0x412ed0, 0x1, sv_14466104114600644284).
+callParameter(0x412f4a, 0x412ed0, 0x1, sv_18373973141239349886).
 callParameter(0x41305f, 0x413040, 0, sv_12610088236037371856).
 callParameter(0x41305f, 0x413040, 0x1, sv_14782060090633830294).
-callParameter(0x41305f, 0x413040, 0x2, sv_5779607968192147460).
-callParameter(0x41305f, 0x413040, 0x3, sv_18061177208693715886).
-callParameter(0x41305f, 0x413040, 0x4, sv_5797316256961517542).
-callParameter(0x41305f, 0x413040, 0x5, sv_5515648384453304637).
-callParameter(0x4130a5, 0x413080, 0, sv_5053118156909840456).
-callParameter(0x4130a5, 0x413080, 0x1, sv_3361835987584471724).
-callParameter(0x4130c2, 0x413080, 0, sv_901963440971853785).
-callParameter(0x4130c2, 0x413080, 0x1, sv_1921666803279678275).
-callParameter(0x4130c2, 0x413080, 0x2, sv_2094685333252780474).
-callParameter(0x413152, 0x413080, 0, sv_5186107932838255978).
+callParameter(0x41305f, 0x413040, 0x2, sv_14767309314849771079).
+callParameter(0x41305f, 0x413040, 0x3, sv_1738774524081245271).
+callParameter(0x41305f, 0x413040, 0x4, sv_4026625290798884460).
+callParameter(0x41305f, 0x413040, 0x5, sv_3943431893930945254).
+callParameter(0x4130a5, 0x413080, 0, sv_6181957266636459194).
+callParameter(0x4130a5, 0x413080, 0x1, sv_14147551344857304537).
+callParameter(0x4130c2, 0x413080, 0, sv_10946153556599660020).
+callParameter(0x4130c2, 0x413080, 0x1, sv_9270387650685743942).
+callParameter(0x4130c2, 0x413080, 0x2, sv_10375834479922606584).
+callParameter(0x413152, 0x413080, 0, sv_6823852372593853558).
 callParameter(0x413152, 0x413080, 0x1, sv_9391721844656482115).
-callParameter(0x413278, 0x413080, 0, sv_7881273416940944973).
-callParameter(0x413278, 0x413080, 0x2, sv_5771769541245674021).
+callParameter(0x413278, 0x413080, 0, sv_17405557866303003590).
+callParameter(0x413278, 0x413080, 0x2, sv_11801967330044393340).
 callParameter(0x413431, 0x4133f0, 0, sv_1430885392969156386).
 callParameter(0x413440, 0x4133f0, 0, sv_2699822963438652182).
-callParameter(0x413464, 0x4133f0, 0, sv_9278098211002803158).
+callParameter(0x413464, 0x4133f0, 0, sv_7951656135575339828).
 callParameter(0x413464, 0x4133f0, 0x1, sv_12417212714687586234).
-callParameter(0x413487, 0x4133f0, 0, sv_9278098211002803158).
+callParameter(0x413487, 0x4133f0, 0, sv_7951656135575339828).
 callParameter(0x413487, 0x4133f0, 0x1, sv_14135173655984911425).
-callParameter(0x413495, 0x4133f0, 0, sv_9278098211002803158).
+callParameter(0x413495, 0x4133f0, 0, sv_7951656135575339828).
 callParameter(0x413495, 0x4133f0, 0x1, sv_11190930718803908746).
-callParameter(0x4134bd, 0x4133f0, 0, sv_9278098211002803158).
-callParameter(0x413511, 0x4133f0, 0, sv_9278098211002803158).
-callParameter(0x4135c4, 0x4133f0, 0, sv_3403204457986700304).
-callParameter(0x414697, 0x414690, 0, sv_11865421799301672356).
-callReturn(0x41140f, 0x4113d0, eax, sv_13660297102401723425).
-callReturn(0x411433, 0x4113d0, eax, sv_13660297102401723425).
-callReturn(0x411469, 0x4113d0, eax, sv_232615828391591311).
-callReturn(0x411516, 0x4114f0, eax, sv_4478188426263053484).
-callReturn(0x41151d, 0x4114f0, eax, sv_3183252711373592902).
-callReturn(0x411539, 0x4114f0, eax, sv_3167975594353926945).
-callReturn(0x4116d4, 0x4116c0, eax, sv_3585288976816487434).
-callReturn(0x411738, 0x4116f0, eax, sv_7916169102742215285).
-callReturn(0x4117f8, 0x4117b0, eax, sv_1286710443576341749).
-callReturn(0x41184a, 0x4117b0, eax, sv_7047974457601442360).
-callReturn(0x411866, 0x4117b0, eax, sv_5837123790023634632).
-callReturn(0x4118da, 0x4118c0, eax, sv_9952602399378933467).
-callReturn(0x4118e0, 0x4118c0, eax, sv_14447582789011037440).
-callReturn(0x41190a, 0x411900, eax, sv_8410351648562722922).
-callReturn(0x411925, 0x411920, eax, sv_16357355436839507903).
-callReturn(0x41193c, 0x411920, eax, sv_11984770422223599860).
-callReturn(0x41196c, 0x411920, eax, sv_15243801034743078290).
-callReturn(0x411971, 0x411920, eax, sv_9221588950338664093).
-callReturn(0x41198d, 0x411920, eax, sv_3725001651933311736).
-callReturn(0x41199d, 0x411920, eax, sv_3123218105546989555).
-callReturn(0x4119da, 0x4119d0, eax, sv_13631340364781080781).
-callReturn(0x411a07, 0x4119d0, eax, sv_16253641349373451246).
-callReturn(0x411a45, 0x411a40, eax, sv_11764795097584382634).
-callReturn(0x411a4a, 0x411a40, eax, sv_9667813649028623602).
-callReturn(0x411aa6, 0x411a60, eax, sv_588333874929726450).
-callReturn(0x411aba, 0x411a60, eax, sv_287135562658838780).
-callReturn(0x411ad7, 0x411a60, eax, sv_11710221105973805596).
-callReturn(0x411b36, 0x411a60, eax, sv_587754998439811145).
-callReturn(0x411ba5, 0x411a60, eax, sv_7037173848128960361).
-callReturn(0x411bc1, 0x411a60, eax, sv_10238622633876773545).
-callReturn(0x411bd5, 0x411a60, eax, sv_4612160823828576574).
-callReturn(0x411bef, 0x411a60, eax, sv_12254742889925832519).
-callReturn(0x411c1a, 0x411a60, eax, sv_12162385342959712173).
-callReturn(0x411ebd, 0x411e00, eax, sv_2894136924351635989).
-callReturn(0x411ed4, 0x411e00, eax, sv_17469964928122640953).
-callReturn(0x411edf, 0x411e00, eax, sv_4867674420041386214).
-callReturn(0x411efd, 0x411e00, eax, sv_16193052169733190407).
-callReturn(0x411f04, 0x411e00, eax, sv_4895472927881084075).
-callReturn(0x411f87, 0x411f60, eax, sv_13572397424763949293).
-callReturn(0x411fa7, 0x411f60, eax, sv_12912110514602738418).
-callReturn(0x412008, 0x411fd0, eax, sv_9444124833885050832).
-callReturn(0x41201b, 0x411fd0, eax, sv_5344470953673224950).
-callReturn(0x41203d, 0x411fd0, eax, sv_10444398147163990394).
-callReturn(0x412058, 0x411fd0, eax, sv_4247362490395699436).
-callReturn(0x41207b, 0x411fd0, eax, sv_724753835380693577).
-callReturn(0x41209e, 0x411fd0, eax, sv_5766788800230951087).
-callReturn(0x4120cf, 0x411fd0, eax, sv_16092748977894597424).
-callReturn(0x412100, 0x411fd0, eax, sv_15143554664608562981).
-callReturn(0x412164, 0x411fd0, eax, sv_14368459938919744172).
-callReturn(0x412195, 0x411fd0, eax, sv_4415414323700544542).
-callReturn(0x4124d4, 0x4123f0, eax, sv_14210278131474434973).
-callReturn(0x412568, 0x412530, eax, sv_3409138328668994254).
-callReturn(0x41257c, 0x412530, eax, sv_1889905782053831145).
-callReturn(0x4125dd, 0x412530, eax, sv_12979722079155326381).
-callReturn(0x412603, 0x412530, eax, sv_2631835774692115232).
-callReturn(0x412628, 0x412530, eax, sv_7208350067252520132).
-callReturn(0x41264a, 0x412530, eax, sv_65667428854212751).
-callReturn(0x412811, 0x412740, eax, sv_14136206813036006821).
-callReturn(0x4129da, 0x4129d0, eax, sv_11200787338383915191).
-callReturn(0x412a14, 0x4129f0, eax, sv_17677349353355222).
-callReturn(0x412a1d, 0x4129f0, eax, sv_3357528460477978339).
-callReturn(0x412b38, 0x412b00, eax, sv_5949078950012765770).
-callReturn(0x412b4b, 0x412b00, eax, sv_17329368831511427866).
-callReturn(0x412b71, 0x412b00, eax, sv_16148116570206203268).
-callReturn(0x412b80, 0x412b00, eax, sv_7020114086947775690).
-callReturn(0x412b95, 0x412b00, eax, sv_7545076389531720740).
-callReturn(0x412b9c, 0x412b00, eax, sv_13349245095861978828).
-callReturn(0x412bab, 0x412b00, eax, sv_11409497579153890842).
-callReturn(0x412bba, 0x412b00, eax, sv_11256739329082004947).
-callReturn(0x412bcc, 0x412b00, eax, sv_9603367630858763899).
-callReturn(0x412c39, 0x412c30, eax, sv_11929154161572161114).
-callReturn(0x412cca, 0x412c70, eax, sv_11540037569500352123).
-callReturn(0x412cd6, 0x412c70, eax, sv_15568174990135779841).
-callReturn(0x412ce2, 0x412c70, eax, sv_10089195160908529743).
-callReturn(0x412cf2, 0x412c70, eax, sv_13449480033556313349).
-callReturn(0x412f17, 0x412ed0, eax, sv_10286811618721992436).
-callReturn(0x412f4a, 0x412ed0, eax, sv_5583386109692727036).
-callReturn(0x41305f, 0x413040, eax, sv_662435135607428239).
-callReturn(0x4130a5, 0x413080, eax, sv_5765101672892853776).
-callReturn(0x4130c2, 0x413080, eax, sv_3023384904876056665).
-callReturn(0x413130, 0x413080, eax, sv_12348862976956531424).
-callReturn(0x413152, 0x413080, eax, sv_15030413762026571144).
-callReturn(0x413271, 0x413080, eax, sv_7881273416940944973).
-callReturn(0x413278, 0x413080, eax, sv_13104191133100426797).
-callReturn(0x4132fa, 0x413080, eax, sv_2249895401899151172).
-callReturn(0x413301, 0x413080, eax, sv_3273262216247434469).
-callReturn(0x413431, 0x4133f0, eax, sv_9904493325551951978).
-callReturn(0x413440, 0x4133f0, eax, sv_9278098211002803158).
-callReturn(0x413464, 0x4133f0, eax, sv_6035523665826255867).
-callReturn(0x413487, 0x4133f0, eax, sv_9565709455077150397).
-callReturn(0x413495, 0x4133f0, eax, sv_9359036803747745441).
-callReturn(0x4134bd, 0x4133f0, eax, sv_9814124795887179339).
-callReturn(0x413511, 0x4133f0, eax, sv_9020947648501404934).
-callReturn(0x4135c4, 0x4133f0, eax, sv_3720489626169064341).
+callParameter(0x4134bd, 0x4133f0, 0, sv_7951656135575339828).
+callParameter(0x413511, 0x4133f0, 0, sv_7951656135575339828).
+callParameter(0x4135c4, 0x4133f0, 0, sv_13683054803669049415).
+callParameter(0x414697, 0x414690, 0, sv_9949567337050288990).
+callReturn(0x41140f, 0x4113d0, eax, sv_11574206222690169963).
+callReturn(0x411433, 0x4113d0, eax, sv_11574206222690169963).
+callReturn(0x411469, 0x4113d0, eax, sv_3964887025032068082).
+callReturn(0x411516, 0x4114f0, eax, sv_13906897802353150882).
+callReturn(0x41151d, 0x4114f0, eax, sv_16145178792189013327).
+callReturn(0x411539, 0x4114f0, eax, sv_148417441915609235).
+callReturn(0x4116d4, 0x4116c0, eax, sv_11247887952043701677).
+callReturn(0x411738, 0x4116f0, eax, sv_9262377212406704378).
+callReturn(0x4117f8, 0x4117b0, eax, sv_7817160507142491243).
+callReturn(0x41184a, 0x4117b0, eax, sv_255642062923214892).
+callReturn(0x411866, 0x4117b0, eax, sv_8182059925496556422).
+callReturn(0x4118da, 0x4118c0, eax, sv_7651959963324575578).
+callReturn(0x4118e0, 0x4118c0, eax, sv_9892690203332458851).
+callReturn(0x41190a, 0x411900, eax, sv_3462298034383674887).
+callReturn(0x411925, 0x411920, eax, sv_14503045550222145834).
+callReturn(0x41193c, 0x411920, eax, sv_1018271273771451847).
+callReturn(0x41196c, 0x411920, eax, sv_4630202261275459174).
+callReturn(0x411971, 0x411920, eax, sv_2767565721467773206).
+callReturn(0x41198d, 0x411920, eax, sv_10951834758187815278).
+callReturn(0x41199d, 0x411920, eax, sv_8202660592535395390).
+callReturn(0x4119da, 0x4119d0, eax, sv_9117673352466402875).
+callReturn(0x411a07, 0x4119d0, eax, sv_12135334007246543760).
+callReturn(0x411a45, 0x411a40, eax, sv_1861126686933077088).
+callReturn(0x411a4a, 0x411a40, eax, sv_1932047068563275152).
+callReturn(0x411aa6, 0x411a60, eax, sv_7594786454942193730).
+callReturn(0x411aba, 0x411a60, eax, sv_4615030114324387414).
+callReturn(0x411ad7, 0x411a60, eax, sv_6987161986664917478).
+callReturn(0x411b36, 0x411a60, eax, sv_9685531631029245642).
+callReturn(0x411ba5, 0x411a60, eax, sv_12689664079777240670).
+callReturn(0x411bc1, 0x411a60, eax, sv_6135672846616226264).
+callReturn(0x411bd5, 0x411a60, eax, sv_7008747379141107029).
+callReturn(0x411bef, 0x411a60, eax, sv_7218504888406266761).
+callReturn(0x411c1a, 0x411a60, eax, sv_4584773839462159447).
+callReturn(0x411ebd, 0x411e00, eax, sv_10948489384450205154).
+callReturn(0x411ed4, 0x411e00, eax, sv_4103595620286463119).
+callReturn(0x411edf, 0x411e00, eax, sv_3809832701156860526).
+callReturn(0x411efd, 0x411e00, eax, sv_2998618887348406437).
+callReturn(0x411f04, 0x411e00, eax, sv_12437753464433734338).
+callReturn(0x411f87, 0x411f60, eax, sv_7041838499564915702).
+callReturn(0x411fa7, 0x411f60, eax, sv_6984117676283341788).
+callReturn(0x412008, 0x411fd0, eax, sv_15885256808863824322).
+callReturn(0x41201b, 0x411fd0, eax, sv_7525549674289543747).
+callReturn(0x41203d, 0x411fd0, eax, sv_14840670509819412750).
+callReturn(0x412058, 0x411fd0, eax, sv_7686290421386451012).
+callReturn(0x41207b, 0x411fd0, eax, sv_14570305076504743212).
+callReturn(0x41209e, 0x411fd0, eax, sv_1327435090291860686).
+callReturn(0x4120cf, 0x411fd0, eax, sv_6562030874836416757).
+callReturn(0x412100, 0x411fd0, eax, sv_7506052267974671969).
+callReturn(0x412164, 0x411fd0, eax, sv_14200017061922639412).
+callReturn(0x412195, 0x411fd0, eax, sv_15577404078682090476).
+callReturn(0x4124d4, 0x4123f0, eax, sv_9485459205457505065).
+callReturn(0x412568, 0x412530, eax, sv_6266112695274170847).
+callReturn(0x41257c, 0x412530, eax, sv_2251311223454760635).
+callReturn(0x4125dd, 0x412530, eax, sv_4148339894353574422).
+callReturn(0x412603, 0x412530, eax, sv_8464717283121363985).
+callReturn(0x412628, 0x412530, eax, sv_4623872813779652301).
+callReturn(0x41264a, 0x412530, eax, sv_5664684225287435634).
+callReturn(0x412811, 0x412740, eax, sv_7376310922735563290).
+callReturn(0x4129da, 0x4129d0, eax, sv_17106991726525537321).
+callReturn(0x412a14, 0x4129f0, eax, sv_13847617422970066260).
+callReturn(0x412a1d, 0x4129f0, eax, sv_1950760233784244808).
+callReturn(0x412b38, 0x412b00, eax, sv_11535663839002539267).
+callReturn(0x412b4b, 0x412b00, eax, sv_8970554711285453643).
+callReturn(0x412b71, 0x412b00, eax, sv_10293254065909322701).
+callReturn(0x412b80, 0x412b00, eax, sv_722304372678636289).
+callReturn(0x412b95, 0x412b00, eax, sv_4679644634128864806).
+callReturn(0x412b9c, 0x412b00, eax, sv_2981101686992232837).
+callReturn(0x412bab, 0x412b00, eax, sv_8978249847600228455).
+callReturn(0x412bba, 0x412b00, eax, sv_4081831314400641080).
+callReturn(0x412bcc, 0x412b00, eax, sv_16178704633935260968).
+callReturn(0x412c39, 0x412c30, eax, sv_16000670369269608620).
+callReturn(0x412cca, 0x412c70, eax, sv_13536559542489371428).
+callReturn(0x412cd6, 0x412c70, eax, sv_2268549049822889949).
+callReturn(0x412ce2, 0x412c70, eax, sv_11948022549700090682).
+callReturn(0x412cf2, 0x412c70, eax, sv_11540474185146806211).
+callReturn(0x412f17, 0x412ed0, eax, sv_7304979333531969545).
+callReturn(0x412f4a, 0x412ed0, eax, sv_2117356896635309262).
+callReturn(0x41305f, 0x413040, eax, sv_8935142399903418471).
+callReturn(0x4130a5, 0x413080, eax, sv_6455066336631084429).
+callReturn(0x4130c2, 0x413080, eax, sv_10406914511887275371).
+callReturn(0x413130, 0x413080, eax, sv_1115976823822552622).
+callReturn(0x413152, 0x413080, eax, sv_11909089436388149548).
+callReturn(0x413271, 0x413080, eax, sv_17405557866303003590).
+callReturn(0x413278, 0x413080, eax, sv_16435400443911207227).
+callReturn(0x4132fa, 0x413080, eax, sv_16247950291249911219).
+callReturn(0x413301, 0x413080, eax, sv_11969155271934964264).
+callReturn(0x413431, 0x4133f0, eax, sv_3946724969407853297).
+callReturn(0x413440, 0x4133f0, eax, sv_7951656135575339828).
+callReturn(0x413464, 0x4133f0, eax, sv_8546587468844633697).
+callReturn(0x413487, 0x4133f0, eax, sv_11500215841727015762).
+callReturn(0x413495, 0x4133f0, eax, sv_9977829967911435149).
+callReturn(0x4134bd, 0x4133f0, eax, sv_17516605187810082839).
+callReturn(0x413511, 0x4133f0, eax, sv_12264899702146616812).
+callReturn(0x4135c4, 0x4133f0, eax, sv_2200067740248498298).
 callTarget(0x411091, 0x4116a0, 0x411e00).
 callTarget(0x41140f, 0x4113d0, 0x411195).
 callTarget(0x411433, 0x4113d0, 0x411159).
@@ -741,367 +877,222 @@ callTarget(0x414697, 0x414690, 0x41108c).
 callTarget(0x4146ad, 0x41469e, 0x41101e).
 callTarget(0x4146b7, 0x41469e, 0x411186).
 fileInfo('BB356F28F177143D437FD48E415A5AF2', 'ooex2.exe').
-funcParameter(0x411005, ecx, sv_3192138257221173948).
-funcParameter(0x41100a, ecx, sv_10130295999817917309).
-funcParameter(0x41100a, ecx, sv_4675760582114127251).
-funcParameter(0x41100f, ecx, sv_10468303442203231001).
-funcParameter(0x41100f, ecx, sv_3496517093534454004).
-funcParameter(0x411014, ecx, sv_4581831323814654705).
-funcParameter(0x411019, 0, sv_3202603498540245465).
-funcParameter(0x411019, ecx, sv_4145948547712682367).
-funcParameter(0x41101e, ecx, sv_4112599013947060902).
-funcParameter(0x41101e, ecx, sv_8409805567031943855).
-funcParameter(0x411023, ecx, sv_11531656690350044559).
-funcParameter(0x411028, ecx, sv_10854495579057313722).
-funcParameter(0x41102d, ecx, sv_13896612644509285573).
-funcParameter(0x411032, 0x2, sv_14840725929405700848).
-funcParameter(0x411032, ecx, sv_2893592751728133190).
-funcParameter(0x411032, ecx, sv_6785529891499146037).
-funcParameter(0x411032, edx, sv_11561547068637787976).
-funcParameter(0x411037, ecx, sv_13579041413620466700).
-funcParameter(0x41103c, ecx, sv_5045596680046952276).
-funcParameter(0x411041, ecx, sv_10502133697554861188).
-funcParameter(0x411046, ecx, sv_9468912721736894856).
-funcParameter(0x41104b, ecx, sv_11492346654960968896).
-funcParameter(0x411050, ecx, sv_5377577131144832734).
-funcParameter(0x411055, ecx, sv_1129868890459109108).
-funcParameter(0x41105a, ecx, sv_10542405892503439490).
-funcParameter(0x41105f, ecx, sv_4640923502682198236).
-funcParameter(0x411064, ecx, sv_10549166468478526828).
-funcParameter(0x411069, 0, sv_6931215206829074033).
-funcParameter(0x411069, ecx, sv_264851378138501441).
-funcParameter(0x41106e, ecx, sv_11476929795907253553).
-funcParameter(0x411073, 0x2, sv_13789145039243695247).
-funcParameter(0x411073, 0x3, sv_2049049409766192593).
-funcParameter(0x411073, eax, sv_5676546717069925483).
-funcParameter(0x411073, ecx, sv_10948182831206155566).
-funcParameter(0x411073, esp, sv_15984970047379730479).
-funcParameter(0x411078, 0, sv_5779607968192147460).
-funcParameter(0x411078, 0x1, sv_18061177208693715886).
-funcParameter(0x411078, 0x2, sv_5797316256961517542).
-funcParameter(0x411078, 0x3, sv_5515648384453304637).
-funcParameter(0x411078, ecx, sv_16803807145108179474).
-funcParameter(0x41107d, ecx, sv_12561899157298795460).
-funcParameter(0x411082, ecx, sv_16890574812926008982).
-funcParameter(0x411087, ecx, sv_10647730842365187354).
-funcParameter(0x411087, ecx, sv_2318804144384583629).
-funcParameter(0x411087, edx, sv_2420142071287591613).
-funcParameter(0x411096, ecx, sv_4497616270178412686).
-funcParameter(0x41109b, ecx, sv_8517361092399522598).
-funcParameter(0x4110a0, ecx, sv_16981889395179823386).
-funcParameter(0x4110a5, ecx, sv_2478382143744796909).
-funcParameter(0x4110aa, ecx, sv_12180072377012636768).
-funcParameter(0x4110af, 0, sv_12063143558395264839).
-funcParameter(0x4110af, ecx, sv_10848416374105114687).
-funcParameter(0x4110b4, ecx, sv_16687402001140834519).
-funcParameter(0x4110b9, 0, sv_6732925751403456002).
-funcParameter(0x4110b9, 0x1, sv_5171082934654314801).
-funcParameter(0x4110b9, ecx, sv_3858556060637802871).
-funcParameter(0x4110be, ecx, sv_1026728941620073088).
-funcParameter(0x4110c3, ecx, sv_6965635329107308936).
-funcParameter(0x4110c8, ecx, sv_1623532345190668180).
-funcParameter(0x4110cd, ecx, sv_14449799903391211042).
-funcParameter(0x4110d2, 0, sv_14770254271720580619).
-funcParameter(0x4110d2, 0x1, sv_7731798441838668024).
-funcParameter(0x4110d2, ecx, sv_14531762691210336542).
-funcParameter(0x4110d7, ecx, sv_12769736662699471184).
-funcParameter(0x4110dc, ecx, sv_17173433015049200631).
-funcParameter(0x4110dc, ecx, sv_4759586195657734727).
-funcParameter(0x4110e1, ecx, sv_18438355731209672731).
-funcParameter(0x4110e6, 0, sv_6496523929752480848).
-funcParameter(0x4110e6, ecx, sv_14611384310029132186).
-funcParameter(0x4110eb, ecx, sv_18336640367827158550).
-funcParameter(0x4110f0, ecx, sv_294936257356759143).
-funcParameter(0x4110f5, 0, sv_7784178796745545319).
-funcParameter(0x4110f5, ecx, sv_9717848998475165529).
-funcParameter(0x4110fa, 0, sv_11071114848378576630).
-funcParameter(0x4110fa, ecx, sv_4101559798158264416).
-funcParameter(0x4110ff, ecx, sv_16270658959709616990).
-funcParameter(0x411104, ecx, sv_36238474622148118).
-funcParameter(0x411109, 0, sv_10811461109071814203).
-funcParameter(0x411109, ecx, sv_100057063928107501).
-funcParameter(0x41110e, 0, sv_12491754835096181343).
-funcParameter(0x41110e, 0x1, sv_10524975759114174327).
-funcParameter(0x41110e, 0x2, sv_12141337750515258934).
-funcParameter(0x41110e, 0x3, sv_13438225034482186019).
-funcParameter(0x41110e, 0x4, sv_2553611743979267880).
-funcParameter(0x41110e, 0x5, sv_3654803603805251992).
-funcParameter(0x41110e, ecx, sv_1867122860985861746).
-funcParameter(0x411113, ecx, sv_10879648636575338066).
-funcParameter(0x411118, ecx, sv_9352643543435045177).
-funcParameter(0x41111d, ecx, sv_17422591778944905180).
-funcParameter(0x411122, 0, sv_7488748956414637620).
-funcParameter(0x411122, ecx, sv_12346007505876463867).
-funcParameter(0x411127, ecx, sv_15826622256505628970).
-funcParameter(0x41112c, ecx, sv_12712501319442283910).
-funcParameter(0x411131, ecx, sv_11490917466358599158).
-funcParameter(0x411136, ecx, sv_1357987763004460366).
-funcParameter(0x41113b, 0x2, sv_7936321598889633092).
-funcParameter(0x41113b, ecx, sv_10397866308802005424).
-funcParameter(0x41113b, ecx, sv_10800450948571138665).
-funcParameter(0x41113b, edx, sv_1542936969302739312).
-funcParameter(0x411140, ecx, sv_5998653408113580559).
-funcParameter(0x411145, ecx, sv_4150588499716656819).
-funcParameter(0x411145, esp, sv_4148137223469112296).
-funcParameter(0x411145, zf, sv_412278575752489716).
-funcParameter(0x41114a, ecx, sv_1757621953472272596).
-funcParameter(0x41114f, ecx, sv_173768726067976211).
-funcParameter(0x411154, ecx, sv_9372104948971641348).
-funcParameter(0x411159, ecx, sv_14896963574526761992).
-funcParameter(0x411159, ecx, sv_4478188426263053484).
-funcParameter(0x41115e, ecx, sv_16551899725014830983).
-funcParameter(0x411163, ecx, sv_3477168628617306501).
-funcParameter(0x411168, ecx, sv_5601589288742379093).
-funcParameter(0x41116d, ecx, sv_7395638283227118821).
-funcParameter(0x411172, 0, sv_11791076838944932543).
-funcParameter(0x411172, 0x1, sv_1080622711258637174).
-funcParameter(0x411172, 0x3, sv_17192821884606894448).
-funcParameter(0x411172, 0x4, sv_1921666803279678275).
-funcParameter(0x411172, 0x5, sv_2094685333252780474).
-funcParameter(0x411172, ecx, sv_8287039423742623535).
-funcParameter(0x411177, ecx, sv_5193036979270048215).
-funcParameter(0x41117c, ecx, sv_4036818604350531533).
-funcParameter(0x411181, 0, sv_16904446535819318642).
-funcParameter(0x411181, ecx, sv_12093934182158936730).
-funcParameter(0x411186, ecx, sv_13900604869811641755).
-funcParameter(0x41118b, ecx, sv_14123992986103286704).
-funcParameter(0x411190, ecx, sv_7405512823229129964).
-funcParameter(0x411195, ecx, sv_874206275116721445).
-funcParameter(0x41119a, ecx, sv_14477291715963874954).
-funcParameter(0x41119f, ecx, sv_3461059929334081851).
-funcParameter(0x4111a4, ecx, sv_9191073297384873).
-funcParameter(0x4111a9, ecx, sv_6030080559697862316).
-funcParameter(0x4111ae, ecx, sv_10641402651176468645).
-funcParameter(0x4111b3, ecx, sv_8471245398306268327).
-funcParameter(0x4111b8, ecx, sv_14830253254020630599).
-funcParameter(0x4111bd, ecx, sv_3443801134128613978).
-funcParameter(0x4111c2, 0, sv_12773941128284470118).
-funcParameter(0x4111c2, 0x1, sv_8482404517742605882).
-funcParameter(0x4111c2, ecx, sv_6705004115767842206).
-funcParameter(0x4111c7, 0, sv_13927694436985505668).
-funcParameter(0x4111c7, 0x1, sv_9620119812973991227).
-funcParameter(0x4111c7, 0x2, sv_1222540474096056212).
-funcParameter(0x4111c7, ecx, sv_14134933158236046733).
-funcParameter(0x4111cc, ecx, sv_16192501276197594216).
-funcParameter(0x4111d1, ecx, sv_12625845890580011608).
-funcParameter(0x4111d6, ecx, sv_2028066430654154088).
-funcParameter(0x4111db, ecx, sv_3635570983144837947).
-funcParameter(0x4111e0, ecx, sv_7498494587699975466).
-funcParameter(0x4114f0, ecx, sv_4478188426263053484).
-funcParameter(0x411590, ecx, sv_17173433015049200631).
-funcParameter(0x4115f0, ecx, sv_3496517093534454004).
-funcParameter(0x411640, ecx, sv_4675760582114127251).
-funcParameter(0x411686, ecx, sv_5558907242207797147).
-funcParameter(0x41168c, ecx, sv_5296376679799656497).
-funcParameter(0x4116a0, ecx, sv_4112599013947060902).
-funcParameter(0x4116c0, esp, sv_4148137223469112296).
-funcParameter(0x4116c0, zf, sv_412278575752489716).
-funcParameter(0x4116f0, ecx, sv_2318804144384583629).
-funcParameter(0x4116f0, edx, sv_2420142071287591613).
-funcParameter(0x411770, 0x2, sv_14840725929405700848).
-funcParameter(0x411770, ecx, sv_2893592751728133190).
-funcParameter(0x411770, edx, sv_11561547068637787976).
-funcParameter(0x4117b0, 0x2, sv_7936321598889633092).
-funcParameter(0x4117b0, ecx, sv_10397866308802005424).
-funcParameter(0x4117b0, edx, sv_1542936969302739312).
-funcParameter(0x411918, ecx, sv_8112796600368543485).
-funcParameter(0x411e00, eax, sv_17025468979332028852).
-funcParameter(0x411e00, ebp, sv_1922966069110121293).
-funcParameter(0x411e00, ebx, sv_8988319022737378341).
-funcParameter(0x411e00, ecx, sv_4752034896007062985).
-funcParameter(0x411e00, edx, sv_7551687834754439831).
-funcParameter(0x411e00, esi, sv_9331521468234420487).
-funcParameter(0x411e00, esp, sv_188732465752819486).
-funcParameter(0x411e00, fs, sv_2289636703366098745).
-funcParameter(0x411e00, gs, sv_10682663132221516765).
-funcParameter(0x411f60, 0, sv_12773941128284470118).
-funcParameter(0x411f60, 0x1, sv_8482404517742605882).
-funcParameter(0x411fd0, 0, sv_2268779942531302009).
-funcParameter(0x411fd0, 0x1, sv_11963303825854866890).
-funcParameter(0x411fd0, 0x2, sv_1669835000665069688).
-funcParameter(0x411fd0, 0x3, sv_8739870322433320051).
-funcParameter(0x412270, 0, sv_14417232578542121391).
-funcParameter(0x412320, 0, sv_753935045103908585).
-funcParameter(0x412320, 0x1, sv_55593386748868742).
-funcParameter(0x412320, 0x2, sv_9396715643076771929).
-funcParameter(0x412320, 0x3, sv_16104908139674596312).
-funcParameter(0x4123f0, 0, sv_14770254271720580619).
-funcParameter(0x4123f0, 0x1, sv_7731798441838668024).
-funcParameter(0x412530, 0, sv_13927694436985505668).
-funcParameter(0x412530, 0x1, sv_9620119812973991227).
-funcParameter(0x412530, 0x2, sv_1222540474096056212).
-funcParameter(0x4126b0, 0, sv_7791000168043328047).
-funcParameter(0x4126b0, 0x1, sv_14429144023014592026).
-funcParameter(0x4126b0, 0x2, sv_4855987060351092692).
-funcParameter(0x4126b0, 0x3, sv_60286069512170106).
-funcParameter(0x412740, 0, sv_12063143558395264839).
-funcParameter(0x412880, 0, sv_3202603498540245465).
-funcParameter(0x4128a0, 0x2, sv_13789145039243695247).
-funcParameter(0x4128a0, 0x3, sv_2049049409766192593).
-funcParameter(0x4128a0, eax, sv_5676546717069925483).
-funcParameter(0x4128a0, esp, sv_15984970047379730479).
-funcParameter(0x4128d0, 0, sv_10811461109071814203).
-funcParameter(0x412900, 0, sv_7784178796745545319).
-funcParameter(0x412946, ecx, sv_17991744561476697992).
-funcParameter(0x412950, 0, sv_7488748956414637620).
-funcParameter(0x4129ea, ecx, sv_17076774640172235442).
-funcParameter(0x412a40, 0, sv_12491754835096181343).
-funcParameter(0x412a40, 0x1, sv_10524975759114174327).
-funcParameter(0x412a40, 0x2, sv_12141337750515258934).
-funcParameter(0x412a40, 0x3, sv_13438225034482186019).
-funcParameter(0x412a40, 0x4, sv_2553611743979267880).
-funcParameter(0x412a40, 0x5, sv_3654803603805251992).
-funcParameter(0x412a72, ecx, sv_12413626344186046550).
-funcParameter(0x412b00, 0, sv_11071114848378576630).
-funcParameter(0x412c30, 0, sv_6931215206829074033).
-funcParameter(0x412c54, ecx, sv_12123046930216114473).
-funcParameter(0x412c5a, ecx, sv_3737177144770795782).
-funcParameter(0x412c60, ecx, sv_63751385310767764).
-funcParameter(0x412d88, ecx, sv_4630531845509540423).
-funcParameter(0x412d8e, ecx, sv_14824970832953987328).
-funcParameter(0x412d94, ecx, sv_16059153712545836869).
-funcParameter(0x412d9a, ecx, sv_2925357392879850332).
-funcParameter(0x412da0, ecx, sv_5826828135767974860).
-funcParameter(0x412db0, 0, sv_6496523929752480848).
-funcParameter(0x412e30, 0, sv_6732925751403456002).
-funcParameter(0x412e30, 0x1, sv_5171082934654314801).
-funcParameter(0x412ed0, 0, sv_16904446535819318642).
-funcParameter(0x413026, ecx, sv_16901902920168904335).
-funcParameter(0x41302c, ecx, sv_16200477426588046230).
-funcParameter(0x413032, ecx, sv_14800114877435994565).
-funcParameter(0x413040, 0, sv_5779607968192147460).
-funcParameter(0x413040, 0x1, sv_18061177208693715886).
-funcParameter(0x413040, 0x2, sv_5797316256961517542).
-funcParameter(0x413040, 0x3, sv_5515648384453304637).
-funcParameter(0x413074, ecx, sv_318800092238096324).
-funcParameter(0x413080, 0, sv_11791076838944932543).
-funcParameter(0x413080, 0x1, sv_1080622711258637174).
-funcParameter(0x413080, 0x3, sv_17192821884606894448).
-funcParameter(0x413080, 0x4, sv_1921666803279678275).
-funcParameter(0x413080, 0x5, sv_2094685333252780474).
-funcParameter(0x413656, ecx, sv_5617526965629805733).
-funcParameter(0x41365c, ecx, sv_10738959792772747806).
-funcParameter(0x413662, ecx, sv_9973888263345334804).
-funcParameter(0x413668, ecx, sv_3975553173971031293).
-funcParameter(0x41366e, ecx, sv_6233976406621994425).
-funcParameter(0x413674, ecx, sv_4956381530305678151).
-funcParameter(0x41367a, ecx, sv_13382648052010715578).
-funcParameter(0x413680, ecx, sv_5939486698732983820).
-funcParameter(0x413686, ecx, sv_4151297938617611646).
-funcParameter(0x41368c, ecx, sv_5607047452824868964).
-funcParameter(0x413692, ecx, sv_3668529788221319756).
-funcParameter(0x413698, ecx, sv_15353850398420259051).
-funcParameter(0x41369e, ecx, sv_12818559076583670145).
-funcParameter(0x4136a4, ecx, sv_17539023530526227619).
-funcParameter(0x4136aa, ecx, sv_13756979684907449358).
-funcParameter(0x4136b0, ecx, sv_13839649017994354890).
-funcParameter(0x4136b6, ecx, sv_22967347916303892).
-funcParameter(0x4136bc, ecx, sv_9228873403766213531).
-funcParameter(0x4136c2, ecx, sv_3459121419803166690).
-funcParameter(0x4136c8, ecx, sv_15287225002207302414).
-funcParameter(0x4136ce, ecx, sv_9707530346257119448).
-funcParameter(0x4136d4, ecx, sv_6972779680847608111).
-funcParameter(0x4136da, ecx, sv_14070988521636039473).
-funcParameter(0x4136e0, ecx, sv_11538540505044941690).
-funcParameter(0x4136e6, ecx, sv_17892074215963437580).
-funcParameter(0x4136ec, ecx, sv_11840123080878450873).
-funcParameter(0x4136f2, ecx, sv_4292265137342803268).
-funcParameter(0x4136f8, ecx, sv_9173345708142482645).
-funcParameter(0x4136fe, ecx, sv_18152516702779859043).
-funcParameter(0x413704, ecx, sv_11883368474869848252).
-funcParameter(0x41370a, ecx, sv_11672793197484964471).
-funcParameter(0x413710, ecx, sv_3019500183926034364).
-funcParameter(0x413716, ecx, sv_5399683978843643363).
-funcParameter(0x41371c, ecx, sv_5197728395159977932).
-funcParameter(0x413722, ecx, sv_7257359309682697900).
-funcParameter(0x414690, ebp, sv_2360146412853400907).
-funcParameter(0x414690, esp, sv_11159003164268726395).
-funcParameter(0x41469e, 0x1, sv_11339398978753721241).
-funcReturn(0x411005, eax, sv_3357528460477978339).
-funcReturn(0x41100a, eax, sv_5809362120457960705).
-funcReturn(0x41100f, eax, sv_17512138481334197356).
-funcReturn(0x411019, eax, sv_12434238746782257281).
-funcReturn(0x41101e, eax, sv_1815655243839093843).
-funcReturn(0x411028, eax, sv_3541011329717976631).
-funcReturn(0x411032, eax, sv_2625709134471282596).
-funcReturn(0x411037, eax, sv_17210791024386579098).
-funcReturn(0x411050, eax, sv_15529480697328912040).
-funcReturn(0x411069, eax, sv_8754315587982268919).
-funcReturn(0x411078, eax, sv_662435135607428239).
-funcReturn(0x411087, eax, sv_9938466456989056633).
-funcReturn(0x4110af, eax, sv_14718522148001214888).
-funcReturn(0x4110b4, eax, sv_8410351648562722922).
-funcReturn(0x4110b9, eax, sv_585740808282164967).
-funcReturn(0x4110cd, eax, sv_13210522757145318377).
-funcReturn(0x4110d2, eax, sv_10443776652050031742).
-funcReturn(0x4110dc, eax, sv_17173433015049200631).
-funcReturn(0x4110e6, eax, sv_9770943710870020049).
-funcReturn(0x4110f5, eax, sv_17210791024386579098).
-funcReturn(0x4110fa, eax, sv_6589753119415145961).
-funcReturn(0x4110ff, eax, sv_12605162235910003695).
-funcReturn(0x411109, eax, sv_7901172342005365025).
-funcReturn(0x41110e, eax, sv_13304752083470364347).
-funcReturn(0x41111d, eax, sv_9667813649028623602).
-funcReturn(0x411122, eax, sv_14040235878873460530).
-funcReturn(0x41113b, eax, sv_8906880144863438412).
-funcReturn(0x41114a, eax, sv_232615828391591311).
-funcReturn(0x411154, eax, sv_2221160007770501400).
-funcReturn(0x411159, eax, sv_4478188426263053484).
-funcReturn(0x411172, eax, sv_11335546854506777840).
-funcReturn(0x411181, eax, sv_15362692869285394712).
-funcReturn(0x4111c2, eax, sv_2050857750471599664).
-funcReturn(0x4111c7, eax, sv_13811415671521877940).
-funcReturn(0x4111e0, eax, sv_7901172342005365025).
-funcReturn(0x4113d0, eax, sv_232615828391591311).
-funcReturn(0x4114f0, eax, sv_4478188426263053484).
-funcReturn(0x411590, eax, sv_17173433015049200631).
-funcReturn(0x4115f0, eax, sv_17512138481334197356).
-funcReturn(0x411640, eax, sv_5809362120457960705).
-funcReturn(0x4116a0, eax, sv_1815655243839093843).
-funcReturn(0x4116f0, eax, sv_9938466456989056633).
-funcReturn(0x411770, eax, sv_2625709134471282596).
-funcReturn(0x4117b0, eax, sv_8906880144863438412).
-funcReturn(0x4118c0, eax, sv_13210522757145318377).
-funcReturn(0x411900, eax, sv_8410351648562722922).
-funcReturn(0x4119d0, eax, sv_12413174428650257176).
-funcReturn(0x411a40, eax, sv_9667813649028623602).
-funcReturn(0x411a60, eax, sv_1721344376785081900).
-funcReturn(0x411d60, eax, sv_12605162235910003695).
-funcReturn(0x411d70, eax, sv_17887105968778398819).
-funcReturn(0x411f60, eax, sv_2050857750471599664).
-funcReturn(0x411fd0, eax, sv_18301997662122532936).
-funcReturn(0x4123f0, eax, sv_10443776652050031742).
-funcReturn(0x412530, eax, sv_13811415671521877940).
-funcReturn(0x4126b0, eax, sv_7791000168043328047).
-funcReturn(0x412740, eax, sv_14718522148001214888).
-funcReturn(0x412880, eax, sv_12434238746782257281).
-funcReturn(0x4128d0, eax, sv_7901172342005365025).
-funcReturn(0x412900, eax, sv_17210791024386579098).
-funcReturn(0x412930, eax, sv_7901172342005365025).
-funcReturn(0x412940, eax, sv_17210791024386579098).
-funcReturn(0x412950, eax, sv_14040235878873460530).
-funcReturn(0x4129f0, eax, sv_3357528460477978339).
-funcReturn(0x412a40, eax, sv_13304752083470364347).
-funcReturn(0x412aa0, eax, sv_2221160007770501400).
-funcReturn(0x412ad0, eax, sv_3541011329717976631).
-funcReturn(0x412b00, eax, sv_6589753119415145961).
-funcReturn(0x412bd3, eax, sv_4092885661584798620).
-funcReturn(0x412c30, eax, sv_8754315587982268919).
-funcReturn(0x412c70, eax, sv_15529480697328912040).
-funcReturn(0x412db0, eax, sv_9770943710870020049).
-funcReturn(0x412e30, eax, sv_585740808282164967).
-funcReturn(0x412ed0, eax, sv_15362692869285394712).
-funcReturn(0x413040, eax, sv_662435135607428239).
-funcReturn(0x413080, eax, sv_11335546854506777840).
-funcReturn(0x4133f0, eax, sv_8070594534629004384).
-funcReturn(0x41469e, eax, sv_8473944762617852592).
+funcParameter(0x41100a, ecx, sv_7847219187746921921).
+funcParameter(0x41100f, ecx, sv_1734769612886334295).
+funcParameter(0x411019, 0, sv_17779920051602202406).
+funcParameter(0x41101e, ecx, sv_2346174186303623803).
+funcParameter(0x411032, 0x2, sv_4677805931833228869).
+funcParameter(0x411032, ecx, sv_16499679553977853661).
+funcParameter(0x411032, edx, sv_4221706544957910495).
+funcParameter(0x411069, 0, sv_10305283292404416574).
+funcParameter(0x411073, 0x2, sv_3724910199688347343).
+funcParameter(0x411073, 0x3, sv_10100950711089339819).
+funcParameter(0x411073, eax, sv_6988584966534217788).
+funcParameter(0x411073, ecx, sv_10290672830123424901).
+funcParameter(0x411073, esp, sv_1408909532505802842).
+funcParameter(0x411078, 0, sv_14767309314849771079).
+funcParameter(0x411078, 0x1, sv_1738774524081245271).
+funcParameter(0x411078, 0x2, sv_4026625290798884460).
+funcParameter(0x411078, 0x3, sv_3943431893930945254).
+funcParameter(0x411087, ecx, sv_10428785776353252442).
+funcParameter(0x411087, edx, sv_5079790204193203476).
+funcParameter(0x4110af, 0, sv_3175601098495132128).
+funcParameter(0x4110b9, 0, sv_18364599005151143572).
+funcParameter(0x4110b9, 0x1, sv_9174034909599731477).
+funcParameter(0x4110d2, 0, sv_1676448691390190687).
+funcParameter(0x4110d2, 0x1, sv_6468218161270941550).
+funcParameter(0x4110dc, ecx, sv_12136785761329092219).
+funcParameter(0x4110e6, 0, sv_6841452835648164447).
+funcParameter(0x4110f5, 0, sv_2927745233635857536).
+funcParameter(0x4110fa, 0, sv_5769630568966110162).
+funcParameter(0x411109, 0, sv_4416038949695489856).
+funcParameter(0x41110e, 0, sv_3752780967436334926).
+funcParameter(0x41110e, 0x1, sv_7557275708175957676).
+funcParameter(0x41110e, 0x2, sv_6931034961856417581).
+funcParameter(0x41110e, 0x3, sv_11578241818760711686).
+funcParameter(0x41110e, 0x4, sv_10975281901906174930).
+funcParameter(0x41110e, 0x5, sv_17572015326205937811).
+funcParameter(0x411122, 0, sv_8022480480695392601).
+funcParameter(0x41113b, 0x2, sv_4336313890116825895).
+funcParameter(0x41113b, ecx, sv_11636837461448014390).
+funcParameter(0x41113b, edx, sv_15234747707574518460).
+funcParameter(0x411145, ecx, sv_6624358362967967073).
+funcParameter(0x411145, esp, sv_15649256967411212624).
+funcParameter(0x411145, zf, sv_5420672947813987240).
+funcParameter(0x411159, ecx, sv_13906897802353150882).
+funcParameter(0x411172, 0, sv_1352993839119880036).
+funcParameter(0x411172, 0x1, sv_8595902617936237471).
+funcParameter(0x411172, 0x3, sv_2306415189933053369).
+funcParameter(0x411172, 0x4, sv_9270387650685743942).
+funcParameter(0x411172, 0x5, sv_10375834479922606584).
+funcParameter(0x411181, 0, sv_2613523294703327339).
+funcParameter(0x4111c2, 0, sv_2056087998619766611).
+funcParameter(0x4111c2, 0x1, sv_16746843634712051504).
+funcParameter(0x4111c7, 0, sv_12694003954082477504).
+funcParameter(0x4111c7, 0x1, sv_12315323943440982277).
+funcParameter(0x4111c7, 0x2, sv_2590242179483814129).
+funcParameter(0x4114f0, ecx, sv_13906897802353150882).
+funcParameter(0x411590, ecx, sv_12136785761329092219).
+funcParameter(0x4115f0, ecx, sv_1734769612886334295).
+funcParameter(0x411640, ecx, sv_7847219187746921921).
+funcParameter(0x4116a0, ecx, sv_2346174186303623803).
+funcParameter(0x4116c0, esp, sv_15649256967411212624).
+funcParameter(0x4116c0, zf, sv_5420672947813987240).
+funcParameter(0x4116f0, ecx, sv_10428785776353252442).
+funcParameter(0x4116f0, edx, sv_5079790204193203476).
+funcParameter(0x411770, 0x2, sv_4677805931833228869).
+funcParameter(0x411770, ecx, sv_16499679553977853661).
+funcParameter(0x411770, edx, sv_4221706544957910495).
+funcParameter(0x4117b0, 0x2, sv_4336313890116825895).
+funcParameter(0x4117b0, ecx, sv_11636837461448014390).
+funcParameter(0x4117b0, edx, sv_15234747707574518460).
+funcParameter(0x411e00, eax, sv_5200163780697087324).
+funcParameter(0x411e00, ebp, sv_12353724133132320440).
+funcParameter(0x411e00, ebx, sv_8470823632477969118).
+funcParameter(0x411e00, ecx, sv_1758079530649044496).
+funcParameter(0x411e00, edx, sv_3623780126831016451).
+funcParameter(0x411e00, esi, sv_7868940773549292264).
+funcParameter(0x411e00, esp, sv_17067780216120998963).
+funcParameter(0x411e00, fs, sv_7692366104673994970).
+funcParameter(0x411e00, gs, sv_10111646224948010110).
+funcParameter(0x411f60, 0, sv_2056087998619766611).
+funcParameter(0x411f60, 0x1, sv_16746843634712051504).
+funcParameter(0x411fd0, 0, sv_17636202897113823737).
+funcParameter(0x411fd0, 0x1, sv_12952483451560697492).
+funcParameter(0x411fd0, 0x2, sv_13543619791603702727).
+funcParameter(0x411fd0, 0x3, sv_17383894844977426981).
+funcParameter(0x412270, 0, sv_3872640799446940610).
+funcParameter(0x412320, 0, sv_9311335178504914863).
+funcParameter(0x412320, 0x1, sv_3513239360421875430).
+funcParameter(0x412320, 0x2, sv_11389809583292915560).
+funcParameter(0x412320, 0x3, sv_4866288232697929072).
+funcParameter(0x4123f0, 0, sv_1676448691390190687).
+funcParameter(0x4123f0, 0x1, sv_6468218161270941550).
+funcParameter(0x412530, 0, sv_12694003954082477504).
+funcParameter(0x412530, 0x1, sv_12315323943440982277).
+funcParameter(0x412530, 0x2, sv_2590242179483814129).
+funcParameter(0x4126b0, 0, sv_6586206723592234251).
+funcParameter(0x4126b0, 0x1, sv_4331357175566235106).
+funcParameter(0x4126b0, 0x2, sv_7761635077806961400).
+funcParameter(0x4126b0, 0x3, sv_11817732369899652238).
+funcParameter(0x412740, 0, sv_3175601098495132128).
+funcParameter(0x412880, 0, sv_17779920051602202406).
+funcParameter(0x4128a0, 0x2, sv_3724910199688347343).
+funcParameter(0x4128a0, 0x3, sv_10100950711089339819).
+funcParameter(0x4128a0, eax, sv_6988584966534217788).
+funcParameter(0x4128a0, esp, sv_1408909532505802842).
+funcParameter(0x4128d0, 0, sv_4416038949695489856).
+funcParameter(0x412900, 0, sv_2927745233635857536).
+funcParameter(0x412950, 0, sv_8022480480695392601).
+funcParameter(0x412a40, 0, sv_3752780967436334926).
+funcParameter(0x412a40, 0x1, sv_7557275708175957676).
+funcParameter(0x412a40, 0x2, sv_6931034961856417581).
+funcParameter(0x412a40, 0x3, sv_11578241818760711686).
+funcParameter(0x412a40, 0x4, sv_10975281901906174930).
+funcParameter(0x412a40, 0x5, sv_17572015326205937811).
+funcParameter(0x412b00, 0, sv_5769630568966110162).
+funcParameter(0x412c30, 0, sv_10305283292404416574).
+funcParameter(0x412db0, 0, sv_6841452835648164447).
+funcParameter(0x412e30, 0, sv_18364599005151143572).
+funcParameter(0x412e30, 0x1, sv_9174034909599731477).
+funcParameter(0x412ed0, 0, sv_2613523294703327339).
+funcParameter(0x413040, 0, sv_14767309314849771079).
+funcParameter(0x413040, 0x1, sv_1738774524081245271).
+funcParameter(0x413040, 0x2, sv_4026625290798884460).
+funcParameter(0x413040, 0x3, sv_3943431893930945254).
+funcParameter(0x413080, 0, sv_1352993839119880036).
+funcParameter(0x413080, 0x1, sv_8595902617936237471).
+funcParameter(0x413080, 0x3, sv_2306415189933053369).
+funcParameter(0x413080, 0x4, sv_9270387650685743942).
+funcParameter(0x413080, 0x5, sv_10375834479922606584).
+funcParameter(0x414690, ebp, sv_6605450934546447378).
+funcParameter(0x414690, esp, sv_10238397658476959433).
+funcParameter(0x41469e, 0x1, sv_14619322856401813848).
+funcReturn(0x411005, eax, sv_1950760233784244808).
+funcReturn(0x41100a, eax, sv_2420374090747438512).
+funcReturn(0x41100f, eax, sv_3897201051923265852).
+funcReturn(0x411019, eax, sv_9292639871135966356).
+funcReturn(0x41101e, eax, sv_13180191003543975568).
+funcReturn(0x411028, eax, sv_4521391257377212823).
+funcReturn(0x411032, eax, sv_6473423856167888020).
+funcReturn(0x411037, eax, sv_11571641285392643660).
+funcReturn(0x411050, eax, sv_8477081019730811003).
+funcReturn(0x411069, eax, sv_8600092372697869280).
+funcReturn(0x411078, eax, sv_8935142399903418471).
+funcReturn(0x411087, eax, sv_15581057139905259494).
+funcReturn(0x4110af, eax, sv_5598703457383414844).
+funcReturn(0x4110b4, eax, sv_3462298034383674887).
+funcReturn(0x4110b9, eax, sv_15054162088279734415).
+funcReturn(0x4110cd, eax, sv_6323884840030461710).
+funcReturn(0x4110d2, eax, sv_16599501710530178679).
+funcReturn(0x4110dc, eax, sv_12136785761329092219).
+funcReturn(0x4110e6, eax, sv_9652507043052210910).
+funcReturn(0x4110f5, eax, sv_11571641285392643660).
+funcReturn(0x4110fa, eax, sv_17643365631534025727).
+funcReturn(0x4110ff, eax, sv_18416163512742596299).
+funcReturn(0x411109, eax, sv_7066178015814141556).
+funcReturn(0x41110e, eax, sv_543326952262500233).
+funcReturn(0x41111d, eax, sv_1932047068563275152).
+funcReturn(0x411122, eax, sv_9973931802857407584).
+funcReturn(0x41113b, eax, sv_15569059998385596758).
+funcReturn(0x41114a, eax, sv_3964887025032068082).
+funcReturn(0x411154, eax, sv_2081399948176572997).
+funcReturn(0x411159, eax, sv_13906897802353150882).
+funcReturn(0x411172, eax, sv_14297717576969689630).
+funcReturn(0x411181, eax, sv_8194381123073010099).
+funcReturn(0x4111c2, eax, sv_10148477362732710782).
+funcReturn(0x4111c7, eax, sv_14670301260402570281).
+funcReturn(0x4111e0, eax, sv_7066178015814141556).
+funcReturn(0x4113d0, eax, sv_3964887025032068082).
+funcReturn(0x4114f0, eax, sv_13906897802353150882).
+funcReturn(0x411590, eax, sv_12136785761329092219).
+funcReturn(0x4115f0, eax, sv_3897201051923265852).
+funcReturn(0x411640, eax, sv_2420374090747438512).
+funcReturn(0x4116a0, eax, sv_13180191003543975568).
+funcReturn(0x4116f0, eax, sv_15581057139905259494).
+funcReturn(0x411770, eax, sv_6473423856167888020).
+funcReturn(0x4117b0, eax, sv_15569059998385596758).
+funcReturn(0x4118c0, eax, sv_6323884840030461710).
+funcReturn(0x411900, eax, sv_3462298034383674887).
+funcReturn(0x4119d0, eax, sv_16261874968994688378).
+funcReturn(0x411a40, eax, sv_1932047068563275152).
+funcReturn(0x411a60, eax, sv_2474627171893900064).
+funcReturn(0x411d60, eax, sv_18416163512742596299).
+funcReturn(0x411d70, eax, sv_2732123506514401705).
+funcReturn(0x411f60, eax, sv_10148477362732710782).
+funcReturn(0x411fd0, eax, sv_112265807357870651).
+funcReturn(0x4123f0, eax, sv_16599501710530178679).
+funcReturn(0x412530, eax, sv_14670301260402570281).
+funcReturn(0x4126b0, eax, sv_6586206723592234251).
+funcReturn(0x412740, eax, sv_5598703457383414844).
+funcReturn(0x412880, eax, sv_9292639871135966356).
+funcReturn(0x4128d0, eax, sv_7066178015814141556).
+funcReturn(0x412900, eax, sv_11571641285392643660).
+funcReturn(0x412930, eax, sv_7066178015814141556).
+funcReturn(0x412940, eax, sv_11571641285392643660).
+funcReturn(0x412950, eax, sv_9973931802857407584).
+funcReturn(0x4129f0, eax, sv_1950760233784244808).
+funcReturn(0x412a40, eax, sv_543326952262500233).
+funcReturn(0x412aa0, eax, sv_2081399948176572997).
+funcReturn(0x412ad0, eax, sv_4521391257377212823).
+funcReturn(0x412b00, eax, sv_17643365631534025727).
+funcReturn(0x412bd3, eax, sv_10393256969305421199).
+funcReturn(0x412c30, eax, sv_8600092372697869280).
+funcReturn(0x412c70, eax, sv_8477081019730811003).
+funcReturn(0x412db0, eax, sv_9652507043052210910).
+funcReturn(0x412e30, eax, sv_15054162088279734415).
+funcReturn(0x412ed0, eax, sv_8194381123073010099).
+funcReturn(0x413040, eax, sv_8935142399903418471).
+funcReturn(0x413080, eax, sv_14297717576969689630).
+funcReturn(0x4133f0, eax, sv_16387616145781315372).
+funcReturn(0x41469e, eax, sv_15635881515853338783).
 initialMemory(0x416818, 0x418168).
 initialMemory(0x41681c, 0x4181c0).
 insnCallsDelete(0x41108c, 0x41108c, invalid).
-insnCallsDelete(0x411481, 0x4113d0, sv_1634151822387567625).
-insnCallsDelete(0x414697, 0x414690, sv_11865421799301672356).
+insnCallsDelete(0x411481, 0x4113d0, sv_5920781705315914856).
+insnCallsDelete(0x414697, 0x414690, sv_9949567337050288990).
 insnCallsNew(0x411195, 0x411195, invalid).
-insnCallsNew(0x41140f, 0x4113d0, sv_13660297102401723425).
+insnCallsNew(0x41140f, 0x4113d0, sv_11574206222690169963).
 methodMemberAccess(0x411541, 0x4114f0, 0xc, 0x4).
 methodMemberAccess(0x41154c, 0x4114f0, 0x8, 0x4).
 methodMemberAccess(0x41154f, 0x4114f0, 0xc, 0x4).
@@ -1418,34 +1409,34 @@ noCallsBefore(0x413716).
 noCallsBefore(0x41371c).
 noCallsBefore(0x413722).
 % Object fact exporting complete.
-possibleVirtualFunctionCall(0x41318b, 0x413080, sv_13728718934859951169, 0, 0).
-possibleVirtualFunctionCall(0x4131aa, 0x413080, sv_13728718934859951169, 0, 0x1c).
-possibleVirtualFunctionCall(0x4131c5, 0x413080, sv_9513304079454777771, 0, 0x20).
-possibleVirtualFunctionCall(0x4131de, 0x413080, sv_12047613289535310733, 0, 0x68).
-possibleVirtualFunctionCall(0x4132ea, 0x413080, sv_12047613289535310733, 0, 0x70).
-possibleVirtualFunctionCall(0x413318, 0x413080, sv_12047613289535310733, 0, 0x40).
-possibleVirtualFunctionCall(0x413322, 0x413080, sv_9513304079454777771, 0, 0x38).
-possibleVirtualFunctionCall(0x41332c, 0x413080, sv_13728718934859951169, 0, 0x28).
+possibleVirtualFunctionCall(0x41318b, 0x413080, sv_1976201002663167235, 0, 0).
+possibleVirtualFunctionCall(0x4131aa, 0x413080, sv_1976201002663167235, 0, 0x1c).
+possibleVirtualFunctionCall(0x4131c5, 0x413080, sv_5671637331241710920, 0, 0x20).
+possibleVirtualFunctionCall(0x4131de, 0x413080, sv_4335415692676329341, 0, 0x68).
+possibleVirtualFunctionCall(0x4132ea, 0x413080, sv_4335415692676329341, 0, 0x70).
+possibleVirtualFunctionCall(0x413318, 0x413080, sv_4335415692676329341, 0, 0x40).
+possibleVirtualFunctionCall(0x413322, 0x413080, sv_5671637331241710920, 0, 0x38).
+possibleVirtualFunctionCall(0x41332c, 0x413080, sv_1976201002663167235, 0, 0x28).
 % Prolog facts autogenerated by OOAnalyzer.
 returnsSelf(0x4114f0).
 returnsSelf(0x411590).
-thisPtrAllocation(0x41140f, 0x4113d0, sv_13660297102401723425, type_Heap, 0x10).
-thisPtrDefinition(sv_12047613289535310733, sv(sv_12047613289535310733, ''), 0x4131de, 0).
-thisPtrDefinition(sv_13111689935091639304, sv(sv_13111689935091639304, ''), 0, 0x41100f).
-thisPtrDefinition(sv_13660297102401723425, sv(sv_13660297102401723425, 'RC_of_0x41140F'), 0x41140f, 0x4113d0).
-thisPtrDefinition(sv_13728718934859951169, sv(sv_13728718934859951169, ''), 0x41318b, 0).
-thisPtrDefinition(sv_16154629297232343562, sv(sv_16154629297232343562, ''), 0, 0x4110dc).
-thisPtrDefinition(sv_16363680648472010829, sv(sv_16363680648472010829, ''), 0, 0x411159).
-thisPtrDefinition(sv_37409917772715, sv(sv_37409917772715, ''), 0, 0x41101e).
-thisPtrDefinition(sv_4217851109819856002, xor([add([sv(sv_11339398978753721241, ''), 0xc]), sv(sv_4136110036697511236, '')]), 0x4146ab, 0x41469e).
-thisPtrDefinition(sv_4478188426263053484, sv(sv_4478188426263053484, ecx_0), 0, 0x4114f0).
-thisPtrDefinition(sv_5287384835807236534, sv(sv_5287384835807236534, ''), 0x4121d5, 0x411fd0).
-thisPtrDefinition(sv_5287384835807236534, sv(sv_5287384835807236534, ''), 0x4124e1, 0x4123f0).
-thisPtrDefinition(sv_5287384835807236534, sv(sv_5287384835807236534, ''), 0x412636, 0x412530).
-thisPtrDefinition(sv_5287384835807236534, sv(sv_5287384835807236534, ''), 0x41281e, 0x412740).
-thisPtrDefinition(sv_5287384835807236534, sv(sv_5287384835807236534, ''), 0x413413, 0x4133f0).
-thisPtrDefinition(sv_9510309118782622896, sv(sv_9510309118782622896, ''), 0, 0x41100a).
-thisPtrDefinition(sv_9513304079454777771, sv(sv_9513304079454777771, ''), 0x4131c5, 0).
+thisPtrAllocation(0x41140f, 0x4113d0, sv_11574206222690169963, type_Heap, 0x10).
+thisPtrDefinition(sv_11574206222690169963, sv(sv_11574206222690169963, 'RC_of_0x41140F'), 0x41140f, 0x4113d0).
+thisPtrDefinition(sv_12177942021432434545, sv(sv_12177942021432434545, ''), 0, 0x41101e).
+thisPtrDefinition(sv_12723604487239140447, sv(sv_12723604487239140447, ''), 0, 0x41100a).
+thisPtrDefinition(sv_13906897802353150882, sv(sv_13906897802353150882, ecx_0), 0, 0x4114f0).
+thisPtrDefinition(sv_15848179083278395690, sv(sv_15848179083278395690, ''), 0x4121d5, 0x411fd0).
+thisPtrDefinition(sv_15848179083278395690, sv(sv_15848179083278395690, ''), 0x4124e1, 0x4123f0).
+thisPtrDefinition(sv_15848179083278395690, sv(sv_15848179083278395690, ''), 0x412636, 0x412530).
+thisPtrDefinition(sv_15848179083278395690, sv(sv_15848179083278395690, ''), 0x41281e, 0x412740).
+thisPtrDefinition(sv_15848179083278395690, sv(sv_15848179083278395690, ''), 0x413413, 0x4133f0).
+thisPtrDefinition(sv_164225737525006140, sv(sv_164225737525006140, ''), 0, 0x411159).
+thisPtrDefinition(sv_1976201002663167235, sv(sv_1976201002663167235, ''), 0x41318b, 0).
+thisPtrDefinition(sv_3661566370393301626, xor([add([sv(sv_14619322856401813848, ''), 0xc]), sv(sv_14844348309151950361, '')]), 0x4146ab, 0x41469e).
+thisPtrDefinition(sv_4335415692676329341, sv(sv_4335415692676329341, ''), 0x4131de, 0).
+thisPtrDefinition(sv_5671637331241710920, sv(sv_5671637331241710920, ''), 0x4131c5, 0).
+thisPtrDefinition(sv_647667214701504439, sv(sv_647667214701504439, ''), 0, 0x4110dc).
+thisPtrDefinition(sv_942756566451574637, sv(sv_942756566451574637, ''), 0, 0x41100f).
 thunk(0x411005, 0x4129f0).
 thunk(0x41100a, 0x411640).
 thunk(0x41100f, 0x4115f0).

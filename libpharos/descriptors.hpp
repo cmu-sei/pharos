@@ -1,4 +1,4 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Descriptors_H
 #define Pharos_Descriptors_H
@@ -7,9 +7,7 @@
 
 #include "rose.hpp"
 #include <Rose/BinaryAnalysis/Partitioner2/Engine.h>
-#if PHAROS_ROSE_REGISTERDICTIONARY_PTR_HACK
 #include <Rose/BinaryAnalysis/Disassembler/Base.h>
-#endif
 
 namespace pharos {
 
@@ -43,11 +41,7 @@ using ImportVariableMap = std::map<size_t, ImportDescriptor*>;
 using AddrInsnMap = std::map<rose_addr_t, SgAsmInstruction*>;
 using RegisterVector = Rose::BinaryAnalysis::RegisterDictionary::RegisterDescriptors;
 
-#if PHAROS_ROSE_REGISTERDICTIONARY_PTR_HACK
 using DisassemblerPtr = Rose::BinaryAnalysis::Disassembler::BasePtr;
-#else
-using DisassemblerPtr = Rose::BinaryAnalysis::Disassembler *;
-#endif
 
 class DescriptorSet
 {
@@ -88,13 +82,13 @@ class DescriptorSet
   // user specified --stock, so some care is required when accessing custom extensions to the
   // class.  Hopefully we won't need to do that often.  This pointer is now entirely owned by
   // the descriptor set.
-  P2::Engine* engine;
+  std::unique_ptr<P2::Engine> engine;
 
   // The partitioner is _created_ by the engine, but is not contained within it, so we have to
   // keep a copy of the partitioner in the descriptor set as well. Currently this is object is
   // locally allocated by the engine in create_partitioner() and copied into the object stored
   // here.
-  P2::Partitioner partitioner;
+  P2::PartitionerPtr partitioner;
 
   // A replacement for the global_rops concept?
   SymbolicRiscOperatorsPtr rops;
@@ -142,13 +136,13 @@ class DescriptorSet
     : DescriptorSet(povm, filenames, false) {}
   DescriptorSet(const ProgOptVarMap& povm, std::string const & specimen_name)
     : DescriptorSet(povm, std::vector<std::string>({specimen_name})) {}
+#if 0
   // Sadly tracesem.cpp wants to pass it in it's own engine and partitioner due to some
   // incosistencies in the way that we've munged together ROSE code and Pharos code.
-  DescriptorSet(const ProgOptVarMap& povm, P2::Engine& eng, P2::Partitioner&& par);
+  DescriptorSet(const ProgOptVarMap& povm, P2::Engine& eng, P2::PartitionerPtr && par);
+#endif
   // Wes' indexer program does something very non-standard that requires a function instead.
   DescriptorSet(const ProgOptVarMap& povm, SgAsmFunction *func);
-
-  ~DescriptorSet();
 
   // Load stack deltas for imports.
   // Public non-const method because it initiates entirely optional but significant work.
@@ -228,7 +222,7 @@ class DescriptorSet
   std::vector<const FunctionDescriptor*> get_funcs_containing_address(rose_addr_t addr) const;
   // Return the partitioner basic block containing a given address.
   const P2::BasicBlock::Ptr get_block(rose_addr_t a) const {
-    return partitioner.basicBlockContainingInstruction(a);
+    return partitioner->basicBlockContainingInstruction(a);
   }
 
   DisassemblerPtr get_disassembler() const;
@@ -242,13 +236,13 @@ class DescriptorSet
   const FCG& get_function_call_graph() const { return function_call_graph; }
 
   // Here's how you can get access to the new Partitioner 2 engine (maybe)...
-  const P2::Engine* get_engine() const { return engine; }
-  const P2::Partitioner& get_partitioner() const { return partitioner; }
+  const P2::Engine* get_engine() const { return engine.get(); }
+  const P2::Partitioner& get_partitioner() const { return *partitioner; }
   RegisterDictionaryPtr get_regdict() const;
 
   // Pharos API for getting instructions from the Partitioner 2 instruction provider.
   SgAsmInstruction* get_insn(rose_addr_t addr) const {
-    return partitioner.instructionProvider()[addr];
+    return partitioner->instructionProvider()[addr];
   }
 
   // Return the default word size on the architecture.
@@ -262,11 +256,11 @@ class DescriptorSet
   RegisterDescriptor get_arch_reg(const std::string & name) const;
   // Find the stack pointer register in an architecture independent way.
   RegisterDescriptor get_stack_reg() const {
-    return partitioner.instructionProvider().stackPointerRegister();
+    return partitioner->instructionProvider().stackPointerRegister();
   }
   // Find the instruction pointer register in an architecture independent way.
   RegisterDescriptor get_ip_reg() const {
-    return partitioner.instructionProvider().instructionPointerRegister();
+    return partitioner->instructionProvider().instructionPointerRegister();
   }
 
   // Return how many threads to use during processing

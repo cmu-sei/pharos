@@ -1,10 +1,10 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <libpharos/defuse.hpp>
 #include <gtest/gtest.h>
 
 using namespace pharos;
-using namespace Rose::BinaryAnalysis::SymbolicExpr;
+using namespace Rose::BinaryAnalysis::SymbolicExpression;
 
 class MergeTestFixture : public ::testing::Test {
  protected:

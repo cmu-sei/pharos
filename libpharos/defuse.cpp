@@ -588,7 +588,7 @@ BlockAnalysis::handle_stack_delta(SgAsmBlock *bb, SgAsmX86Instruction* insn,
           if (cd && calldelta.confidence == ConfidenceMissing) {
             auto sdv = cd->get_stack_delta_variable();
             if (sdv) {
-              using Rose::BinaryAnalysis::SymbolicExpr::OP_ADD;
+              using Rose::BinaryAnalysis::SymbolicExpression::OP_ADD;
               sum = InternalNode::instance(OP_ADD, sum, sdv,
                                            Rose::BinaryAnalysis::SmtSolverPtr());
             }

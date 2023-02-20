@@ -174,9 +174,6 @@ reversed.  We recommend that you start the process with
 but not `--partitioner=rose` since it can lead to less accurate results,
 although that's an oversimplification of the tradeoffs.
 
-The resulting `ooprog.csv` file will contain hashes for each function in
-the program, and has no relevance to the the rest of the process.
-
 ### Step Two: Object-Oriented Analysis of Functions
 
 In this step, our goal is to produce object-oriented facts about the

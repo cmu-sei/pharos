@@ -1,4 +1,4 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/optional.hpp>
 
@@ -1213,11 +1213,7 @@ CallingConventionMatcher::match(const FunctionDescriptor* fd,
 CallingConventionMatcher::CallingConventionMatcher()
   // It is presumes that the amd64 register dictionary is a superset of the 32-bit and 16-bit
   // dictionaries
-#if PHAROS_ROSE_REGISTERDICTIONARY_PTR_HACK
   : regdict(Rose::BinaryAnalysis::RegisterDictionary::instanceAmd64())
-#else
-  : regdict(Rose::BinaryAnalysis::RegisterDictionary::dictionary_amd64())
-#endif
 {
   // ================================================================================
   // 16-bit calling conventions...

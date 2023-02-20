@@ -296,7 +296,10 @@ keys' values should be a map from key (string hash or name, or a number
 for addresses) to a tag (string) or a list of tags.  These tags augment
 the built-in set of known tags, mapping function hashes, names, or
 addresses to new tag values.  Known sets of tags are: C<new>, for
-operator new; C<del> for operator delete; C<free> for free functions, C<purecall>
+operator new; C<del> for operator delete; C<free> for free functions,
+C<purecall> for implementations of pure virtual member functions,
+C<callstub> for call stubs, and C<nonreturn> for non-returning
+functions.
 
 =back
 

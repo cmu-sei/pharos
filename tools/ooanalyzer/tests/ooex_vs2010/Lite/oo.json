@@ -543,64 +543,18 @@
         },
         ".?AV?$basic_ostream@DU?$char_traits@D@std@@@std@@": {
             "demangled_name": "std::basic_ostream<char, struct std::char_traits<char> >",
-            "members": {
-                "0x0": {
-                    "base": false,
-                    "name": "vftptr_0x0",
-                    "offset": "0x0",
-                    "parent": false,
-                    "size": 4,
-                    "struc": "",
-                    "type": "vftptr",
-                    "usages": [
-                        "0x402481",
-                        "0x402487",
-                        "0x402fe7",
-                        "0x402ffe",
-                        "0x403006",
-                        "0x40300d"
-                    ]
-                },
-                "0x8": {
-                    "base": false,
-                    "name": "mbr_0x8",
-                    "offset": "0x8",
-                    "parent": false,
-                    "size": 4,
-                    "struc": "",
-                    "type": "",
-                    "usages": [
-                        "0x40247e",
-                        "0x402490",
-                        "0x402fed"
-                    ]
-                }
-            },
+            "members": {},
             "methods": {
-                "0x40247e": {
-                    "demangled_name": "",
-                    "ea": "0x40247e",
-                    "import": false,
-                    "name": "dtor_0x40247e",
-                    "type": "dtor"
-                },
                 "0x402766": {
                     "demangled_name": "",
                     "ea": "0x402766",
                     "import": false,
                     "name": "virt_meth_0x402766",
                     "type": "meth"
-                },
-                "0x402fcc": {
-                    "demangled_name": "",
-                    "ea": "0x402fcc",
-                    "import": false,
-                    "name": "ctor_0x402fcc",
-                    "type": "ctor"
                 }
             },
             "name": ".?AV?$basic_ostream@DU?$char_traits@D@std@@@std@@",
-            "size": 12,
+            "size": 0,
             "vftables": {
                 "0x41238c": {
                     "ea": "0x41238c",
@@ -3763,6 +3717,61 @@
             },
             "name": "cls_0x40226b",
             "size": 52,
+            "vftables": {}
+        },
+        "cls_0x40247e": {
+            "demangled_name": "",
+            "members": {
+                "0x0": {
+                    "base": false,
+                    "name": "mbr_0x0",
+                    "offset": "0x0",
+                    "parent": false,
+                    "size": 4,
+                    "struc": "",
+                    "type": "",
+                    "usages": [
+                        "0x402481",
+                        "0x402487",
+                        "0x402fe7",
+                        "0x402ffe",
+                        "0x403006",
+                        "0x40300d"
+                    ]
+                },
+                "0x8": {
+                    "base": false,
+                    "name": "mbr_0x8",
+                    "offset": "0x8",
+                    "parent": false,
+                    "size": 4,
+                    "struc": "",
+                    "type": "",
+                    "usages": [
+                        "0x40247e",
+                        "0x402490",
+                        "0x402fed"
+                    ]
+                }
+            },
+            "methods": {
+                "0x40247e": {
+                    "demangled_name": "",
+                    "ea": "0x40247e",
+                    "import": false,
+                    "name": "dtor_0x40247e",
+                    "type": "dtor"
+                },
+                "0x402fcc": {
+                    "demangled_name": "",
+                    "ea": "0x402fcc",
+                    "import": false,
+                    "name": "ctor_0x402fcc",
+                    "type": "ctor"
+                }
+            },
+            "name": "cls_0x40247e",
+            "size": 12,
             "vftables": {}
         },
         "cls_0x4024f2": {

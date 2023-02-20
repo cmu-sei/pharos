@@ -1265,7 +1265,7 @@ TypeSolver::assert_initial_facts(TreeNodePtr tnp) {
 
   TreeNodePtrSet possible_val_set;
   const InternalNodePtr in = tnp->isInteriorNode();
-  if (in && in->getOperator() == Rose::BinaryAnalysis::SymbolicExpr::OP_ITE) {
+  if (in && in->getOperator() == Rose::BinaryAnalysis::SymbolicExpression::OP_ITE) {
 
     extract_possible_values(tnp, possible_val_set);
 
@@ -1629,12 +1629,12 @@ TypeSolver::recursively_assert_facts(TreeNodePtr tnp) {
     const InternalNodePtr in = tnp->isInteriorNode();
     if (in) {
 
-      Rose::BinaryAnalysis::SymbolicExpr::Operator op = in->getOperator();
+      Rose::BinaryAnalysis::SymbolicExpression::Operator op = in->getOperator();
       op_context_.assert_operation_fact(op, in, session_);
 
       const TreeNodePtrVector& kids = in->children();
 
-      if (op == Rose::BinaryAnalysis::SymbolicExpr::OP_ITE) {
+      if (op == Rose::BinaryAnalysis::SymbolicExpression::OP_ITE) {
 
         session_->add_fact(SAME_TYPE_FACT, kids[1], tnp);
 
@@ -1993,7 +1993,7 @@ OperationContext::~OperationContext() {
 
 OperationContext::OperationContext()
 {
-  namespace rbs = Rose::BinaryAnalysis::SymbolicExpr;
+  namespace rbs = Rose::BinaryAnalysis::SymbolicExpression;
   strategies_.emplace(rbs::Operator::OP_ADD, new AddStrategy());
   strategies_.emplace(rbs::Operator::OP_AND, new AndStrategy());
   strategies_.emplace(rbs::Operator::OP_ASR, new AsrStrategy());
@@ -2038,11 +2038,12 @@ OperationContext::OperationContext()
 
 // Analyze the operations by selecting and executing the strategy based on RISC
 // operator
-void OperationContext::assert_operation_fact(Rose::BinaryAnalysis::SymbolicExpr::Operator op,
-                                             InternalNodePtr tnp,
-                                             std::shared_ptr<prolog::Session> session) {
-
-  // determins if we have a strategy for this operation
+void OperationContext::assert_operation_fact(
+  Rose::BinaryAnalysis::SymbolicExpression::Operator op,
+  InternalNodePtr tnp,
+  std::shared_ptr<prolog::Session> session)
+{
+  // determines if we have a strategy for this operation
   if (strategies_.find(op) == strategies_.end()) {
     MDEBUG << "Could not find strategy" << LEND;
     return;

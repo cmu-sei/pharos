@@ -774,7 +774,11 @@ OOSolver::add_import_facts(const OOAnalyzer& ooa)
 
         session->add_fact("symbolClass", id.get_address(), id.get_name(), clsname, method_name);
 
-
+        // Add calling convention for imported functions
+        auto conventions = id.get_function_descriptor()->get_calling_conventions();
+        for (const CallingConvention* cc: conventions) {
+          session->add_fact("callingConvention", id.get_address(), cc->get_name());
+        }
         if (dtype->name.front()->is_ctor) {
           session->add_fact("symbolProperty", id.get_address(), Constructor);
         }

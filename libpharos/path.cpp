@@ -231,7 +231,7 @@ PathFinder::generate_edge_conditions(CallTraceDescriptorPtr call_trace_desc,
     // for both the true and false edges
 
     const InternalNodePtr in = src_eip_tnp->isInteriorNode();
-    if (in && in->getOperator() == Rose::BinaryAnalysis::SymbolicExpr::OP_ITE) {
+    if (in && in->getOperator() == Rose::BinaryAnalysis::SymbolicExpression::OP_ITE) {
 
       const TreeNodePtrVector& branches = in->children();
       TreeNodePtr condition_tnp = branches[0];

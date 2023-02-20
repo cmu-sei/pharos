@@ -564,7 +564,7 @@ bool ThisCallMethod::validate_vtable(ConstVirtualTableInstallationPtr install) {
     // In this branch we're not a this-pointer until we find what we're looking for.
     bool found_this_ptr = false;
     // If we're an ADD operation, that's what we're looking for.
-    if (inode && inode->getOperator() == Rose::BinaryAnalysis::SymbolicExpr::OP_ADD) {
+    if (inode && inode->getOperator() == Rose::BinaryAnalysis::SymbolicExpression::OP_ADD) {
       // Now go through each node and see if one of them is the object pointer.
       for (const TreeNodePtr & ctp : inode->children()) {
         if (ctp->isEquivalentTo(leaf)) found_this_ptr = true;

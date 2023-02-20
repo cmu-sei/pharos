@@ -1,10 +1,11 @@
-// Copyright 2019-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2019-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Graph_H
 #define Pharos_Graph_H
 
 #include "rose.hpp"
 #include <Rose/BinaryAnalysis/Partitioner2/Partitioner.h>
+#include <Rose/BinaryAnalysis/Partitioner2/BasicBlock.h>
 
 #include <Sawyer/Graph.h>
 

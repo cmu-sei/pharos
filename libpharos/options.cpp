@@ -1,4 +1,4 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <algorithm>
 #include <iterator>
@@ -13,10 +13,6 @@
 #include <boost/range/adaptor/map.hpp>
 
 #include <Sawyer/ProgressBar.h>
-
-#if PHAROS_ROSE_VARIABLE_ID_HACK
-#include <Rose/BinaryAnalysis/SymbolicExpr.h>
-#endif
 
 #include "options.hpp"
 #include "util.hpp"
@@ -378,14 +374,12 @@ static ProgOptVarMap parse_cert_options_internal(
   auto lv = vm.get<bf::path>("library", "pharos.library");
   library_path = lv ? *lv : lib_root;
 
-#if PHAROS_ROSE_VARIABLE_ID_HACK
   // Ensure that variable IDs are allocated in a deterministic fashion when running
   // single-threaded
   auto level_opt = vm.get<int>("threads", "concurrency_level");
   if (!level_opt || *level_opt == 1) {
-    Rose::BinaryAnalysis::SymbolicExpr::serializeVariableIds = true;
+    Rose::BinaryAnalysis::SymbolicExpression::serializeVariableIds = true;
   }
-#endif
 
 
   // ----------------------------------------------------------------------------------------

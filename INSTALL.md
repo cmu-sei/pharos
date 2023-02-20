@@ -143,8 +143,9 @@ you might update CMake first.  CMake version 3.5 supports Boost
 version 1.61, and if your Boost version is newer, you'll need to
 update CMake or patch patch it by hand.
 
-An alternative is to use an older distribution of boost.  Much of our
-testing has been done using version 1.61.
+Addendum: CMake has not been keeping up with Boost.  Instead Boost
+ships its own cmake files.  Pharos's cmake configuration has been
+change to try to find those and prefer their usage.
 
 ### yaml-cpp
 
@@ -220,16 +221,15 @@ $ git clone -b develop https://github.com/rose-compiler/rose rose
 $ cd rose
 ```
 
-~~This version has a reasonable chance of working or only having minor
-issues.~~ ***A major API change occurred in ROSE version 0.11.103.11
-which Pharos has yet to be able accomodate.  This version of Pharos
-will only build against versions 0.11.39.6 through 0.11.103.10.*** If
-you want to be conservative and use the version of ROSE that was known
-to compile with the latest major commit to the Pharos repository, you
-can checkout this commit (ROSE version v0.11.99.12):
+This version has a reasonable chance of working or only having minor
+issues.  If you want to be conservative and use a version of ROSE that
+was known to compile with the latest major commit to the Pharos
+repository, you can checkout ROSE version v0.11.117.4, which is also
+the *earliest* version of ROSE that should be able to compile and pass
+tests:
 
 ```
-$ git checkout v0.11.99.12
+$ git checkout v0.11.117.4
 ```
 
 ROSE can be configured in a multitude of ways, and some attention to

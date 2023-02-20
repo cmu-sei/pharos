@@ -137,7 +137,7 @@ reasonMethod_N(Func) :-
     % oo, poly, and ooex7 test cases.
     (callingConvention(Func, '__thiscall'); callingConvention(Func, 'invalid')),
     funcParameter(Func, ecx, ThisPtr),
-    logtraceln('~@~Q.', [not(factMethod(Method)), reasonMethod_N(Func)]).
+    logtraceln('~@~Q.', [not(factMethod(Func)), reasonMethod_N(Func)]).
 
 % Because a known OO __thiscall method passes the this-pointer as parameter zero to a cdecl
 % method, making the method in question a __cdecl OO method.  This happens sometimes when the
@@ -981,6 +981,10 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
     !,
     find(Method, Class),
     factVFTableWrite(Insn, Method, Offset, VFTable),
+    % Verify that this vftable write is in method's this class
+    possibleVFTableWrite(Insn, Method, ThisPtr, Offset, VFTable),
+    funcParameter(Method, ecx, ThisPtr),
+
     VFTableWrite=factVFTableWrite(Insn, Method, Offset, VFTable),
 
     % ejs 10/9/20: We found the destructor rule was applying to a method which we had not
@@ -1025,11 +1029,17 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
              reasonVFTableBelongsToClass(_SomeVFTableWeNeedToReplace, 0, AncestorClass, _Rule, _OtherWrite));
 
         % The other way for us to own the vftable is if we're starting a new inheritance
-        % hierarchy ourselves.  If this is the case, Offset will be 0.  If there are no
-        % embedded objects at offset 0, then we must own the vftable.
-        (Offset = 0, (factNOTEmbeddedObject(Class, _AnyClass, 0);
-                      % Not ideal...
-                      not(factEmbeddedObject(Class, _AnyClass2, 0))))),
+        % hierarchy ourselves.  If this is the case, Offset will be 0.  We need to make sure
+        % that we do not embed any objects at 0, but also that we do not inherit from any
+        % objects that in turn embed at offset 0.  If there are no embedded objects at offset
+        % 0, then we must own the vftable.
+        (Offset = 0,
+
+         (UsOrBase=Class; reasonDerivedClassRelationship(Class, UsOrBase, 0)),
+
+         (factNOTEmbeddedObject(UsOrBase, _AnyClass, 0);
+          % Not ideal...
+          not(factEmbeddedObject(UsOrBase, _AnyClass2, 0))))),
 
     % VFTables from a base class can be reused in a derived class.  If this happens, we know
     % that the VFTable does not belong to the derived class.
@@ -1078,6 +1088,9 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
 % Free, _, Free: OK
 reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
     factVFTableWrite(Insn, Method, Offset, VFTable),
+    % Verify that this vftable write is in method's this class
+    possibleVFTableWrite(Insn, Method, ThisPtr, Offset, VFTable),
+    funcParameter(Method, ecx, ThisPtr),
     VFTableWrite=factVFTableWrite(Insn, Method, Offset, VFTable),
     find(Method, Class),
 
@@ -1124,11 +1137,17 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
              reasonVFTableBelongsToClass(_SomeVFTableWeNeedToReplace, 0, AncestorClass, _Rule, _OtherWrite));
 
         % The other way for us to own the vftable is if we're starting a new inheritance
-        % hierarchy ourselves.  If this is the case, Offset will be 0.  If there are no
-        % embedded objects at offset 0, then we must own the vftable.
-        (Offset = 0, (factNOTEmbeddedObject(Class, _AnyClass, 0);
-                      % Not ideal...
-                      not(factEmbeddedObject(Class, _AnyClass2, 0))))),
+        % hierarchy ourselves.  If this is the case, Offset will be 0.  We need to make sure
+        % that we do not embed any objects at 0, but also that we do not inherit from any
+        % objects that in turn embed at offset 0.  If there are no embedded objects at offset
+        % 0, then we must own the vftable.
+        (Offset = 0,
+
+         (UsOrBase=Class; reasonDerivedClassRelationship(Class, UsOrBase, 0)),
+
+         (factNOTEmbeddedObject(UsOrBase, _AnyClass, 0);
+          % Not ideal...
+          not(factEmbeddedObject(UsOrBase, _AnyClass2, 0))))),
 
     % VFTables from a base class can be reused in a derived class.  If this happens, we know
     % that the VFTable does not belong to the derived class.
@@ -1598,9 +1617,21 @@ reasonObjectInObject_E(OuterClass, InnerClass, Offset) :-
     logtraceln('~@~Q.', [not(factObjectInObject(OuterClass, InnerClass, Offset)),
                          reasonObjectInObject_E(OuterClass, InnerClass, Offset)]).
 
-% If a method installs a vftable at two different offsets, it must be embedded or inherited.
+% If a method installs a vftable at two different offsets, there must be an
+% embedded or inherited class at those offsets.
 reasonObjectInObject_F(OuterClass, InnerClass, Offset) :-
     factVFTableWrite(_Insn1, Method, Offset, VFTable),
+
+    % Although the general knowledge of knowing there is an embedded/inherited
+    % class is true for constructors and destructors, we don't have a way to
+    % represent that.  hasUnknownOIO? To be able to identify the inner class, we
+    % need to look at a Constructor, because as per
+    % https://docs.google.com/spreadsheets/d/1Sglpf0HT363kH09jmpx0tYHvuTvJgRTEsu7x0sj-QAA/edit#gid=1459733299
+    % we know we'll always see the most derived vftable.
+    factConstructor(Method),
+    % And no one overwrites my VFTable, which means I'm the most derived
+    not(factVFTableOverwrite(Method, VFTable, _OtherTable, Offset)),
+
     find(Method, OuterClass),
     find(VFTable, InnerClass),
     iso_dif(Method, VFTable),
@@ -1608,8 +1639,9 @@ reasonObjectInObject_F(OuterClass, InnerClass, Offset) :-
     factVFTableWrite(_Insn2, Method, Offset2, VFTable),
     iso_dif(Offset, Offset2),
 
+
     logtraceln('~@~Q.', [not(factObjectInObject(OuterClass, InnerClass, Offset)),
-                         reasonObjectInObject_F(OuterClass, InnerClass, Offset)]).
+                         reasonObjectInObject_F(OuterClass, InnerClass, Offset, method=Method)]).
 
 % The member at Offset in OuterConstructor is certain to be an object instance of class
 % InnerConstructor.  The reasoning was intended to be based on two different constructors
@@ -3464,7 +3496,7 @@ reasonClassSizeGTE_D(Class, Size) :-
 
     % Debugging
     logtraceln('~@~Q.', [not((factClassSizeGTE(Class, ExistingSize), ExistingSize >= Size)),
-                         reasonClassSizeGTE_D(Class, Size, Function, ThisPtr, Constructor, Debug)]).
+                         reasonClassSizeGTE_D(Class, size=Size, function=Function, thisptr=ThisPtr, constructor=Constructor, debug=Debug)]).
 
 % The given class is certain to be of this size or greater.  The reasoning for this rule is
 % that if we're certain that there's a member at a given offset and size, then the object must

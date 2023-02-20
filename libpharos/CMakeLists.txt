@@ -66,15 +66,24 @@ set(PHAROS_SOURCES
   )
 
 # Packages needed by libpharos
-find_package(SWIPL "8.3.16" REQUIRED)
+set(swipl_required_version "8.3.16")
+find_package(SWIPL "9.0.0" QUIET)
+if(NOT SWIPL_FOUND)
+  find_package(SWIPL ${swipl_required_version} REQUIRED)
+else()
+  message(STATUS "Fount SWIPL: ${SWIPL_EXECUTABLE} (found version ${SWIPL_VERSION})")
+endif()
 find_package(SQLite REQUIRED)
 set(CURSES_NEED_NCURSES true)
 find_package(Curses REQUIRED)
 find_package(Threads)
 
 set(Boost_USE_MULTITHREADED on)
+set(_old_FPPC "${CMAKE_FIND_PACKAGE_PREFER_CONFIG}")
+set(CMAKE_FIND_PACKAGE_PREFER_CONFIG true)
 find_package(Boost 1.60.0 REQUIRED
   COMPONENTS system chrono timer iostreams serialization)
+set(CMAKE_FIND_PACKAGE_PREFER_CONFIG "${_old_FPPC}")
 
 # Create pharos library
 add_library(pharos SHARED ${PHAROS_SOURCES})

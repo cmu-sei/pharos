@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <stdarg.h>
 #include <stdexcept>
@@ -25,22 +25,22 @@ namespace bio = boost::iostreams;
 // allows it to be called from more contexts.  This code is a bare function, so that it can
 // be easily called on the stock partitioner as well.
 void
-report_partitioner_statistics(const P2::Partitioner& partitioner)
+report_partitioner_statistics(P2::PartitionerConstPtr const & partitioner)
 {
-  size_t num_funcs = partitioner.nFunctions();
-  size_t num_bbs = partitioner.nBasicBlocks();
-  size_t num_dbs = partitioner.nDataBlocks();
+  size_t num_funcs = partitioner->nFunctions();
+  size_t num_bbs = partitioner->nBasicBlocks();
+  size_t num_dbs = partitioner->nDataBlocks();
   size_t num_insns = 0;
   size_t num_bytes = 0;
 
-  for (const P2::BasicBlock::Ptr & bb : partitioner.basicBlocks()) {
+  for (const P2::BasicBlock::Ptr & bb : partitioner->basicBlocks()) {
     for (const SgAsmInstruction *insn : bb->instructions()) {
       num_insns++;
       num_bytes += insn->get_size();
     }
   }
 
-  for (const P2::DataBlock::Ptr & db : partitioner.dataBlocksOverlapping(partitioner.aum().hull())) {
+  for (const P2::DataBlock::Ptr & db : partitioner->dataBlocksOverlapping(partitioner->aum().hull())) {
     num_bytes += db->size();
   }
 
@@ -54,7 +54,7 @@ report_partitioner_statistics(const P2::Partitioner& partitioner)
 // adjusted by some offset into the object, and then finally a function is called with a JMP
 // instruction.  The JMP is really conceptually a CALL, which is why this code is needed.
 P2::ThunkDetection
-isX86MovAddJmpThunk(UNUSED const P2::Partitioner &partitioner, const std::vector<SgAsmInstruction*> &insns) {
+isX86MovAddJmpThunk(UNUSED P2::PartitionerConstPtr const &  partitioner, const std::vector<SgAsmInstruction*> &insns) {
   if (insns.size() < 3)
     return {};
   SgAsmX86Instruction *mov = isSgAsmX86Instruction(insns[0]);
@@ -107,12 +107,14 @@ isX86MovAddJmpThunk(UNUSED const P2::Partitioner &partitioner, const std::vector
 // Partitioner2
 // ===============================================================================================
 
-P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
-                                   std::vector<std::string> const & specimen_names)
+P2::PartitionerPtr create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
+                                      std::vector<std::string> const & specimen_names)
 {
   using clock = std::chrono::steady_clock;
   using time_point = std::chrono::time_point<clock>;
   using duration = std::chrono::duration<double>;
+
+  auto & settings = engine->settings();
 
   // Mark all segments in the program as executable.  This is important in environments such as
   // Windows, where the segments can easily have their permissions altered after loading.
@@ -120,18 +122,20 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
   // such as the creation of very large basic blocks full of zero instructions.
   if (vm.count("mark-executable")) {
     GINFO << "Marking all sections as executable during function partitioning." << LEND;
-    engine->memoryIsExecutable(true);
+    settings.loader.memoryIsExecutable = true;
   }
 
   // This change was required to fix an issue with incorrect computation of opaque predicates
   // that Cory is still trying to fully understand.
-  engine->memoryDataAdjustment(P2::DATA_NO_CHANGE);
+  settings.loader.memoryDataAdjustment = P2::DATA_NO_CHANGE;
 
   // The standard rose approach of marking blocks of zeros as non-excutable doesn't work well,
   // because among other issues, it consumes zeros in valid instructions that are adjacent to
   // other blocks of zeros.  It might be useful to enable temporarily while troublshooting
   // other problems.
   // engine->deExecuteZeros(256);
+  // MWD: The following line might have same effect for newer ROSE, but is untested
+  // settings.loader.deExecuteZerosThreshold = 256;
 
   // It's VERY unclear right now whether enabling semantics helps or hinders.  There are some
   // known bugs in enabling it, probably because it hasn't been well tested (Robb has it off by
@@ -146,7 +150,7 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
   }
   if (!disable_semantics) {
     GINFO << "Enabling semantic control flow analysis during function partitioning." << LEND;
-    engine->usingSemantics(true);
+    settings.partitioner.base.usingSemantics = true;
   }
   else {
     GINFO << "Semantic control flow analysis disabled, analysis may be less correct." << LEND;
@@ -155,29 +159,30 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
   // We're leaving post analysis in general on right now, even though we've disabled all of the
   // passes.  We disabled these passes because they take additional CPU and don't provide any
   // benefit since we're not actually using them.
-  engine->doingPostAnalysis(false);
+  settings.partitioner.doingPostAnalysis = false;
   // Assume that functions always return.  We should enable this pass as soon as possible but
   // it led to some differences in our test suite that were complicated and difficult to fix.
-  engine->doingPostFunctionMayReturn(false);
-  engine->functionReturnAnalysis(Rose::BinaryAnalysis::Partitioner2::MAYRETURN_ALWAYS_YES);
+  settings.partitioner.doingPostFunctionMayReturn = false;
+  settings.partitioner.functionReturnAnalysis =
+    Rose::BinaryAnalysis::Partitioner2::MAYRETURN_ALWAYS_YES;
   // We're not using ROSE's stack delta analysis or calling convention analysis because we have
   // our own.  We should consolidate these as soon as possible.
-  engine->doingPostFunctionStackDelta(false);
-  engine->doingPostCallingConvention(false);
-  engine->doingPostFunctionNoop(false);
+  settings.partitioner.doingPostFunctionStackDelta = false;
+  settings.partitioner.doingPostCallingConvention = false;
+  settings.partitioner.doingPostFunctionNoop = false;
 
   // TODO mwd: This is needed to keep things from being exceptionally slow since Rose commit
   // 4f0db690696dcd4c6dfaf898504a75fcd76770a6
-  engine->findingInterFunctionCalls(false);
+  settings.partitioner.findingInterFunctionCalls = false;
 
   // We'll handle errors.  We don't want to unilaterally exit.
-  engine->exitOnError(false);
+  settings.engine.exitOnError = false;
 
   // Enable Robb's standard thunk splitting logic.  Needed for our debug test cases?
-  engine->splittingThunks(true);
+  settings.partitioner.splittingThunks = true;
 
   // Disable Robb's demangler because it was exiting abruptly on some important files.
-  engine->demangleNames(false);
+  settings.partitioner.demangleNames = false;
 
   // Check the specimens
   if (specimen_names.empty()) {
@@ -247,12 +252,12 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
 
   // Create a partitioner that's tuned for a certain architecture, and then tune it even more
   // depending on our command-line.
-  P2::Partitioner partitioner = engine->createPartitioner();
+  P2::PartitionerPtr partitioner = engine->createPartitioner();
 
   // Enable our Monitor (previously for CFG debugging, now for timeout limit checking).
-  partitioner.cfgAdjustmentCallbacks().append(Monitor::instance());
+  partitioner->cfgAdjustmentCallbacks().append(Monitor::instance());
 
-  size_t arch_bits = partitioner.instructionProvider().instructionPointerRegister().get_nbits();
+  size_t arch_bits = partitioner->instructionProvider().instructionPointerRegister().get_nbits();
   if (arch_bits != 32) {
     // What does the config file say about whether 64-bit analysis is supported for this tool?
     auto config_allow64 = vm.config().path_get("pharos.allow-64bit");
@@ -286,7 +291,7 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
   // receiving warnings about malformed PE files?   Does that matter?
 
   // Show what we'll be working on (stdout for the record, and diagnostics also)
-  //partitioner.memoryMap().dump(mlog[INFO]);
+  //partitioner->memoryMap().dump(mlog[INFO]);
 
   // Run the partitioner
   if (vm.count("serialize")) {
@@ -328,7 +333,7 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
                 << ", which is which is contrary to how this program was run." << LEND;
         }
         time_point start_ts = clock::now();
-        ia >> partitioner;
+        ia >> *partitioner;
         duration secs = clock::now() - start_ts;
         OINFO << "Reading serialized data took " << secs.count() << " seconds." << LEND;
       } catch (boost::iostreams::gzip_error &e) {
@@ -358,7 +363,7 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
           out.push(file);
           bar::binary_oarchive oa(out);
           oa << std::string{ROSE_PACKAGE_VERSION} << disable_semantics;
-          oa << partitioner;
+          oa << *partitioner;
           secs = clock::now() - start_ts;
           OINFO << "Writing serialized data took " << secs.count() << " seconds." << LEND;
         } catch (...) {
@@ -393,13 +398,13 @@ P2::Partitioner create_partitioner(const ProgOptVarMap& vm, P2::Engine* engine,
 
   // Enable progress bars only if the output is to a terminal...
   if (interactive_logging()) {
-    partitioner.progress(Rose::Progress::Ptr());
+    partitioner->progress(Rose::Progress::Ptr());
   }
 
   // This test may have been added because buildAst failed when the function list was empty.
   // Since we're no longer returning the interpretation, but the engine instead, we can
   // probably return the engine anyway (no AST?) and not crash... Hopefully.
-  if (partitioner.functions().empty() && engine->functionStartingVas().empty()) {
+  if (partitioner->functions().empty() && settings.partitioner.functionStartingVas.empty()) {
     GERROR << "No starting points for recursive disassembly." << LEND;
     return partitioner;
   }
@@ -418,7 +423,7 @@ uint8_t CERTEngine::read_byte(rose_addr_t addr) {
 }
 
 P2::DataBlock::Ptr
-CERTEngine::try_making_padding_block(P2::Partitioner& partitioner, rose_addr_t addr, bool backwards) {
+CERTEngine::try_making_padding_block(P2::PartitionerPtr const & partitioner, rose_addr_t addr, bool backwards) {
   // The padding data block that we're going to create (or return as a nulllptr).
   P2::DataBlock::Ptr dblock;
 
@@ -488,7 +493,7 @@ CERTEngine::try_making_padding_block(P2::Partitioner& partitioner, rose_addr_t a
   // Create the data block, and attach it to the CFG.  We'll determine the correct function to
   // attach the block to in a final pass.
   dblock = P2::DataBlock::instanceBytes(start, num_bytes);
-  partitioner.attachDataBlock(dblock);
+  partitioner->attachDataBlock(dblock);
 
   // NOTE: should really be marking this block as padding! The original Partitioner
   // would put a block reason on there of SgAsmBlock::BLK_PADDING but it looks like
@@ -506,19 +511,19 @@ CERTEngine::try_making_padding_block(P2::Partitioner& partitioner, rose_addr_t a
 // of the gap respectively.  This probably isn't the most efficient approach, but it makes it
 // easy to experiment with different approaches.
 bool
-CERTEngine::consume_padding(P2::Partitioner& partitioner, bool top, bool bottom) {
+CERTEngine::consume_padding(P2::PartitionerPtr const & partitioner, bool top, bool bottom) {
   // Have we changed anything?
   bool changed = false;
 
   // Find unused executable address intervals.  This may not be the most efficient way of doing
   // it, but we needed to generate unused once for each segment so that we didn't get gaps that
   // crossed segment boundaries.
-  for (const MemoryMap::Node &node : partitioner.memoryMap()->nodes()) {
+  for (const MemoryMap::Node &node : partitioner->memoryMap()->nodes()) {
     auto seg = node.value();
     // Only consider executable segments.
     if ((seg.accessibility() & MemoryMap::EXECUTABLE) == 0) continue;
     // Get unused gaps _within_ this segment.
-    AddressIntervalSet unused = partitioner.aum().unusedExtent(node.key());
+    AddressIntervalSet unused = partitioner->aum().unusedExtent(node.key());
 
     // For each unused interval.
     for (const AddressInterval &interval : unused.intervals()) {
@@ -556,7 +561,7 @@ CERTEngine::consume_padding(P2::Partitioner& partitioner, bool top, bool bottom)
 }
 
 bool
-CERTEngine::try_making_thunk(P2::Partitioner& partitioner, rose_addr_t address) {
+CERTEngine::try_making_thunk(P2::PartitionerPtr const & partitioner, rose_addr_t address) {
   // If we've looked for thunks at this exact address once before, either we've already made
   // code or we've decided not to.  Nothing from subsequent analysis is going to change that
   // conclusion, so we're done.
@@ -568,7 +573,7 @@ CERTEngine::try_making_thunk(P2::Partitioner& partitioner, rose_addr_t address) 
   not_thunk_gaps.insert(address);
 
   // Disassemble the instruction?
-  SgAsmX86Instruction *insn = isSgAsmX86Instruction(partitioner.discoverInstruction(address));
+  SgAsmX86Instruction *insn = isSgAsmX86Instruction(partitioner->discoverInstruction(address));
 
   // If it's not a jump instruction, we're not interested.
   if (!insn || insn->get_kind() != x86_jmp) return false;
@@ -577,7 +582,7 @@ CERTEngine::try_making_thunk(P2::Partitioner& partitioner, rose_addr_t address) 
   bb->append(partitioner, insn);
 
   bool complete;
-  std::vector<rose_addr_t> successors = partitioner.basicBlockConcreteSuccessors(bb, &complete);
+  std::vector<rose_addr_t> successors = partitioner->basicBlockConcreteSuccessors(bb, &complete);
   if (successors.size() == 0) // to prevent a coredump...
     return false;
   rose_addr_t target = successors.front();
@@ -585,11 +590,11 @@ CERTEngine::try_making_thunk(P2::Partitioner& partitioner, rose_addr_t address) 
   // OINFO << "Thunk: " << addr_str(least) << LEND;
   unsigned reasons = SgAsmFunction::FUNC_THUNK | SgAsmFunction::FUNC_PATTERN;
   P2::Function::Ptr thunk_function = P2::Function::instance(address, reasons);
-  partitioner.attachOrMergeFunction(thunk_function);
+  partitioner->attachOrMergeFunction(thunk_function);
 
   // OINFO << "Remaking target function " << addr_str(target) << LEND;
   P2::Function::Ptr target_function = P2::Function::instance(target, SgAsmFunction::FUNC_GRAPH);
-  partitioner.attachOrMergeFunction(target_function);
+  partitioner->attachOrMergeFunction(target_function);
 
   return true;
 }
@@ -598,17 +603,17 @@ CERTEngine::try_making_thunk(P2::Partitioner& partitioner, rose_addr_t address) 
 // of the gap respectively.  This probably isn't the most efficient approach, but it makes it
 // easy to experiment with different approaches.
 bool
-CERTEngine::consume_thunks(P2::Partitioner& partitioner, bool top, bool bottom) {
+CERTEngine::consume_thunks(P2::PartitionerPtr const & partitioner, bool top, bool bottom) {
   // Have we changed anything?
   bool changed = false;
 
   // Find unused executable address intervals.
-  for (const MemoryMap::Node &node : partitioner.memoryMap()->nodes()) {
+  for (const MemoryMap::Node &node : partitioner->memoryMap()->nodes()) {
     auto seg = node.value();
     // Only consider executable segments.
     if ((seg.accessibility() & MemoryMap::EXECUTABLE) == 0) continue;
     // Get unused gaps _within_ this segment.
-    AddressIntervalSet unused = partitioner.aum().unusedExtent(node.key());
+    AddressIntervalSet unused = partitioner->aum().unusedExtent(node.key());
 
     // For each unused interval.
     for (const AddressInterval &interval : unused.intervals()) {
@@ -633,11 +638,11 @@ CERTEngine::consume_thunks(P2::Partitioner& partitioner, bool top, bool bottom) 
   return changed;
 }
 
-SgAsmX86Instruction* non_overlapping_instruction(const P2::Partitioner& partitioner, rose_addr_t addr) {
+SgAsmX86Instruction* non_overlapping_instruction(P2::PartitionerConstPtr const & partitioner, rose_addr_t addr) {
   // First check to see if there's an existing instruction.  If so return it.  This circumvents
   // the overlap check later which should include the starting address during checks for
   // overlapping data blocks, but exclude existing instructions.
-  P2::AddressUser oau = partitioner.instructionExists(addr);
+  P2::AddressUser oau = partitioner->instructionExists(addr);
   if (oau.insn()) {
     SgAsmInstruction* insn = oau.insn();
     //OINFO << "NOI already exists at " << addr_str(addr) << " : " << debug_instruction(insn, 9) << LEND;
@@ -645,7 +650,7 @@ SgAsmX86Instruction* non_overlapping_instruction(const P2::Partitioner& partitio
   }
 
   // Find an existing instruction, or try creating one if it does not exist.
-  SgAsmInstruction* insn = partitioner.discoverInstruction(addr);
+  SgAsmInstruction* insn = partitioner->discoverInstruction(addr);
   // If we couldn't create an instruction, then there's just no instruction here.
   if (!insn || insn->isUnknown()) {
     //OINFO << "Failed to create non-overlapping instruction at " << addr_str(addr) << LEND;
@@ -660,7 +665,7 @@ SgAsmX86Instruction* non_overlapping_instruction(const P2::Partitioner& partitio
   // Now check to see if this instruction overlaps with another.
   rose_addr_t end_addr = addr + insn->get_size() - 1;
   AddressInterval ii(AddressInterval::hull(addr, end_addr));
-  bool overlap = partitioner.aum().anyExists(ii);
+  bool overlap = partitioner->aum().anyExists(ii);
   if (overlap) {
     //OINFO << "  Rejecting instruction at " << addr_str(addr)
     //      << " because it overlaps with something else." << LEND;
@@ -671,7 +676,7 @@ SgAsmX86Instruction* non_overlapping_instruction(const P2::Partitioner& partitio
 }
 
 bool
-CERTEngine::bad_code(const P2::Partitioner& partitioner, const P2::BasicBlock::Ptr bb) const {
+CERTEngine::bad_code(P2::PartitionerConstPtr const & partitioner, const P2::BasicBlock::Ptr bb) const {
   if (!bb || bb->nInstructions() == 0) {
     // This condition doesn't represent "bad" code, just non-existent code.  For reasons that
     // are unclear, we're sometimes producing blocks with no instructions, and in this case, we
@@ -701,7 +706,7 @@ CERTEngine::bad_code(const P2::Partitioner& partitioner, const P2::BasicBlock::P
 
 class SpeculativeBasicBlock {
  private:
-  P2::Partitioner& partitioner;
+  P2::PartitionerPtr partitioner;
   rose_addr_t addr;
   rose_addr_t end;
  public:
@@ -711,14 +716,14 @@ class SpeculativeBasicBlock {
   bool already_existed = false;
   bool was_call = false;
 
-  SpeculativeBasicBlock(P2::Partitioner& p, rose_addr_t a, rose_addr_t e) :
+  SpeculativeBasicBlock(P2::PartitionerPtr const & p, rose_addr_t a, rose_addr_t e) :
     partitioner(p), addr(a), end(e) {}
 
   // Analyze the block.  Return true if the block was valid, and code should be made.
   // Also fill in various member fields to control "higher level logic".
   bool analyze() {
     // If a block already exists return it.
-    bb = partitioner.basicBlockExists(addr);
+    bb = partitioner->basicBlockExists(addr);
     if (bb) {
       //OINFO << "Basic block at " << addr_str(addr) << " already existed." << LEND;
       already_existed = true;
@@ -738,7 +743,7 @@ class SpeculativeBasicBlock {
       }
 
       // If we've flowed into an existing instruction, that's valid.
-      if (partitioner.instructionExists(current)) {
+      if (partitioner->instructionExists(current)) {
         //OINFO << "Found existing instruction at: " << addr_str(current) << LEND;
         successor = 0;
         return true;
@@ -777,7 +782,7 @@ class SpeculativeBasicBlock {
       bool end_of_block = false;
       bool complete;
       SgAsmX86Instruction* xinsn = isSgAsmX86Instruction(insn);
-      for (rose_addr_t s : partitioner.basicBlockConcreteSuccessors(bb, &complete)) {
+      for (rose_addr_t s : partitioner->basicBlockConcreteSuccessors(bb, &complete)) {
 
         //OINFO << "Successor of " << addr_str(current) << " is " << addr_str(s) << LEND;
         // We're interested in any non-fallthru successors.
@@ -833,7 +838,7 @@ class SpeculativeBasicBlock {
       }
 
       // If we're about flow into a known data block, we're not really an instruction.
-      if (partitioner.aum().overlapping(fallthru).dataBlockUsers().size()) {
+      if (partitioner->aum().overlapping(fallthru).dataBlockUsers().size()) {
         //OINFO << "Instruction at " << addr_str(current) << " flows into a known data block "
         //      << "(and is therefore not really an instruction)." << LEND;
         return false;
@@ -854,20 +859,20 @@ class SpeculativeBasicBlock {
 };
 
 bool
-CERTEngine::create_arbitrary_code(P2::Partitioner& partitioner) {
+CERTEngine::create_arbitrary_code(P2::PartitionerPtr const & partitioner) {
   // Have we changed anything?
   bool changed = false;
   bool ever_changed = false;
 
   // Find unused executable address intervals.
   AddressIntervalSet executableSpace;
-  for (const MemoryMap::Node &node : partitioner.memoryMap()->nodes()) {
+  for (const MemoryMap::Node &node : partitioner->memoryMap()->nodes()) {
     if ((node.value().accessibility() & MemoryMap::EXECUTABLE) != 0)
       executableSpace.insert(node.key());
   }
 
   while (true) {
-    AddressIntervalSet unused = partitioner.aum().unusedExtent(executableSpace);
+    AddressIntervalSet unused = partitioner->aum().unusedExtent(executableSpace);
 
     // For each unused interval.
     for (const AddressInterval &interval : unused.intervals()) {
@@ -937,7 +942,7 @@ CERTEngine::create_arbitrary_code(P2::Partitioner& partitioner) {
           size_t len = end - current + 1;
 
           P2::DataBlock::Ptr resized_dblock = P2::DataBlock::instanceBytes(current, len);
-          partitioner.attachDataBlock(resized_dblock);
+          partitioner->attachDataBlock(resized_dblock);
           //OINFO << "Data block at " << addr_str(dblock->address()) << " was "
           //      << dblock->size() << " bytes long." << LEND;
           break;
@@ -960,7 +965,7 @@ CERTEngine::create_arbitrary_code(P2::Partitioner& partitioner) {
         // function (a common pattern in execption handlers that jump to return blocks).
         //OINFO << "Checking for function at successor of interest: " << addr_str(sbb.successor) << LEND;
         if (sbb.successor) {
-          P2::Function::Ptr entryfunc = partitioner.functionExists(sbb.successor);
+          P2::Function::Ptr entryfunc = partitioner->functionExists(sbb.successor);
           if (entryfunc) {
             //OINFO << "Address " << addr_str(sbb.successor)
             //      << " flows directly into  " << addr_str(entryfunc->address()) << LEND;
@@ -968,10 +973,10 @@ CERTEngine::create_arbitrary_code(P2::Partitioner& partitioner) {
           else {
             //OINFO << "Evaluating owners of successor of interest: " << addr_str(sbb.successor) << LEND;
             // Is there a basic block at our successor, if so attach that function.
-            P2::BasicBlock::Ptr existing_bblock = partitioner.basicBlockExists(sbb.successor);
+            P2::BasicBlock::Ptr existing_bblock = partitioner->basicBlockExists(sbb.successor);
             if (existing_bblock) {
               //OINFO << "Basic block exists, checking for functions..." << LEND;
-              for (P2::Function::Ptr f : partitioner.functionsOwningBasicBlock(existing_bblock)) {
+              for (P2::Function::Ptr f : partitioner->functionsOwningBasicBlock(existing_bblock)) {
                 function = f;
                 //OINFO << "Address " << addr_str(sbb.successor)
                 //      << " is owned by " << addr_str(function->address()) << LEND;
@@ -986,7 +991,7 @@ CERTEngine::create_arbitrary_code(P2::Partitioner& partitioner) {
         }
 
         // Before making a code block, check to see if there's a data block.
-        if (partitioner.aum().overlapping(current).dataBlockUsers().size()) {
+        if (partitioner->aum().overlapping(current).dataBlockUsers().size()) {
           //OINFO << "There's already a data block at " << addr_str(current)
           //      << " so we're not going to make a code block." << LEND;
           break;
@@ -994,30 +999,30 @@ CERTEngine::create_arbitrary_code(P2::Partitioner& partitioner) {
 
         if (block_only) {
           // OINFO << "Attaching a bare basic block at " << addr_str(current) << LEND;
-          P2::BasicBlock::Ptr new_block = partitioner.discoverBasicBlock(current);
-          partitioner.attachBasicBlock(new_block);
+          P2::BasicBlock::Ptr new_block = partitioner->discoverBasicBlock(current);
+          partitioner->attachBasicBlock(new_block);
         }
         else {
           // If we're not found a function to attach the block to already.
           if (!function) {
             //OINFO << "Checking for existing function at " << addr_str(current) << LEND;
-            function = partitioner.functionExists(current);
+            function = partitioner->functionExists(current);
             if (!function) {
               unsigned reasons = SgAsmFunction::FUNC_USERDEF;
               function = P2::Function::instance(current, reasons);
-              partitioner.attachFunction(function);
-              //size_t new_placeholders = partitioner.attachFunction(function);
+              partitioner->attachFunction(function);
+              //size_t new_placeholders = partitioner->attachFunction(function);
               //OINFO << "Creating new function at " << addr_str(current) << " had "
               //      << new_placeholders << " new placeholders." << LEND;
             }
           }
 
-          partitioner.detachFunction(function);
-          partitioner.insertPlaceholder(current);
+          partitioner->detachFunction(function);
+          partitioner->insertPlaceholder(current);
           function->insertBasicBlock(current);
           while (makeNextBasicBlock(partitioner)) /*void*/;
-          partitioner.discoverFunctionBasicBlocks(function);
-          partitioner.attachFunction(function);
+          partitioner->discoverFunctionBasicBlocks(function);
+          partitioner->attachFunction(function);
         }
 
         // We need to rerun the the full partitioner, because we've changed things.
@@ -1067,7 +1072,7 @@ CERTEngine::create_arbitrary_code(P2::Partitioner& partitioner) {
 }
 
 void
-CERTEngine::runPartitioner(P2::Partitioner &partitioner) {
+CERTEngine::runPartitioner(P2::PartitionerPtr const &partitioner) {
   P2::Engine::runPartitioner(partitioner);
 
   // For each padding block, assign the data block to the function that preceeds it.  The
@@ -1078,7 +1083,7 @@ CERTEngine::runPartitioner(P2::Partitioner &partitioner) {
   // this is annoying because that results in the wrong answer for jump tables and other
   // unidentified data which usually follows the function that it is associated with in most
   // compilers.
-  const P2::AddressUsageMap& aum = partitioner.aum();
+  const P2::AddressUsageMap& aum = partitioner->aum();
 
   // The address users
   auto users = aum.overlapping(aum.hull()).addressUsers();
@@ -1094,9 +1099,9 @@ CERTEngine::runPartitioner(P2::Partitioner &partitioner) {
     rose_addr_t pre_addr = addr - 1;
 
     const AddressInterval ai(pre_addr);
-    for (const P2::Function::Ptr & func : partitioner.functionsOverlapping(ai)) {
+    for (const P2::Function::Ptr & func : partitioner->functionsOverlapping(ai)) {
       // Attach the data block to the function.
-      partitioner.attachDataBlockToFunction(
+      partitioner->attachDataBlockToFunction(
         P2::DataBlock::instanceBytes(addr, db->size()), func);
       //OINFO << "Attaching data block at " << addr_str(addr) << " to function "
       //      << addr_str(func->address()) << LEND;
@@ -1107,7 +1112,7 @@ CERTEngine::runPartitioner(P2::Partitioner &partitioner) {
 }
 
 void
-CERTEngine::runPartitionerRecursive(P2::Partitioner& partitioner) {
+CERTEngine::runPartitionerRecursive(P2::PartitionerPtr const & partitioner) {
   using clock = std::chrono::steady_clock;
   using time_point = std::chrono::time_point<clock>;
   using duration = std::chrono::duration<double>;
@@ -1139,7 +1144,7 @@ CERTEngine::runPartitionerRecursive(P2::Partitioner& partitioner) {
   report_partitioner_statistics(partitioner);
 
   // Disable these...
-  partitioner.functionPrologueMatchers().clear();
+  partitioner->functionPrologueMatchers().clear();
 
   GDEBUG << "Starting FIRST iteration!" << LEND;
 
@@ -1165,13 +1170,13 @@ CERTEngine::runPartitionerRecursive(P2::Partitioner& partitioner) {
 
   // Now add the prologue matchers back, and analyze one more time.
   // It unclear whether this helped much, but it's difficult for me to believe that it hurts.
-  partitioner.functionPrologueMatchers().push_back(P2::ModulesX86::MatchHotPatchPrologue::instance());
-  partitioner.functionPrologueMatchers().push_back(P2::ModulesX86::MatchStandardPrologue::instance());
-  partitioner.functionPrologueMatchers().push_back(P2::ModulesX86::MatchAbbreviatedPrologue::instance());
-  partitioner.functionPrologueMatchers().push_back(P2::ModulesX86::MatchEnterPrologue::instance());
+  partitioner->functionPrologueMatchers().push_back(P2::ModulesX86::MatchHotPatchPrologue::instance());
+  partitioner->functionPrologueMatchers().push_back(P2::ModulesX86::MatchStandardPrologue::instance());
+  partitioner->functionPrologueMatchers().push_back(P2::ModulesX86::MatchAbbreviatedPrologue::instance());
+  partitioner->functionPrologueMatchers().push_back(P2::ModulesX86::MatchEnterPrologue::instance());
 
   // Disabled for the same reason as in createTunedPartitioner().
-  //partitioner.functionPrologueMatchers().push_back(
+  //partitioner->functionPrologueMatchers().push_back(
   //  P2::Modules::MatchThunk::instance(functionMatcherThunks()));
 
   P2::Engine::runPartitionerRecursive(partitioner);
@@ -1181,28 +1186,28 @@ CERTEngine::runPartitionerRecursive(P2::Partitioner& partitioner) {
 
 #if 0
 bool
-MatchInterFunctionGap::match(const P2::Partitioner &partitioner, rose_addr_t anchor) {
+MatchInterFunctionGap::match(P2::PartitionerConstPtr const &partitioner, rose_addr_t anchor) {
   // If there's an instruction at this address, there's not need to create another.
-  if (partitioner.instructionExists(anchor)) {
+  if (partitioner->instructionExists(anchor)) {
     OINFO << "MatchInterFunctionGap(" << addr_str(anchor) << ") -- insn exists" << LEND;
     return false;
   }
 
   // If anyone is already using this address for anything, we don't want to use it.
-  if (!(partitioner.aum().overlapping(anchor).isEmpty())) {
+  if (!(partitioner->aum().overlapping(anchor).isEmpty())) {
     OINFO << "MatchInterFunctionGap(" << addr_str(anchor) << ") -- already in use" << LEND;
     return false;
   }
 
   // If nobody is using the previous byte for anything, then we're not "adjacent" to existing
   // code, and we don't want to
-  if (partitioner.aum().overlapping(anchor - 1).isEmpty()) {
+  if (partitioner->aum().overlapping(anchor - 1).isEmpty()) {
     //OINFO << "MatchInterFunctionGap(" << addr_str(anchor) << ") -- not adjacent" << LEND;
     return false;
   }
 
   // Disassemble the instruction?
-  SgAsmX86Instruction *insn = isSgAsmX86Instruction(partitioner.discoverInstruction(anchor));
+  SgAsmX86Instruction *insn = isSgAsmX86Instruction(partitioner->discoverInstruction(anchor));
 
   if (!insn) {
     OINFO << "MatchInterFunctionGap(" << addr_str(anchor) << ") -- no valid instruction" << LEND;
@@ -1241,13 +1246,13 @@ MatchInterFunctionGap::match(const P2::Partitioner &partitioner, rose_addr_t anc
 // This approach attempts to use the standard prologue matching facility to make code from any
 // jump instruction found in the program image.
 bool
-MatchThunkPrologue::match(const P2::Partitioner &partitioner, rose_addr_t anchor) {
+MatchThunkPrologue::match(const P2::PartitionerConstPtr &partitioner, rose_addr_t anchor) {
   // If the instruction already exists, there's no need to create another?
-  if (partitioner.instructionExists(anchor))
+  if (partitioner->instructionExists(anchor))
     return false;
 
   // Disassemble the instruction?
-  SgAsmX86Instruction *insn = isSgAsmX86Instruction(partitioner.discoverInstruction(anchor));
+  SgAsmX86Instruction *insn = isSgAsmX86Instruction(partitioner->discoverInstruction(anchor));
 
   // If it's not a jump instruction, we're not interested.
   if (!insn || insn->get_kind() != x86_jmp)
@@ -1263,9 +1268,9 @@ MatchThunkPrologue::match(const P2::Partitioner &partitioner, rose_addr_t anchor
 }
 
 bool
-RefuseZeroCode::check_zeros(const P2::Partitioner& partitioner,
+RefuseZeroCode::check_zeros(P2::PartitionerConstPtr const & partitioner,
                             rose_addr_t address, const P2::BasicBlock::Ptr& bblock) {
-  SgAsmInstruction *insn = partitioner.discoverInstruction(address);
+  SgAsmInstruction *insn = partitioner->discoverInstruction(address);
   // Quick fail if we're a normal instruction.
   if (!check_zero_insn(insn)) return false;
 
@@ -1274,7 +1279,7 @@ RefuseZeroCode::check_zeros(const P2::Partitioner& partitioner,
   size_t found = 1;
   while (check_zero_insn(insn) && found < threshold) {
     current += 2;
-    insn = partitioner.discoverInstruction(current);
+    insn = partitioner->discoverInstruction(current);
     found++;
   }
 
@@ -1338,10 +1343,10 @@ RefuseOverlappingCode::operator()(bool chain, const Args &args) {
       return chain;
 
     // Would this approach be better here?
-    // if (!(partitioner.aum().overlapping(anchor).isEmpty())) {
+    // if (!(partitioner->aum().overlapping(anchor).isEmpty())) {
     for (size_t o = 1; o < insn->get_size(); o++) {
       rose_addr_t addr = insn->get_address() + o;
-      if (args.partitioner.instructionExists(addr)) {
+      if (args.partitioner->instructionExists(addr)) {
         GDEBUG << "Instruction at " << addr_str(addr) << " already exists, no overlapping code!" << LEND;
         args.results.terminate = TERMINATE_PRIOR;
       }
@@ -1370,7 +1375,7 @@ MatchJmpToPrologue::operator()(bool chain, const Args &args) {
 
     // If we've found one, lets look at the successor(s?).
     bool complete;
-    std::vector<rose_addr_t> successors = args.partitioner.basicBlockConcreteSuccessors(args.bblock, &complete);
+    std::vector<rose_addr_t> successors = args.partitioner->basicBlockConcreteSuccessors(args.bblock, &complete);
     for (rose_addr_t s : successors) {
       // The case that we're really interested in is the one where the function doesn't exist.
       // We want to look to see if it matches a prologue and if it does, then mark it as such.
@@ -1381,11 +1386,11 @@ MatchJmpToPrologue::operator()(bool chain, const Args &args) {
       //OINFO << "MatchJmpToPrologue successor: " << addr_str(current) << LEND;
 
       // If there's a "mov edi, edi", that's ok, but not required.
-      SgAsmX86Instruction *pinsn = isSgAsmX86Instruction(args.partitioner.discoverInstruction(current));
+      SgAsmX86Instruction *pinsn = isSgAsmX86Instruction(args.partitioner->discoverInstruction(current));
       if (P2::ModulesX86::matchMovDiDi(args.partitioner, pinsn)) {
         //OINFO << "MatchJmpToPrologue found 'mov edi, edi' at: " << addr_str(pinsn->get_address()) << LEND;
         current = pinsn->get_address() + pinsn->get_size();
-        pinsn = isSgAsmX86Instruction(args.partitioner.discoverInstruction(current));
+        pinsn = isSgAsmX86Instruction(args.partitioner->discoverInstruction(current));
       }
 
       // We must have a "push ebp" instruction.
@@ -1395,7 +1400,7 @@ MatchJmpToPrologue::operator()(bool chain, const Args &args) {
 
       //OINFO << "MatchJmpToPrologue found 'push ebp' at: " << addr_str(pinsn->get_address()) << LEND;
       current = pinsn->get_address() + pinsn->get_size();
-      pinsn = isSgAsmX86Instruction(args.partitioner.discoverInstruction(current));
+      pinsn = isSgAsmX86Instruction(args.partitioner->discoverInstruction(current));
       // We must have a "mov esp, ebp" instruction.
       if (!P2::ModulesX86::matchMovBpSp(args.partitioner, pinsn))
         continue;
@@ -1418,11 +1423,11 @@ MatchJmpToPrologue::operator()(bool chain, const Args &args) {
 }
 
 void
-MatchJmpToPrologue::make_functions(P2::Partitioner &partitioner) {
+MatchJmpToPrologue::make_functions(P2::PartitionerPtr const &partitioner) {
   for (rose_addr_t addr : prologues) {
     //OINFO << "MatchJmpToPrologue function created at: " << addr_str(addr) << LEND;
     P2::Function::Ptr function = P2::Function::instance(addr, SgAsmFunction::FUNC_PATTERN);
-    partitioner.attachOrMergeFunction(function);
+    partitioner->attachOrMergeFunction(function);
   }
   prologues.clear();
 }
@@ -1505,45 +1510,45 @@ ThunkDetacher::operator()(bool chain, const Args &args) {
 }
 
 void
-ThunkDetacher::makeFunctions(P2::Partitioner &partitioner) {
+ThunkDetacher::makeFunctions(P2::PartitionerPtr const &partitioner) {
   // Make each JMP a function.  This could be a little dangerous: if we split off a JMP even
   // though it wasn't a thunk, we would end up making it a function of its own even though it
   // isn't really.  Perhaps this is where we should add the additional heuristics.
   for (rose_addr_t va : jmpVas) {
     P2::Function::Ptr function = P2::Function::instance(va, SgAsmFunction::FUNC_THUNK);
-    partitioner.attachOrMergeFunction(function);
+    partitioner->attachOrMergeFunction(function);
   }
 
   // Make each JMP target a function.
   for (rose_addr_t va : targetVas) {
     P2::Function::Ptr function = P2::Function::instance(va);
-    partitioner.attachOrMergeFunction(function);
+    partitioner->attachOrMergeFunction(function);
   }
 }
 #endif
 
-P2::Partitioner
+P2::PartitionerPtr
 CERTEngine::createTunedPartitioner() {
 
   //OINFO << "Creating custom partitioner!" << LEND;
-  P2::Partitioner partitioner = P2::Engine::createTunedPartitioner();
+  auto partitioner = P2::Engine::createTunedPartitioner();
 
   // We're building out own list of Prolog matchers because MatchRetPadPush does things that we
   // did not find helpful (like skipping "mov edi,edi" instructions as padding).
-  partitioner.functionPrologueMatchers().clear();
-  partitioner.functionPrologueMatchers().push_back(P2::ModulesX86::MatchHotPatchPrologue::instance());
-  partitioner.functionPrologueMatchers().push_back(P2::ModulesX86::MatchStandardPrologue::instance());
-  partitioner.functionPrologueMatchers().push_back(P2::ModulesX86::MatchAbbreviatedPrologue::instance());
-  partitioner.functionPrologueMatchers().push_back(P2::ModulesX86::MatchEnterPrologue::instance());
+  partitioner->functionPrologueMatchers().clear();
+  partitioner->functionPrologueMatchers().push_back(P2::ModulesX86::MatchHotPatchPrologue::instance());
+  partitioner->functionPrologueMatchers().push_back(P2::ModulesX86::MatchStandardPrologue::instance());
+  partitioner->functionPrologueMatchers().push_back(P2::ModulesX86::MatchAbbreviatedPrologue::instance());
+  partitioner->functionPrologueMatchers().push_back(P2::ModulesX86::MatchEnterPrologue::instance());
 
   // We're explicitly disabling the function Prologue thunk matchers here.  In our opinion
   // "matching" on thunks by scanning the program image space is counter productive, and that
   // logic should only be used to "split" thunks from otehr functions.
-  //partitioner.functionPrologueMatchers().push_back(
+  //partitioner->functionPrologueMatchers().push_back(
   //  P2::Modules::MatchThunk::instance(functionMatcherThunks()));
 
   // See comment above about MatchRetPadPush...
-  //partitioner.functionPrologueMatchers().push_back(ModulesX86::MatchRetPadPush::instance());
+  //partitioner->functionPrologueMatchers().push_back(ModulesX86::MatchRetPadPush::instance());
 
   // Add another thunk splitting predicate.
   const P2::ThunkPredicates::Ptr thunk_splitters = functionSplittingThunks();
@@ -1556,10 +1561,10 @@ CERTEngine::createTunedPartitioner() {
 
   // Register a basic block callback that will track jumps to prologues.
   jump_to_prologue_matcher = MatchJmpToPrologue::instance();
-  partitioner.basicBlockCallbacks().append(jump_to_prologue_matcher);
-  partitioner.basicBlockCallbacks().append(RefuseZeroCode::instance());
+  partitioner->basicBlockCallbacks().append(jump_to_prologue_matcher);
+  partitioner->basicBlockCallbacks().append(RefuseZeroCode::instance());
   overlapping_code_detector = RefuseOverlappingCode::instance();
-  partitioner.basicBlockCallbacks().append(overlapping_code_detector);
+  partitioner->basicBlockCallbacks().append(overlapping_code_detector);
 
   return partitioner;
 }
@@ -1568,12 +1573,12 @@ CERTEngine::createTunedPartitioner() {
 
 // For the Superset engine, the partioning algorithm is very simple.
 void
-SupersetEngine::runPartitioner(P2::Partitioner &partitioner) {
+SupersetEngine::runPartitioner(P2::PartitionerPtr const &partitioner) {
   OINFO << "Running the superset partitioning algorithm." << LEND;
 
-  Rose::BinaryAnalysis::InstructionProvider& ip = partitioner.instructionProvider();
+  Rose::BinaryAnalysis::InstructionProvider& ip = partitioner->instructionProvider();
 
-  auto mmap = partitioner.memoryMap();
+  auto mmap = partitioner->memoryMap();
 
   // The minimum and maximum addresses that we visited.
   rose_addr_t least = 0;  //

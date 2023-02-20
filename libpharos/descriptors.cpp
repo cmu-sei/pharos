@@ -1,4 +1,4 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -132,11 +132,7 @@ RegisterVector DescriptorSet::get_usual_registers()
     return dispatcher->get_usual_registers();
   }
   else {
-#if PHAROS_ROSE_REGISTERDICTIONARY_PTR_HACK
     return rd->getLargestRegisters();
-#else
-    return rd->get_largest_registers();
-#endif
   }
 }
 
@@ -235,7 +231,7 @@ void DescriptorSet::init()
 
   time_point start_ts = clock::now();
   GDEBUG << "Creating the whole-program function call graph..." << LEND;
-  function_call_graph = partitioner.functionCallGraph(P2::AllowParallelEdges::NO);
+  function_call_graph = partitioner->functionCallGraph(P2::AllowParallelEdges::NO);
   duration secs = clock::now() - start_ts;
   GDEBUG << "Creation of the whole-program function call graph took "
          << secs.count() << " seconds." << LEND;
@@ -245,7 +241,7 @@ void DescriptorSet::init()
 
   // Since we need the call descriptors to create the new PDG graph, this seems like the right
   // place to do that for now.  In the future, this might be better someplace else.
-  pdg_graph.populate(*this, partitioner);
+  pdg_graph.populate(*this, *partitioner);
 
   // Now make any connections that couldn't be made easily until we had complete data.
   update_connections();
@@ -303,25 +299,25 @@ DescriptorSet::DescriptorSet(
     OWARN << "The option --stockpart has been deprecated.  Use --partitioner=rose instead." << LEND;
   }
   if (boost::iequals(*pname, "rose")) {
-    engine = new P2::Engine();
+    engine.reset(P2::Engine::instance());
     GINFO << "Using the standard ROSE function partitioner." << LEND;
   }
   else if (boost::iequals(*pname, "superset")) {
-    engine = new SupersetEngine();
+    engine.reset(new SupersetEngine());
     GINFO << "Using the Pharos superset disassembly algorithm." << LEND;
   }
   else if (boost::iequals(*pname, "pharos")) {
-    engine = new CERTEngine();
+    engine.reset(new CERTEngine());
     GINFO << "Using the default Pharos function partitioner." << LEND;
   }
   else {
-    engine = new CERTEngine();
+    engine.reset(new CERTEngine());
     OERROR << "The partitioner '" << *pname << "' is not recognized, "
            << "using the Pharos function partitioner." << LEND;
   }
 
   // And then partition...
-  partitioner = create_partitioner(vm, engine, specimen_names);
+  partitioner = create_partitioner(vm, engine.get(), specimen_names);
 
   if (!partition_only) {
     // Call communal init
@@ -330,15 +326,18 @@ DescriptorSet::DescriptorSet(
 }
 
 
+#if 0
 // This version of the constructor is only used by tracesem, which wants to pass in its own
 // engine.  Pharos programs should always call the first constructor.  I'm currently passing
 // both the engine and the partitioner in tracesem, but perhaps we don't really need both.
 DescriptorSet::DescriptorSet(const ProgOptVarMap& povm, P2::Engine& eng,
-                             P2::Partitioner&& par) : vm(povm), partitioner(std::move(par))
+                             P2::PartitionerPtr && par) :
+  vm(povm), partitioner(std::move(par))
 {
   engine = &eng;
   init();
 }
+#endif
 
 std::string DescriptorSet::get_filename() const {
   return vm["file"].as<bf::path>().filename().native();
@@ -382,19 +381,15 @@ DescriptorSet::DescriptorSet(const ProgOptVarMap& povm, SgAsmFunction *func) : v
   }
 }
 
-DescriptorSet::~DescriptorSet() {
-  if (engine != NULL) delete engine;
-}
-
 RegisterDictionaryPtr DescriptorSet::get_regdict() const {
-  return partitioner.instructionProvider().registerDictionary();
+  return partitioner->instructionProvider().registerDictionary();
 }
 
 void DescriptorSet::create() {
   // Create function descriptors first, because we need them to determine whether some jump
   // instructions are really tail-optimized calls or not.
   const P2::AstConstructionSettings &settings = P2::AstConstructionSettings::strict();
-  for (const P2::Function::Ptr &function : partitioner.functions()) {
+  for (const P2::Function::Ptr &function : partitioner->functions()) {
     SgAsmFunction* func = P2::Modules::buildFunctionAst(partitioner, function, settings);
     if (func) {
       add_function_descriptor(func);
@@ -402,7 +397,7 @@ void DescriptorSet::create() {
   }
 
   // Now create the other descriptors (by looking at individual instructions).
-  for (P2::BasicBlock::Ptr b : partitioner.basicBlocks()) {
+  for (P2::BasicBlock::Ptr b : partitioner->basicBlocks()) {
     for (SgAsmInstruction* insn : b->instructions()) {
       GTRACE << "INSN: " << debug_instruction(insn, 5, NULL) << LEND;
 
@@ -647,7 +642,7 @@ std::vector<const FunctionDescriptor*>
 DescriptorSet::get_funcs_containing_address(rose_addr_t addr) const {
   std::vector<const FunctionDescriptor*> funcs;
   const AddressInterval ai(addr);
-  for (const P2::Function::Ptr & func : partitioner.functionsOverlapping(ai)) {
+  for (const P2::Function::Ptr & func : partitioner->functionsOverlapping(ai)) {
     const FunctionDescriptor* fd = get_func(func->address());
     if (fd) {
       funcs.push_back(fd);
@@ -666,7 +661,7 @@ std::vector<FunctionDescriptor*>
 DescriptorSet::get_rw_funcs_containing_address(rose_addr_t addr) {
   std::vector<FunctionDescriptor*> funcs;
   const AddressInterval ai(addr);
-  for (const P2::Function::Ptr & func : partitioner.functionsOverlapping(ai)) {
+  for (const P2::Function::Ptr & func : partitioner->functionsOverlapping(ai)) {
     FunctionDescriptor* fd = get_rw_func(func->address());
     if (fd) {
       funcs.push_back(fd);

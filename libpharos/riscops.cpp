@@ -1,4 +1,4 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "riscops.hpp"
 #include "masm.hpp"
@@ -622,40 +622,6 @@ BaseSValuePtr SymbolicRiscOperators::ite(const BaseSValuePtr &sel_, const BaseSV
   return retval;
 }
 #endif
-
-#if PHAROS_ROSE_NUMERIC_EXTENSION_HACK
-BaseSValuePtr SymbolicRiscOperators::unsignedExtend(const BaseSValuePtr &a_, size_t new_width) {
-  SymbolicValuePtr a = SymbolicValue::promote(a_);
-  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::unsignedExtend(a_, new_width));
-  if (!omit_cur_insn
-      && (computingDefiners() == TRACK_LATEST_DEFINER) && (retval->nBits() == a->nBits()))
-  {
-    // Fix ROSE bug when tracking latest definers
-    retval->add_defining_instructions(a);
-  }
-  // if (STRACE) {
-  //   STRACE << "RiscOps::unsignedExtend() a=" << *a << LEND;
-  //   STRACE << "RiscOps::unsignedExtend() r=" << *retval << LEND;
-  // }
-  return retval;
-}
-
-BaseSValuePtr SymbolicRiscOperators::signExtend(const BaseSValuePtr &a_, size_t new_width) {
-  SymbolicValuePtr a = SymbolicValue::promote(a_);
-  SymbolicValuePtr retval = SymbolicValue::promote(SymRiscOperators::signExtend(a_, new_width));
-  if (!omit_cur_insn
-      && (computingDefiners() == TRACK_LATEST_DEFINER) && (retval->nBits() == a->nBits()))
-  {
-    // Fix ROSE bug when tracking latest definers
-    retval->add_defining_instructions(a);
-  }
-  // if (STRACE) {
-  //   STRACE << "RiscOps::signExtend() a=" << *a << LEND;
-  //   STRACE << "RiscOps::signExtend() r=" << *retval << LEND;
-  // }
-  return retval;
-}
-#endif  // PHAROS_ROSE_NUMERIC_EXTENSION_HACK
 
 #if 0
 BaseSValuePtr SymbolicRiscOperators::add(const BaseSValuePtr &a_, const BaseSValuePtr &b_) {

@@ -1,4 +1,4 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_RiscOps_H
 #define Pharos_RiscOps_H
@@ -204,11 +204,6 @@ class SymbolicRiscOperators: public SymRiscOperators {
   virtual BaseSValuePtr unsignedDivide(const BaseSValuePtr &a_, const BaseSValuePtr &b_) override;
   virtual BaseSValuePtr unsignedModulo(const BaseSValuePtr &a_, const BaseSValuePtr &b_) override;
   virtual BaseSValuePtr unsignedMultiply(const BaseSValuePtr &a_, const BaseSValuePtr &b_) override;
-#endif
-
-#if PHAROS_ROSE_NUMERIC_EXTENSION_HACK
-  virtual BaseSValuePtr unsignedExtend(const BaseSValuePtr &a_, size_t new_width) override;
-  virtual BaseSValuePtr signExtend(const BaseSValuePtr &a_, size_t new_width) override;
 #endif
 
   // -----------------------------------------------------------------------------------------
