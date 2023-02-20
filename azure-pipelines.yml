@@ -27,6 +27,8 @@ jobs:
     displayName: Install ccache and update PATH to use linked versions of gcc, cc, etc
   - script: sudo apt-get -y install sudo build-essential wget flex ghostscript bzip2 git subversion automake libtool bison python libncurses-dev vim-common sqlite3 libsqlite3-0 libsqlite3-dev zlib1g-dev cmake libyaml-cpp-dev libxml2-dev ninja-build
     displayName: Install prereqs
+  - script: sudo apt-get -y remove unixodbc-dev
+    displayName: Remove buggy Azure unixodbc-dev package until image is fixed
   - task: Cache@2
     inputs:
       key: 'ccache | "$(Agent.OS)" | "$(PREFIX)" | "$(System.JobDisplayName)" | "$(CXXFLAGS)"'
