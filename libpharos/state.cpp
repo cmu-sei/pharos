@@ -24,10 +24,6 @@ CERTMerger::Ptr CERTMerger::instance() {
   return Ptr(new CERTMerger{});
 }
 
-CERTMerger::Ptr CERTMerger::instance() {
-  return Ptr(new CERTMerger{});
-}
-
 SymbolicRegisterState::SymbolicRegisterState(
   const SymbolicValuePtr &proto, RegisterDictionaryPtrArg rd):
   RegisterStateGeneric(proto, rd)
