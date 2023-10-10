@@ -138,7 +138,7 @@ long!  For this reason, we often run large executables with
 `--no-semantics`.
 
 On our original sample, which uses `--no-semantics`, the contribution of
-the Pharos partitioning extensions can be seen because `--partition=rose`
+the Pharos partitioning extensions can be seen because `--partitioner=rose`
 was not specified.  These lines first show when the stock ROSE
 partitioner completes, and then after the Pharos partitioner has
 completed:
