@@ -1,4 +1,4 @@
-// Copyright 2018-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2018-2024 Carnegie Mellon University.  See LICENSE file for terms.
 #ifndef Pharos_Path_H
 #define Pharos_Path_H
 
@@ -295,8 +295,9 @@ class PathFinder : public Z3PathAnalyzer {
   };
 
   struct SolverDeleter {
-    bool owned = true;
+    bool owned;
     void operator()(PharosZ3Solver *s) const { if (owned) delete s; }
+    explicit SolverDeleter(bool owned_ = true) : owned_{owned_} {}
   };
 
   // We will need Z3 for this analysis
