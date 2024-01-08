@@ -297,7 +297,7 @@ class PathFinder : public Z3PathAnalyzer {
   struct SolverDeleter {
     bool owned;
     void operator()(PharosZ3Solver *s) const { if (owned) delete s; }
-    explicit SolverDeleter(bool owned_ = true) : owned_{owned_} {}
+    explicit SolverDeleter(bool owned_ = true) : owned{owned_} {}
   };
 
   // We will need Z3 for this analysis
