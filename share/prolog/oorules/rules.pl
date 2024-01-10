@@ -672,18 +672,18 @@ reasonNOTDeletingDestructor_E(Method) :-
 % to a guessing rule.
 reasonNOTDeletingDestructor_F(Method) :-
     % Have we detected delete() at all in this program?  If not, disable this rule.
-    insnCallsDelete(_Insn, _Method, _Ptr),
+    once(insnCallsDelete(_Insn, _Method, _Ptr)),
 
     factMethod(Method),
 
     % We don't call delete at all...
-    (not(insnCallsDelete(_, Method, _AnyPtr));
+    once((not(insnCallsDelete(_, Method, _AnyPtr));
 
      % Or If we have thiscall, ensure we don't delete ourself
      callingConvention(Method, '__thiscall'),
      funcParameter(Method, ecx, ThisPtr),
      % But we don't call delete on ourself
-     not(insnCallsDelete(_Insn2, Method, ThisPtr))),
+     not(insnCallsDelete(_Insn2, Method, ThisPtr)))),
 
     logtraceln('~@~Q.', [not(factNOTDeletingDestructor(Method)),
                          reasonNOTDeletingDestructor_F(Method)]).
@@ -760,6 +760,9 @@ certainConstructorOrDestructorInheritanceSpecialCase(Method, Type) :-
     factVFTableWrite(WriteAddr, Method, Offset, VFTable),
     not((factVFTableWrite(_, Method, Offset, VFTable2), iso_dif(VFTable, VFTable2))),
     methodCallAtOffset(CallAddr, Method, Callee, Offset),
+
+    % And there is no other method call at that offset
+    not((methodCallAtOffset(CallAddr2, Method, _, Offset), iso_dif(CallAddr, CallAddr2))),
 
     % ejs 1/08/21: I believe that Offset can not be negative for a constructor or destructor
     % because it is not possible to override them.  Even though destructors can be virtual and
