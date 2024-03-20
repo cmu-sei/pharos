@@ -1947,9 +1947,6 @@ reasonDerivedClass_F(DerivedClass, BaseClass, Offset) :-
     TableOffset > 0,
     % And that VBTable is installed into an object in some Method.
     factVBTableWrite(_Insn, Method, VBPtrOffset, VBTableAddress),
-    % Ensure that BaseClass is not empty.  If it is, there could be multiple
-    % classes at the same offset.
-    notEmptyClass(BaseClass),
     % Finally, check that the method is assigned to the Derived class.
     % This is the unification that makes the VBTableEntry relevant.
     find(Method, DerivedClass),
