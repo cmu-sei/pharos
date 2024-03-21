@@ -1939,7 +1939,6 @@ reasonDerivedClass_E(DerivedClass, BaseClass, Offset) :-
 
 % An easier to understand version of E that builds on concluded VBTable facts instead of RTTI.
 reasonDerivedClass_F(DerivedClass, BaseClass, Offset) :-
-reasonDerivedClass_F(DerivedClass, BaseClass, Offset) :-
     factObjectInObject(DerivedClass, BaseClass, Offset),
     % There's an entry in some VBTable somehere (only unified by Offset so far).
     factVBTableEntry(VBTableAddress, TableOffset, OffsetFromVBPtr),
