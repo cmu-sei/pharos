@@ -8,7 +8,7 @@ NCPU="${NCPU:-1}"
 PREFIX="${PREFIX:-/usr/local}"
 
 # Pharos
-cd $DIR
+cd $DIR/..
 
 sudo ldconfig
 
