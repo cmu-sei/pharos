@@ -8,7 +8,7 @@ NCPU="${NCPU:-1}"
 PREFIX="${PREFIX:-/usr/local}"
 
 # Pharos
-cd $DIR
+cd $DIR/..
 
 sudo ldconfig
 
@@ -17,7 +17,7 @@ mkdir build
 cd build
 cmake -GNinja -DCMAKE_INSTALL_PREFIX=$PREFIX -DROSE_ROOT=$PREFIX \
       -DBOOST_ROOT=$PREFIX -DZ3_ROOT=$PREFIX -DSWIPL_ROOT=$PREFIX \
-      -DYamlCpp_ROOT=/usr ../..
+      -DYamlCpp_ROOT=/usr ..
 
 ninja -k $NCPU -j $NCPU || true
 ninja -j 1
