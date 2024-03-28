@@ -344,10 +344,10 @@ boost::optional<std::string> APIDictionary::verify_args(const ProgOptVarMap & vm
       } else {
         try {
           // Open the file to make sure we can.
-          bf::ifstream file;
-          file.exceptions(bf::ifstream::failbit |
-                          bf::ifstream::badbit);
-          file.open(loc);
+          std::ifstream file;
+          file.exceptions(std::ifstream::failbit |
+                          std::ifstream::badbit);
+          file.open(loc.native());
           file.close();
         } catch (const std::ios_base::failure &e) {
           // Maybe we should return the exception too, but they generally don't have useful

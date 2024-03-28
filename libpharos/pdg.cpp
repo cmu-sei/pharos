@@ -399,15 +399,20 @@ std::string PDG::getSlice(SgAsmX86Instruction *insn, Slice &s) const {
   // Insert the data-dependencies of this instruction
   if (data_deps.find(iaddr) != data_deps.end()) {
     for (const Definition& def : data_deps.at(iaddr)) {
-      if (def.definer) dependencies.insert(InsnBoolPair(def.definer, true));
+      if (def.definer && def.definer->get_address() != iaddr) {
+        dependencies.insert(InsnBoolPair(def.definer, true));
+      }
     }
   }
 
   // Insert the control dependencies of this block
   if (control_deps.find(iaddr) != control_deps.end()) {
     for (SgAsmInstruction* i : control_deps.at(iaddr)) {
-      if (isSgAsmX86Instruction(i))
-        dependencies.insert(InsnBoolPair(isSgAsmX86Instruction(i), false));
+      if (isSgAsmX86Instruction(i)) {
+        if (i->get_address() != iaddr) {
+          dependencies.insert(InsnBoolPair(isSgAsmX86Instruction(i), false));
+        }
+      }
     }
   }
 

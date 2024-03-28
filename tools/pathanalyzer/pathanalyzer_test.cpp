@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2020-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/filesystem.hpp>
 
@@ -118,7 +118,7 @@ PATestAnalyzer::PATestAnalyzer(DescriptorSet& ds_, ProgOptVarMap const & vm_)
     exit(EXIT_FAILURE);
   }
 
-  test_name = basename (vm["file"].as<bf::path>());
+  test_name = basename (bf::path(vm["file"].as<Specimens>().name()));
 
   if (vm.count("z3-log")) {
     Z3_open_log(vm["z3-log"].as<bf::path>().c_str());
@@ -156,7 +156,7 @@ void PATestAnalyzer::visit(FunctionDescriptor *fd) {
       if (!insn_is_call_or_jmp(xinsn)) continue;
 
       bool complete;
-      auto successors = insn->getSuccessors(complete);
+      auto successors = insn->architecture()->getSuccessors(insn, complete);
       for (rose_addr_t target : successors.values()) {
         //OINFO << "Call/Jump from " << addr_str(insn->get_address()) << " to " << addr_str(target) << LEND;
         const FunctionDescriptor* tfd = ds.get_func(target);

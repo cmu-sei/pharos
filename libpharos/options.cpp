@@ -4,6 +4,7 @@
 #include <iterator>
 #include <cstring>
 #include <sstream>
+#include <regex>
 #include <wordexp.h>
 
 #include <boost/format.hpp>
@@ -54,8 +55,7 @@ void validate(boost::any& v,
   std::unique_ptr<wordexp_t, decltype(deleter)> we_guard(&we, deleter);
   v = boost::any(boost::filesystem::path(we.we_wordv[0]));
 }
-
-}}
+}} // namespace boost::filesystem
 
 namespace pharos {
 
@@ -70,6 +70,35 @@ bf::path library_path;
 int global_logging_fileno = -1;
 LogDestination global_logging_destination;
 bool global_logging_iteractive = false;
+}
+
+void validate(boost::any& v,
+              std::vector<std::string> const & values,
+              SpecimenName *, int)
+{
+  using namespace boost::program_options;
+  validators::check_first_occurrence(v);
+  std::string const & val = validators::get_single_string(values);
+  v = boost::any(SpecimenName{val});
+}
+
+void validate(boost::any& v,
+              std::vector<std::string> const & values,
+              Specimens *, int)
+{
+  using namespace boost::program_options;
+
+  std::vector<SpecimenName> names;
+  names.reserve(values.size());
+  for (auto & val : values) {
+    names.emplace_back(val);
+  }
+  if (v.empty()) {
+    v = Specimens();
+  }
+  auto specs = boost::any_cast<Specimens>(&v);
+  assert(specs != nullptr);
+  specs->add(std::move(names));
 }
 
 bool interactive_logging() {
@@ -177,9 +206,9 @@ ProgOptDesc cert_standard_options() {
       "A value of zero means to use all available processors.  "
       "A negative value means to use that many less than the number of available processors."))
 
-    // Historical...  Do we even need this anymore?
+    // Invisible option that is granted to arguments without options
     ("file,f",
-     po::value<bf::path>(),
+     po::value<Specimens>()->composing(),
      "executable to be analyzed")
     ;
   ;
@@ -261,6 +290,88 @@ std::string ProgOptVarMap::command_line() const
     }
   }
   return os.str();
+}
+
+SpecimenName::SpecimenName(std::string const & arg) : specimen_{arg}
+{
+  static std::regex matcher("(map:([^:]*:){2})",
+                            std::regex_constants::icase | std::regex_constants::nosubs);
+  std::smatch result;
+  if (std::regex_search(arg, result, matcher, std::regex_constants::match_continuous)) {
+    offset_ = result.length(0);
+  } else {
+    offset_ = 0;
+  }
+}
+
+bf::path SpecimenName::filename() const
+{
+  return {specimen_.substr(offset_)};
+}
+
+MD5Result SpecimenName::md5() const
+{
+  if (!md5_) {
+    md5_ = get_file_md5(filename().native());
+  }
+  return *md5_;
+}
+
+void Specimens::add(std::vector<SpecimenName> && more) {
+  specs_.insert(specs_.end(), std::make_move_iterator(more.begin()),
+                std::make_move_iterator(more.end()));
+  more.clear();
+}
+
+bool Specimens::single_normal_executable() const
+{
+  return specs_.size() == 1 && !specs_[0].non_normal();
+}
+
+bool Specimens::mapped_executable() const
+{
+  return (specs_.size() &&
+          std::all_of(specs_.begin(), specs_.end(),
+                      [](SpecimenName const & n) { return n.non_normal(); }));
+}
+
+std::set<boost::filesystem::path> Specimens::filenames() const
+{
+  std::set<boost::filesystem::path> retval;
+  for (auto & spec : specs_) {
+    retval.insert(spec.filename());
+  }
+  return retval;
+}
+
+std::vector<std::string> Specimens::specimens() const
+{
+  std::vector<std::string> retval;
+  retval.reserve(specs_.size());
+  for (auto & spec : specs_) {
+    retval.push_back(spec.specimen());
+  }
+  return retval;
+}
+
+MD5Result Specimens::unique_identifier() const
+{
+  assert(specs_.size());
+  auto i = specs_.begin();
+  auto r = i->md5();
+  ++i;
+  for (; i != specs_.end(); ++i) {
+    r = r ^ i->md5();
+  }
+  return r;
+}
+
+std::string Specimens::name() const
+{
+  if (single_normal_executable()) {
+    return specs_.front().specimen();
+  }
+  return unique_identifier().str();
 }
 
 static ProgOptVarMap parse_cert_options_internal(
@@ -544,7 +655,15 @@ static ProgOptVarMap parse_cert_options_internal(
 
   if (fileopt) {
     if (vm.count("file")) {
-      OINFO << "Analyzing executable: " << vm["file"].as<bf::path>().native() << LEND;
+      auto & specimens = vm["file"].as<Specimens>();
+      OINFO << "Analyzing executable: " << specimens.name() << LEND;
+      if (specimens.mapped_executable()) {
+        vm.config().mergeKeyValue("pharos.allow_non_pe=true");
+      } else if (!specimens.single_normal_executable()) {
+        OFATAL << "Pharos currently only allows a single executable or multiple mapped regions"
+               << LEND;
+        exit(3);
+      }
     } else {
       OFATAL << "You must specify at least one executable to analyze." << LEND;
       exit(3);

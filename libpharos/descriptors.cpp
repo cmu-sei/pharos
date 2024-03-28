@@ -1,4 +1,4 @@
-// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -12,6 +12,7 @@
 
 #include "rose.hpp"
 #include <AstTraversal.h>
+#include <Rose/BinaryAnalysis/Architecture/X86.h>
 
 #include "misc.hpp"
 #include "descriptors.hpp"
@@ -121,19 +122,7 @@ std::shared_ptr<TagManager> DescriptorSet::create_tag_manager(ProgOptVarMap cons
 
 RegisterVector DescriptorSet::get_usual_registers()
 {
-  RegisterDictionaryPtrArg rd = get_regdict();
-  if (arch_name == "i386" || arch_name == "amd64") {
-    SymbolicValuePtr protoval = SymbolicValue::instance();
-    SymbolicRegisterStatePtr rstate = SymbolicRegisterState::instance(protoval, rd);
-    SymbolicMemoryMapStatePtr mstate = SymbolicMemoryMapState::instance();
-    SymbolicStatePtr state = SymbolicState::instance(rstate, mstate);
-    SymbolicRiscOperatorsPtr lrops = SymbolicRiscOperators::instance(*this, state);
-    DispatcherPtr dispatcher = RoseDispatcherX86::instance(lrops, get_arch_bits(), {});
-    return dispatcher->get_usual_registers();
-  }
-  else {
-    return rd->getLargestRegisters();
-  }
+  return pharos::get_usual_registers(get_architecture());
 }
 
 // This is called by all the DescriptorSet::DescriptorSet() constructors (including the "usual"
@@ -146,19 +135,16 @@ void DescriptorSet::init()
   tag_manager = create_tag_manager(vm);
 
   interp = engine->interpretation();
-  if (interp == NULL) {
-    throw std::runtime_error("Unable to analyze file (no executable content found).");
-  }
+  // if (interp == NULL) {
+  //   throw std::runtime_error("Unable to analyze file (no executable content found).");
+  // }
 
-  // Populate the file and memmap object so that we can read the program image.
-  SgAsmGenericHeader *hdr = interp->get_headers()->get_headers()[0];
-  auto file = SageInterface::getEnclosingNode < SgAsmGenericFile > (hdr);
-  memory.set_memmap(interp->get_map());
+  memory.set_memmap(partitioner->memoryMap());
   assert(memory);
 
   // The recommended way to determine the architecture size is ask the disassembler.
-  auto const disassembler = engine->obtainDisassembler();
-  arch_bytes = disassembler->wordSizeBytes();
+  auto const disassembler = get_disassembler();
+  arch_bytes = disassembler->bytesPerWord();
   set_global_arch_bytes(arch_bytes);
 
   // OINFO << "Input file is a " << get_arch_bits() << "-bit Windows PE executable!" << LEND;
@@ -168,7 +154,8 @@ void DescriptorSet::init()
   // This needs to be set before we do any emulation, and after we know our architecture size.
   // Perhaps it's time to move this _into_ the global descriptor set (or eliminate it completely).
   global_rops = NULL;
-  if (get_arch_name() != "i386" && get_arch_name() != "amd64") {
+  auto *arch = &*get_architecture();
+  if (!dynamic_cast<Rose::BinaryAnalysis::Architecture::X86 const *>(arch)) {
     GWARN << "Analyzing executable with unsupported architecture '" << get_arch_name()
           << "', results may be incorrect." << LEND;
   }
@@ -176,48 +163,61 @@ void DescriptorSet::init()
     global_rops = SymbolicRiscOperators::instance(*this);
   }
 
-  // Find all SgAsmPEImportDirectory objects in the project.  Walk these, extracting the DLL
-  // name, and the names of the imported functions.  Create an import descriptor for each.
-  // BUG? I'd prefer that this method not use querySubTree to obtain this list.
-  std::vector<SgNode*> impdirs = NodeQuery::querySubTree(file, V_SgAsmPEImportDirectory);
-  for (std::vector<SgNode*>::iterator it = impdirs.begin(); it != impdirs.end(); it++) {
-    SgAsmPEImportDirectory* impdir = isSgAsmPEImportDirectory(*it);
-    std::string dll = impdir->get_dll_name()->get_string();
+  if (interp) {
+    // Populate the file object so that we can read the program image.
+    SgAsmGenericHeader *hdr = interp->get_headers()->get_headers()[0];
+    auto file = SageInterface::getEnclosingNode < SgAsmGenericFile > (hdr);
+    // memory.set_memmap(interp->get_map());
+    // assert(memory);
 
-    SgAsmPEImportItemPtrList& impitems = impdir->get_imports()->get_vector();
-    for (SgAsmPEImportItemPtrList::iterator iit = impitems.begin(); iit != impitems.end(); iit++) {
-      SgAsmPEImportItem* item = isSgAsmPEImportItem(*iit);
-      rose_addr_t iat_va = item->get_iat_entry_va();
-      if (iat_va != 0) {
-        add_import(iat_va, dll, item->get_name()->get_string(), item->get_ordinal());
+    // Find all SgAsmPEImportDirectory objects in the project.  Walk these, extracting the DLL
+    // name, and the names of the imported functions.  Create an import descriptor for each.
+    // BUG? I'd prefer that this method not use querySubTree to obtain this list.
+    std::vector<SgNode*> impdirs = NodeQuery::querySubTree(file, V_SgAsmPEImportDirectory);
+    for (std::vector<SgNode*>::iterator it = impdirs.begin(); it != impdirs.end(); it++) {
+      SgAsmPEImportDirectory* impdir = isSgAsmPEImportDirectory(*it);
+      std::string dll = impdir->get_dllName()->get_string();
+
+      SgAsmPEImportItemPtrList& impitems = impdir->get_imports()->get_vector();
+      for (SgAsmPEImportItemPtrList::iterator iit = impitems.begin(); iit != impitems.end();
+           iit++)
+      {
+        SgAsmPEImportItem* item = isSgAsmPEImportItem(*iit);
+        rose_addr_t iat_va = item->get_iatEntryVa();
+        if (iat_va != 0) {
+          add_import(iat_va, dll, item->get_name()->get_string(), item->get_ordinal());
+        }
       }
     }
-  }
 
-  // Experimental new code to create "imports" based on ELF RelocEntry objects.
-  SgAsmElfFileHeader* elfHeader = isSgAsmElfFileHeader(hdr);
-  if (elfHeader) {
-    for (SgAsmGenericSection *section : elfHeader->get_sections()->get_sections()) {
-      if (SgAsmElfRelocSection *relocSection = isSgAsmElfRelocSection(section)) {
-        SgAsmElfSymbolSection *symbolSection = isSgAsmElfSymbolSection(relocSection->get_linked_section());
-        if (SgAsmElfSymbolList *symbols = symbolSection ? symbolSection->get_symbols() : NULL) {
-          for (SgAsmElfRelocEntry *rel : relocSection->get_entries()->get_entries()) {
-            if (rel->get_type() == SgAsmElfRelocEntry::R_X86_64_JUMP_SLOT ||
-                rel->get_type() == SgAsmElfRelocEntry::R_386_JMP_SLOT) {
-              rose_addr_t raddr = rel->get_r_offset();
-              // ELF files don't say explicltly which files contain which symbols.  They're
-              std::string dll("ELF");
-              // Start with a NULL name.  The import descriptor constructor will change it to
-              // '*INVALID*' if we're unable to find the symbol.
-              std::string name;
-              // But if there's a name in the ELF (and there should be) use it.
-              unsigned long symbolIdx = rel->get_sym();
-              if (symbolIdx < symbols->get_symbols().size()) {
-                SgAsmElfSymbol *symbol = symbols->get_symbols()[symbolIdx];
-                name = symbol->get_name()->get_string();
+    // Experimental new code to create "imports" based on ELF RelocEntry objects.
+    SgAsmElfFileHeader* elfHeader = isSgAsmElfFileHeader(hdr);
+    if (elfHeader) {
+      for (SgAsmGenericSection *section : elfHeader->get_sections()->get_sections()) {
+        if (SgAsmElfRelocSection *relocSection = isSgAsmElfRelocSection(section)) {
+          SgAsmElfSymbolSection *symbolSection =
+            isSgAsmElfSymbolSection(relocSection->get_linkedSection());
+          if (SgAsmElfSymbolList *symbols =
+              symbolSection ? symbolSection->get_symbols() : NULL)
+          {
+            for (SgAsmElfRelocEntry *rel : relocSection->get_entries()->get_entries()) {
+              if (rel->get_type() == SgAsmElfRelocEntry::R_X86_64_JUMP_SLOT ||
+                  rel->get_type() == SgAsmElfRelocEntry::R_386_JMP_SLOT) {
+                rose_addr_t raddr = rel->get_r_offset();
+                // ELF files don't say explicltly which files contain which symbols.  They're
+                std::string dll("ELF");
+                // Start with a NULL name.  The import descriptor constructor will change it to
+                // '*INVALID*' if we're unable to find the symbol.
+                std::string name;
+                // But if there's a name in the ELF (and there should be) use it.
+                unsigned long symbolIdx = rel->get_sym();
+                if (symbolIdx < symbols->get_symbols().size()) {
+                  SgAsmElfSymbol *symbol = symbols->get_symbols()[symbolIdx];
+                  name = symbol->get_name()->get_string();
+                }
+                add_import(raddr, dll, name);
+                //OINFO << "Added ELF 'import':" << addr_str(raddr) << " " << name << LEND;
               }
-              add_import(raddr, dll, name);
-              //OINFO << "Added ELF 'import':" << addr_str(raddr) << " " << name << LEND;
             }
           }
         }
@@ -255,7 +255,7 @@ void DescriptorSet::init()
 DescriptorSet::DescriptorSet(const ProgOptVarMap& povm) :
   DescriptorSet(povm,
                 povm.count("file")
-                ? std::vector<std::string>({povm["file"].as<bf::path>().native()})
+                ? povm["file"].as<Specimens>().specimens()
                 : std::vector<std::string>())
 {}
 
@@ -266,17 +266,15 @@ void partition(const ProgOptVarMap & vm)
     OFATAL << "No file to partition" << LEND;
     exit(EXIT_FAILURE);
   }
-  auto pfile = vm["file"].as<bf::path>();
-  auto file = pfile.native();
+  auto & spec = vm["file"].as<Specimens>();
   if (!vm.count("serialize")) {
-    auto filename = pfile.filename().native();
-    auto sername = bf::path{filename + ".serialized"};
+    auto sername = bf::path{spec.name() + ".serialized"};
     auto vmcopy = vm;
     vmcopy.emplace("serialize"s,
                    boost::program_options::variable_value{boost::any{sername}, false});
-    DescriptorSet ds{vmcopy, {file}, true};
+    DescriptorSet ds{vmcopy, spec.specimens(), true};
   } else {
-    DescriptorSet ds{vm, {file}, true};
+    DescriptorSet ds{vm, spec.specimens(), true};
   }
 }
 
@@ -292,6 +290,17 @@ DescriptorSet::DescriptorSet(
     *pname = "pharos";
   }
 
+  boost::optional<std::string> disassembler = vm.get<std::string>("pharos.disassembler");
+  if (disassembler && *pname == "pharos") {
+    auto arch = Rose::BinaryAnalysis::Architecture::findByName(*disassembler);
+    if (arch && std::dynamic_pointer_cast<Rose::BinaryAnalysis::Architecture::X86>(*arch)) {
+      *pname = "rose";
+      OWARN
+        << "Using rose partitioner instead of pharos partitioner due to non-i386 disassembler"
+        << LEND;
+    }
+  }
+
   // The --stockpart option is deprecated, please use "--partitioner=rose" instead.
   bool sp = vm.count("stockpart");
   if (sp) {
@@ -299,25 +308,25 @@ DescriptorSet::DescriptorSet(
     OWARN << "The option --stockpart has been deprecated.  Use --partitioner=rose instead." << LEND;
   }
   if (boost::iequals(*pname, "rose")) {
-    engine.reset(P2::Engine::instance());
+    engine = P2EnginePtr(P2Engine::instance());
     GINFO << "Using the standard ROSE function partitioner." << LEND;
   }
   else if (boost::iequals(*pname, "superset")) {
-    engine.reset(new SupersetEngine());
+    engine = P2EnginePtr(new SupersetEngine());
     GINFO << "Using the Pharos superset disassembly algorithm." << LEND;
   }
   else if (boost::iequals(*pname, "pharos")) {
-    engine.reset(new CERTEngine());
+    engine = P2EnginePtr(new CERTEngine());
     GINFO << "Using the default Pharos function partitioner." << LEND;
   }
   else {
-    engine.reset(new CERTEngine());
+    engine = P2EnginePtr(new CERTEngine());
     OERROR << "The partitioner '" << *pname << "' is not recognized, "
            << "using the Pharos function partitioner." << LEND;
   }
 
   // And then partition...
-  partitioner = create_partitioner(vm, engine.get(), specimen_names);
+  partitioner = create_partitioner(vm, &*engine, specimen_names);
 
   if (!partition_only) {
     // Call communal init
@@ -325,22 +334,8 @@ DescriptorSet::DescriptorSet(
   }
 }
 
-
-#if 0
-// This version of the constructor is only used by tracesem, which wants to pass in its own
-// engine.  Pharos programs should always call the first constructor.  I'm currently passing
-// both the engine and the partitioner in tracesem, but perhaps we don't really need both.
-DescriptorSet::DescriptorSet(const ProgOptVarMap& povm, P2::Engine& eng,
-                             P2::PartitionerPtr && par) :
-  vm(povm), partitioner(std::move(par))
-{
-  engine = &eng;
-  init();
-}
-#endif
-
 std::string DescriptorSet::get_filename() const {
-  return vm["file"].as<bf::path>().filename().native();
+  return bf::path{vm["file"].as<Specimens>().name()}.filename().native();
 }
 
 // Wes needed to be able to create a DescriptorSet from a single function because Wes loaded the
@@ -527,7 +522,7 @@ DisassemblerPtr DescriptorSet::get_disassembler() const {
     // We're const casting here because the disassembler that we return has no ability to
     // modify anything of importance in the descriptor set.  Arguably, the obtainDisassembler
     // method ought to be const on the engine as well.
-  return const_cast<DescriptorSet*>(this)->engine->obtainDisassembler();
+  return const_cast<DescriptorSet*>(this)->get_architecture()->newInstructionDecoder();
 }
 
 void DescriptorSet::dump(std::ostream &o) const {

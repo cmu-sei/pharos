@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/range/numeric.hpp>
 #include <boost/range/adaptor/map.hpp>
@@ -170,7 +170,7 @@ SpacerAnalyzer::encode_cfg(const IR &ir,
 
     boost::copy (intra_substs
                  | boost::adaptors::map_values
-                 | boost::adaptors::transformed ([&svafter] (const auto &exp) {
+                 | boost::adaptors::transformed ([] (const auto &exp) {
                    return exp.get_sort ();
                  }),
                  z3_vector_back_inserter (svafter));
@@ -539,7 +539,7 @@ SpacerAnalyzer::setup_path_problem(rose_addr_t srcaddr, rose_addr_t tgtaddr)
   std::map<ImportCall, Relations> import_to_relations;
 
   boost::copy (import_set_ |
-               boost::adaptors::transformed([&fromir, &z3inputnodes, &evin, &svboth,
+               boost::adaptors::transformed([&fromir, &z3inputnodes, &svboth,
                                              &svin, &ctx, this] (const ImportCall &import)
                {
                  std::stringstream ss;
@@ -654,7 +654,7 @@ SpacerAnalyzer::setup_path_problem(rose_addr_t srcaddr, rose_addr_t tgtaddr)
     func_to_ir,
     [&vertex_name_map, &z3post_input, &z3post_output, &func_to_relations,
      &import_to_relations, &ctx, &goal_expr = *goal_expr_, &z3inputnodes, &z3outputnodes,
-     &regsvec, &cg, &fromcgv, &evin, &evboth, &vertices_to_short_circuit, this]
+     &regsvec, &cg, &fromcgv, &evboth, &vertices_to_short_circuit, this]
     (const decltype(func_to_ir)::value_type &v) {
 
       // Call encode_cfg to get the encoded version of the CFG and we'll go from there.
@@ -673,8 +673,7 @@ SpacerAnalyzer::setup_path_problem(rose_addr_t srcaddr, rose_addr_t tgtaddr)
 
       // Create convert_call function to pass to encode_cfg.
       // convert_call maps a CallStmt to its summary rule in z3.
-      auto convert_call = [&ctx,
-                           &cg,
+      auto convert_call = [&cg,
                            &cgv,
                            &func_to_relations,
                            &import_to_relations,

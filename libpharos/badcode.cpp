@@ -1,4 +1,4 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "badcode.hpp"
 #include "descriptors.hpp"
@@ -34,8 +34,8 @@ bool BadCodeMetrics::sameInstruction(const SgAsmX86Instruction *a,
                                      const SgAsmX86Instruction *b) const
 {
   assert(a && b);
-  SgUnsignedCharList ab = a->get_raw_bytes();
-  SgUnsignedCharList bb = b->get_raw_bytes();
+  SgUnsignedCharList ab = a->get_rawBytes();
+  SgUnsignedCharList bb = b->get_rawBytes();
 
   if (ab.size() != bb.size()) return false;
   for (size_t x = 0; x < ab.size(); x++) {
@@ -90,7 +90,8 @@ bool BadCodeMetrics::isBadCode(SgAsmStatementPtrList insns,
 
   SymbolicRiscOperatorsPtr rops = SymbolicRiscOperators::instance(ds);
   size_t arch_bits = ds.get_arch_bits();
-  DispatcherPtr dispatcher = RoseDispatcherX86::instance(rops, arch_bits, {});
+  auto arch = ds.get_architecture();
+  DispatcherPtr dispatcher = RoseDispatcherX86::instance(arch, rops);
   RegisterDescriptor eiprd = dispatcher->findRegister("eip", arch_bits);
 
   for (size_t q = 0; q < insns.size(); q++) {
@@ -179,7 +180,7 @@ bool check_for_bad_code(DescriptorSet& ds, const SgAsmBlock* block)
 {
   // This logic was from Wes.  If the block is less than 80% likely to be code, call the
   // isBadCode analyzer.
-  if (block->get_code_likelihood() <= 0.8) {
+  if (block->get_codeLikelihood() <= 0.8) {
     SgAsmStatementPtrList il = block->get_statementList();
     rose_addr_t baddr = block->get_address();
     BadCodeMetrics bc(ds);

@@ -1,4 +1,4 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <stdarg.h>
 #include <stdexcept>
@@ -208,9 +208,13 @@ P2::PartitionerPtr create_partitioner(const ProgOptVarMap& vm, P2::Engine* engin
   // Mark the entry point segment as executable (unless the user asked us not to).
   if (vm.count("no-executable-entry") < 1 && interp) {
     for (const SgAsmGenericHeader *fileHeader : interp->get_headers()->get_headers()) {
-      for (const rose_rva_t &rva : fileHeader->get_entry_rvas()) {
+      for (const rose_rva_t &rva : fileHeader->get_entryRvas()) {
         // Get the address of the entry point.
-        rose_addr_t va = rva.get_rva() + fileHeader->get_base_va();
+#if PHAROS_ROSE_RVA_HACK
+        rose_addr_t va = rva.rva() + fileHeader->get_baseVa();
+#else
+        rose_addr_t va = rva.get_rva() + fileHeader->get_baseVa();
+#endif
         // A constraint containing just the entry point address.
         auto segments = map->at(va).segments();
         if (segments.empty()) {
@@ -232,20 +236,47 @@ P2::PartitionerPtr create_partitioner(const ProgOptVarMap& vm, P2::Engine* engin
     }
   }
 
-  SgAsmGenericHeader *hdr = interp->get_headers()->get_headers()[0];
   // Does the tool only support Windows PE files (aka OOAnalzyer)?
   boost::optional<bool> allow = vm.get<bool>("pharos.allow_non_pe");
-  if (allow && !(*allow)) {
-    // If so ensure that the input executable is of the correct file type.
-    SgAsmPEFileHeader *pehdr = isSgAsmPEFileHeader(hdr);
-    if (!pehdr) {
-      // If this message is preventing you from testing OOAnalyzer on Linux ELF executables,
-      // just remove this test.  OOAnalyzer _will_ do something on ELF executables produced by
-      // GCC, just not the "right" thing.  Since too many public users of the OOAnalyzer tool
-      // were not aware of this limitation, we felt that it would be better to disable the
-      // feature entirely unless you were motivated enough to remove this test. :-)
-      GFATAL << "This tool only suppports Windows Portable (PE) executable files." << LEND;
-      std::exit(EXIT_FAILURE);
+  if (allow) {
+    if (*allow) {
+      // We support non-PE files
+      boost::optional<std::string> disassembler = vm.get<std::string>("pharos.disassembler");
+      if (disassembler) {
+        // Use the value of pharos.disassembler if it is set
+        settings.disassembler.isaName = *disassembler;
+      }
+      if (settings.disassembler.isaName.empty()) {
+        auto dis = engine->architecture()->newInstructionDecoder();
+        if (!dis) {
+          OWARN << "Unable to determine disassembler from specimen; using i386 by default"
+                << LEND;
+          settings.disassembler.isaName = "intel-i386";
+        } else {
+          settings.disassembler.isaName = dis->name();
+        }
+      }
+    } else {
+      // If so ensure that the input executable is of the correct file type.
+      SgAsmPEFileHeader *pehdr = nullptr;
+      if (interp) {
+        auto h = interp->get_headers();
+        if (h) {
+          auto & hdrs = h->get_headers();
+          if (hdrs.size()) {
+            pehdr = isSgAsmPEFileHeader(hdrs[0]);
+          }
+        }
+      }
+      if (!pehdr) {
+        // If this message is preventing you from testing OOAnalyzer on Linux ELF executables,
+        // just remove this test.  OOAnalyzer _will_ do something on ELF executables produced by
+        // GCC, just not the "right" thing.  Since too many public users of the OOAnalyzer tool
+        // were not aware of this limitation, we felt that it would be better to disable the
+        // feature entirely unless you were motivated enough to remove this test. :-)
+        GFATAL << "This tool only suppports Windows Portable (PE) executable files." << LEND;
+        std::exit(EXIT_FAILURE);
+      }
     }
   }
 
@@ -302,7 +333,7 @@ P2::PartitionerPtr create_partitioner(const ProgOptVarMap& vm, P2::Engine* engin
     if (exists(path)) {
       OINFO << "Reading serialized data from " << path << "." << LEND;
       try {
-        bfs::ifstream file(path, std::ios_base::in | std::ios_base::binary);
+        std::ifstream file(path.native(), std::ios_base::in | std::ios_base::binary);
         if (!file) {
           GFATAL << "Could not open " << path << " for reading." << LEND;
           std::exit(EXIT_FAILURE);
@@ -341,7 +372,7 @@ P2::PartitionerPtr create_partitioner(const ProgOptVarMap& vm, P2::Engine* engin
         std::exit(EXIT_FAILURE);
       }
     } else {
-      bfs::ofstream file(path, std::ios_base::out | std::ios_base::binary);
+      std::ofstream file(path.native(), std::ios_base::out | std::ios_base::binary);
       if (!file) {
           GFATAL << "Could not open " << path << " for writing." << LEND;
           std::exit(EXIT_FAILURE);
@@ -633,7 +664,7 @@ CERTEngine::consume_thunks(P2::PartitionerPtr const & partitioner, bool top, boo
     }
   }
 
-  //if (changed) P2::Engine::runPartitionerRecursive(partitioner);
+  //if (changed) P2Engine::runPartitionerRecursive(partitioner);
 
   return changed;
 }
@@ -652,7 +683,7 @@ SgAsmX86Instruction* non_overlapping_instruction(P2::PartitionerConstPtr const &
   // Find an existing instruction, or try creating one if it does not exist.
   SgAsmInstruction* insn = partitioner->discoverInstruction(addr);
   // If we couldn't create an instruction, then there's just no instruction here.
-  if (!insn || insn->isUnknown()) {
+  if (!insn || insn->architecture()->isUnknown(insn)) {
     //OINFO << "Failed to create non-overlapping instruction at " << addr_str(addr) << LEND;
     return nullptr;
   }
@@ -689,7 +720,7 @@ CERTEngine::bad_code(P2::PartitionerConstPtr const & partitioner, const P2::Basi
   // True if we know all of the successors for the instruction.
   bool complete;
   // Get the list of successor addresses.
-  auto successors = lastinsn->getSuccessors(complete);
+  auto successors = lastinsn->architecture()->getSuccessors(lastinsn, complete);
 
   for (rose_addr_t successor : successors.values()) {
     SgAsmX86Instruction* xinsn = non_overlapping_instruction(partitioner, successor);
@@ -1064,7 +1095,7 @@ CERTEngine::create_arbitrary_code(P2::PartitionerPtr const & partitioner) {
   // might flow into the middle of existing basic blocks causing large changes than we intend.
   if (ever_changed) {
     GDEBUG << "Starting arbitrary code run of partitioner..." << LEND;
-    P2::Engine::runPartitionerRecursive(partitioner);
+    P2Engine::runPartitionerRecursive(partitioner);
     GDEBUG << "Finished arbitrary code run of partitioner..." << LEND;
   }
 
@@ -1073,7 +1104,7 @@ CERTEngine::create_arbitrary_code(P2::PartitionerPtr const & partitioner) {
 
 void
 CERTEngine::runPartitioner(P2::PartitionerPtr const &partitioner) {
-  P2::Engine::runPartitioner(partitioner);
+  P2Engine::runPartitioner(partitioner);
 
   // For each padding block, assign the data block to the function that preceeds it.  The
   // functions will exist now, because this is literally the last code we run during
@@ -1129,7 +1160,7 @@ CERTEngine::runPartitionerRecursive(P2::PartitionerPtr const & partitioner) {
   // things.
   overlapping_code_detector->set_refusing(false);
 
-  P2::Engine::runPartitionerRecursive(partitioner);
+  P2Engine::runPartitionerRecursive(partitioner);
 
   GDEBUG << "Making functions for Prologue phase!" << LEND;
 
@@ -1179,7 +1210,7 @@ CERTEngine::runPartitionerRecursive(P2::PartitionerPtr const & partitioner) {
   //partitioner->functionPrologueMatchers().push_back(
   //  P2::Modules::MatchThunk::instance(functionMatcherThunks()));
 
-  P2::Engine::runPartitionerRecursive(partitioner);
+  P2Engine::runPartitionerRecursive(partitioner);
 
   GDEBUG << "Custom partitioner 2 recursive pass complete." << LEND;
 }
@@ -1305,7 +1336,7 @@ check_zero_insn(SgAsmInstruction *insn) {
   // If the size isn't two bytes, return false.
   if (insn->get_size() != 2) return false;
   // If the bytes aren't all zero, return false.
-  for (auto byte : insn->get_raw_bytes()) {
+  for (auto byte : insn->get_rawBytes()) {
     if (byte != 0) return false;
   }
   // We're a zero instruction!
@@ -1531,7 +1562,7 @@ P2::PartitionerPtr
 CERTEngine::createTunedPartitioner() {
 
   //OINFO << "Creating custom partitioner!" << LEND;
-  auto partitioner = P2::Engine::createTunedPartitioner();
+  auto partitioner = P2Engine::createTunedPartitioner();
 
   // We're building out own list of Prolog matchers because MatchRetPadPush does things that we
   // did not find helpful (like skipping "mov edi,edi" instructions as padding).
@@ -1603,7 +1634,7 @@ SupersetEngine::runPartitioner(P2::PartitionerPtr const &partitioner) {
       SgAsmInstruction* insn = ip[addr];
 
       // If there's no instruction at that address, move on to the next one.
-      if (!insn || insn->isUnknown()) continue;
+      if (!insn || insn->architecture()->isUnknown(insn)) continue;
 
       OINFO << boost::str(boost::format("%-60s") % debug_instruction(insn, 12)); // No LEND!
 
@@ -1611,7 +1642,7 @@ SupersetEngine::runPartitioner(P2::PartitionerPtr const &partitioner) {
       // we need to create each instruction vertex in the graph before creating the edges, but
       // it's a start.
       bool complete;
-      auto successors = insn->getSuccessors(complete);
+      auto successors = insn->architecture()->getSuccessors(insn, complete);
       if (successors.size() > 0) {
         for (rose_addr_t saddr : successors.values()) {
           OINFO << addr_str(saddr) << " ";

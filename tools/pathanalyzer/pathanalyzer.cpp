@@ -273,7 +273,7 @@ class PathAnalyzer : public BottomUpAnalyzer {
       OINFO << "Z3 file will be generated " << z3_file_ << LEND;
     }
 
-    exe_file_name_ = opts["file"].as<std::string>();
+    exe_file_name_ = opts["file"].as<Specimens>().name();
 
     if (vm.count("start")) {
 

@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Options_H
 #define Pharos_Options_H
@@ -8,6 +8,7 @@
 
 #include <Sawyer/Message.h>
 #include "config.hpp"
+#include "util.hpp"
 
 namespace YAML {
 template<>
@@ -89,6 +90,43 @@ class ProgOptVarMap : public boost::program_options::variables_map{
   std::vector<char const *> _args;
 };
 
+class SpecimenName {
+  std::string specimen_;
+  std::size_t offset_;
+  mutable boost::optional<MD5Result> md5_;
+ public:
+  SpecimenName(std::string const & arg);
+
+  std::string const & specimen() const { return specimen_; }
+  boost::filesystem::path filename() const;
+  bool non_normal() const { return offset_; }
+  operator boost::filesystem::path () const { return filename(); }
+  MD5Result md5() const;
+};
+
+class Specimens {
+  std::vector<SpecimenName> specs_;
+ public:
+  Specimens() = default;
+  Specimens(std::vector<SpecimenName> && specs) : specs_{std::move(specs)} {}
+
+  void add(std::vector<SpecimenName> && more);
+
+  bool single_normal_executable() const;
+  bool mapped_executable() const;
+  std::set<boost::filesystem::path> filenames() const;
+  std::vector<std::string> specimens() const;
+  MD5Result unique_identifier() const;
+  std::string name() const;
+};
+
+void validate(boost::any& v,
+              std::vector<std::string> const & values,
+              Specimens *, int);
+
+void validate(boost::any& v,
+              std::vector<std::string> const & values,
+              SpecimenName *, int);
 } // namespace pharos
 
 namespace boost {

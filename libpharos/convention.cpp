@@ -1,4 +1,4 @@
-// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/optional.hpp>
 
@@ -1213,10 +1213,8 @@ CallingConventionMatcher::match(const FunctionDescriptor* fd,
 CallingConventionMatcher::CallingConventionMatcher()
   // It is presumes that the amd64 register dictionary is a superset of the 32-bit and 16-bit
   // dictionaries
-  : regdict(Rose::BinaryAnalysis::RegisterDictionary::instanceAmd64())
+  : regdict((*Rose::BinaryAnalysis::Architecture::findByName("amd64"))->registerDictionary())
 {
-  // ================================================================================
-  // 16-bit calling conventions...
   // ================================================================================
   // Agner says 16-bit DOS and windows has SI, DI, BP and DS as nonvolatile.
 

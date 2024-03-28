@@ -1,4 +1,4 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <atomic>
 
@@ -6,6 +6,8 @@
 #include <boost/optional.hpp>
 
 #include "rose.hpp"
+#include <AstTerm.h>
+#include <AstMatching.h>
 #include <AstTraversal.h>
 #include <sageInterfaceAsm.h> // For isNOP().
 
@@ -108,7 +110,7 @@ FunctionDescriptor::FunctionDescriptor(DescriptorSet& d, SgAsmFunction* f)
   // should really check for NULL pointer here
   if (f)
   {
-    set_address(f->get_entry_va());
+    set_address(f->get_entryVa());
     p2func = ds.get_partitioner().functionExists(address);
     if (p2func == NULL) {
       throw std::runtime_error("Partitioner function not found!");
@@ -127,7 +129,7 @@ FunctionDescriptor::FunctionDescriptor(DescriptorSet& d, SgAsmFunction* f)
         bool looks_like_padding(false);
         if (data)
         {
-          SgUnsignedCharList dbytes(data->get_raw_bytes()); // no const ref accessor?
+          SgUnsignedCharList dbytes(data->get_rawBytes()); // no const ref accessor?
           if (dbytes.size() > 0 && (dbytes[0] == 0x90 || dbytes[0] == 0xCC))
             looks_like_padding = true;
         }
@@ -398,7 +400,7 @@ void FunctionDescriptor::update_target_address() {
 
   // Get the successors.  getSuccessors is apparently incorrectly(?) non-const... :-(
   bool ignored = false;
-  auto successors = insn->getSuccessors(ignored);
+  auto successors = insn->architecture()->getSuccessors(insn, ignored);
 
   // Because there's some difficulties surrounding the interpretation of imports, ROSE didn't
   // create control flow edges for the jumps to the dereferences of the import table.  Assuming
@@ -563,7 +565,7 @@ SgAsmBlock*
 FunctionDescriptor::get_entry_block() const {
   // mwd: this assumes func is non-null.  Is this guaranteed?
   assert(func);
-  return func->get_entry_block(); // Isolate references to SgAsmFunction
+  return func->get_entryBlock(); // Isolate references to SgAsmFunction
 }
 
 void FunctionDescriptor::analyze() {
@@ -1084,7 +1086,7 @@ void FunctionDescriptor::_compute_function_hashes(ExtraFunctionHashData *extra) 
     return;
   }
 
-  SgAsmBlock *funceb = func->get_entry_block();
+  SgAsmBlock *funceb = func->get_entryBlock();
   SgAsmBlock *cfgeb = get(boost::vertex_name, cfg, cfgblocks[entry_vertex]);
   // I don't think this should be possible:
   if (funceb == NULL) {
@@ -1141,7 +1143,7 @@ void FunctionDescriptor::_compute_function_hashes(ExtraFunctionHashData *extra) 
       //}
 
       // Get the raw bytes...
-      SgUnsignedCharList bytes = insn->get_raw_bytes();
+      SgUnsignedCharList bytes = insn->get_rawBytes();
       num_bytes += bytes.size();
       if (bytes.size() == 0) { // is this possible?
         GERROR << "CFB no raw bytes in instruction at " << addr_str(insn->get_address()) << LEND;
@@ -1167,55 +1169,83 @@ void FunctionDescriptor::_compute_function_hashes(ExtraFunctionHashData *extra) 
       // For the various PIC bytes & hashes, it's more complicated...
 
       std::vector< bool > wildcard(bytes.size(),false);
-      // need to traverse the AST for operands lookng for "appropriate" wilcard candidates:
-      struct IntegerOffsetSearcher : public AstSimpleProcessing {
-        std::vector< std::pair< uint32_t, uint32_t > > candidates;
-        DescriptorSet *program;
-        FunctionDescriptor *fd;
-        SgAsmInstruction *insn;
 
-        IntegerOffsetSearcher(DescriptorSet *_program, FunctionDescriptor *_fd, SgAsmInstruction *_insn) {
-          program = _program;
-          fd = _fd;
-          insn = _insn;
-        }
+      std::vector< std::pair< uint32_t, uint32_t > > candidates;
+      const auto handle_pic_offset = [&](const rose_addr_t addr, SgAsmIntegerValueExpression *intexp)
+      {
+        if (ds.memory.is_mapped(rose_addr_t(addr)))
+        {
+          AddressIntervalSet chunks = this->get_address_intervals();
+          const auto val = intexp->get_value();
+          auto chunk1 = chunks.find(insn->get_address());
+          auto chunk2 = chunks.find(val);
+          // only null out address reference if it leaves the current chunk
+          if (chunk1 != chunk2)
+          {
+            auto off = intexp->get_bitOffset();
+            auto sz = intexp->get_bitSize();
+            auto insnsz = insn->get_rawBytes().size();
 
-        void visit(SgNode *node) override {
-          const SgAsmIntegerValueExpression *intexp =
-            isSgAsmIntegerValueExpression(node);
-          if (intexp) {
-            uint64_t val = intexp->get_value(); // or get_absoluteValue() ?
-            if (program->memory.is_mapped(rose_addr_t(val))) {
-              AddressIntervalSet chunks = fd->get_address_intervals();
-              auto chunk1 = chunks.find(insn->get_address());
-              auto chunk2 = chunks.find(val);
-              // only null out address reference if it leaves the current chunk
-              if (chunk1 != chunk2) {
-                auto off = intexp->get_bit_offset();
-                auto sz = intexp->get_bit_size();
-                auto insnsz = insn->get_raw_bytes().size();
-
-                // In some samples (e.g. 82c9e0083bd...) there are zero size expressions.  The
-                // cause seems to be related to an Image with an usual ImageBase of zero.
-                if (sz <= 0 || off % 8 != 0 || sz % 8 != 0 || // positive and byte-aligneed
-                    sz/8 >= insnsz || off/8 >= insnsz || insnsz > 17) { // reasonable sizes
-                  GWARN << "Instruction '" << debug_instruction(insn)
-                        << "' has suspicious properties, size=" << insnsz
-                        << " opsize=" << sz << " opoffset=" << off << LEND;
-                  return;
-                }
-                std::pair< uint32_t, uint32_t > pval(off,sz);
-                candidates.push_back(pval);
-              }
+            // In some samples (e.g. 82c9e0083bd...) there are zero size expressions.  The
+            // cause seems to be related to an Image with an usual ImageBase of zero.
+            if (sz <= 0 || off % 8 != 0 || sz % 8 != 0 || // positive and byte-aligneed
+                sz / 8 >= insnsz || off / 8 >= insnsz || insnsz > 17)
+            { // reasonable sizes
+              GWARN << "Instruction '" << debug_instruction(insn)
+                    << "' has suspicious properties, size=" << insnsz
+                    << " opsize=" << sz << " opoffset=" << off << LEND;
+              return;
             }
+            std::pair<uint32_t, uint32_t> pval(off, sz);
+            dbg_disasm << "Saving PIC candidate expression " << unparseExpression(intexp, {}, {})
+                       << " that corresponds to mapped address " << addr << LEND;
+            candidates.push_back(pval);
           }
         }
       };
 
-      IntegerOffsetSearcher searcher(&ds, this, insn);
-      searcher.traverse(insn, preorder);
+      // need to traverse the AST for operands lookng for "appropriate" wilcard candidates.
+
+      // First we'll look for RIP-relative offsets, e.g., [rip + offset]
+
+      AstMatching m;
+      MatchResult rip_offsets = m.performMatching("$EXP=SgAsmMemoryReferenceExpression(SgAsmBinaryAdd($REG=SgAsmDirectRegisterExpression,$OFFSET=SgAsmIntegerValueExpression),$SEGMENTREG)", insn);
+
+      for (auto i = rip_offsets.begin(); i != rip_offsets.end(); i++)
+      {
+        auto reg = isSgAsmDirectRegisterExpression((*i)["$REG"]);
+        assert(reg);
+        auto rd = reg->get_descriptor();
+        auto offset = isSgAsmIntegerValueExpression((*i)["$OFFSET"]);
+        assert(offset);
+        auto segmentreg = isSgAsmDirectRegisterExpression((*i)["$SEGMENTREG"]);
+        assert(segmentreg);
+
+
+        // XXX: Check that segmentreg == ds?
+
+        if (rd == ds.get_ip_reg())
+        {
+          dbg_disasm << "Found RIP-relative register base expression " << unparseX86Register(rd, {})
+                     << " " << unparseExpression(reg, {}, {}) << " " << unparseExpression(offset, {}, {}) << " " << unparseExpression(segmentreg, {}, {})
+                     << " " << debug_instruction(insn)
+                     << LEND;
+          const auto relative_addr = insn->get_address() + insn->get_size() + offset->get_value();
+          handle_pic_offset(relative_addr, offset);
+        }
+      }
+
+      // Next we'll look for constant addresses.
+      MatchResult const_addrs = m.performMatching("$ADDR=SgAsmIntegerValueExpression", insn);
+
+      for (auto i = const_addrs.begin(); i != const_addrs.end(); i++) {
+        auto addr = isSgAsmIntegerValueExpression((*i)["$ADDR"]);
+        assert(addr);
+        handle_pic_offset(addr->get_value(), addr);
+      }
+
       int numnulls = 0;
-      for (auto sc = searcher.candidates.begin(); sc != searcher.candidates.end(); ++sc) {
+      for (auto sc = candidates.begin(); sc != candidates.end(); ++sc) {
         auto off = sc->first;
         auto sz = sc->second;
         // Ensure that updates will fit in the buffer. Should be enforced by insnsz above.
@@ -1303,8 +1333,8 @@ void FunctionDescriptor::_compute_function_hashes(ExtraFunctionHashData *extra) 
       dbg_disasm.str("");
     }
     // bb insns done, calc (c)pic hash(es) for block
-    std::string bbcpic = get_string_md5(bbcpicbytes);
-    std::string bbpic = get_string_md5(bbpicbytes);
+    std::string bbcpic = get_string_md5(bbcpicbytes).str();
+    std::string bbpic = get_string_md5(bbpicbytes).str();
     SDEBUG << "basic block @" << addr_str(bb->get_address()) << " has pic hash " << bbpic
            << " and (c)pic hash " << bbcpic << LEND;
     bbcpics.insert(bbcpic); // used to calc fn cpic later
@@ -1322,29 +1352,29 @@ void FunctionDescriptor::_compute_function_hashes(ExtraFunctionHashData *extra) 
   }
 
   // bbs all processed, calc fn hashes
-  exact_hash = get_string_md5(exact_bytes);
-  pic_hash = get_string_md5(pic_bytes);
+  exact_hash = get_string_md5(exact_bytes).str();
+  pic_hash = get_string_md5(pic_bytes).str();
   std::string bbcpicsconcat;
   for (auto const& bbcpic: bbcpics) {
     bbcpicsconcat += bbcpic;
   }
   //OINFO << bbcpicsconcat << LEND;
-  composite_pic_hash = get_string_md5(bbcpicsconcat);
+  composite_pic_hash = get_string_md5(bbcpicsconcat).str();
 
   if (extra) {
     GTRACE << "calculating 'extra' hashes" << LEND;
-    extra->mnemonic_hash = get_string_md5(extra->mnemonics);
-    extra->mnemonic_category_hash = get_string_md5(extra->mnemcats);
+    extra->mnemonic_hash = get_string_md5(extra->mnemonics).str();
+    extra->mnemonic_category_hash = get_string_md5(extra->mnemcats).str();
     std::string mnemonic_counts_str;
     for (auto const& mnemcount: extra->mnemonic_counts) {
       mnemonic_counts_str += mnemcount.first + std::to_string(mnemcount.second);
     }
-    extra->mnemonic_count_hash = get_string_md5(mnemonic_counts_str);
+    extra->mnemonic_count_hash = get_string_md5(mnemonic_counts_str).str();
     std::string mnemonic_category_counts_str;
     for (auto const& mnemcatcount: extra->mnemonic_category_counts) {
       mnemonic_category_counts_str += mnemcatcount.first + std::to_string(mnemcatcount.second);
     }
-    extra->mnemonic_category_count_hash = get_string_md5(mnemonic_category_counts_str);
+    extra->mnemonic_category_count_hash = get_string_md5(mnemonic_category_counts_str).str();
     // add bb stuff here too
     extra->basic_block_addrs = bbaddrs;
     // iterate over CFG to get edge data:

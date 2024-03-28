@@ -1,4 +1,4 @@
-// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <libpharos/misc.hpp>
 #include <libpharos/masm.hpp>
@@ -34,7 +34,7 @@ csv_output_insn(const P2::Partitioner& partitioner, const P2::AddressUser& au)
     GERROR << "Basic block address user had a NULL instruction pointer?" << LEND;
     return;
   }
-  std::string opbytes = debug_opcode_bytes(insn->get_raw_bytes(), 99999);
+  std::string opbytes = debug_opcode_bytes(insn->get_rawBytes(), 99999);
 
   auto rdict = partitioner.instructionProvider().registerDictionary();
   std::string opstr = "";

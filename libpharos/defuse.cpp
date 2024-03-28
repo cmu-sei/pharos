@@ -1,4 +1,4 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/algorithm/string.hpp>
 #include <boost/tokenizer.hpp>
@@ -470,7 +470,7 @@ AddrSet get_hinky_successors(SgAsmBlock *bb, SgAsmX86Instruction* insn, bool las
     }
   }
   else {
-    auto succesors = insn->getSuccessors(complete);
+    auto succesors = insn->architecture()->getSuccessors(insn, complete);
     for (auto succ : succesors.values()) {
       result.insert(succ);
     }
@@ -707,8 +707,7 @@ DUAnalysis::DUAnalysis(DescriptorSet& ds_, FunctionDescriptor & f)
     rops = SymbolicRiscOperators::instance(ds, state, &rops_callbacks);
   }
 
-  size_t arch_bits = ds.get_arch_bits();
-  dispatcher = RoseDispatcherX86::instance(rops, arch_bits, {});
+  dispatcher = RoseDispatcherX86::instance(ds.get_architecture(), rops);
 
   // Configure the limit analysis.  The func_limit instance is local, but we still need to
   // configure the global limits of the analysis of all functions as well.
@@ -1982,7 +1981,7 @@ DUAnalysis::process_block_with_limit(CFGVertex vertex)
 
   ResourceLimit block_limit;
   DSTREAM << "Starting iteration " << analysis.iterations << " for block " << addr_str(baddr)
-          << " Reason " << bblock->reason_str("", bblock->get_reason()) << LEND;
+          << " Reason " << bblock->reasonString("", bblock->get_reason()) << LEND;
 
   // Incoming rops for the block.  This is the merge of all out policies of predecessor
   // vertices, with special consideration for the function entry block.
@@ -2285,7 +2284,7 @@ DUAnalysis::analyze_basic_blocks_independently()
     // moved to analyze, so it can be evaluated after each instruction?
     ResourceLimit block_limit;
     GTRACE << "Starting analysis of block " << addr_str(baddr)
-           << " Reason " << bblock->reason_str("", bblock->get_reason()) << LEND;
+           << " Reason " << bblock->reasonString("", bblock->get_reason()) << LEND;
 
     analysis.analyze(false);
 

@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_CDG_H
 #define Pharos_CDG_H
@@ -107,6 +107,7 @@ struct Convert_Edge_To_Vertex {
   using edge = typename boost::graph_traits<G>::edge_descriptor;
   using vertex = typename boost::graph_traits<G>::vertex_descriptor;
   Convert_Edge_To_Vertex(const G & g) : graph(g) {}
+  Convert_Edge_To_Vertex(Convert_Edge_To_Vertex<G, forwards> const &) = default;
   Convert_Edge_To_Vertex &operator=(const Convert_Edge_To_Vertex &) = default;
   vertex operator()(edge e) const {
     return forwards ? boost::target(e, graph) : boost::source(e, graph);
@@ -144,6 +145,7 @@ struct Convert_Vertex_To_BBlock {
   using vertex = typename boost::graph_traits<G>::vertex_descriptor;
   using bblock = SgAsmBlock *;
   Convert_Vertex_To_BBlock(const G & g) : graph(g) {}
+  Convert_Vertex_To_BBlock(Convert_Vertex_To_BBlock<G> const &) = default;
   Convert_Vertex_To_BBlock &operator=(const Convert_Vertex_To_BBlock &) = default;
   bblock operator()(vertex e) const { return boost::get(boost::vertex_name, graph, e); }
   const G & graph;

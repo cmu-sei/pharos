@@ -1,4 +1,4 @@
-// Copyright 2017-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2017-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Md5_H
 #define Pharos_Md5_H
@@ -38,13 +38,15 @@ class MD5Result {
   std::vector<uint8_t> bytes() const;
 
   MD5Result(const MD5Result &) = default;
+  MD5Result & operator=(const MD5Result &) = default;
+
+  friend MD5Result operator^(MD5Result const & lhs, MD5Result const & rhs);
 
  private:
   MD5Result() = default;
   unsigned char _value[16];
   friend class MD5;
 };
-
 
 class MD5 : public MD5_CTX {
  public:

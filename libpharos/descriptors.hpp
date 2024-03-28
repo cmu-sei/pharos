@@ -1,4 +1,4 @@
-// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Descriptors_H
 #define Pharos_Descriptors_H
@@ -6,10 +6,14 @@
 #include <iterator>
 
 #include "rose.hpp"
+#include <Rose/BinaryAnalysis/Partitioner2/EngineBinary.h>
 #include <Rose/BinaryAnalysis/Partitioner2/Engine.h>
 #include <Rose/BinaryAnalysis/Disassembler/Base.h>
 
 namespace pharos {
+
+using P2Engine = Rose::BinaryAnalysis::Partitioner2::EngineBinary;
+using P2EnginePtr = P2Engine::Ptr;
 
 using FCG = Rose::BinaryAnalysis::Partitioner2::FunctionCallGraph;
 
@@ -42,6 +46,7 @@ using AddrInsnMap = std::map<rose_addr_t, SgAsmInstruction*>;
 using RegisterVector = Rose::BinaryAnalysis::RegisterDictionary::RegisterDescriptors;
 
 using DisassemblerPtr = Rose::BinaryAnalysis::Disassembler::BasePtr;
+using ArchitecturePtr = Rose::BinaryAnalysis::Architecture::BaseConstPtr;
 
 class DescriptorSet
 {
@@ -82,7 +87,7 @@ class DescriptorSet
   // user specified --stock, so some care is required when accessing custom extensions to the
   // class.  Hopefully we won't need to do that often.  This pointer is now entirely owned by
   // the descriptor set.
-  std::unique_ptr<P2::Engine> engine;
+  P2EnginePtr engine;
 
   // The partitioner is _created_ by the engine, but is not contained within it, so we have to
   // keep a copy of the partitioner in the descriptor set as well. Currently this is object is
@@ -104,7 +109,7 @@ class DescriptorSet
   FunctionDescriptor *add_function_descriptor(rose_addr_t addr, Args &&... args);
 
   FunctionDescriptor *add_function_descriptor(SgAsmFunction *func) {
-    return add_function_descriptor(func->get_entry_va(), func);
+    return add_function_descriptor(func->get_entryVa(), func);
   }
 
   // Used to be public.  Could be again if needed.
@@ -136,11 +141,6 @@ class DescriptorSet
     : DescriptorSet(povm, filenames, false) {}
   DescriptorSet(const ProgOptVarMap& povm, std::string const & specimen_name)
     : DescriptorSet(povm, std::vector<std::string>({specimen_name})) {}
-#if 0
-  // Sadly tracesem.cpp wants to pass it in it's own engine and partitioner due to some
-  // incosistencies in the way that we've munged together ROSE code and Pharos code.
-  DescriptorSet(const ProgOptVarMap& povm, P2::Engine& eng, P2::PartitionerPtr && par);
-#endif
   // Wes' indexer program does something very non-standard that requires a function instead.
   DescriptorSet(const ProgOptVarMap& povm, SgAsmFunction *func);
 
@@ -185,11 +185,11 @@ class DescriptorSet
   //======================================================================================
 
   std::string get_filepath() const {
-    return vm["file"].as<boost::filesystem::path>().native();
+    return vm["file"].as<Specimens>().filenames().begin()->native();
   }
   std::string get_filename() const;
   std::string get_filemd5() const {
-    return get_file_md5(get_filepath());
+    return vm["file"].as<Specimens>().unique_identifier().str();
   }
 
   const FunctionDescriptor* get_func(rose_addr_t a) const {
@@ -236,7 +236,10 @@ class DescriptorSet
   const FCG& get_function_call_graph() const { return function_call_graph; }
 
   // Here's how you can get access to the new Partitioner 2 engine (maybe)...
-  const P2::Engine* get_engine() const { return engine.get(); }
+  const P2::Engine* get_engine() const { return &*engine; }
+  const Rose::BinaryAnalysis::Architecture::BaseConstPtr get_architecture() {
+    return engine->obtainArchitecture();
+  }
   const P2::Partitioner& get_partitioner() const { return *partitioner; }
   RegisterDictionaryPtr get_regdict() const;
 

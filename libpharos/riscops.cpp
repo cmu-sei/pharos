@@ -1,10 +1,12 @@
-// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "riscops.hpp"
 #include "masm.hpp"
 #include "descriptors.hpp"
 
 namespace pharos {
+
+namespace ByteOrder = ::Rose::BinaryAnalysis::ByteOrder;
 
 // This global variable gives us a way to read/write memory without having to carry around a
 // SymbolicRiscOperatorsPtr everywhere.  And it doesn't consume dozen of gigabytes of RAM. :-)

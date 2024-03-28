@@ -1,4 +1,4 @@
-// Copyright 2018-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2018-2023 Carnegie Mellon University.  See LICENSE file for terms.
 #ifndef Pharos_Z3_H
 #define Pharos_Z3_H
 
@@ -118,10 +118,6 @@ class PharosZ3Solver : public Rose::BinaryAnalysis::Z3Solver {
 
   Params mk_params() {
     return {*z3Context()};
-  }
-
-  Context z3Context() {
-    return {*this};
   }
 
   std::ostream & output_options(std::ostream & s) const;

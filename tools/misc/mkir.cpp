@@ -26,11 +26,11 @@ using namespace pharos::ir;
 namespace po = boost::program_options;
 namespace bf = boost::filesystem;
 
-std::ostream* getOStream(boost::optional<bf::path> dotdir, bf::ofstream* filestream, std::string filename) {
+std::ostream* getOStream(boost::optional<bf::path> dotdir, std::ofstream* filestream, std::string filename) {
   if (dotdir) {
     bf::path filepath = bf::path(*dotdir) /= filename;
     filestream->exceptions (~std::ofstream::goodbit);
-    filestream->open (filepath, std::ofstream::out);
+    filestream->open (filepath.native(), std::ofstream::out);
     return filestream;
   }
   else return &std::cout;
@@ -86,7 +86,7 @@ static int mkir_main(int argc, char **argv)
 
   // only write the callgraph if the user doesn't specify any functions
   if (vm.count ("func") == 0) {
-    bf::ofstream filestream;
+    std::ofstream filestream;
     std::cout << "Writing the CG" << std::endl;
     std::ostream *out = getOStream(dotdir, &filestream, std::string ("callgraph.dot"));
     *out << cg;
@@ -102,7 +102,7 @@ static int mkir_main(int argc, char **argv)
     std::cout << "Writing CFG for function " << std::hex << addr << std::dec << std::endl;
 
     // Set the ostream
-    bf::ofstream filestream;
+    std::ofstream filestream;
     //filestream.exceptions (~std::ofstream::goodbit);
     std::stringstream filename;
     filename << std::hex << addr << ".dot";

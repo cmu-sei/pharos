@@ -1,4 +1,4 @@
-// Copyright 2015-2017 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <cerrno>
 #include <locale>
@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "md5.hpp"
 #include "util.hpp"
 #include "options.hpp"
 
@@ -66,13 +65,13 @@ std::string get_file_contents(const char *filename) {
 }
 
 // Compute the md5 hash of the bytes in a given string.
-std::string get_string_md5(const std::string& str) {
-  return MD5(str).finalize().str();
+MD5Result get_string_md5(const std::string& str) {
+  return MD5(str).finalize();
 }
 
 // md5 of file contents
-std::string get_file_md5(const std::string& fname) {
-  return MD5::from_file(fname).str();
+MD5Result get_file_md5(const std::string& fname) {
+  return MD5::from_file(fname);
 }
 
 

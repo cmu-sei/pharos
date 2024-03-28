@@ -1,4 +1,4 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 // For timing our execution.
 #include <time.h>
@@ -6,6 +6,7 @@
 
 #include "rose.hpp"
 #include <Rose/BinaryAnalysis/BinaryLoader.h>
+#include <Rose/BinaryAnalysis/Architecture/X86.h>
 #include <integerOps.h>
 
 #include <Sawyer/ProgressBar.h>
@@ -191,7 +192,7 @@ bool insn_is_nop(const SgAsmX86Instruction* insn) {
   // goal was to produce correct answers for some important cases like "lea ecx, [ecx+0]", and
   // eliminate the performance problem in isNOP().
 
-  const SgUnsignedCharList& bytes = insn->get_raw_bytes();
+  const SgUnsignedCharList& bytes = insn->get_rawBytes();
   size_t size = bytes.size();
   if (size < 1) return false;
 
@@ -300,7 +301,7 @@ bool insn_is_nop(const SgAsmX86Instruction* insn) {
 // a return.  I don't know if this is the most correct way to do it, and it's possible that
 // there should be some assertions for cases like RET, but it's close enough.
 rose_addr_t insn_get_fallthru(SgAsmInstruction* insn) {
-  return insn->get_address() + insn->get_raw_bytes().size();
+  return insn->get_address() + insn->get_rawBytes().size();
 }
 
 // This is the counterpart to insn_get_fallthru(), except that here the intention is to return
@@ -311,7 +312,7 @@ rose_addr_t insn_get_fallthru(SgAsmInstruction* insn) {
 boost::optional<rose_addr_t> insn_get_branch_target(SgAsmInstruction* insn) {
   bool complete;
   rose_addr_t fallthru = insn_get_fallthru(insn);
-  auto successors = insn->getSuccessors(complete);
+  auto successors = insn->architecture()->getSuccessors(insn, complete);
   SgAsmX86Instruction *xinsn = isSgAsmX86Instruction(insn);
   bool isjmp = (isSgAsmX86Instruction(insn) != NULL && insn_is_jmp(xinsn));
   for (rose_addr_t target : successors.values()) {
@@ -1129,6 +1130,39 @@ bool has_subexp (const TreeNodePtr haystack, const TreeNodePtr needle) {
   // search if this write includes the read. If it does, then it is not fake
   return (haystack->depthFirstTraversal(read_subx) == Rose::BinaryAnalysis::SymbolicExpression::TERMINATE);
 }
+
+RegisterVector get_usual_registers_x86(RegisterDictionaryPtrArg rd)
+{
+    // This algorithm is copied from DispatcherX86.C so we don't have to instantiate a
+    // Dispatcher just to get the usual registers.  This gets a list of non-overlapping
+    // registers for the register dictionary.  It uses the largest registers possible, but
+    // manually splits up the status register into its constituent components.
+    auto isStatusRegister = [](RegisterDescriptor reg) -> bool {
+      return (reg.majorNumber()==Rose::BinaryAnalysis::x86_regclass_flags
+              && reg.minorNumber()==Rose::BinaryAnalysis::x86_flags_status);
+    };
+    auto registers = rd->getLargestRegisters();
+    registers.erase(std::remove_if(std::begin(registers), std::end(registers),
+                                   isStatusRegister), std::end(registers));
+    for (auto reg : rd->getSmallestRegisters()) {
+      if (isStatusRegister(reg)) {
+        registers.push_back(reg);
+      }
+    }
+    return registers;
+}
+
+RegisterVector get_usual_registers(Rose::BinaryAnalysis::Architecture::BaseConstPtr arch)
+{
+  auto rd = arch->registerDictionary();
+  if (std::dynamic_pointer_cast<const Rose::BinaryAnalysis::Architecture::X86>(arch)) {
+    return get_usual_registers_x86(rd);
+  } else {
+    return rd->getLargestRegisters();
+  }
+}
+
+
 
 } // namespace pharos
 

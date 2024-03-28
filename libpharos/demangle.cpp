@@ -1,4 +1,4 @@
-// Copyright 2017-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2017-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <iostream>
 #include <string>
@@ -1741,7 +1741,6 @@ DemangledTypePtr & VisualStudioDemangler::get_templated_type(DemangledTypePtr & 
   // We also need a new type stack for the template parameters.
   auto saved_type_stack = save_stack(type_stack);
 
-  size_t params = 0;
   c = get_current_char();
   while (c != '@') {
     DemangledTemplateParameterPtr parameter;
@@ -1794,7 +1793,6 @@ DemangledTypePtr & VisualStudioDemangler::get_templated_type(DemangledTypePtr & 
     }
 
     templated_type->template_parameters.push_back(std::move(parameter));
-    params++;
     c = get_current_char();
   }
 
@@ -1901,7 +1899,6 @@ DemangledTypePtr VisualStudioDemangler::get_anonymous_namespace() {
       boost::str(boost::format("Expected 'x' in anonymous namespace, found '%c'.") % c));
   }
 
-  size_t digits = 0;
   c = get_next_char();
   progress("anonymous namespace digits");
   while (c != '@') {
@@ -1914,7 +1911,6 @@ DemangledTypePtr VisualStudioDemangler::get_anonymous_namespace() {
                    % c));
     }
     c = get_next_char();
-    digits++;
   }
 
   // Now build the return string from the bytes we consumed.

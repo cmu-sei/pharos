@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Utility_H
 #define Pharos_Utility_H
@@ -13,6 +13,8 @@
 #include <initializer_list>
 #include <chrono>
 #include <regex>
+
+#include "md5.hpp"
 
 // This file should be as minimal as possible to reduce circular inclusion pain.  If something
 // you want to add here requires additional ROSE headers, try adding it to misc instead.  If it
@@ -30,8 +32,8 @@ uint64_t parse_number(const std::string& str);
 std::string to_lower(std::string input);
 std::string to_hex(const std::string& input);
 
-std::string get_string_md5(const std::string& input); // md5 of string contents
-std::string get_file_md5(const std::string& fname); // md5 of file contents
+MD5Result get_string_md5(const std::string& input); // md5 of string contents
+MD5Result get_file_md5(const std::string& fname); // md5 of file contents
 
 // Are we on a color terminal?
 bool color_terminal(int fd);

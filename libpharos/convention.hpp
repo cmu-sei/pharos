@@ -1,4 +1,4 @@
-// Copyright 2015-2019, 2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Convention_H
 #define Pharos_Convention_H
@@ -366,8 +366,14 @@ class ParameterDefinition {
     return *this;
   }
 
-  ParameterDefinition(ParameterDefinition &&) = delete;
-  ParameterDefinition &operator=(ParameterDefinition &&) = delete;
+  ParameterDefinition(ParameterDefinition && other) {
+    *this = std::move(other);
+  }
+  ParameterDefinition &operator=(ParameterDefinition && other) {
+    read_guard<decltype(other.mutex)> guard{other.mutex};
+    d = std::move(other.d);
+    return *this;
+  }
 
   bool is_reg() const { return d.reg.is_valid(); }
   bool is_stack() const { return !d.reg.is_valid(); }

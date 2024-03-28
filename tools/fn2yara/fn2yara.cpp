@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/algorithm/string.hpp>
 
@@ -303,7 +303,7 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
     include_thunks = vm_["include-thunks"].as<bool>();
     address_only = vm_["address-only"].as<bool>();
     oldway = vm_["oldway"].as<bool>();
-    std::string filename = vm_["file"].as<bf::path>().native();
+    std::string filename = vm_["file"].as<Specimens>().name();
     size_t slash = filename.find_last_of('/');
     if (slash == std::string::npos) {
       slash = 0;
@@ -341,7 +341,7 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
         throw std::runtime_error("first character of prefix may not be numeric");
       }
     } else {
-      prefix = "md5_" + get_file_md5(filename.c_str());
+      prefix = "md5_" + get_file_md5(filename.c_str()).str();
     }
   }
 
@@ -466,7 +466,7 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
       ++instr_count;
 
       // Get the raw bytes, and a vector of bool as to which bytes to wildcard away
-      const SgUnsignedCharList &bytes = insn->get_raw_bytes();
+      const SgUnsignedCharList &bytes = insn->get_rawBytes();
       byte_count += bytes.size();
       std::vector<bool> wildcard(bytes.size());
 
@@ -567,8 +567,8 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
                 // only null out address reference if it leaves the current chunk
                 if (chunk1 != chunk2)
                 {
-                  auto off = intexp->get_bit_offset();
-                  auto sz = intexp->get_bit_size();
+                  auto off = intexp->get_bitOffset();
+                  auto sz = intexp->get_bitSize();
                   // should always be aligned to byte?
                   if (off % 8 != 0 || sz % 8 != 0)
                   {

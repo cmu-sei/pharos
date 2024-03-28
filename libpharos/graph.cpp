@@ -1,4 +1,4 @@
-// Copyright 2019-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2019-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/range/adaptors.hpp>
 
@@ -116,7 +116,7 @@ Graph::populate(const DescriptorSet& ds, const P2::Partitioner& p)
       // True if we know all of the successors for the instruction (handled last).
       bool complete;
       // Get the list of successor addresses.
-      auto successors = insn->getSuccessors(complete);
+      auto successors = insn->architecture()->getSuccessors(insn, complete);
 
       // The edge type for the last instruction in the block is either E_RETURN or E_CALL based
       // on the instruction.  Blocks ending in CALL instructions will be marked E_CALL, while

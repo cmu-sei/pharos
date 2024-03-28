@@ -1,9 +1,10 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Partitioner_H
 #define Pharos_Partitioner_H
 
 #include "rose.hpp"
+#include <Rose/BinaryAnalysis/Partitioner2/EngineBinary.h>
 #include <Rose/BinaryAnalysis/Partitioner2/Engine.h>
 #include <Rose/BinaryAnalysis/Partitioner2/Partitioner.h>
 #include <Rose/BinaryAnalysis/Partitioner2/Modules.h>
@@ -16,6 +17,8 @@
 #include "misc.hpp"
 
 namespace pharos {
+
+using P2Engine = Rose::BinaryAnalysis::Partitioner2::EngineBinary;
 
 #define CODE_THRESHOLD 0.7
 
@@ -147,11 +150,11 @@ class NamePredicate :
   }
 };
 
-class SupersetEngine: public P2::Engine {
+class SupersetEngine: public P2Engine {
  private:
 
  public:
-  SupersetEngine() : P2::Engine(P2::Engine::Settings{}) {}
+  SupersetEngine() : P2Engine(P2::Engine::Settings{}) {}
 
   // We're going to override this so that it hardly uses the real partitioner at all...
   virtual void runPartitioner(P2::PartitionerPtr const & partitioner) override;
@@ -162,7 +165,7 @@ class SupersetEngine: public P2::Engine {
 // to functions.  Another way would be to run the base engine like normal, then throw away the
 // BB-to-function assignments, then make our new functions, then recompute the BB-to-function
 // assignments (this part isn't expensive).
-class CERTEngine: public P2::Engine {
+class CERTEngine: public P2Engine {
  private:
 
   MatchJmpToPrologue::Ptr jump_to_prologue_matcher;
@@ -187,7 +190,7 @@ class CERTEngine: public P2::Engine {
   bool create_arbitrary_code(P2::PartitionerPtr const & partitioner);
 
  public:
-  CERTEngine() : P2::Engine(P2::Engine::Settings{}) {}
+  CERTEngine() : P2Engine(P2::Engine::Settings{}) {}
 
   // Add our extensions to the partitioner.
   virtual P2::PartitionerPtr createTunedPartitioner() override;

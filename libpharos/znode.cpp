@@ -1,4 +1,4 @@
-// Copyright 2018-2023 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2018-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/graph/iteration_macros.hpp>
 #include "znode.hpp"
@@ -583,7 +583,7 @@ PharosHornAnalyzer::hornify(const FunctionDescriptor& fd)
     // z3::func_decl tb_decl = tb_expr.decl();
 
     // The entry is always executable/taken. It is a fact
-    if (sb->get_address() == fd.get_func()->get_entry_va()) {
+    if (sb->get_address() == fd.get_func()->get_entryVa()) {
       fixedpoint_->add_fact(sb_decl, nullptr);
     }
 

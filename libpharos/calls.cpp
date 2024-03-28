@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/optional.hpp>
 #include <boost/property_map/property_map.hpp>
@@ -432,7 +432,7 @@ void CallDescriptor::analyze() {
   address = insn->get_address();
   bool complete;
   CallTargetSet successors;
-  targets = insn->getSuccessors(complete);
+  targets = insn->architecture()->getSuccessors(insn, complete);
   //GTRACE << "CALL: " << debug_instruction(insn) << LEND;
 
   SgAsmOperandList *oplist = insn->get_operandList();

@@ -1,4 +1,4 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <AsmUnparser_compat.h>
 
@@ -357,7 +357,7 @@ std::string debug_function(const FunctionDescriptor* fd, const unsigned int max_
     SgAsmBlock *blk = isSgAsmBlock(n);
     assert(blk != NULL);
     if (show_reasons) {
-      result += "; block reason: " + blk->reason_str(false) + "\n";
+      result += "; block reason: " + blk->reasonString(false) + "\n";
     }
 #if 1
     if (isSgAsmStaticData(blk)) {
@@ -385,7 +385,7 @@ std::string debug_instruction(const SgAsmInstruction *inst, const unsigned int m
   if (!isSgAsmX86Instruction(inst)) {
     SgAsmInstruction *ncinsn = const_cast<SgAsmInstruction *>(inst);
     if (max_bytes > 0) {
-      opbytes = " ; BYTES: " + debug_opcode_bytes(inst->get_raw_bytes(), max_bytes);
+      opbytes = " ; BYTES: " + debug_opcode_bytes(inst->get_rawBytes(), max_bytes);
     }
     return addr_str(inst->get_address()) + " " + unparseInstruction(ncinsn) + opbytes;
   }
@@ -400,7 +400,7 @@ std::string debug_instruction(const SgAsmInstruction *inst, const unsigned int m
   }
 
   if (max_bytes > 0) {
-    opbytes = " ; BYTES: " + debug_opcode_bytes(inst->get_raw_bytes(), max_bytes);
+    opbytes = " ; BYTES: " + debug_opcode_bytes(inst->get_rawBytes(), max_bytes);
   }
   snprintf(buffer, sizeof(buffer), "%0" PRIX64 ": %-9s %s", inst->get_address(),
            inst->get_mnemonic().c_str(), opstr.c_str());

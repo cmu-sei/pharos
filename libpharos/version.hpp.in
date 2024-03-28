@@ -1,11 +1,11 @@
-// Copyright 2021-2023 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2021-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 // This file is only meant to be included from rose.hpp.
 
 #ifndef Pharos_VERSION_HPP_
 #define Pharos_VERSION_HPP_
 
-#define PHAROS_ROSE_MINIMUM_VERSION 11'117'0004ul
+#define PHAROS_ROSE_MINIMUM_VERSION 11'145'0016ul
 #define PHAROS_ROSE_MINIMUM_VERSION_FROM_CMAKE @PHAROS_ROSE_MINIMUM_NUMERIC_VERSION@
 #define PHAROS_ROSE_VERSION @ROSE_NUMERIC_VERSION@
 

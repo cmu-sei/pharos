@@ -32,9 +32,6 @@ SymbolicRegisterState::SymbolicRegisterState(
   //STRACE << "SymbolicRegisterState::SymbolicRegisterState(proto, rd)" << LEND;
   merger(CERTMerger::instance());
 
-  // We still require pre-initialization of the registers in our system.   I'm not sure why.
-  Semantics2::DispatcherX86Ptr dispatcher = RoseDispatcherX86::instance();
-  dispatcher->set_register_dictionary(regdict);
 #ifdef DF_FLAG_ONLY
   // For a while I mistakenly thought that the problem was specific to the direction flag
   // register.  That was reinforced by a bad workaround that initialized all registers rather
@@ -45,7 +42,8 @@ SymbolicRegisterState::SymbolicRegisterState(
   //regs.push_back(*(regdict->lookup("df")));
   //initialize_nonoverlapping(regs, false);
 #else
-  initialize_nonoverlapping(dispatcher->get_usual_registers(), false);
+  auto registers = pharos::get_usual_registers_x86(rd);
+  initialize_nonoverlapping(registers, false);
 #endif
 }
 

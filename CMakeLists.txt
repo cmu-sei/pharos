@@ -13,6 +13,10 @@ if(POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW)
 endif()
 
+if(POLICY CMP0144)
+  cmake_policy(SET CMP0144 OLD)
+endif()
+
 # Handle option without warnings in newer cmake
 if(POLICY CMP0077)
   cmake_policy(SET CMP0077 NEW)
@@ -66,7 +70,7 @@ endif()
 
 # Anyone modifying this version should also manually modify libpharos/version.hpp.in.  They
 # should set the PHAROS_ROSE_MINIMUM_VERSION variable to match.
-set(PHAROS_ROSE_MINIMUM_VERSION 0.11.117.4)
+set(PHAROS_ROSE_MINIMUM_VERSION 0.11.145.16)
 set(PHAROS_ROSE_MAXIMUM_VERSION)
 
 find_package(Rose ${PHAROS_ROSE_MINIMUM_VERSION} REQUIRED)

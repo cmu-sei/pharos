@@ -1,4 +1,4 @@
-// Copyright 2016-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2016-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 // Analyzes function call points in binaries, attempting to determine
 // their argument values.
@@ -346,7 +346,16 @@ JsonOutputter::JsonOutputter(ProgOptVarMap const & vm, std::ostream & stream)
     args->add(arg);
   }
   main->add("invocation", std::move(args));
-  main->add("analyzed_file", vm["file"].as<bf::path>().native());
+  auto specs = vm["file"].as<Specimens>().specimens();
+  if (specs.size() == 1) {
+    main->add("analyzed_file", specs.front());
+  } else {
+    auto bspecs = builder->array();
+    for (auto & spec : specs) {
+      bspecs->add(spec);
+    }
+    main->add("analyzed_file", std::move(bspecs));
+  }
   calls = builder->array();
   if (vm.count("pretty-json")) {
     out << json::pretty(vm["pretty-json"].as<unsigned>());

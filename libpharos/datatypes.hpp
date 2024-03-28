@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_DataTypes_H
 #define Pharos_DataTypes_H
@@ -116,6 +116,7 @@ class TypeChar: public TypeByte {
  public:
   char value;
   TypeChar(Memory const & mem, rose_addr_t a): TypeByte(mem, a) { read(); }
+  using TypeByte::read;
   inline char read() { TypeByte::read(); return value; }
   inline char read(rose_addr_t a) { address = a; return read(); }
   inline std::string str() const { return boost::str(boost::format("'%c'") % value); }
@@ -126,6 +127,7 @@ class TypeWideChar: public TypeWord {
  public:
   wchar_t value;
   TypeWideChar(Memory const & mem, rose_addr_t a): TypeWord(mem, a) { read(); }
+  using TypeWord::read;
   inline wchar_t read() { TypeWord::read(); return value; }
   inline wchar_t read(rose_addr_t a) { address = a; return read(); }
   inline std::string str() const { return boost::str(boost::format("'%c'") % value); }

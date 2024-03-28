@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2018-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graph_utility.hpp>
@@ -286,7 +286,7 @@ PathFinder::generate_edge_conditions(CallTraceDescriptorPtr call_trace_desc,
 
     // If this edge is the entry of the function, then it will be true
     // because it can always be entered.
-    if (func.get_func()->get_entry_va() == src_bb->get_address()) {
+    if (func.get_func()->get_entryVa() == src_bb->get_address()) {
       edge_conditions.emplace(std::make_pair(edge, ctx->bool_val(true)));
     }
   }
@@ -1552,7 +1552,7 @@ void
 CallTraceDescriptor::add_parameter(ParameterDefinition const & old_param,
                                    SymbolicValuePtr new_value)
 {
-  parameters_.push_back(std::move(old_param));
+  parameters_.push_back(old_param);
   parameters_.back().set_value(new_value);
 }
 
@@ -1560,7 +1560,7 @@ void
 CallTraceDescriptor::add_called_from_parameter(ParameterDefinition const & old_param,
                                                SymbolicValuePtr new_value)
 {
-  called_from_parameters_.push_back(std::move(old_param));
+  called_from_parameters_.push_back(old_param);
   called_from_parameters_.back().set_value(new_value);
 }
 
@@ -1568,7 +1568,7 @@ void
 CallTraceDescriptor::add_return_value(ParameterDefinition const & old_param,
                                       SymbolicValuePtr new_value)
 {
-  return_values_.push_back(std::move(old_param));
+  return_values_.push_back(old_param);
   return_values_.back().set_value(new_value);
 }
 
@@ -1576,7 +1576,7 @@ void
 CallTraceDescriptor::add_called_from_return_value(ParameterDefinition const & old_param,
                                                   SymbolicValuePtr new_value)
 {
-  called_from_return_values_.push_back(std::move(old_param));
+  called_from_return_values_.push_back(old_param);
   called_from_return_values_.back().set_value(new_value);
 }
 

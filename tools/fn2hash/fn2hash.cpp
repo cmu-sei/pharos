@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <Sawyer/Message.h>
 #include <Sawyer/ProgressBar.h>
@@ -72,7 +72,16 @@ class HashAnalyzer : public BottomUpAnalyzer {
         args->add(arg);
       }
       main->add("invocation", std::move(args));
-      main->add("analyzed_file", vm["file"].as<bf::path>().native());
+      auto specs = vm["file"].as<Specimens>().specimens();
+      if (specs.size() == 1) {
+        main->add("analyzed_file", specs.front());
+      } else {
+        auto bspecs = builder->array();
+        for (auto & spec : specs) {
+          bspecs->add(spec);
+        }
+        main->add("analyzed_file", std::move(bspecs));
+      }
       analysis = builder->array();
       if (vm.count("pretty-json")) {
         *out << json::pretty(vm["pretty-json"].as<unsigned>());
@@ -215,7 +224,9 @@ class HashAnalyzer : public BottomUpAnalyzer {
       hashes->add("num_instructions", fd->get_num_instructions());
       hashes->add("num_bytes", fd->get_num_bytes());
       hashes->add("exact_hash", exact_hash);
+      hashes->add("exact_bytes", to_hex(exact_bytes));
       hashes->add("pic_hash", pic_hash);
+      hashes->add("pic_bytes", to_hex(pic_bytes));
       hashes->add("composite_pic_hash", composite_pic_hash);
       hashes->add("mnemonic_hash", mnemonic_hash);
       hashes->add("mnemonic_count_hash", mnemonic_count_hash);
@@ -286,8 +297,9 @@ static int fn2hash_main(int argc, char **argv) {
 
   ProgOptVarMap vm = parse_cert_options(argc, argv, hashod, proghelptext);
 
-  filename = vm["file"].as<bf::path>().native();
-  filemd5 = get_file_md5(filename);
+  auto & specs = vm["file"].as<Specimens>();
+  filename = specs.name();
+  filemd5 = specs.unique_identifier().str();
   OINFO << "Calculating function hashes for file: " << filename << " ; MD5: " << filemd5 << LEND;
 
   // Find calls, functions, and imports.

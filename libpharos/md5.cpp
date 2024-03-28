@@ -363,4 +363,13 @@ std::vector<uint8_t> MD5Result::bytes() const
   return result;
 }
 
+MD5Result operator^(MD5Result const & lhs, MD5Result const & rhs)
+{
+  MD5Result retval;
+  for (int i = 0; i < 16; ++i) {
+    retval._value[i] = lhs._value[i] ^ rhs._value[i];
+  }
+  return retval;
+}
+
 } // namespace pharos

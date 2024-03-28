@@ -1,4 +1,4 @@
-// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Misc_H
 #define Pharos_Misc_H
@@ -13,10 +13,20 @@
 // For P2 namespace.
 #include <Rose/BinaryAnalysis/Partitioner2/Partitioner.h>
 #include <Rose/BinaryAnalysis/MemoryMap.h>
+#include <Rose/BinaryAnalysis/Architecture/Base.h>
+
+#if PHAROS_ROSE_ADDRESSINTERVAL_HACK
+#include <Rose/BinaryAnalysis/AddressIntervalSet.h>
+#endif
 
 #include <numeric>
 
 namespace pharos {
+
+#if PHAROS_ROSE_ADDRESSINTERVAL_HACK
+using Rose::BinaryAnalysis::AddressIntervalSet;
+using Rose::BinaryAnalysis::AddressInterval;
+#endif
 
 using Rose::BinaryAnalysis::MemoryMap;
 namespace P2 = Rose::BinaryAnalysis::Partitioner2;
@@ -487,6 +497,15 @@ class AddConstantExtractor {
   void merge(AddConstantExtractor && other);
   void add(AddConstantExtractor && other);
 };
+
+// Get the set of registers from an x86 register dictionary that should get unique values
+// during state initialization.
+RegisterVector get_usual_registers_x86(RegisterDictionaryPtrArg rd);
+
+// Get the set of registers from an architecture that should get unique values during state
+// initialization.
+RegisterVector get_usual_registers(Rose::BinaryAnalysis::Architecture::BaseConstPtr arch);
+
 
 } // namespace pharos
 
