@@ -561,6 +561,13 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
             if (intexp) {
               uint64_t val = intexp->get_value(); // or get_absoluteValue() ?
               if (program.memory.is_mapped(rose_addr_t(val))) {
+                // In programs mapped at address zero, the memory map test will report that
+                // very small constants like 1, 4, and 8 are "addresses" that should be PIC'd
+                // out.  While this is very unprincipled solution, I think it's better than
+                // incorrectly PIC'ing lots of small constants.
+                if (val < 4096) {
+                  return;
+                }
                 AddressIntervalSet chunks = fd->get_address_intervals();
                 auto chunk1 = chunks.find(insn->get_address());
                 auto chunk2 = chunks.find(val);
@@ -572,7 +579,14 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
                   // should always be aligned to byte?
                   if (off % 8 != 0 || sz % 8 != 0)
                   {
-                    std::cerr << "non byte alignment or size found: " << off << " " << sz << LEND;
+                    OWARN << "Non-byte alignment (" << off << ") or size (" << sz << ") found "
+                          << " in instruction: " << debug_instruction(insn) << LEND;
+                    return;
+                  }
+                  // Don't add candidates of size zero.
+                  if (sz < 8) {
+                    OWARN << "Integer operand of size " << sz << " bits in instruction: "
+                          << debug_instruction(insn) << " for value " << val <<  LEND;
                     return;
                   }
                   std::pair< uint32_t, uint32_t > pval(off,sz);
