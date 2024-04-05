@@ -28,14 +28,14 @@ jobs:
 
     - name: Extract metadata (tags, labels) for Docker
       id: meta
-      uses: docker/metadata-action@v5.5.1
+      uses: docker/metadata-action@v5
       with:
         images: |
           ${{ env.REGISTRY }}/${{ github.repository }}
 
     - name: Build and push Docker image
       id: build-and-push
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v5
       with:
         context: .
         push: true
