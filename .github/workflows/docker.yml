@@ -44,6 +44,8 @@ jobs:
           NCPU=4
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
     - name: Log Docker image digest
       if: steps.build-and-push.outputs.pushed
