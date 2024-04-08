@@ -42,6 +42,7 @@ jobs:
         build-args: |
           CFLAGS=
           NCPU=4
+        provenance: false
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
