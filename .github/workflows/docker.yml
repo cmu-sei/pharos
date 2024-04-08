@@ -3,7 +3,11 @@ name: Docker Build and Push
 on:
   push:
     branches:
-      - master # Change 'main' to your default branch if it's different
+      - '*'
+  pull_request:
+  schedule:
+    - cron: '42 06 * * sat' # Run every Saturday at 06:42 UTC
+
 
 env:
   REGISTRY: ghcr.io
@@ -38,7 +42,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        push: true
+        push: ${{ github.event_name != 'schedule' }}
         build-args: |
           CFLAGS=
           NCPU=4
