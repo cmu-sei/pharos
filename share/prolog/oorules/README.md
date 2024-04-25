@@ -402,10 +402,11 @@ option of the OOAnalyzer command.
 
 ### Step Five: Load the JSON into IDA Pro and/or Ghidra
 
-This step is identical to the normal procedure for importing JSON
-files, so we will not go into more detail here.  See the README for
-[IDA Pro](https://github.com/cmu-sei/pharos/blob/master/tools/ooanalyzer/ida/README.md) or
-[Ghidra](https://github.com/cmu-sei/pharos/blob/master/tools/ooanalyzer/ghidra/OOAnalyzerPlugin/README.md) 
+This step is identical to the normal procedure for importing JSON files, so we
+will not go into more detail here.  See the README for [IDA
+Pro](https://github.com/cmu-sei/pharos/blob/master/tools/ooanalyzer/ida/README.md)
+or
+[Ghidra](https://github.com/CERTCC/kaiju/blob/main/docs/OOAnalyzerImporter.md)
 for more information.
 
 ### Conclusion
