@@ -5,8 +5,9 @@ on:
     branches:
       - '*'
   pull_request:
-  pull_request_target:
-    types: [labeled]
+  # Enabling this has some security implications.  For now we'll leave it off.
+  #pull_request_target:
+  #  types: [labeled]
   schedule:
     - cron: '42 06 * * sat' # Run every Saturday at 06:42 UTC
 
