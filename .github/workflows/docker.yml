@@ -42,7 +42,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        push: ${{ github.event_name != 'schedule' }}
+        push: ${{ github.event_name == 'push' || ( github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'push to docker'))}}
         build-args: |
           CFLAGS=
           NCPU=4
