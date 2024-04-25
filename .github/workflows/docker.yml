@@ -5,6 +5,8 @@ on:
     branches:
       - '*'
   pull_request:
+  pull_request_target:
+    types: [labeled]
   schedule:
     - cron: '42 06 * * sat' # Run every Saturday at 06:42 UTC
 
