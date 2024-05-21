@@ -72,11 +72,10 @@ The number of data blocks in the function.
 The bytes that generate the B<exact_hash> when the MD5 is calculated.  These are
 the bytes of the functions instructions in address order.
 
-=item B<pic_bytes>
+=item B<pic_mask>
 
-The bytes that generate the B<pic_hash> when the MD5 is calculated.  These are
-the bytes of the function instructions in address order, with bytes representing
-addresses replaced with zeros.
+A bitmask that, when anded with the B<exact_bytes>, represent the
+bytes that generate the B<pic_hash> when the MD5 is calculated.
 
 =back
 
@@ -118,12 +117,10 @@ The bytes that generate the B<cf_exact_hash> when the MD5 is calculated.  These
 are the bytes of the functions instructions in an order that is dependent on the
 control flow of the function.
 
-=item B<cf_pic_bytes>
+=item B<cf_pic_mask>
 
-The bytes that generate the B<cf_pic_hash> when the MD5 is calculated.  These
-are the bytes of the function instructions in an order that is dependent on the
-control flow of the function, with bytes representing addresses replaced with
-zeros.
+A bitmask that, when anded with the B<cf_exact_bytes>, represent the
+bytes that generate the B<pic_hash> when the MD5 is calculated.
 
 =item B<num_basic_blocks>
 

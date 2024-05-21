@@ -66,6 +66,7 @@ class ExtraFunctionHashData {
   std::string cf_exact_bytes; // I'd rather use a vector<byte> here...
   std::string cf_pic_hash; // control flow ordered PIC hash
   std::string cf_pic_bytes; // I'd rather use a vector<byte> here...
+  std::vector<std::uint8_t> cf_pic_mask;
 
   // The composite PIC hash is a variant of PIC w/ no control flow insn, basic blocks hashed
   // and func hashed by hashing those ordered hashes (ASCII values)...  This approach tries
@@ -230,6 +231,7 @@ ExtraFunctionHashData compute_extra_function_hashes(
 
       AddressIntervalSet chunks = fd.get_address_intervals();
       std::vector<uint8_t> wildcard = pic_insn(ds, chunks, insn, 4096);
+      extra.cf_pic_mask.insert(extra.cf_pic_mask.end(), wildcard.begin(), wildcard.end());
 
       bool nulls = false;
       // okay, now know what to NULL out, so do it:
@@ -441,7 +443,7 @@ class HashAnalyzer : public BottomUpAnalyzer {
     hashes->add("num_code_blocks", num_code_blocks);
     hashes->add("num_data_blocks", num_data_blocks);
     hashes->add("exact_bytes", to_hex(fd->get_exact_bytes()));
-    hashes->add("pic_bytes", to_hex(fd->get_pic_bytes()));
+    hashes->add("pic_mask", to_hex(fd->get_pic_mask()));
 
     if (!extra_data) {
       analysis->add(std::move(hashes));
@@ -450,13 +452,10 @@ class HashAnalyzer : public BottomUpAnalyzer {
 
     // mnemonic related & basic block level hash data...
     ExtraFunctionHashData extra = compute_extra_function_hashes(*fd);
-
-    hashes->add("exact_bytes", to_hex(fd->get_exact_bytes()));
-    hashes->add("pic_bytes", to_hex(fd->get_pic_bytes()));
     hashes->add("cf_exact_hash", extra.cf_exact_hash);
     hashes->add("cf_pic_hash", extra.cf_pic_hash);
     hashes->add("cf_exact_bytes", to_hex(extra.cf_exact_bytes));
-    hashes->add("cf_pic_bytes", to_hex(extra.cf_pic_bytes));
+    hashes->add("cf_pic_mask", to_hex(extra.cf_pic_mask));
     hashes->add("composite_pic_hash", extra.composite_pic_hash);
     hashes->add("mnemonic_hash", extra.mnemonic_hash);
     hashes->add("mnemonic_count_hash", extra.mnemonic_count_hash);

@@ -1,4 +1,4 @@
-// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Utility_H
 #define Pharos_Utility_H
@@ -30,7 +30,23 @@ namespace pharos {
 std::string get_file_contents(const char *filename);
 uint64_t parse_number(const std::string& str);
 std::string to_lower(std::string input);
-std::string to_hex(const std::string& input);
+
+// Convert a string of binary bytes to an ASCII hexadecimal representation. Thanks to
+// StackOverflow.com. :-)
+template <typename T>
+std::string to_hex(const T& input)
+{
+  static constexpr auto lut = "0123456789ABCDEF";
+  size_t len = input.size();
+
+  std::string output;
+  output.reserve(2 * len);
+  for (const unsigned char c : input) {
+    output.push_back(lut[c >> 4]);
+    output.push_back(lut[c & 15]);
+  }
+  return output;
+}
 
 MD5Result get_string_md5(const std::string& input); // md5 of string contents
 MD5Result get_file_md5(const std::string& fname); // md5 of file contents

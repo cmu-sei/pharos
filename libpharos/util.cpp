@@ -1,4 +1,4 @@
-// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <cerrno>
 #include <locale>
@@ -72,24 +72,6 @@ MD5Result get_string_md5(const std::string& str) {
 // md5 of file contents
 MD5Result get_file_md5(const std::string& fname) {
   return MD5::from_file(fname);
-}
-
-
-// Convert a string of binary bytes to an ASCII hexadecimal representation. Thanks to
-// StackOverflow.com. :-)
-std::string to_hex(const std::string& input)
-{
-  static const char* const lut = "0123456789ABCDEF";
-  size_t len = input.length();
-
-  std::string output;
-  output.reserve(2 * len);
-  for (size_t i = 0; i < len; ++i) {
-    const unsigned char c = input[i];
-    output.push_back(lut[c >> 4]);
-    output.push_back(lut[c & 15]);
-  }
-  return output;
 }
 
 // Not the interface to this  that Cory would have chosen, but one thing at a time.
