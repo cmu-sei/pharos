@@ -66,7 +66,7 @@ directory of your IDA installation.
 
 Open the file to be analyzed and allow IDA Pro's auto-analysis to
 complete.  Then activate the OOAnalyzer plugin either by selecting
-<kbd>Exit | Plugins | OOAnalyzer</kbd> or pressing the <kbd>F3</kbd>
+<kbd>Edit | Plugins | OOAnalyzer</kbd> or pressing the <kbd>F3</kbd>
 button.  This will prompt the user to select a JSON file containing
 the JSON output from running the OOAnalyzer tool.  After parsing this
 file, the OOAanalyzer Plugin will automatically generate IDA Pro
