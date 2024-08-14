@@ -8,24 +8,20 @@ This is the IDA plugin to apply OOAnalyzer output into IDA
 Pro. Version 2.0 is the first version that works with OOAnalyzer.
 
 '''
-from abc import ABCMeta, abstractmethod
-import sys
-import codecs
-import pickle
-
-# In lieu of using "six", let's make out own Python2/3 changes ourselves.
-python_version_2 = (sys.version_info[0] == 2)
-
-PLUGIN_VERSION = 2.0
-
-EXPECTED_JSON_VERSION = "2.2.0"
-
-import json
-import copy
-import re
-import traceback
-
 try:
+    from PyQt5.QtWidgets import *
+    from PyQt5.QtGui import *
+    from PyQt5.QtCore import *
+    import six
+    import logging
+    import zlib
+    import traceback
+    import re
+    import copy
+    import json
+    from abc import ABCMeta, abstractmethod
+    import sys
+    import codecs
     import ida_bytes
     import ida_idp
     import ida_kernwin
@@ -41,10 +37,27 @@ except ImportError:
     print("Could not import IDA Python modules")
     sys.exit(-1)
 
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
+# In lieu of using "six", let's make out own Python2/3 changes ourselves.
+python_version_2 = (sys.version_info[0] == 2)
 
+PLUGIN_VERSION = 2.0
+
+EXPECTED_JSON_VERSION = "2.2.0"
+
+BLOB_SIZE = 1024
+OUR_NETNODE = "$ com.williballenthin"
+INT_KEYS_TAG = 'M'
+STR_KEYS_TAG = 'N'
+STR_TO_INT_MAP_TAG = 'O'
+INT_TO_INT_MAP_TAG = 'P'
+OOA_JSON = "OOA_JSON"
+APPLIED_CLASS_NAMES = "OOA_APPLIED"
+
+logger = logging.getLogger(__name__)
+
+# get the IDA version number
+ida_major, ida_minor = list(map(int, idaapi.get_kernel_version().split(".")))
+using_ida7api = (ida_major > 6)
 
 def ida_hexify(value):
     '''
@@ -114,6 +127,355 @@ def generate_vftable_name(classes, vft, cls, off):
 
     print("Vritual function table name %s_vftable" % vft_name)
     return "%s_vftable" % vft_name
+
+# The code below was taken from:
+# 
+# https://github.com/williballenthin/ida-netnode/tree/master
+#  
+# To manage storage in an IDA IDB.
+
+class NetnodeCorruptError(RuntimeError):
+    pass
+
+class Netnode(object):
+    """
+    A netnode is a way to persistently store data in an IDB database.
+    The underlying interface is a bit weird, so you should read the IDA
+      documentation on the subject. Some places to start:
+
+      - https://www.hex-rays.com/products/ida/support/sdkdoc/netnode_8hpp.html
+      - The IDA Pro Book, version 2
+
+    Conceptually, this netnode class represents is a key-value store
+      uniquely identified by a namespace.
+
+    This class abstracts over some of the peculiarities of the low-level
+      netnode API. Notably, it supports indexing data by strings or
+      numbers, and allows values to be larger than 1024 bytes in length.
+
+    This class supports keys that are numbers or strings.
+    Values must be JSON-encodable. They can not be None.
+
+    Implementation:
+     (You don't have to worry about this section if you just want to
+        use the library. Its here for potential contributors.)
+
+      The major limitation of the underlying netnode API is the fixed
+        maximum length of a value. Values must not be larger than 1024
+        bytes. Otherwise, you must use the `blob` API. We do that for you.
+
+      The first enhancement is transparently zlib-encoding all values.
+
+      To support arbitrarily sized values with keys of either int or str types,
+        we store the values in different places:
+
+        - integer keys with small values: stored in default supval table
+        - integer keys with large values: the data is stored in the blob
+           table named 'M' using an internal key. The link from the given key
+           to the internal key is stored in the supval table named 'P'.
+        - string keys with small values: stored in default hashval table
+        - string keys with large values: the data is stored in the blob
+           table named 'N' using an integer key. The link from string key
+           to int key is stored in the supval table named 'O'.
+    """
+
+    def __init__(self, netnode_name):
+        self._netnode_name = netnode_name
+        self._n = idaapi.netnode(netnode_name, 0, True)
+
+    @staticmethod
+    def _decompress(data):
+        '''
+        args:
+          data (bytes): the data to decompress
+
+        returns:
+          bytes: the decompressed data.
+        '''
+        return zlib.decompress(data)
+
+    @staticmethod
+    def _compress(data):
+        '''
+        args:
+          data (bytes): the data to compress
+
+        returns:
+          bytes: the compressed data.
+        '''
+        return zlib.compress(data)
+
+    @staticmethod
+    def _encode(data):
+        '''
+        args:
+          data (object): the data to serialize to json.
+
+        returns:
+          bytes: the ascii-encoded serialized data buffer.
+        '''
+        return json.dumps(data).encode("ascii")
+
+    @staticmethod
+    def _decode(data):
+        '''
+        args:
+          data (bytes): the ascii-encoded json serialized data buffer.
+
+        returns:
+          object: the deserialized object.
+        '''
+        return json.loads(data.decode("ascii"))
+
+    def _intdel(self, key):
+        assert isinstance(key, six.integer_types)
+
+        did_del = False
+        storekey = self._n.supval(key, INT_TO_INT_MAP_TAG)
+        if storekey is not None:
+            storekey = int(storekey)
+            self._n.delblob(storekey, INT_KEYS_TAG)
+            self._n.supdel(key, INT_TO_INT_MAP_TAG)
+            did_del = True
+        if self._n.supval(key) is not None:
+            self._n.supdel(key)
+            did_del = True
+
+        if not did_del:
+            raise KeyError("'{}' not found".format(key))
+
+    def _get_next_slot(self, tag):
+        '''
+        get the first unused supval table key, or 0 if the
+         table is empty.
+        useful for filling the supval table sequentially.
+        '''
+        slot = self._n.suplast(tag)
+        if slot is None or slot == idaapi.BADNODE:
+            return 0
+        else:
+            return slot + 1
+
+    def _intset(self, key, value):
+        assert isinstance(key, six.integer_types)
+        assert value is not None
+
+        try:
+            self._intdel(key)
+        except KeyError:
+            pass
+
+        if len(value) > BLOB_SIZE:
+            storekey = self._get_next_slot(INT_KEYS_TAG)
+            self._n.setblob(value, storekey, INT_KEYS_TAG)
+            self._n.supset(key, str(storekey).encode(
+                'utf-8'), INT_TO_INT_MAP_TAG)
+        else:
+            self._n.supset(key, value)
+
+    def _intget(self, key):
+        assert isinstance(key, six.integer_types)
+
+        storekey = self._n.supval(key, INT_TO_INT_MAP_TAG)
+        if storekey is not None:
+            storekey = int(storekey.decode('utf-8'))
+            v = self._n.getblob(storekey, INT_KEYS_TAG)
+            if v is None:
+                raise NetnodeCorruptError()
+            return v
+
+        v = self._n.supval(key)
+        if v is not None:
+            return v
+
+        raise KeyError("'{}' not found".format(key))
+
+    def _strdel(self, key):
+        assert isinstance(key, (str))
+
+        did_del = False
+        storekey = self._n.hashval(key, STR_TO_INT_MAP_TAG)
+        if storekey is not None:
+            storekey = int(storekey.decode('utf-8'))
+            self._n.delblob(storekey, STR_KEYS_TAG)
+            self._n.hashdel(key, STR_TO_INT_MAP_TAG)
+            did_del = True
+        if self._n.hashval(key):
+            self._n.hashdel(key)
+            did_del = True
+
+        if not did_del:
+            raise KeyError("'{}' not found".format(key))
+
+    def _strset(self, key, value):
+        assert isinstance(key, (str))
+        assert value is not None
+
+        try:
+            self._strdel(key)
+        except KeyError:
+            pass
+
+        if len(value) > BLOB_SIZE:
+            storekey = self._get_next_slot(STR_KEYS_TAG)
+            self._n.setblob(value, storekey, STR_KEYS_TAG)
+            self._n.hashset(key, str(storekey).encode(
+                'utf-8'), STR_TO_INT_MAP_TAG)
+        else:
+            self._n.hashset(key, bytes(value))
+
+    def _strget(self, key):
+        assert isinstance(key, (str))
+
+        storekey = self._n.hashval(key, STR_TO_INT_MAP_TAG)
+        if storekey is not None:
+            storekey = int(storekey.decode('utf-8'))
+            v = self._n.getblob(storekey, STR_KEYS_TAG)
+            if v is None:
+                raise NetnodeCorruptError()
+            return v
+
+        v = self._n.hashval(key)
+        if v is not None:
+            return v
+
+        raise KeyError("'{}' not found".format(key))
+
+    def __getitem__(self, key):
+        if isinstance(key, str):
+            v = self._strget(key)
+        elif isinstance(key, six.integer_types):
+            v = self._intget(key)
+        else:
+            raise TypeError("cannot use {} as key".format(type(key)))
+
+        data = self._decompress(v)
+        return self._decode(data)
+
+    def __setitem__(self, key, value):
+        '''
+        does not support setting a value to None.
+        value must be json-serializable.
+        key must be a string or integer.
+        '''
+        assert value is not None
+
+        v = self._compress(self._encode(value))
+        if isinstance(key, str):
+            self._strset(key, v)
+        elif isinstance(key, six.integer_types):
+            self._intset(key, v)
+        else:
+            raise TypeError("cannot use {} as key".format(type(key)))
+
+    def __delitem__(self, key):
+        if isinstance(key, str):
+            self._strdel(key)
+        elif isinstance(key, six.integer_types):
+            self._intdel(key)
+        else:
+            raise TypeError("cannot use {} as key".format(type(key)))
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except (KeyError, zlib.error):
+            return default
+
+    def __contains__(self, key):
+        try:
+            if self[key] is not None:
+                return True
+            return False
+        except (KeyError, zlib.error):
+            return False
+
+    def _iter_int_keys_small(self):
+        # integer keys for all small values
+        i = None
+        if using_ida7api:
+            i = self._n.supfirst()
+        else:
+            i = self._n.sup1st()
+        while i != idaapi.BADNODE:
+            yield i
+            if using_ida7api:
+                i = self._n.supnext(i)
+            else:
+                i = self._n.supnxt(i)
+
+    def _iter_int_keys_large(self):
+        # integer keys for all big values
+        if using_ida7api:
+            i = self._n.supfirst(INT_TO_INT_MAP_TAG)
+        else:
+            i = self._n.sup1st(INT_TO_INT_MAP_TAG)
+        while i != idaapi.BADNODE:
+            yield i
+            if using_ida7api:
+                i = self._n.supnext(i, INT_TO_INT_MAP_TAG)
+            else:
+                i = self._n.supnxt(i, INT_TO_INT_MAP_TAG)
+
+    def _iter_str_keys_small(self):
+        # string keys for all small values
+        if using_ida7api:
+            i = self._n.hashfirst()
+        else:
+            i = self._n.hash1st()
+        while i != idaapi.BADNODE and i is not None:
+            yield i
+            if using_ida7api:
+                i = self._n.hashnext(i)
+            else:
+                i = self._n.hashnxt(i)
+
+    def _iter_str_keys_large(self):
+        # string keys for all big values
+        if using_ida7api:
+            i = self._n.hashfirst(STR_TO_INT_MAP_TAG)
+        else:
+            i = self._n.hash1st(STR_TO_INT_MAP_TAG)
+        while i != idaapi.BADNODE and i is not None:
+            yield i
+            if using_ida7api:
+                i = self._n.hashnext(i, STR_TO_INT_MAP_TAG)
+            else:
+                i = self._n.hashnxt(i, STR_TO_INT_MAP_TAG)
+
+    def iterkeys(self):
+        for key in self._iter_int_keys_small():
+            yield key
+
+        for key in self._iter_int_keys_large():
+            yield key
+
+        for key in self._iter_str_keys_small():
+            yield key
+
+        for key in self._iter_str_keys_large():
+            yield key
+
+    def keys(self):
+        return [k for k in list(self.iterkeys())]
+
+    def itervalues(self):
+        for k in list(self.keys()):
+            yield self[k]
+
+    def values(self):
+        return [v for v in list(self.itervalues())]
+
+    def iteritems(self):
+        for k in list(self.keys()):
+            yield k, self[k]
+
+    def items(self):
+        return [(k, v) for k, v in list(self.iteritems())]
+
+    def kill(self):
+        self._n.kill()
+        self._n = idaapi.netnode(self._netnode_name, 0, True)
 
 
 class PyOOAnalyzer(object):
@@ -232,9 +594,9 @@ class PyOOAnalyzer(object):
             # but only if we haven't already byteified it
             if isinstance(data, dict):
                 if python_version_2:
-                    return { _byteify(key): _byteify(value) for key, value in data.iteritems() }
+                    return {_byteify(key): _byteify(value) for key, value in data.iteritems()}
                 else:
-                    return { _byteify(key): _byteify(value) for key, value in data.items() }
+                    return {_byteify(key): _byteify(value) for key, value in data.items()}
 
             # if it's anything else, return it in its original form
             return data
@@ -258,11 +620,10 @@ class PyOOAnalyzer(object):
             # Some IDA give a binary encoded version, and some give it in ascii already!
             idaMd5 = idautils.GetInputFileMD5()
             idaMd52 = codecs.encode(idaMd5, 'hex').decode("ascii")
-            if jsonMd5.lower () != idaMd5.lower () and jsonMd5.lower () != idaMd52.lower ():
-                print (jsonMd5, idaMd5)
+            if jsonMd5.lower() != idaMd5.lower() and jsonMd5.lower() != idaMd52.lower():
+                print(jsonMd5, idaMd5)
                 if ida_kernwin.ask_yn(ida_kernwin.ASKBTN_YES, "There was a hash mismatch.  This JSON may be for a different file '%s'.  Do you want to import anyway?" % data["filename"]) == ida_kernwin.ASKBTN_NO:
                     return [False, "User aborted after hash mismatch"]
-
 
         print("Parsing JSON structures ...")
         self.__parse_structs(data["structures"])
@@ -301,7 +662,7 @@ class PyOOAnalyzer(object):
 
                     print("Applying class %s" % c.ida_name)
 
-                    self.__apply_class(c)
+                    self.apply_class(c)
 
                     c.applied = True
                     result = True
@@ -321,7 +682,7 @@ class PyOOAnalyzer(object):
         '''
         self.__parse_results["NumClasses"] = len(structs)
 
-        for s in structs.values ():
+        for s in structs.values():
             # use the ID of the current struct, if it exists
             c = PyClassStructure(s)
 
@@ -330,7 +691,7 @@ class PyOOAnalyzer(object):
 
             print("Found class %s" % c.ida_name)
 
-        for s in structs.values ():
+        for s in structs.values():
             # Now fill out the structures
             for c in self.__classes:
                 if c.name == s['name']:
@@ -356,7 +717,7 @@ class PyOOAnalyzer(object):
         print("Parsing %d members for class %s ..." %
               (len(members), cls.ida_name))
 
-        for m in members.values ():
+        for m in members.values():
             offset = int(m['offset'], 16)
             if offset > 0x7FFFFFFF:
                 offset -= 0x100000000
@@ -371,7 +732,7 @@ class PyOOAnalyzer(object):
             mem.base = m['base']
             mem.member_name = m['name']
 
-            self.__parse_member_usages (cls, m['usages'])
+            self.__parse_member_usages(cls, m['usages'])
 
             if mem.member_type == ida_bytes.FF_STRUCT:
 
@@ -427,7 +788,7 @@ class PyOOAnalyzer(object):
         print("Parsing %d methods for class %s ..." %
               (len(methods), cls.ida_name))
 
-        for m in methods.values ():
+        for m in methods.values():
 
             meth = PyClassMethod()
 
@@ -452,24 +813,24 @@ class PyOOAnalyzer(object):
             meth.demangled_name = m['demangled_name'] if m['demangled_name'] != "" else None
             meth.userdef_name = False
 
-            flags = ida_bytes.get_flags (meth.start_ea)
+            flags = ida_bytes.get_flags(meth.start_ea)
 
             # In vs2010/Lite/oo, there is a function tail at 0x403ed0.  Unfortunately another
             # function tail calls that chunk, and get_func(0x403ed0) refers to the larger one.
             # This results in IDA helpfully saying that the function at 0x403ed0 is named
             # sub_402509.  Thanks IDA!
-            idafunc = idaapi.get_func (meth.start_ea)
+            idafunc = idaapi.get_func(meth.start_ea)
             is_func = idafunc is not None and idafunc.start_ea == meth.start_ea
 
             has_name = is_func \
-                       and ida_bytes.has_name (flags) \
-                       and ida_bytes.has_user_name (flags) \
-                       and idc.get_func_name(meth.start_ea) != ""
+                and ida_bytes.has_name(flags) \
+                and ida_bytes.has_user_name(flags) \
+                and idc.get_func_name(meth.start_ea) != ""
             # Does IDA have a name for this function?
             if has_name:
                 meth.method_name = idc.get_func_name(meth.start_ea)
-                meth.demangled_name = idc.demangle_name (meth.method_name,
-                                                         idc.get_inf_attr (idc.INF_SHORT_DN))
+                meth.demangled_name = idc.demangle_name(meth.method_name,
+                                                        idc.get_inf_attr(idc.INF_SHORT_DN))
                 meth.demangled_name = meth.demangled_name if meth.demangled_name != "" else None
                 meth.userdef_name = True
 
@@ -489,7 +850,7 @@ class PyOOAnalyzer(object):
         print("Parsing %s vftables for class %s ..." %
               (len(vftables), cls.ida_name))
 
-        for v in vftables.values ():
+        for v in vftables.values():
 
             vftptr_off = int(v['vftptr'], 16)
             if vftptr_off < 0:
@@ -502,11 +863,12 @@ class PyOOAnalyzer(object):
             vft.length = int(v['length'])
             vft.start_ea = int(v['ea'], 16)
 
-            for entry in v['entries'].values ():
+            for entry in v['entries'].values():
                 start_ea = int(entry['ea'], 16)
 
                 # Look up method instead of duplicating code
-                meth = next(method for method in cls.methods if method.start_ea == start_ea)
+                meth = next(
+                    method for method in cls.methods if method.start_ea == start_ea)
                 assert meth is not None
 
                 vft.add_virtual_function(meth, int(entry['offset']))
@@ -546,7 +908,7 @@ class PyOOAnalyzer(object):
         print("Parsing %s virtual function calls ..." % (len(vcalls)))
         self.__parse_results["NumVcalls"] = len(vcalls)
 
-        for call_ea, targets in vcalls.items ():
+        for call_ea, targets in vcalls.items():
             vc = PyVirtualFunctionCallUsage()
             vc.call_ea = int(call_ea, 16)
 
@@ -561,7 +923,7 @@ class PyOOAnalyzer(object):
 
     # The following methods concern applying the parsed JSON file to an IDB
 
-    def __apply_class(self, cls):
+    def apply_class(self, cls):
         '''
         Apply the class
         '''
@@ -620,6 +982,8 @@ class PyOOAnalyzer(object):
         print("Applied class '%s'" % cls.ida_name)
         print("================================================\n")
 
+        cls.applied = True
+
         return cls.id
 
     def __apply_member(self, cls, mem, off):
@@ -633,8 +997,9 @@ class PyOOAnalyzer(object):
         nbytes = idaapi.BADADDR
         if mem.member_type == ida_bytes.FF_STRUCT:
             if mem.class_member.ida_name not in self.__applied_classes:
-                self.__apply_class(mem.class_member)
-                print("Applying class member: %s" % str(mem.class_member.ida_name))
+                self.apply_class(mem.class_member)
+                print("Applying class member: %s" %
+                      str(mem.class_member.ida_name))
 
             nbytes = ida_struct.get_struc_size(
                 ida_struct.get_struc(mem.class_member.id))
@@ -647,12 +1012,13 @@ class PyOOAnalyzer(object):
             # non-struct member
             nbytes = mem.size
             idc.add_struc_member(cls.id, mem.member_name,
-                                       off, mem.member_type, 0xffffffff, nbytes)
+                                 off, mem.member_type, 0xffffffff, nbytes)
 
         # save the member ID
         mem.id = idc.get_member_id(cls.id, off)
         if mem.id == -1:
-            print("WARNING: Adding member at offset %d to %s failed" % (off, cls.ida_name))
+            print("WARNING: Adding member at offset %d to %s failed" %
+                  (off, cls.ida_name))
 
         return
 
@@ -677,20 +1043,21 @@ class PyOOAnalyzer(object):
         if method.is_dtor == True:
             cmt += " (destructor)"
 
-
-        idafunc = idaapi.get_func (method.start_ea)
+        idafunc = idaapi.get_func(method.start_ea)
         is_func = idafunc is not None and idafunc.start_ea == method.start_ea
         if is_func:
-        # Check for existing name
+            # Check for existing name
             if idc.get_name_ea_simple(method_name) != idaapi.BADADDR:
                 method_name += "_%x" % method.start_ea
 
-            print("Renaming %s to %s" % (idc.get_func_name(method.start_ea), method_name))
+            print("Renaming %s to %s" %
+                  (idc.get_func_name(method.start_ea), method_name))
 
             idc.set_name(method.start_ea, method_name,
                          ida_name.SN_NOCHECK | ida_name.SN_FORCE)
         else:
-            print("Not renaming the function at %#x %s because it is not a function in IDA!" % (method.start_ea, method_name))
+            print("Not renaming the function at %#x %s because it is not a function in IDA!" % (
+                method.start_ea, method_name))
 
         idc.set_func_cmt(method.start_ea, cmt, 1)
 
@@ -726,8 +1093,7 @@ class PyOOAnalyzer(object):
         ida_struct.set_struc_cmt(
             vftid, vft.cls.ida_name + " virtual function table", 1)
 
-        print ("VFtable length = %d" % vft.length)
-
+        print("VFtable length = %d" % vft.length)
 
         for vt_index in range(0, vft.length):
             vt_off = vt_index * 4
@@ -802,7 +1168,7 @@ class PyOOAnalyzer(object):
         print("Applying parent: %s" % parent.ida_name)
 
         if parent.id == idaapi.BADADDR:
-            self.__apply_class(parent)
+            self.apply_class(parent)
 
             # add the variable for the parent
         nbytes = ida_struct.get_struc_size(parent.id)
@@ -877,7 +1243,7 @@ class PyOOAnalyzer(object):
 
                 if do_apply:
                     print("Applying class '%s'" % c.ida_name)
-                    self.__apply_class(c)
+                    self.apply_class(c)
                     c.applied = True
                     worklist_count -= 1
 
@@ -1112,7 +1478,7 @@ class PyClassMethod(object):
 
     def __init__(self, meth_name=None, cls=None, ea=None, ctor=False, dtor=False, virt=False, imp=False, udn=False):
 
-            # Set the formatter for this object
+        # Set the formatter for this object
         self.__start_ea = None
         if ea != None:
             self.__start_ea = int(ea)
@@ -1366,7 +1732,7 @@ class PyClassMember(object):
                 self.__type = ida_bytes.FF_BYTE
         else:
             print("WARNING: Unknown type %s" % value)
-            assert(False)
+            assert (False)
 
         return
 
@@ -1491,11 +1857,12 @@ class PyClassStructure(object):
     # property getters/setters
 
     def get_best_name(self):
-        dn = self.get_demangled_name ()
+        dn = self.get_demangled_name()
         if dn is not None and dn != "":
             return dn
         else:
             return self.get_name()
+
     def get_ida_name(self):
         return self.__ida_name
 
@@ -1631,7 +1998,7 @@ class PyOOAnalyzerMethodTreeItem(QTreeWidgetItem):
 
         super(PyOOAnalyzerMethodTreeItem, self).__init__(parent)
         self.method = meth
-        self.setText(0, self.method.get_best_method_name ())
+        self.setText(0, self.method.get_best_method_name())
 
 
 class PyOOAnalyzerMemberTreeItem(QTreeWidgetItem):
@@ -1655,7 +2022,7 @@ class PyOOAnalyzerStructTreeItem(QTreeWidgetItem):
 
         super(PyOOAnalyzerStructTreeItem, self).__init__(parent)
         self.class_struct = cls
-        self.setText(0, self.class_struct.get_best_name ())
+        self.setText(0, self.class_struct.get_best_name())
 
 
 class PyOOAnalyzerExpForm(idaapi.PluginForm):
@@ -1672,6 +2039,7 @@ class PyOOAnalyzerExpForm(idaapi.PluginForm):
         self.cls_tree = None
         self.idbhook = None
         self.idphook = None
+        self.__node = Netnode("$ cert.ooanalyzer")
 
         # the name of the IDA netnode that contains class information
         self.__NODE_NAME = "$OBJD"
@@ -1908,14 +2276,14 @@ class PyOOAnalyzerExpForm(idaapi.PluginForm):
             self.cls_tree.blockSignals(False)
             return
 
-        cls = item.parent ().parent ().class_struct
+        cls = item.parent().parent().class_struct
 
         m = next(m for m in cls.methods if m.start_ea == method.start_ea)
         m.method_name = new_method_name
         m.userdef_name = True
         # Rename the function
-        self.__ooanalyzer.apply_method (m)
-        item.setText(0, m.get_best_method_name ())
+        self.__ooanalyzer.apply_method(m)
+        item.setText(0, m.get_best_method_name())
 
         # XXX: Rename all vftable structures.
         # # the method is a virtual function
@@ -1935,7 +2303,6 @@ class PyOOAnalyzerExpForm(idaapi.PluginForm):
 
         #                 vf.method_name = new_method_name
         #                 break
-
 
         return
 
@@ -2132,25 +2499,10 @@ class PyOOAnalyzerExpForm(idaapi.PluginForm):
         '''
         Save the JSON to a netnode
         '''
-        self.__node = idaapi.netnode()
-
-        if not self.__node.create(self.__NODE_NAME):
-
-            # node exists - reset it
-            self.__node.delblob(0, 'O')
-            self.__node.create(self.__NODE_NAME)
-
-        if self.__ooanalyzer:
-
-            cls_list = self.__ooanalyzer.get_classes()
-            for c in cls_list:
-                print("Saving class: %s" % c.ida_name)
-
-            if type(self.__ooanalyzer) == PyOOAnalyzer:
-                data = pickle.dumps(self.__ooanalyzer)
-                self.__node.setblob(data, 0, 'I')
-            else:
-                print("Can't save information to IDB")
+               
+        self.__node[OOA_JSON] = self.__ooanalyzer.get_json_data()
+        self.__node[APPLIED_CLASS_NAMES] = [
+            cls.ida_name for cls in self.__ooanalyzer.get_applied_classes()]
 
         return
 
@@ -2158,19 +2510,15 @@ class PyOOAnalyzerExpForm(idaapi.PluginForm):
         '''
         Load previously applied JSON
         '''
-        self.__node = idaapi.netnode()
-        if not self.__node.create(self.__NODE_NAME):
-            # node exists - fetch it
 
-            data = self.__node.getblob(0, 'I')
-            if not data:
-                return None
+        if OOA_JSON in self.__node and APPLIED_CLASS_NAMES in self.__node:
+            return [self.__node[OOA_JSON], self.__node[APPLIED_CLASS_NAMES]]
+        elif OOA_JSON in self.__node:
+            return [self.__node[OOA_JSON], None]
+        elif APPLIED_CLASS_NAMES in self.__node:
+            return [None, self.__node[APPLIED_CLASS_NAMES]]
 
-            loaded_data = pickle.loads(data)
-
-            return loaded_data
-
-        return None
+        return [None, None]
 
     def __load_from_json_file(self, json_file):
         '''
@@ -2242,12 +2590,22 @@ Press \"Yes\" to apply these items to the IDB. Press no to apply them manually (
         set up form data
         '''
 
-        objd = self.__load_from_idb()
-        if objd:
+        [json, applied_classes] = self.__load_from_idb()
+        if json:
             print("OOAnalyzer class information found in IDB, opening Class Viewer")
-
+          
             # mark previously applied classes
-            self.__ooanalyzer = objd
+            self.__ooanalyzer = PyOOAnalyzer()
+            self.__ooanalyzer.set_json_data(json)
+            self.__ooanalyzer.parse()
+            if applied_classes:
+
+                # Find the intersection
+                intersection = [
+                    c for c in self.__ooanalyzer.get_classes() if c.ida_name in applied_classes]
+
+                for c in intersection:
+                    self.__ooanalyzer.apply_class(c)
 
         else:
 
@@ -2270,19 +2628,19 @@ Press \"Yes\" to apply these items to the IDB. Press no to apply them manually (
 
                 do_apply = ida_kernwin.ask_yn(ida_kernwin.ASKBTN_YES, form_msg)
 
-                if do_apply == ida_kernwin.ASKBTN_YES: # yes
+                if do_apply == ida_kernwin.ASKBTN_YES:  # yes
                     print("Applying all results")
 
                     self.__ooanalyzer.apply_all_structs()
 
                 # apply virtual function calls for yes or no
                 if do_apply == ida_kernwin.ASKBTN_YES or do_apply == ida_kernwin.ASKBTN_NO:
-                    print ("Applying virtual function calls")
+                    print("Applying virtual function calls")
                     self.__ooanalyzer.apply_vfcalls()
-                    print ("Applied virtual function calls")
+                    print("Applied virtual function calls")
 
-                else: # cancel
-                    print ("User cancelled.  Not applying anything")
+                else:  # cancel
+                    print("User cancelled.  Not applying anything")
                     return False
 
             else:
@@ -2504,7 +2862,8 @@ class PyOOAnalyzer_plugin(idaapi.plugin_t):
             # is the Class Viewer already open?
             class_viewer = ida_kernwin.find_widget("OOAnalyzer Class Viewer")
             if class_viewer != None:
-                ida_kernwin.warning("OOAnalyzer class information has already been imported")
+                ida_kernwin.warning(
+                    "OOAnalyzer class information has already been imported")
                 return
 
             global clsExpForm
