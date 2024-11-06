@@ -1,6 +1,7 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <unordered_map>
+#include <unordered_set>
 #include <limits>
 #include <algorithm>
 #include <mutex>
