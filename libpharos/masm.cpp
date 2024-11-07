@@ -318,7 +318,7 @@ std::string masm_unparseX86Expression(SgAsmExpression *expr, const RoseLabelMap 
 std::string masm_unparseExpression(
   const SgAsmInstruction *insn,
   const SgAsmExpression *expr,
-  RegisterDictionaryPtrArg rdict,
+  RegisterDictionaryPtrArg rdict UNUSED,
   const RoseLabelMap *labels)
 {
   // Const casts are to hide sillyness in the ROSE AST API that incorrectly lacks const.
@@ -326,7 +326,11 @@ std::string masm_unparseExpression(
     return masm_unparseX86Expression(const_cast<SgAsmExpression *>(expr), labels);
   }
   else {
+#if PHAROS_ROSE_UNPARSE_HACK
+    return expr->toString();
+#else
     return unparseExpression(const_cast<SgAsmExpression *>(expr), labels, rdict);
+#endif
   }
 }
 
@@ -387,7 +391,7 @@ std::string debug_instruction(const SgAsmInstruction *inst, const unsigned int m
     if (max_bytes > 0) {
       opbytes = " ; BYTES: " + debug_opcode_bytes(inst->get_rawBytes(), max_bytes);
     }
-    return addr_str(inst->get_address()) + " " + unparseInstruction(ncinsn) + opbytes;
+    return addr_str(inst->get_address()) + " " + ncinsn->toString() + opbytes;
   }
 
   SgAsmOperandList *oplist = inst->get_operandList();

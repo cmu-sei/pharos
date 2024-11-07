@@ -434,7 +434,13 @@ void DescriptorSet::create() {
               // In all of the cases that I looked at, these expressions were of the form [ecx+edx*2]
               GTRACE << "Right hand side of add expression is not constant!"
                      << " insn=" << debug_instruction(xinsn, 0)
-                     << " expr=" << unparseExpression(const_expr, NULL, {}) << LEND;}
+#if PHAROS_ROSE_UNPARSE_HACK
+                     << " expr=" << const_expr->toString()
+#else
+                     << " expr=" << unparseExpression(const_expr, NULL, {})
+#endif
+                     << LEND;
+            }
           }
           // The remaning cases appear to be register dereferences e.g. "[eax]".  It appears
           // that V_SgAsmBinarySubtract is not actually used (at least on X86).

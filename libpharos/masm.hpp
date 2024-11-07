@@ -21,7 +21,7 @@ using AddrSet = std::set<rose_addr_t>;
 // class is used to avoid having to pass
 // ======================================================================
 using ImportLabelMap = std::map<rose_addr_t, std::string>;
-using RoseLabelMap = Rose::BinaryAnalysis::AsmUnparser::LabelMap;
+using RoseLabelMap = Rose::BinaryAnalysis::Unparser::LabelMap;
 
 
 extern RoseLabelMap global_label_map;

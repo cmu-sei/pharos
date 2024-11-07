@@ -1,4 +1,4 @@
-// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Semantics_H
 #define Pharos_Semantics_H
@@ -23,9 +23,6 @@
 #include "misc.hpp"
 
 namespace pharos {
-
-// This used to be in the global namespace.
-using Rose::BinaryAnalysis::Unparser::unparseX86Register;
 
 class DescriptorSet;
 

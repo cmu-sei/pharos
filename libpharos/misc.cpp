@@ -1162,7 +1162,20 @@ RegisterVector get_usual_registers(Rose::BinaryAnalysis::Architecture::BaseConst
   }
 }
 
-
+std::string unparseX86Register(RegisterDescriptor reg,
+                               RegisterDictionary::Ptr registers)
+{
+  if (!registers) {
+    registers = Rose::BinaryAnalysis::Architecture::findByName("amd64").orThrow()->registerDictionary();
+  }
+  std::string name = registers->lookup(reg);
+  if (name.empty()) {
+    using Rose::StringUtility::numberToString;
+    name = numberToString(reg.majorNumber()) + "." + numberToString(reg.minorNumber()) + "."
+           + numberToString(reg.offset()) + "." + numberToString(reg.nBits());
+  }
+  return name;
+}
 
 } // namespace pharos
 

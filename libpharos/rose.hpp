@@ -20,4 +20,18 @@
 #endif
 #define PHAROS_ROSE_RVA_HACK (ROSE_VERSION >= PHAROS_ROSE_RVA_CHANGE)
 
+#define PHAROS_ROSE_UNPARSE_CHANGE 11'145'0167ul
+#if PHAROS_ROSE_UNPARSE_CHANGE <= PHAROS_ROSE_MINIMUM_VERSION
+#  error "This hack is now always true.  Remove the hack and make it permanent."
+#endif
+#define PHAROS_ROSE_UNPARSE_HACK (ROSE_VERSION >= PHAROS_ROSE_UNPARSE_CHANGE)
+
+#define PHAROS_ROSE_UNPARSE_BROKEN 11'145'0158ul
+#if PHAROS_ROSE_UNPARSE_CHANGE <= PHAROS_ROSE_MINIMUM_VERSION
+#  error "This warning should be removed."
+#elif ((ROSE_VERSION >= PHAROS_ROSE_UNPARSE_BROKEN) \
+       && (ROSE_VERSION < PHAROS_ROSE_UNPARSE_CHANGE))
+#  error "Rose versions 0.11.145.158 through 0.11.145.166 are broken.  Please compile against a different version of Rose."
+#endif
+
 #endif // Pharos_Rose_H

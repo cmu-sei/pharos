@@ -506,6 +506,7 @@ RegisterVector get_usual_registers_x86(RegisterDictionaryPtrArg rd);
 // initialization.
 RegisterVector get_usual_registers(Rose::BinaryAnalysis::Architecture::BaseConstPtr arch);
 
+std::string unparseX86Register(RegisterDescriptor, RegisterDictionaryPtr);
 
 } // namespace pharos
 
