@@ -118,7 +118,7 @@ PATestAnalyzer::PATestAnalyzer(DescriptorSet& ds_, ProgOptVarMap const & vm_)
     exit(EXIT_FAILURE);
   }
 
-  test_name = basename (bf::path(vm["file"].as<Specimens>().name()));
+  test_name = bf::path(vm["file"].as<Specimens>().name()).stem().native();
 
   if (vm.count("z3-log")) {
     Z3_open_log(vm["z3-log"].as<bf::path>().c_str());
