@@ -19,6 +19,14 @@
 #include <Rose/BinaryAnalysis/AddressIntervalSet.h>
 #endif
 
+#if PHAROS_ROSE_DYNAMIC_PTR_HACK
+#include <Rose/As.h>
+#else
+#include <Sawyer/SharedPointer.h>
+#include <boost/shared_ptr.hpp>
+#include <memory>
+#endif
+
 #include <numeric>
 
 namespace pharos {
@@ -507,6 +515,31 @@ RegisterVector get_usual_registers_x86(RegisterDictionaryPtrArg rd);
 RegisterVector get_usual_registers(Rose::BinaryAnalysis::Architecture::BaseConstPtr arch);
 
 std::string unparseX86Register(RegisterDescriptor, RegisterDictionaryPtr);
+
+#if PHAROS_ROSE_DYNAMIC_PTR_HACK
+using Rose::as;
+#else
+template<class T, class U>
+std::shared_ptr<T> as(const std::shared_ptr<U> &p) {
+  return std::dynamic_pointer_cast<T>(p);
+}
+
+template<class T, class U>
+boost::shared_ptr<T> as(const boost::shared_ptr<U> &p) {
+  return boost::dynamic_pointer_cast<T>(p);
+}
+
+template<class T, class U>
+Sawyer::SharedPointer<T> as(const Sawyer::SharedPointer<U> &p) {
+    return p.template dynamicCast<T>();
+}
+
+template<class T, class U>
+T* as(U *p) {
+    return dynamic_cast<T*>(p);
+}
+#endif
+
 
 } // namespace pharos
 

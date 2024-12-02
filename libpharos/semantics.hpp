@@ -201,7 +201,7 @@ class SymbolicValue: public ParentSValue {
   // Promote from the standard ROSE "base" SValue to ours.
   static SymbolicValuePtr promote(const BaseSValuePtr &v) {
     //STRACE << "SymbolicValue::promote(" << *v << ")" << LEND;
-    SymbolicValuePtr retval = Semantics2::BaseSemantics::dynamic_pointer_cast<SymbolicValue>(v);
+    SymbolicValuePtr retval = as<SymbolicValue>(v);
     assert(retval!=NULL);
     return retval;
   }

@@ -1,4 +1,4 @@
-// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include "state.hpp"
 #include "riscops.hpp"
@@ -307,7 +307,12 @@ void SymbolicRegisterState::print(std::ostream& stream, Formatter& fmt) const {
   }
 }
 
-bool SymbolicState::merge(const BaseStatePtr &, BaseRiscOperators *) {
+#if PHAROS_ROSE_ADDRESS_SPACE_HACK
+bool SymbolicState::merge(const BaseStatePtr &, BaseRiscOperators *, BaseRiscOperators *)
+#else
+bool SymbolicState::merge(const BaseStatePtr &, BaseRiscOperators *)
+#endif
+{
   // We do not want this class to be merged without a given condition (I.e., by the ROSE API
   // internals.
   abort();
@@ -326,7 +331,11 @@ bool SymbolicState::merge(const BaseStatePtr &other, BaseRiscOperators *ops,
   cert_reg_merger->condition = condition;
 
   // Call the standard merge method.
+#if PHAROS_ROSE_ADDRESS_SPACE_HACK
+  return BaseState::merge(other, ops, ops);
+#else
   return BaseState::merge(other, ops);
+#endif
 }
 
 // =========================================================================================
@@ -416,7 +425,7 @@ bool SymbolicMemoryMapState::equals(const SymbolicMemoryMapStatePtr& other) {
 
 using InputOutputPropertySet = Semantics2::BaseSemantics::InputOutputPropertySet;
 
-bool SymbolicMemoryMapState::merge(const BaseMemoryStatePtr& other_,
+bool SymbolicMemoryMapState::merge(const BaseMemoryAddressSpacePtr& other_,
                                    BaseRiscOperators* addrOps,
                                    BaseRiscOperators* valOps) {
 

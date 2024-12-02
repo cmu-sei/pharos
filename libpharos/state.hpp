@@ -1,4 +1,4 @@
-// Copyright 2015-2022 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_State_H
 #define Pharos_State_H
@@ -7,16 +7,23 @@
 #include "misc.hpp"
 
 namespace pharos {
+#if PHAROS_ROSE_ADDRESS_SPACE_HACK
+#define PHAROS_ROSE_ADDRESSS_SPACE(name) Semantics2::BaseSemantics::AddressSpacePtr
+#else
+#define PHAROS_ROSE_ADDRESSS_SPACE(name) name
+#endif
 
 // Renames of standard ROSE typdefs.
 using BaseRegisterState = Semantics2::BaseSemantics::RegisterState;
 using BaseRegisterStatePtr = Semantics2::BaseSemantics::RegisterStatePtr;
+using BaseRegisterAddressSpacePtr = PHAROS_ROSE_ADDRESSS_SPACE(BaseRegisterStatePtr);
 using BaseState = Semantics2::BaseSemantics::State;
 using BaseStatePtr = Semantics2::BaseSemantics::StatePtr;
 using BaseRiscOperators = Semantics2::BaseSemantics::RiscOperators;
 using BaseRiscOperatorsPtr = Semantics2::BaseSemantics::RiscOperatorsPtr;
 using BaseMemoryState = Semantics2::BaseSemantics::MemoryState;
 using BaseMemoryStatePtr = Semantics2::BaseSemantics::MemoryStatePtr;
+using BaseMemoryAddressSpacePtr = PHAROS_ROSE_ADDRESSS_SPACE(BaseMemoryStatePtr);
 using MemoryCell = Semantics2::BaseSemantics::MemoryCell;
 using MemoryCellPtr = Semantics2::BaseSemantics::MemoryCellPtr;
 using BaseMemoryCellMap = Semantics2::BaseSemantics::MemoryCellMap;
@@ -119,7 +126,7 @@ class SymbolicRegisterState: public RegisterStateGeneric {
     return instance(SymbolicValue::promote(proto), rd);
   }
 
-  virtual BaseRegisterStatePtr clone() const override {
+  virtual BaseRegisterAddressSpacePtr clone() const override {
     STRACE << "SymbolicRegisterState::clone()" << LEND;
     return SymbolicRegisterStatePtr(new SymbolicRegisterState(*this));
   }
@@ -238,7 +245,7 @@ class SymbolicMemoryMapState: public BaseMemoryCellMap {
     return saddr->get_hash();
   }
 
-  virtual BaseMemoryStatePtr clone() const override {
+  virtual BaseMemoryAddressSpacePtr clone() const override {
     STRACE << "SymbolicMemoryMapState::clone()" << LEND;
     return BaseMemoryStatePtr(new SymbolicMemoryMapState(*this));
   }
@@ -248,7 +255,7 @@ class SymbolicMemoryMapState: public BaseMemoryCellMap {
     return SymbolicMemoryMapStatePtr(new SymbolicMemoryMapState(*this));
   }
 
-  virtual bool merge(const BaseMemoryStatePtr& other_,
+  virtual bool merge(const BaseMemoryAddressSpacePtr& other_,
                      BaseRiscOperators* addrOps,
                      BaseRiscOperators* valOps) override;
 
@@ -334,7 +341,7 @@ class SymbolicMemoryListState: public BaseMemoryCellList {
     return instance(addr_, val_);
   }
 
-  virtual BaseMemoryStatePtr clone() const override {
+  virtual BaseMemoryAddressSpacePtr clone() const override {
     STRACE << "SymbolicMemoryListState::clone()" << LEND;
     return BaseMemoryStatePtr(new SymbolicMemoryListState(*this));
   }
@@ -597,7 +604,12 @@ class SymbolicState: public BaseState {
   }
 
  private:
-  bool merge(const BaseStatePtr &other, BaseRiscOperators *ops) override;
+#if PHAROS_ROSE_ADDRESS_SPACE_HACK
+  bool merge(const BaseStatePtr &other,
+             BaseRiscOperators *addrOps, BaseRiscOperators *valOps) override;
+#else
+  bool merge(const BaseStatePtr &other, BaseRiscOperators *addrOps) override;
+#endif
 
  public:
   bool merge(const BaseStatePtr &other, BaseRiscOperators *ops, const SymbolicValuePtr & cond);

@@ -34,4 +34,16 @@
 #  error "Rose versions 0.11.145.158 through 0.11.145.166 are broken.  Please compile against a different version of Rose."
 #endif
 
+#define PHAROS_ROSE_DYNAMIC_PTR_CHANGE 11'145'0177
+#if PHAROS_ROSE_DYNAMIC_PTR_CHANGE <= PHAROS_ROSE_MINIMUM_VERSION
+#  error "This hack is now always true.  Remove the hack and make it permanent."
+#endif
+#define PHAROS_ROSE_DYNAMIC_PTR_HACK (ROSE_VERSION >= PHAROS_ROSE_DYNAMIC_PTR_CHANGE)
+
+#define PHAROS_ROSE_ADDRESS_SPACE_CHANGE 11'145'0187
+#if PHAROS_ROSE_ADDRESS_SPACE_CHANGE <= PHAROS_ROSE_MINIMUM_VERSION
+#  error "This hack is now always true.  Remove the hack and make it permanent."
+#endif
+#define PHAROS_ROSE_ADDRESS_SPACE_HACK (ROSE_VERSION >= PHAROS_ROSE_ADDRESS_SPACE_CHANGE)
+
 #endif // Pharos_Rose_H
