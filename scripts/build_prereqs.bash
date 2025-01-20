@@ -13,8 +13,7 @@ then
    test -d boost && sudo rm -rf boost
    mkdir boost
    cd boost
-   wget https://versaweb.dl.sourceforge.net/project/boost/boost/1.64.0/boost_1_64_0.tar.bz2
-   #wget https://boostorg.jfrog.io/artifactory/main/release/1.64.0/source/boost_1_64_0.tar.bz2
+   wget https://archives.boost.io/release/1.64.0/source/boost_1_64_0.tar.bz2
    tar -xjf boost_1_64_0.tar.bz2
    cd boost_1_64_0
    ./bootstrap.sh --prefix=$PREFIX --with-libraries=system,serialization,chrono,timer,iostreams,thread,date_time,random,regex,program_options,filesystem,wave
