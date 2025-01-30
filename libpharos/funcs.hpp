@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Funcs_H
 #define Pharos_Funcs_H
@@ -82,35 +82,6 @@ class FunctionDescriptor : private Immobile {
   mutable shared_mutex mutex;
   mutable std::recursive_mutex pdg_mutex;
 
-  // only fn2hash really cares about these particular hashes, so instead of wasting memory
-  // keeping them in the FunctionDescriptor, we'll generate them only if explicitly requested
-  // by passing in this classs to populate, and return them in there:
-  class ExtraFunctionHashData {
-   public:
-    std::string mnemonics; // concatenated mnemonics
-    std::string mnemcats; // concatenated mnemonic categories
-
-    std::string mnemonic_hash; // variant of EHASH but only mnemonics (no operands) instead of insn bytes
-    std::string mnemonic_category_hash; // variant of PHASH but only mnemonic categories
-    std::string mnemonic_count_hash; // hash of the ordered mnemonic/count pairs
-    std::string mnemonic_category_count_hash; // hash of the orderend mnemcat/count pairs
-
-    std::map< std::string, uint32_t > mnemonic_counts;
-    std::map< std::string, uint32_t > mnemonic_category_counts;
-
-    std::vector< rose_addr_t > basic_block_addrs; // added in flow order (take len to get # bbs)
-    std::vector< std::pair< rose_addr_t, rose_addr_t > > cfg_edges; // from->to pairs of bb addrs (empty if only 1 bb?)
-    class BasicBlockHashData {
-     public:
-      //rose_addr_t addr; // eh, get addr from list above or map below
-      std::string pic;
-      std::string cpic;
-      std::vector< std::string > mnemonics; // in insn order (take len to see how many insn in bb)
-      std::vector< std::string > mnemonic_categories; // in insn order (take len to see how many insn in bb)
-    };
-    std::map< rose_addr_t, BasicBlockHashData > basic_block_hash_data;
-  };
-
  private:
 
   // The address of the function.  This can refer to address that does not yet have a function
@@ -184,15 +155,11 @@ class FunctionDescriptor : private Immobile {
   // by get_pic_bytes() or get_pic_hash() by compute_func_bytes().
   std::string pic_bytes;
   std::string pic_hash;
-  std::list< uint32_t > pic_offsets; // the offsets of the PICed out bytes, so Yara sigs can be generted w/ this data
-
-  std::string composite_pic_hash; // variant of PIC w/ no control flow insn, basic blocks hashed and func hashed by hashing those ordered hashes (ASCII values)...
+  std::vector<uint8_t> pic_mask; // A bitmask for the PIC'd bytes
 
   // might as well collect some fn level stats:
-  unsigned int num_blocks; // basic blocks, that is
-  unsigned int num_blocks_in_cfg;
-  unsigned int num_instructions;
-  unsigned int num_bytes;
+  std::uint64_t num_instructions;
+  std::uint64_t num_bytes;
 
   // This is set to true if we're pretty certain that we never return.  It's a little unclear
   // what level of semantic analysis we mean right now, but I think it would be fine currently
@@ -264,7 +231,6 @@ class FunctionDescriptor : private Immobile {
 
   CFG const & _get_rose_cfg() const;
 
-
   // Update the return value fields in the parameter list.  Only called while generating
   // the PDG.
   void update_return_values();
@@ -283,7 +249,9 @@ class FunctionDescriptor : private Immobile {
   // method.  compute_function_hashes() is const, but uses casting to call this instead.  This
   // is because compute_function_hashes() and the methods that depend on it are semantically
   // const, but defer calculation until needed.
-  void _compute_function_hashes(ExtraFunctionHashData *extra=NULL);
+  void _compute_function_hashes();
+  // A mutexless version of get_insns_addr_order for internal callers.
+  InsnVector _get_insns_addr_order() const;
 
   const PDG * _get_pdg();
 
@@ -444,9 +412,8 @@ class FunctionDescriptor : private Immobile {
     return stack_analysis_failures;
   }
 
-  // Compute the exact & PIC bytes & hashes simultaneously.  If extra pointer is not null,
-  // compute extra hash types and return in that struct.
-  void compute_function_hashes(ExtraFunctionHashData *extra=NULL) const;
+  // Compute the exact & PIC bytes & hashes simultaneously.
+  void compute_function_hashes() const;
 
   // Get the weighted PDG hash.
   std::string get_pdg_hash(unsigned int num_hash_funcs = 4);
@@ -461,14 +428,10 @@ class FunctionDescriptor : private Immobile {
   // with the non position independent parts replaced with zeros.  This is the value hashed to
   // produce the PIC hash.
   const std::string& get_pic_bytes() const;
-  const std::list< uint32_t > & get_pic_offsets() const; // which bytes in the PIC bytes were PICed out?
+  const std::vector<uint8_t>& get_pic_mask() const; // which bytes in the PIC bytes were PICed out?
   // Get the PIC hash.
   const std::string& get_pic_hash() const;
-  // Get the CPIC (tries to account for simple CFG changes):
-  const std::string& get_composite_pic_hash() const;
 
-  unsigned int get_num_blocks() const { return num_blocks; };
-  unsigned int get_num_blocks_in_cfg() const { return num_blocks_in_cfg; };
   unsigned int get_num_instructions() const { return num_instructions; };
   unsigned int get_num_bytes() const { return num_bytes; };
 

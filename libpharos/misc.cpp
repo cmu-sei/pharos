@@ -322,6 +322,231 @@ boost::optional<rose_addr_t> insn_get_branch_target(SgAsmInstruction* insn) {
   return boost::none;
 }
 
+#define PICDEBUG GDEBUG
+
+// An AstProcessing class to identify integer offsets in instructions, for the purpose of
+// implementing the PIC algorithm.
+struct PICSearcher : public AstSimpleProcessing {
+  // Local copies of the construction parameters.
+  const DescriptorSet& ds;
+  const AddressIntervalSet* chunks;
+  const SgAsmInstruction *insn;
+  uint64_t min_addr_threshold;
+  // This is effectively the return value, and vector of pairs of bit offset and bit size.
+  std::vector< std::pair<uint32_t, uint32_t> > candidates;
+
+  PICSearcher(
+    const DescriptorSet& _ds,
+    const AddressIntervalSet& _chunks,
+    const SgAsmInstruction* _insn,
+    uint64_t _min_addr_threshold) : ds(_ds) {
+    chunks = &_chunks;
+    insn = _insn;
+    min_addr_threshold = _min_addr_threshold;
+  }
+
+  // Add a pair, <offset, size> in bits where a PIC'd address resides in the instruction to
+  // candidates vector.  The addr parameter is the absolute address that is being PIC'd, and
+  // the intexp parameter is the SgAsmIntegerValueExpression that represents that address in
+  // the instruction.
+  void handle_pic_offset(const rose_addr_t addr, const SgAsmIntegerValueExpression *intexp) {
+    // The primary test of whether the integer value should be PIC'd is whether the integer is
+    // really an address.  We determine this be checking whether the address is mapped into
+    // memory by the program or not.  If not, this integer is just a constant integer.
+    if (!ds.memory.is_mapped(rose_addr_t(addr))) {
+      PICDEBUG << "Instruction '" << debug_instruction(insn) << "' address 0x" << std::hex
+               << addr << std::dec << " was not PIC'd because it was not mapped." << LEND;
+      return;
+    }
+
+    // In programs mapped at base address zero, the memory map test will report that very small
+    // constants like 1, 4, and 8 are "addresses" that should be PIC'd out.  While this is a
+    // very unprincipled solution, I think it's better than incorrectly PIC'ing lots of small
+    // constants.  In the future we should test the program header for an image base address of
+    // zero and only enable this threshold if it applies?
+    if (addr < min_addr_threshold) {
+      PICDEBUG << "Instruction '" << debug_instruction(insn) << "' address 0x" << std::hex << addr
+               << std::dec << " was not PIC'd because it didn't meet minimum threshold." << LEND;
+      return;
+    }
+
+    // In general, when appying the PIC algorithm we do not want to PIC relative address
+    // references within the same chunk.  Chunks are contiguous blocks of memory assigned to
+    // the function.  A function may have more than one chunk if there's switch table data in
+    // the middle of the function for example, although most functions have one chunk.  This
+    // helps preserve local control flow, which of course makes the hash more rigid, but also
+    // more accurate (and easily to interpret when disassembled from the bytes).  In contrast,
+    // when a relative address references a different chunk, we do want to PIC that address
+    // because it's unlikely that the two chunks will be the same distance from each other in a
+    // separate compilation.  Chunks are also critically important to fn2yara signature
+    // generation where the chunk must be matched separately in contrasty to fn2hash results
+    // where the chunks are concatenated for the hash calculation.
+
+    // Chunk1 is the chunk that contains this instruction.
+    auto chunk1 = chunks->find(insn->get_address());
+    auto chunk2 = chunks->find(addr);
+
+    // If they're in the same chunk, we should NOT PIC this address... Unless the expression is
+    // literally an absolute address, in which case we should always PIC it.
+    if (chunk1 == chunk2 && addr != intexp->get_value()) {
+      PICDEBUG << "Instruction '" << debug_instruction(insn) << "' address 0x" << std::hex
+               << addr << " expr 0x" << intexp->get_value() << std::dec
+               << " was not PIC'd because it referenced the same chunk." << LEND;
+      return;
+    }
+
+    // Now for a few checks on the bit offsets and sizes returned by ROSE.  Sizes and offsets
+    // should be positive and byte aligned.  ROSE occasionally return unexpected values
+    // (e.g. size of zero) when it's difficult to determin which bits represent the operand.
+    // The byte alignment filtering is because our PIC algorithm currently only works at the
+    // byte level, but we could probably improve this to support nbybbles in the future.  If
+    // the size or offset is invalid, we're not going to PIC this address.
+    unsigned short off = intexp->get_bitOffset();
+    unsigned short sz = intexp->get_bitSize();
+    if (sz <= 0 || off <= 0 || sz % 8 != 0 || off % 8 != 0) {
+      GWARN << "Instruction '" << debug_instruction(insn)
+            << "' has suspicious PIC properties: size=" << sz << " offset=" << off << LEND;
+      return;
+    }
+
+    // If the instruction is not reasonably sized, we're not going to PIC this address.
+    unsigned short insnsz = insn->get_rawBytes().size();
+    if (insnsz > 17) {
+      GWARN << "Instruction '" << debug_instruction(insn)
+            << "' has a suspicious size of " << insnsz << " bytes." << LEND;
+      return;
+    }
+
+    // The size and the offset should both be contained within the instruction, and if they're
+    // not we're not going to PIC this address.
+    if ((off + sz) > insnsz * 8) {
+      GWARN << "Instruction '" << debug_instruction(insn)
+            << "' has an expression that doesn't fit in the instruction. size=" << insnsz
+            << " exp_size=" << sz << " exp_offset=" << off << LEND;
+      return;
+    }
+
+    PICDEBUG << "Instruction '" << debug_instruction(insn) << "' has a PIC'd address (0x"
+             << std::hex << addr << ") at exp_size=" << sz << " exp_offset=" << off << LEND;
+
+    // Conversion to a byte mask could occur right here...
+    candidates.push_back(std::pair<uint32_t, uint32_t>(off, sz));
+  }
+
+  void visit(SgNode *node) override {
+    // If this AST node is an SgAsmIntegerValueExpression, obviously we want to consider it for
+    // PIC'ing, because that's the primary type of expression that get's PIC'd.
+    const SgAsmIntegerValueExpression *intexp = isSgAsmIntegerValueExpression(node);
+    if (intexp) {
+      uint64_t val = intexp->get_value(); // or get_absoluteValue() ?
+      handle_pic_offset(val, intexp);
+      return;
+    }
+
+    // But we also want to handle memory reference operands of the form "[rip + offset]"
+    // specially.  Specifically, the RIP and offset should be combined to produce an absolute
+    // address so that we can correctly evaluate the address for PIC'ing.  The rest of this
+    // routine matches that pattern.
+
+    // If this node is not a memory reference expression, we don't match the pattern.
+    const SgAsmMemoryReferenceExpression *mem_expr = isSgAsmMemoryReferenceExpression(node);
+    if (!mem_expr) {
+      return;
+    }
+
+    // If the address is not an add expression, we don't match the pattern.
+    const SgAsmBinaryAdd* add_expr = isSgAsmBinaryAdd(mem_expr->get_address());
+    if (!add_expr) {
+      return;
+    }
+
+    // If the left hand side is not a register expression, we don't match the pattern.
+    const SgAsmDirectRegisterExpression* reg_expr = isSgAsmDirectRegisterExpression(add_expr->get_lhs());
+    if (!reg_expr) {
+      return;
+    }
+
+    // If the register is not the IP register, we don't match the pattern (a common case).
+    if (reg_expr->get_descriptor() != ds.get_ip_reg()) {
+      return;
+    }
+
+    // If the right hand side is not a integer expression, we don't match the pattern.
+    const SgAsmIntegerValueExpression* off_expr = isSgAsmIntegerValueExpression(add_expr->get_rhs());
+    if (!off_expr) {
+      return;
+    }
+
+    // In the future we might want to check whether the segment register is the data segment register?
+    //const SgAsmDirectRegisterExpression* seg_expr = isSgAsmDirectRegisterExpression(mem_expr->segment);
+    //if (seg_expr->get_descriptor() != ds.get_ds_reg()) { return; }
+
+    // We've matched the pattern, and the offset is a relative address from the current value
+    // of RIP.  We need convert the offset to an absolute address so that handle_pic_offset()
+    // can test whether the address is in define memory correctly.  To do this we add the
+    // current value of RIP (which will be the address of the instruction plus the size of the
+    // instruction) to the offset in the expression.
+    rose_addr_t absolute_addr = insn->get_address() + insn->get_size() + off_expr->get_value();
+    handle_pic_offset(absolute_addr, off_expr);
+
+    // Having handled this SgAsmMemoryReferenceExpression, we're done with this node.  We'll
+    // continue to visit the sub-expressions again including the SgAsmIntegerValueExpression
+    // for the offset, which is a little inefficient but causes no harm?
+    return;
+  }
+};
+
+// Determine which bytes should be masked off when PIC'ing an instruction.  The parameters are
+// the descriptor set that describes the program, the function chunks from
+// fd->get_address_intervals(), the instruction to be PIC'd and the minimum address threshold
+// to ensure that small constants don't get PIC'd even if the base address of the program is
+// zero.  The function chunks are contiguous blocks of memory assigned to the function.
+// Usually there will be one chunk per function, but sometimes there might be more (e.g. if
+// there's switch table data in the middle of the function).  Returns a vector of uint8_t where
+// the bits that should be PIC'd are set to zero.
+std::vector<uint8_t>
+pic_insn(const DescriptorSet &ds, const AddressIntervalSet& chunks, SgAsmInstruction* insn,
+         uint64_t min_addr_threshold)
+{
+  // The mask of which bits are being PIC'd.
+  std::vector<uint8_t> pic_mask(insn->get_rawBytes().size(), 0xff);
+
+  // Run the AST traversal to find the addresses that need to PIC'd.
+  PICSearcher searcher(ds, chunks, insn, min_addr_threshold);
+  searcher.traverse(insn, preorder);
+
+  // Convert PIC "candidates" from a list of bit offsets and sizes into a vector of mask bytes.
+  // This loop combines possibly overlapping bit ranges.
+  for (auto sc = searcher.candidates.begin(); sc != searcher.candidates.end(); ++sc) {
+    uint32_t off = sc->first;
+    uint32_t sz = sc->second;
+    uint32_t byte_offset = off / 8;
+    int bit_start = off % 8;
+    int bit_end = (off + sz) % 8;
+    uint8_t start_mask = uint8_t{0xff} << bit_start;
+    uint8_t end_mask = ~(uint8_t{0xff} << bit_end);
+    auto start_it = pic_mask.begin() + byte_offset;
+    if (byte_offset == (off + sz) / 8) {
+      // In this unlikely case, the bits are all in the middle of the same byte
+      *start_it &= ~(start_mask & end_mask);
+      continue;
+    }
+    if (bit_start) {
+      // Handle the range not starting at the beginning of a byte
+      *start_it &= ~start_mask;
+      ++start_it;
+      sz -= 8 - bit_start;
+    }
+    auto end_it = std::fill_n(start_it, sz / 8, 0x00);
+    if (bit_end) {
+      // Handle the range not ending at the end of a byte
+      *end_it &= ~end_mask;
+    }
+  }
+
+  return pic_mask;
+}
+
 std::string insn_get_generic_category(SgAsmInstruction *insn) {
   std::string result = "UNCAT"; // if we haven't singled something out yet...
   // this code horribly x86 specific for now, but later needs to be able to handle ARM, etc.

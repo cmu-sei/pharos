@@ -299,6 +299,10 @@ rose_addr_t insn_get_jump_deref(SgAsmInstruction* insn);
 const SgAsmInstruction* last_insn_in_block(const SgAsmBlock* bb);
 const SgAsmX86Instruction* last_x86insn_in_block(const SgAsmBlock* bb);
 
+std::vector<uint8_t> pic_insn(
+  const DescriptorSet &ds, const AddressIntervalSet& chunks,
+  SgAsmInstruction* insn, uint64_t min_addr_threshold);
+
 // Returns a descriptive string for a generic category of instructions, sort of along the lines
 // of the breakdowns in the Intel manuals Vol 1 Ch 5 (mostly matching):
 //   TRANSFER (mov, push. xchg), ARITHMETIC (add, sub, lea), LOGIC (and, or, xor, shl, ror),

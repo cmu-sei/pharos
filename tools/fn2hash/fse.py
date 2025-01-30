@@ -19,6 +19,7 @@ import re
 import csv
 import collections
 import math
+import json
 
 from optparse import OptionParser
 
@@ -161,6 +162,7 @@ def read_config(args):
     # cleanware flag than a name though).
     #parser.add_option("-n", "--exclude-name", help="regexp values to filter out functions that have names that match, can specify multiple times (default: %default)", action="append", type="string", dest="exclude_names", default=[r'^_.*',r'^\?.*',r'^unknown_libname.*',r'^j_.*',r'^\$LN.*'])
     # for now, can specify csv files w/ funcs to skip:
+    parser.add_option("-j", "--json", help="read JSON files instead of CSVs", action="store_true", dest="json", default=False)
     parser.add_option("-X", "--blacklist", help="specify a file filled with csv data to filter out functions that are in it from the rest of the processing (eg: cleanware csv data, note that you can use -X multiple times, but don't use wildcards to read in multiple blacklist files as that probably won't work)", type="string", dest="blacklist", action="append", default=[])
 
     parser.add_option("-T", "--hashtype", help="hash type to use for fn hash comparisons (" + ",".join(hashtypes) + "; default %default)", type="string", dest="hashtype", default=defaulthash)
@@ -185,6 +187,13 @@ def read_config(args):
         # set proper logging level (debug implies & overrides verbose)
         setDebug()
 
+    if not options.json:
+        if options.hashtype == 'EXACT' or options.hashtype == 'PIC':
+            pass
+        else:
+            logger.error(f"Hashtype '{options.hashtype}' is not valid for CSV files.")
+            sys.exit(1)
+
     # suppose I could have 0 data files mean read from stdin, but not for now:
     if len(data_files) < 1:
         logger.error("must have at least 1 fn2hash data file!")
@@ -199,9 +208,62 @@ def read_config(args):
 
 ###########################################################################
 
-# parse fn2hsh CSV data into global dictionaries
-def parse_fn2hash_data(datafile,is_blacklist):
-    # each of thesse is a dict keyed by the item after the 2 in the name and that returns a list of addresses found at...
+def parse_fn2hash_csv(datafile, is_blacklist):
+    """
+    Read CSV input files to create global dictioinaries.
+    """
+    # fn2hash CSV data layout:
+    #   filemd5,fn_addr,exact_hash,pic_hash,num_bytes,num_instructions,num_code_blocks,num_data_blocks
+    logger.debug("parsing %s" % datafile)
+    with open(datafile) as df_in:
+        rdr = csv.reader(df_in)
+        for line in rdr:
+            (filemd5, fn_addr, exact_hash, pic_hash, num_bytes, num_instructions,
+             num_code_blocks, num_data_blocks) = line
+            if options.hashtype == "EXACT":
+                fnhash = exact_hash
+            elif options.hashtype == "PIC":
+                fnhash = pic_hash
+
+            add_row(is_blacklist, filemd5, fn_addr, fnhash, num_bytes, num_instructions)
+
+def parse_fn2hash_json(datafile, is_blacklist):
+    """
+    Read JSON input files to create global dictioinaries.
+    """
+    with open(datafile) as df_in:
+        jdata = json.load(df_in)
+
+        for func in jdata["analysis"]:
+            filemd5 = func["filemd5"]
+            fn_addr = func["fn_addr"]
+            num_bytes = str(func["num_bytes"])
+            num_instructions = str(func["num_instructions"])
+
+            # which hash: EXACT,PIC,CPIC,MNEM,MCNT,MCAT,MCCNT
+            if options.hashtype == "EXACT":
+                fnhash = func["exact_hash"]
+            elif options.hashtype == "PIC":
+                fnhash = func["pic_hash"]
+            elif options.hashtype == "CPIC":
+                fnhash = func["composite_pic_hash"]
+            elif options.hashtype == "MNEM":
+                fnhash = func["mnemonic_hash"]
+            elif options.hashtype == "MCNT":
+                fnhash = func["mnemonic_count_hash"]
+            elif options.hashtype == "MCAT":
+                fnhash = func["mnemonic_category_hash"]
+            elif options.hashtype == "MCCNT":
+                fnhash = func["mnemonic_category_counts_hash"]
+
+            add_row(is_blacklist, filemd5, fn_addr, fnhash, num_bytes, num_instructions)
+
+def add_row(is_blacklist, filemd5, fn_addr, fnhash, num_bytes, num_instructions):
+    """
+    Add data to the global dictionaries.   Split from parse_fn2hash_csv() when JSON support was added.
+    """
+    # each of thesse is a dict keyed by the item after the 2 in the name and that returns a
+    # list of addresses found at...
     global file2fn
     global fn2file
     global blacklist
@@ -212,84 +274,60 @@ def parse_fn2hash_data(datafile,is_blacklist):
     global maxaddrwidth
     global maxhashwidth
 
-    # fn2hash CSV data layout:
-    #   filemd5,fn_addr,num_basic_blocks,num_basic_blocks_in_cfg,num_instructions,num_bytes,
-    #   exact_hash,pic_hash,composite_pic_hash,
-    #   mnemonic_hash,mnemonic_count_hash,mnemonic_category_hash,mnemonic_category_counts_hash,
-    #   mnemonic_count_string,mnemonic_category_count_string
-    logger.debug("parsing %s"%datafile)
-    with open(datafile) as df_in:
-        rdr = csv.reader(df_in)
-        for line in rdr:
-            filemd5,fn_addr,num_basic_blocks,num_basic_blocks_in_cfg,num_instructions,num_bytes,exact_hash,pic_hash,composite_pic_hash,mnemonic_hash,mnemonic_count_hash,mnemonic_category_hash,mnemonic_category_counts_hash,mnemonic_count_string,mnemonic_category_count_string = line
-            # which hash: EXACT,PIC,CPIC,MNEM,MCNT,MCAT,MCCNT
-            if options.hashtype == "EXACT":
-                fnhash = exact_hash
-            elif options.hashtype == "PIC":
-                fnhash = pic_hash
-            elif options.hashtype == "CPIC":
-                fnhash = composite_pic_hash
-            elif options.hashtype == "MNEM":
-                fnhash = mnemonic_hash
-            elif options.hashtype == "MCNT":
-                fnhash = mnemonic_count_hash
-            elif options.hashtype == "MCAT":
-                fnhash = mnemonic_category_hash
-            elif options.hashtype == "MCCNT":
-                fnhash = mnemonic_category_counts_hash
+    if is_blacklist:
+        blacklist.add(fnhash)
+        return
 
-            if is_blacklist:
-                blacklist.add(fnhash)
+    nilen = len(num_instructions)
+    nblen = len(num_bytes)
+    num_instructions = int(num_instructions)
+    num_bytes = int(num_bytes)
+    logger.debug("file: %s, fn: %s, addr: %s, # inst %d, # bytes: %d"%(filemd5,fnhash,fn_addr,num_instructions,num_bytes))
+    if num_bytes < options.minlen:
+        logger.info("skipping fn %s, too few bytes (%d)"%(fnhash,num_bytes))
+        return
+
+    if num_instructions < options.mininstructions:
+        logger.info("skipping fn %s, too few instructions (%d)"%(fnhash,num_instructions))
+        return
+
+    if fnhash not in blacklist:
+        maxinstwidth = max(maxinstwidth,nilen)
+        maxbyteswidth = max(maxbyteswidth,nblen)
+        maxaddrwidth = max(maxaddrwidth,len(fn_addr))
+        maxhashwidth = max(maxhashwidth,len(fnhash))
+        if filemd5 in file2fn:
+            if fnhash in file2fn[filemd5]:
+                file2fn[filemd5][fnhash].append(fn_addr)
             else:
-                nilen = len(num_instructions)
-                nblen = len(num_bytes)
-                num_instructions = int(num_instructions)
-                num_bytes = int(num_bytes)
-                logger.debug("file: %s, fn: %s, addr: %s, # inst %d, # bytes: %d"%(filemd5,fnhash,fn_addr,num_instructions,num_bytes))
-                if num_bytes < options.minlen:
-                    logger.info("skipping fn %s, too few bytes (%d)"%(fnhash,num_bytes))
-                    continue
-                if num_instructions < options.mininstructions:
-                    logger.info("skipping fn %s, too few instructions (%d)"%(fnhash,num_instructions))
-                    continue
+                file2fn[filemd5][fnhash] = [fn_addr]
+        else:
+            file2fn[filemd5] = {fnhash: [fn_addr]}
 
-                if fnhash not in blacklist:
-                    maxinstwidth = max(maxinstwidth,nilen)
-                    maxbyteswidth = max(maxbyteswidth,nblen)
-                    maxaddrwidth = max(maxaddrwidth,len(fn_addr))
-                    maxhashwidth = max(maxhashwidth,len(fnhash))
-                    if filemd5 in file2fn:
-                        if fnhash in file2fn[filemd5]:
-                            file2fn[filemd5][fnhash].append(fn_addr)
-                        else:
-                            file2fn[filemd5][fnhash] = [fn_addr]
-                    else:
-                        file2fn[filemd5] = {fnhash: [fn_addr]}
+        if fnhash in fn2file:
+            if filemd5 in fn2file[fnhash]:
+                fn2file[fnhash][filemd5].append(fn_addr)
+            else:
+                fn2file[fnhash][filemd5] = [fn_addr]
+        else:
+            fn2file[fnhash] = {filemd5: [fn_addr]}
+    else:
+        logger.info("skipping blacklisted fn %s"%fnhash)
+        numblacklisted += 1
+        return
 
-                    if fnhash in fn2file:
-                        if filemd5 in fn2file[fnhash]:
-                            fn2file[fnhash][filemd5].append(fn_addr)
-                        else:
-                            fn2file[fnhash][filemd5] = [fn_addr]
-                    else:
-                        fn2file[fnhash] = {filemd5: [fn_addr]}
-                else:
-                    logger.info("skipping blacklisted fn %s"%fnhash)
-                    numblacklisted += 1
-                    continue
-
-                if fnhash not in fninfo:
-                    fninfo[fnhash] = {"insn": num_instructions, "bytes": num_bytes, "conflicting":False, "addrs": [fn_addr]}
-                else:
-                    if fninfo[fnhash]["insn"] != num_instructions:
-                        logger.warning("mismatch in hash %s num insn (old %d, new %d) keeping max"%(fnhash,fninfo[fnhash]["insn"],num_instructions))
-                        fninfo[fnhash]["insn"] = max(num_instructions,fninfo[fnhash]["insn"])
-                        fninfo[fnhash]["conflicting"] = True
-                    if fninfo[fnhash]["bytes"] != num_bytes:
-                        logger.warning("mismatch in hash %s num bytes (old %d, new %d) keeping max"%(fnhash,fninfo[fnhash]["bytes"],num_bytes))
-                        fninfo[fnhash]["bytes"] = max(num_bytes,fninfo[fnhash]["bytes"])
-                        fninfo[fnhash]["conflicting"] = True
-                    fninfo[fnhash]["addrs"].append(fn_addr)
+    if fnhash not in fninfo:
+        fninfo[fnhash] = {"insn": num_instructions, "bytes": num_bytes, "conflicting":False, "addrs": [fn_addr]}
+    else:
+        if fninfo[fnhash]["insn"] != num_instructions:
+            logger.warning("mismatch in hash %s num insn (old %d, new %d) keeping max"%(fnhash,fninfo[fnhash]["insn"],num_instructions))
+            fninfo[fnhash]["insn"] = max(num_instructions,fninfo[fnhash]["insn"])
+            fninfo[fnhash]["conflicting"] = True
+        if fninfo[fnhash]["bytes"] != num_bytes:
+            logger.warning("mismatch in hash %s num bytes (old %d, new %d) keeping max"%(fnhash,fninfo[fnhash]["bytes"],num_bytes))
+            fninfo[fnhash]["bytes"] = max(num_bytes,fninfo[fnhash]["bytes"])
+            fninfo[fnhash]["conflicting"] = True
+        fninfo[fnhash]["addrs"].append(fn_addr)
 
 ###########################################################################
 #
@@ -458,12 +496,20 @@ def main(args):
     # deal w/ any blacklists
     if len(options.blacklist) > 0:
         for bf in options.blacklist:
-            parse_fn2hash_data(bf,True)
+            logger.debug("parsing blacklist %s" % bf)
+            if options.json:
+                parse_fn2hash_json(bf, True)
+            else:
+                parse_fn2hash_csv(bf, True)
         logger.info("blacklisted %d functions"%len(blacklist))
 
-    # read in the CSV data:
+    # read in the data:
     for df in data_files:
-        parse_fn2hash_data(df,False)
+        logger.debug("parsing data file %s" % df)
+        if options.json:
+            parse_fn2hash_json(df, False)
+        else:
+            parse_fn2hash_csv(df, False)
 
     logger.info("%d files and %d functions found, skipped %d blacklisted functions"%(len(file2fn),len(fn2file),numblacklisted))
 

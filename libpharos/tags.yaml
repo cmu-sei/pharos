@@ -156,234 +156,317 @@ hashes:
   # ============================================================================
   # new methods by hash
   # ============================================================================
-  # 0x40699b in 2010/Lite/ooex7, and all Lite tests.
-  "9F377A6D9EDE41E4F1B43C475069EE28": new,
 
-  # 0x413EF0 in 2010/Debug/ooex7, placement new.
+  # MSVC20120, Lite.
+  # e.g. 0x00405881 in vs2010/sc0d0o0/Lite/oo.exe
+  "77FE531BE7EDF2E6EE3EEF9FF9D86899": new,
+
+  # Placement new.
   # Just 0xCC stuff.  False positives were not worth detecting a few more
   # placement news, which are poorly detected in general.
+  # e.g. 0x00413EF0 in vs2010/dc0d0o0/Debug/ooex7.exe
   # "443BABE6802D856C2EF32B80CD14B474": new,
 
-  # MSVC2015 & 2017, BuildExes, Dynamic,
-  "BACD68267934497D17B3D6E22A7C8425": new,
+  # MSVC2015-2022, BuildExes, Dynamic.
+  # e.g. 0x00401980 in vs2019/dc0d0o0/Debug/ooex5.exe
+  "712D063281237389EC2814DE359E575A": new,
+
   # MSVC2013, BuildExes, Static, Debug, pretty good hash.
   # Calls _callnewh, _malloc, std::exception, and _CxxThrowException
-  "E7FD44AB8DB4BE5CA317C517B9C47CF1": new,
+  # e.g. 0x00424B24 in vs2013/sc0d0o0/RelWithDebInfo/oo.exe
+  "6F0937446C4C73DDF4C63FEFB1AC9680": new,
 
-  # MSVC17-19, BuildExes, Dynamic, RelWithDebinfo
-  "09669E4F4CAC6FDA60E63018CBD0EDAF": new,
+  # MSVC17-19, BuildExes, Dynamic, RelWithDebinfo.
+  # e.g. 0x00401C4E in vs2019/dc0d0o0/RelWithDebInfo/oo.exe
+  "07BEA20A82C7E271A5B05D1F311EC79D": new,
 
-  # MSVC2015, BuildExes, RelWithDebInfo
+  # MSVC2015, BuildExes, RelWithDebInfo.
   # Calls _callnewh and several other things, plus some logic.
-  "76CECF37598DEFEE4EB5C788775AB032": new,
-  # MSVC2008, BuildExes, Dynamic, Debug
-  "27441D7519FDC00A6560789EDFA55442": new,
-  # MSVC2015, 2017 & 2019, BuildExes, Dynamic, Debug
-  "A01879CE6CC3665A9A887DA0F9D66BA2": new,
-  # MSVC2017 & 2019, BuildExes, Dynamic, RelWithDebInfo
+  # e.g. 0x00433C95 in vs2015/sc0d1o0/RelWithDebInfo/oo.exe
+  "610954C071895A1FF8C0DB7736998D41": new,
+
+  # MSVC2008, BuildExes, Dynamic, Debug.
+  # e.g. 0x00405BAA in vs2008/dc0d0o0/Debug/oo.exe
+  "3A5388A6DCA395FB3E9CAE42CEE23033": new,
+
+  # MSVC2015, 2017 & 2019, BuildExes, Dynamic, Debug.
+  # e.g. 0x004049E0 in vs2019/dc0d0o0/Debug/oonewdel.exe
+  "FE1FFA5E8D629C21B8C95FBE575F9EFA": new,
+
+  # MSVC2017 & 2019, BuildExes, Dynamic, RelWithDebInfo.
   # Calls _callnewh, _aligned_malloc, and _CxxThrowException
-  "9631DB10B1076E70397C3D6E4CE875A0": new,
-  # MSVC2017 & 2019, BuildExes, Dynamic, Debug
+  # e.g. 0x00401CC5 in vs2019/dc0d0o0/RelWithDebInfo/oonewdel.exe
+  "24BEB16D98009EC602B817F61E34CC6C": new,
+
+  # MSVC2017 & 2019, BuildExes, Dynamic, Debug.
   # Calls _callnewh, _aligned_malloc, and _CxxThrowException
-  "73D61AF7F87993703EB50D155B1ED330": new,
-  # MSVC2012 & 2013, BuildExes, Static, Debug
+  # e.g. 0x004046A0 in vs2019/dc0d0o0/Debug/oonewdel.exe
+  "0A7AED02DB694BFF04D277DC889F03EF": new,
+
+  # MSVC2012 & 2013, BuildExes, Static, Debug.
   # Calls _callnewh, _malloc, bad_alloc, and _CxxThrowException
-  "6040FB1A8C43146322C12F6FEDB78351": new,
-  # MSVC2010, BuildExes, Static, Debug
+  # e.g. 0x00401540 in vs2012/sc0d0o0/Debug/ooex5.exe
+  "819C3EF8AB6AF43AF576271117B0BAF9": new,
+
+  # MSVC2010, BuildExes, Static, Debug.
   # Calls _callnewh, _malloc, bad_alloc, and _CxxThrowException
-  "C52CE447F503B93E07837633DA311E66": new,
-  # MSVC2012, BuildExes, Static, RelWithDebInfo
+  # e.g. 0x0043A910 in vs2010/sc0d0o0/Debug/oo.exe
+  "675375F0CB00E8BE8360BC354CCD393E": new,
+
+  # MSVC2012, BuildExes, Static, RelWithDebInfo.
   # Calls _callnewh, _malloc, std::exception, and _CxxThrowException
-  "5E0B334DD553FCE5F2DE0FDDB66D6174": new,
+  # e.g. 0x004227F7 in vs2012/sc0d0o0/RelWithDebInfo/oo.exe
+  "436B6856723C9744A1A5665CEA7BF48D": new,
+
   # MSVC2010, BuildExes, Static, Debug, ooex7/oo/poly only, reasonable.
-  "6E2BED9FC03D0065BEFA589018BE7BDF": new,
+  # e.g. 0x00439110 in vs2010/sc0d0o0/Debug/oo.exe
+  "80D5A8E1025CD7FF4935867E5541D22C": new,
+
   # MSVC2010, BuildExes, Static, Debug, oonewdel, reasonable.
-  "67D6CA9FA309C0764C792F460E1AD73C": new,
+  # e.g. 0x0042B620 in vs2010/sc0d0o0/Debug/oonewdel.exe
+  "8AFD0488A66855A947744175A383CA57": new,
 
   # MSVC2012 & 2013, Static, Debug, ooex7/oo/poly only, not great.
-  "AA10C27998BF6C88336CA08958356D85": new,
+  # e.g. 0x00405FA0 in vs2012/sc0d0o0/Debug/oonewdel.exe
+  "AAE2F19BD4B65943C00EE26D58545F57": new,
 
   # MSVC2012 & 2013, Static, Debug, ooex trouble makers only?
   # calls _malloc_dbg & _Xbad_alloc, not a great hash though. :-(
-  "5FA3DAE16B3C816760BA346D28B362AC": new,
+  # e.g. 0x0040A970 in vs2012/sc0d0o0/Debug/oo.exe
+  "D7A6FC167ABB4ACA4108D694122472B4": new,
 
   # These aren't great.  If they have false positives, we'll have to convert them to
   # call stubs and add getMemory & malloc hashes.
   # MSVC2008, BuildExes, Dynamic, Debug, HeapManager.
+  # e.g. 0x00417E29 in vs2008/dc0d0o0/Debug/oo.exe
   "B73F80840760DCF5D239C580272BA6E2": new,
+
   # MSVC2012, 2013, 2015, & 2017, BuildExes, Static, Debug, HeapManager.
+  # e.g. 0x00415CE0 in vs2012/sc0d0o0/Debug/ooex5.exe
   "865EFC75449456AA06F91D0E87577961": new,
+
   # MSVC2012, 2013, 2015, & 2017, BuildExes, Static, RelWithDebInfo, HeapManager.
+  # e.g. 0x00438547 in vs2012/sc0d0o0/RelWithDebInfo/oo.exe
   "3DA7CB537344A45D8D5AA4F8DCBD4723": new,
+
   # MSVC2010, BuildExes, Static, Debug, HeapManager
+  # e.g. 0x00468140 in vs2010/sc0d0o0/Debug/oo.exe
   "9A4E8AEC15BFD15176C05D34AACEB8CE": new,
+
   # MSVC2019, BuildExes, Static, Debug, HeapManager (two calls)
-  "C57BCCA380E7272E4121376A1A4E82C2": new,
+  # e.g. 0x00410940 in vs2019/sc0d0o0/Debug/ooex5.exe
+  "EBA99C632C8110302EC0586A277C103F": new,
 
   # MSVC2015, 2017, 2019, Static, Debug, ooex7/oo/poly only
   # Somewhat distinctive.  No actual calls to new...
   # This is: std::_Fac_node::operator new(near void *)
-  "4BF7C861F1D74E455869FF8C2D8108D9": new,
+  # e.g. 0x00417EE0 in vs2019/sc0d0o0/Debug/oo.exe
+  "D0BF98B7437382FE265E93A4DB0D9EEC": new,
 
   # MSVC2015, Static, Debug, ooex7/oo/poly only
   # std::_Crt_new_delete::operator new(unsigned int, near struct std::nothrow_t const &)
   # Doesn't actually call new, not a great hash, call _strncpy_s, weird.
-  "8F3BDDB782AB445902C6084EB205E392": new,
+  # e.g. 0x0040F2C0 in vs2015/sc0d1o0/Debug/oo.exe
+  "E408FC0E107DFF68793272FC9ABA6CA5": new,
 
   # MSVC2017, Static, Debug, ooex7/oo/poly only
   # Same strange std::_Crt_new_delete::operator new as the previous hash.
-  "6384526C1E56B777E77DA52E79F19450": new,
+  # e.g. 0x00412910 in vs2017/sc0d0o0/Debug/oo.exe
+  "730BFF7F5736B20FC2033D75EE76394F": new,
 
   # MSVC2019, Static, Debug, ooex7/oo/poly only
   # Same strange std::_Crt_new_delete::operator new as the previous hash.
-  "2D48640F4C303A94481F3E1B43EBF911": new,
+  # e.g. 0x00412E40 in vs2019/sc0d0o0/Debug/oo.exe
+  "2345A5D8D6EAAA0F669C053BC89D73B7": new,
 
   # MSVC2019, won't be detected with current logic.
   # Simple logic and calls to HeapManager::getMemoryWith[out]Buffer
-  # Probably too simple to be anew hash by itself. :-(
-  # "0C29AA98731295E20BCDFDEF8FEC280F": new,
+  # Probably too simple to be a new hash by itself. :-(
+  # e.g. 0x0040A079 in vs2019/sc0d0o0/RelWithDebInfo/ooex5.exe
+  # "362CA09DECC6FF57CCC2C847D88190C1": new,
 
   # unreviewed
   # ----------------------------------------------------------------------------
   # MSVC 12
   # operator new(), According to Udit Agarwal...
-  "F826EF14E44F7C45D21EEE19865CF7B3": new,
+  # Old hashing algorithm, no explicit exemplar known
+  # "F826EF14E44F7C45D21EEE19865CF7B3": new,
+
   # operator new(nothrow), According to Udit Agarwal...
-  "272852A8B9C637A71D693D7D8D312ACE": new,
-  # MSVC 17 & 19 Lite builds
-  "03B27C25F97ACD0EA0EFD996D9EF842C": new,
+  # Old hashing algorithm, no explicit exemplar known
+  # "272852A8B9C637A71D693D7D8D312ACE": new,
+
+  # Reported to be: MSVC 17 & 19 Lite builds
+  # Old hashing algorithm, no explicit exemplar known
+  # "03B27C25F97ACD0EA0EFD996D9EF842C": new,
+
   # Notepad++5.6.8 ordinary new(), at 0x49FD6E
-  "356087289F58C87C27410EFEDA931E4D": new,
+  # e.g. 0x0049FD6E in notepad++-v5.6.8.exe
+  "111EC9B44108163E3B03B87319C53A9E": new,
+
 
   # Linux/GCC delete
   # ----------------------------------------------------------------------------
   # According to Alina Weber... (Thanks!)
   # Linux GCC version 7.4.0
   # _Znwm: operator new(unsigned long)
-  "90C074292C033FC0AEA1FE4C0984EFA7": new,
+  # Old hashing algorithm, no explicit exemplar known
+  # "90C074292C033FC0AEA1FE4C0984EFA7": new,
+
   # _ZnwmPv: operator new(unsigned long, void*)
-  "A4F4E5D15B7BC69D763DE87D93850EC6": new,
-  # _Znam : operator new[](unsigned long)
+  # Old hashing algorithm, no explicit exemplar known
+  # "A4F4E5D15B7BC69D763DE87D93850EC6": new,
 
   # ============================================================================
   # delete methods by hash
   # ============================================================================
   # MSVC2012 & 2013, BuildExes, Static, Debug, great complex hash!
-  "461573DBE9B320C700B59046D484E769": delete,
+  # e.g. 0x004015C0 in vs2012/sc0d0o0/Debug/ooex5.exe
+  "F487C0F8C4CF89008BB015B6923DBE32": delete,
 
   # MSVC2010, BuildExes, Static, Debug, great hash.
-  "AF1F2D507A61BD061C263EA118E002B1": delete,
+  # e.g. 0x0043A7F0 in vs2010/sc0d0o0/Debug/oo.exe
+  "A6448F10B3ECD40CA22B8702F6EE5CE8": delete,
 
-  # 0x411f00 in 2010/Debug/ooex7, placement delete
   # Just 0xCC stuff.  False positives were not worth detecting a few more
   # placement deletes, which are poorly detected in general.
+  # e.g. 0x00413F30 in vs2010/dc0d0o0/Debug/ooex7.exe
   # "73F3C7EF29364905D2D9B95F19640509": delete,
 
   # Linux/GCC delete
   # ----------------------------------------------------------------------------
   # More delete hashes from Alina Weber
   # _ZdlPvS_ : operator delete(void*, void*)
+  # Old hashing algorithm, no explicit exemplar known
   "6A95CC300B775FFBCBC62FBCC8EF63F9": delete,
+
   # _ZdlPvm : operator delete(void*, unsigned long)
   # _ZdlPvS_t : operator delete(void*, void*, unsigned short)
+  # Old hashing algorithm, no explicit exemplar known
   "A78677F36D9F3DC066AE2DE00EA21276": delete,
-  # _ZdaPv : operator delete[](void*)
 
   # ============================================================================
   # purecall functions by hash
   # ============================================================================
 
   # From Lite ooex4, ooex5, ooex6, ooex7, oo, & poly.
-  "0CF963B9B193252F2CDEC4159322921B": purecall,
+  # e.g. 0x00405ADC in vs2010/sc0d0o0/Lite/oo.exe
+  "C68CD112219238D72B15BFCC14886640": purecall,
 
-  # From vs2008 Buildexes
-  "647037DC779B0E198057D5F7819CE63F": purecall,
+  # From vs2008 Buildexes.
+  # e.g. 0x0041F378 in vs2008/dc0d0o0/Debug/oo.exe
+  "63A802E47762A4FA7BF49185833F282C": purecall,
 
-  # MSVC2012 & 2013, BuildExes, Static, Debug
-  "C8CE53E8E44E37BD622BD42222DCE0EC": purecall,
+  # MSVC2012 & 2013, BuildExes, Static, Debug.
+  # e.g. 0x00401450 in vs2012/sc0d0o0/Debug/ooex5.exe
+  "FA712388761E0A62B50717C9D83FDE51": purecall,
 
-  # MSVC2017 & 2019, BuildExes, Static, Debug
-  "73550BF1A49A752D459EF87DFFD9355F": purecall,
+  # MSVC2017 & 2019, BuildExes, Static, Debug.
+  # e.g. 0x0040AE40 in vs2019/sc0d0o0/Debug/ooex5.exe
+  "2DAB45EBDB3953648E8A28FA9C0D1C6D": purecall,
 
-  # MSVC2017 & 2019, BuildExes, Static, Debug
+  # MSVC2017 & 2019, BuildExes, Static, Debug.
   # Possible partitioning problem with extra CCs.
+  # Old hashing algorithm, not substantiated in new partitioning?  
+  # e.g. 0x00408588 in vs2019/sc0d0o0/RelWithDebInfo/ooex5.exe
   "15DD5B71FEAB2293DE3C2EA3C4C7A4CF": purecall,
 
-  # MSVC2015, BuildExes, Static, RelWithDebInfo
+  # MSVC2015, BuildExes, Static, RelWithDebInfo.
   # Possible partitioning problem with extra CCs?
+  # Old hashing algorithm, not substantiated in new partitioning?  
+  # e.g. 0x00435755 in vs2015/sc0d1o0/RelWithDebInfo/oo.exe
   "1B624AF53D9F9B50CE788868DC671112": purecall,
 
-  # MSVC2010, BuildExes, Static, Debug
+  # MSVC2010, BuildExes, Static, Debug.
   # Reasonable hash, several calls, some minor logic.
-  "1DE1A7D4D8674BC64CB82BD8402BC314": purecall,
+  # e.g. 0x004447A0 in vs2010/sc0d0o0/Debug/oo.exe
+  "33167D700AAD8264B174F732F6A15288": purecall,
 
-  # MSVC2015, BuildExes, Static, Debug
+  # MSVC2015, BuildExes, Static, Debug.
   # Mediocre hash, calls three other functions, minor logic.
-  "F22CB8376BF17CA45FFD536D76ABBCF1": purecall,
+  # e.g. 0x0040AFE0 in vs2015/sc0d1o0/Debug/ooex5.exe
+  "5DAB0E5CE1C4DD44869766534BBCEAB6": purecall,
 
-  # MSVC2013, BuildExes, Static, RelWithDebInfo
+  # MSVC2013, BuildExes, Static, RelWithDebInfo.
   # Acceptable hash I suppose.  Certainly better than missing this purecall.
-  "77DCB831A61DB2C547210E6D81AC47DA": purecall,
+  # Old hashing algorithm, not substantiated in new partitioning?  
+  # e.g. 0x00424ADD in vs2013/sc0d0o0/RelWithDebInfo/oo.exe
+  # "77DCB831A61DB2C547210E6D81AC47DA": purecall,
 
-  # _purecall from notepad++5.6.8, at 0x4A0FAA
-  "3F464C9D7A17BBBB054583A48EE66661": purecall,
+  # _purecall from notepad++5.6.8, at 0x4A0FAA.
+  # e.g. 0x004A0FAA in notepad++-v5.6.8.exe
+  "FB7071B0A828FCC31F381F87D73624CE": purecall,
 
-  # purecall from cncm.exe at 0x8be3ef
-  "42E82ED5359E75A84005AE5BB0BF78C4": purecall,
+  # purecall from cncm.exe at 0x8BE3EF.
+  # Old hashing algorithm, specific exemplar lost.
+  # "42E82ED5359E75A84005AE5BB0BF78C4": purecall,
 
   # ============================================================================
   # free functions by hash
   # ============================================================================
 
-  # 0x406961 in 2010/Lite/ooex7, and all of the Lite tests.
-  #"3F4896D9B44BD7A745E0E5A23753934D": free,
+  # Free in Lite builds. Not sure why this was commented out.
+  # e.g. 0x00433014 in vs2019/sc0d0o0/RelWithDebInfo/ooex5.exe
+  # "7BFBC46D6CF0C0B92D9259B98C650709": free,
 
   # MSVC2015, 2017, & 2019, BuildExes
   # Fairly complex.
-  "4FE187A144B6CA300300A747CE44BF9D": free,
+  # e.g. 0x0042D8C0 in vs2019/sc0d0o0/Debug/ooex5.exe
+  "254BE8DAB2BA999A303E545EBFE34EF7": free,
 
   # MSVC2017 & 2019, BuildExes, Static
   # Fairly complex, _aligned_free_dbg
-  "117BF707D6C4208C039276AEC124BF0E": free,
+  # e.g. 0x0042CC80 in vs2019/sc0d0o0/Debug/ooex5.exe
+  "B2D581AC79A2BBBFEE46F0A42E8A5E7C": free,
 
   # MSVC2008, BuildExes, Static & Dynamic, Debug & RelWithDebInfo
   # Also calls HeapFree amid some non-trivial logic.
-  "36E7ACA7E13108634BBC053F2A13888D": free,
+  # e.g. 0x00406A0C in vs2008/dc0d0o0/Debug/oo.exe
+  "6DB71BD27C4C1B1C2D2AB256A97A35FD": free,
 
   # MSVC2010, BuildExes, Static, RelWithDebInfo
   # Calls HeapFree, GetLastError, _errno, and __get_errno_from_oserr
-  "3F4896D9B44BD7A745E0E5A23753934D": free,
+  # e.g. 0x00433014 in vs2019/sc0d0o0/RelWithDebInfo/ooex5.exe
+  "7BFBC46D6CF0C0B92D9259B98C650709": free,
 
   # MSVC2012 & 2013, BuildExes, Static, RelWithDebInfo
   # Calls HeapFree, GetLastError, _errno, and __get_errno_from_oserr
-  "5424DEB530F1D247BABB772D90D19FA5": free,
+  # e.g. 0x00426215 in vs2012/sc0d0o0/RelWithDebInfo/oo.exe
+  "53C85BE5A4DFDA482D3198E8E5D1E9E4": free,
 
   # MSVC2017, & 2019, BuildExes, Static, RelWithDebInfo
   # Tests param1, ANDs and subtracts parameter before calling?
-  "135FC6303B7307497D3397995BD2BAAF": callstub,
+  # e.g. 0x004154C1 in vs2019/sc0d0o0/RelWithDebInfo/oonewdel.exe
+  "9ED17DF7CEECDFAEF6ED69677A655751": callstub,
 
   # MSVC2015, 2017, & 2019, BuildExes, Static, RelWithDebInfo
   # return __free(p1)
+  # e.g. 0x00418B31 in vs2019/sc0d0o0/RelWithDebInfo/ooex5.exe
   "412D93B6BE7BF01BFA70E6BFB001C489": callstub,
 
   # MSVC2015, 2017, & 2019, BuildExes, Static, Debug
   # return __free_dbg(p1, 0x1)
+  # e.g. 0x004624C0 in vs2019/sc0d0o0/Debug/ooex5.exe
   "8DE694EA076ACCD249DED24A03505273": callstub,
 
   # MSVC2012 & 2013, BuildExes, Static, Debug
   # return __free_dbg(p1, 0x1)
+  # e.g. 0x004064B0 in vs2012/sc0d0o0/Debug/ooex5.exe
   "A2D7B40DC0233D3483737F2DA320E974": callstub,
 
   # MSVC2015, Static, Debug
   # return __free_dbg(p1, -0x1)
+  # e.g. 0x00402510 in vs2019/dc0d0o0/Debug/ooex5.exe
   "E34CEDB1A0A02AA76173BA4A52CAB822": callstub,
 
   # MSVC2010, BuildExes, Static, Debug
   # return __free_dbg(p1, 0x1)
+  # e.g. 0x004416B0 in vs2010/sc0d0o0/Debug/oo.exe
   "B8EDAB87EAA01656A822710CAE6D132C": callstub,
 
   # __free() in gcc7.4.0 according to Alina Weber.
-  "60CC895C94230005132952EDEE6BC14F": free,
+  # Old hashing algorithm, no explicit exemplar known
+  # "60CC895C94230005132952EDEE6BC14F": free,
 
   # ============================================================================
   # A few "blacklisted" hashes to help avoid adding them back again.
@@ -391,16 +474,22 @@ hashes:
 
   # jmp X
   # "12C3EBBDA814F751A0EBE967631BABC8": thunk
+
   # jmp [X]
   # "89047698F4380796A13F674942384C0D": thunk,
+
   # push ebp; mov ebp,esp; pop ebp; ret;
   # "9BD1ED0583316F4F3679B990217F0BC7": return,
+
   # mov edi,edi; push ebp; mov ebp,esp; pop ebp; ret;
   # "1467148241C4F9AC1F6E2884134CB170": return,
+
   # ret
   # "D78276F56F8EC8D4F8CCA375E4534366": return,
+
   # return p2; (some placement new & deletes)
   # "E281C55328CFE7231BB4573A1C7CE0FA": return-p2,
+
   # return p2; (some placement new & deletes)
   # "88F7AC7E86D87DCCFD20025B18EA0F44": return-p2,
 
@@ -411,146 +500,200 @@ hashes:
   # called from this method, and if it's indicative, then so is this method.
 
   # C: _free_dbg(p1, -1); return;
+  # e.g. 0x00402510 in vs2019/dc0d0o0/Debug/ooex5.exe
   "E34CEDB1A0A02AA76173BA4A52CAB822": callstub,
 
   # return func(p1);
+  # e.g. 0x004019E0 in vs2019/dc0d0o0/Debug/ooex5.exe
   "7461553B7014A7921AC39DBA12CCC3A7": callstub,
 
   # return func(p1);
+  # e.g. 0x004343F1 in vs2019/sc0d0o0/RelWithDebInfo/ooex5.exe
   "1F25BCD5FAF0B9594CFCB42EAEAE99F6": callstub,
 
   # return func(p1); This is an optimized tail call, not a call stub!
-  #"3D3F9E46688A1687E2AB372921A31394": callstub,
+  # e.g. 0x00470D1E in vs2019/sc0d0o0/Debug/ooex5.exe
+  # "3D3F9E46688A1687E2AB372921A31394": callstub,
 
   # return func(p1);
+  # e.g. 0x00401C8A in vs2019/dc0d0o0/RelWithDebInfo/oo.exe
   "3D01B1E1279476F6FFA9296C4E387579": callstub,
 
   # return func(p1, p2);
+  # e.g. 0x0046DF40 in vs2019/sc0d0o0/Debug/ooex5.exe
   "A79C3EFA7C39EBB3C8345E63E31EF315": callstub,
 
   # return func(p1, p2);
+  # e.g. 0x00401D38 in vs2019/dc0d0o0/RelWithDebInfo/oonewdel.exe
   "461DC4B8600ED566F713991B1375A37B": callstub,
 
   # return func(p1, p2);
+  # e.g. 0x00404780 in vs2019/dc0d0o0/Debug/oonewdel.exe
   "2E86BF8F392A42C8EE4ECF33943E5BBC": callstub,
 
   # return func(p1, p2, p3, p4);
+  # e.g. 0x0042DA00 in vs2019/sc0d0o0/Debug/ooex5.exe
   "FABE858E2BC9046E9C0B70F3E16B00F1": callstub,
 
   # return func(p1, p2, p3, p4);
+  # e.g. 0x00404A50 in vs2019/dc0d0o0/Debug/oonewdel.exe
   "F40EB89441DA7492685D534CA793D285": callstub,
 
   # return func(p1, p2, p3, p4);
+  # e.g. 0x00405FF0 in vs2012/sc0d0o0/Debug/oonewdel.exe
   "6D830994392959D8964A8699F8344031": callstub,
 
   # return func(p1, p2, p3, p4);
+  # e.g. 0x0042B700 in vs2010/sc0d0o0/Debug/oonewdel.exe
   "64A84305849D9D0BE912EE145B34EB7D": callstub,
 
   # return func(p1, p2, p3, p4); rtc_checkesp();
+  # e.g. 0x00404540 in vs2012/sc0d0o0/Debug/ooex7.exe
   "8B5DBAB6900540520A65C90A2A023A1C": callstub,
 
   # return _freedbg(p1, p2);
   # Curiously only in MSVC2012 & 2013, Static, Debug?
+  # e.g. 0x0040A9B0 in vs2012/sc0d0o0/Debug/oo.exe
   "DFA731C74D9EF0BE8E85EA1D36B56B3C": callstub,
 
   # MSVC2015, 2017, 2019, Static, Debug, ooex7/oo/poly only
   # return _freedbg(p1, 0x2);
   # This is: std::_Fac_node::operator delete(near void *)
+  # e.g. 0x00417F40 in vs2019/sc0d0o0/Debug/oo.exe
   "5E44038CC5BDEC1614CBB5D2CD6D56A0": callstub,
 
   # MSVC2012+, Static, ooex7/oo/poly only
   # call func(p1); call rtc_check_esp();
   # Probably ok because of "cmp ebp,esp" instruction.
+  # e.g. 0x004024E0 in vs2019/dc0d0o0/Debug/oo.exe
   "74694C74BCA0F4E09E2FF47B743128C4": callstub,
 
   # MSVC2010, Static, Debug, ooex7/oo/poly only, return _freedbg(p1, p2);
+  # e.g. 0x00439220 in vs2010/sc0d0o0/Debug/oo.exe
   "A4A4B36BC2681D1F40228DC285198486": callstub,
 
   # MSVC2010, BuildExes, Dynamic, Debug, return func(p1);
+  # e.g. 0x004212F0 in vs2019/sc0d0o0/Debug/ooex5.exe
   "6F75265BD0A85F09873731BF5AA734A3": callstub,
 
   # MSVC2017 & MSVC2019, BuildExes, Dynamic, Debug, return func(p1);
+  # e.g. 0x00404720 in vs2019/dc0d0o0/Debug/oonewdel.exe
   "7EEED9262F87AA960FC61F8AAAC7F075": callstub,
 
   # MSVC2012+, BuildExes, Debug
   # BuildExes debugging stub: print(), call delete, rtc_checkesp()
+  # e.g. 0x00401780 in vs2019/dc0d0o1/Debug/ooex4.exe
   "5CFA6A32C74B5D243F2F8770C6C27FD3": callstub,
 
   # MSVC2010+, BuildExes, Static, Lite/RelWithDebInfo
   # BuildExes debugging stub: print(), call delete, rtc_checkesp()
+  # e.g. 0x004014B0 in vs2019/dc0d0o1/RelWithDebInfo/ooex1.exe
   "E7BD829FC00C90B35DEDD3F46D750406": callstub,
 
   # BuildExes debugging stubs... not carefully reviewed.
+  # e.g. 0x00401580 in vs2008/dc0d0o1/Debug/oo.exe
   "4991A7C985CAB596C1986452520CD3E5": callstub,
+
+  # BuildExes debugging stubs... not carefully reviewed.
+  # Hold hash not present in new partitioning.
+  # e.g. 0x00401580 in vs2008/sc0d0o1/RelWithDebInfo/oo.exe
   "CFBC0360475B475B3DFC0B1AFA79E174": callstub,
+
+  # BuildExes debugging stubs... not carefully reviewed.
+  # e.g. 0x00430750 in vs2010/sc0d0o1/Debug/oo.exe
   "9ACF18D7D75290A5A8D17E7ACD63793D": callstub,
+
+  # BuildExes debugging stubs... not carefully reviewed.
+  # e.g. 0x004117D0 in vs2010/dc0d0o1/Debug/oo.exe
   "8DE62DCBDD6E4B2F7F537BF45A43CADF": callstub,
+
+  # BuildExes debugging stubs... not carefully reviewed.
+  # e.g. 0x00401030 in vs2010/dc0d0o1/RelWithDebInfo/oo.exe
   "3EB0467C299886F16E8BB25CF6D578D9": callstub,
+
+  # BuildExes debugging stubs... not carefully reviewed.
+  # e.g. 0x00401060 in vs2010/dc0d0o1/Lite/ooex0.exe
   "93E47B3127CD7E78B3B8518FFE3B4820": callstub,
 
   # MSVC2015, 2017 & 2019, Static, ooexy/poly/poo only
   # call operator new, check for failure, call bad_alloc, call rtc_check_esp()
   # This is: std::_Crt_new_delete::operator new(unsigned int)
-  "F95736B69C6AE34EC4373A9AEF7BAE5C": callstub,
+  # e.g. 0x00412DF0 in vs2019/sc0d0o0/Debug/oo.exe
+  "177BC95C9F3933C1FD5C8615E8249C73": callstub,
 
   # MSVC2008, BuildExes, Dynamic, Debug
   # BuildExes debugging stub: print(), tail-call to delete
+  # e.g. 0x00401020 in vs2008/dc0d0o1/RelWithDebInfo/ooex0.exe
   # "FBAC6E9E91F0ED7E526A5B8F38D24FA3": tail-call-optimized,
 
   # MSVC2010+, BuildExes, Optimized, Static, Lite/RelWithDebInfo
   # BuildExes debugging stub
+  # e.g. 0x00401140 in vs2010/dc0d0o1/Lite/oo.exe
   # "EF764365A1B0A50DC1ACA477C816E30E": tail-call-optimized,
 
   # MSVC2012 & 2013, BuildExes, Optimized, Dynamic, Debug
   # BuildExes debugging stub: print(), rtc_checkesp(), call delete, rtc_checkesp()
+  # e.g. 0x00402890 in vs2012/dc0d0o1/Debug/oo.exe
   "E2113CD1B4B7E35B259149FAD7267387": callstub,
 
   # MSVC2017 & MSVC2019, BuildExes, Dynamic, RelWithDebInfo, return func(p1);
   # Moderately complex and probably usable as a known hash, but also calls new().
+  # e.g. 0x00401D17 in vs2019/dc0d0o0/RelWithDebInfo/oonewdel.exe
   "6B0F7C090029A07D7778F59496173246": callstub,
 
   # MSVC2017 & MSVC2019, BuildExes, Static, RelWithDebInfo, return func(p1);
   # Moderately complex and probably usable as a known new hash, but also calls new().
+  # e.g. 0x00401D59 in vs2019/dc0d0o0/RelWithDebInfo/oonewdel.exe
   "5FDA4A8152AC1A383FA94E38BC67DD12": callstub,
 
   # MSVC2010, BuildExes, Static, ooex7, std::locale::facet::operator new
   # 0xCC stuff, calls operator new with 4 params and RTCheckEsp().
+  # e.g. 0x0043C3B0 in vs2010/sc0d0o0/Debug/ooex7.exe
   "A275D35D63FE64AE0F1F1B33CB134677": callstub,
 
   # MSVC2012, BuildExes, Dynamic, RelWithDebInfo
   # return func(p1); with EH_prolog3_catch.
-  "D6889BB6AC79482E1EDABB23CF0F194C": callstub,
+  # e.g. 0x004037E9 in vs2012/sc0d0o0/RelWithDebInfo/oonewdel.exe
+  "FCD07C906D8102F34F2197838A36AC61": callstub,
 
   # MSVC2010, BuildExes, Dynamic, Debug
   # 0xCC stuff, call operator_delete, _RTCCheckEsp
+  # e.g. 0x004121E0 in vs2010/dc0d0o0/Debug/oo.exe
   "021DB8DE05126FAE53CB1DBC05561B78": callstub,
 
   # MSVC2008 & 2010, BuildExes, Dynamic, All builds
   # _EH_prolog3_catch and __EH_epilog3 wrapped call to new().
+  # e.g. 0x00401AC4 in vs2008/dc0d0o0/Debug/oonewdel.exe
   "CC883629B7DB64E925D711EC971B8FCA": callstub,
 
   # MSVC2015, BuildExes, Dynamic, RelWithDebInfo
   # Moderately complex and probably usable as a known hash, but also calls new().
-  "71753574DCD61824BA6F64CE3478E17C": callstub,
+  # e.g. 0x0040726B in vs2015/sc0d1o0/RelWithDebInfo/oonewdel.exe
+  "1917E129BB19F66F1AEC187EC88CAA7D": callstub,
 
   # MSVC2010, BuildExes, Dynamic, Debug
   # Moderately complex and probably usable as a known hash, but also calls new().
+  # e.g. 0x00413070 in vs2010/dc0d0o0/Debug/oonewdel.exe
   "F51197FED07B44B5A94BA159A148928F": callstub,
 
   # MSVC2012, BuildExes, Dynamic, Debug
   # Moderately complex and probably usable as a known hash, but also calls new().
-  "9EB2A996ED6C58F7E4B28BEC7C4B1936": callstub,
+  # e.g. 0x00405EC0 in vs2012/sc0d0o0/Debug/oonewdel.exe
+  "39B0835A3C20DAF1EBF16FD8DB43F65E": callstub,
 
   # MSVC2017 & 2019, BuildExes, Dynamic, RelWithDebInfo
   # Moderately complex and probably usable as a known hash, but also calls new().
+  # e.g. 0x00401DC8 in vs2019/dc0d0o0/RelWithDebInfo/oonewdel.exe
   "7F00628AD4C76383E3B76825C462D97B": callstub,
 
   # MSVC2017 & 2019, BuildExes, Dynamic, Debug
   # Moderately complex and probably usable as a known hash, but also calls new().
+  # e.g. 0x00404880 in vs2019/dc0d0o0/Debug/oonewdel.exe
   "561CCB32DF7C5A53A2B7D76202044B64": callstub,
 
   # MSVC2015, 2017 & 2019, BuildExes, Dynamic, Debug
   # Moderately complex and probably usable as a known hash, but also calls new().
+  # e.g. 0x004047C0 in vs2019/dc0d0o0/Debug/oonewdel.exe
   "A59BF6BF2B331BEB7F1785F4C86A308F": callstub,
 
   # ============================================================================
@@ -558,32 +701,40 @@ hashes:
   # ============================================================================
 
   # MSVC2010, 2012, & 2013 Debug, _RTC_CheckEsp
-  "718F8380FBCBF718F8A3C0DC794C0025": "ignore",
+  # e.g. 0x00412760 in vs2010/dc0d0o0/Debug/oo.exe
+  "A60D6C0E7E900D14B1731764B7CD9CCC": "ignore",
 
   # MSVC2015, 2017, & 2019 Debug, _RTC_CheckEsp
-  "CDB756E22ED69C42DF68E22FE6A06026": "ignore",
+  # e.g. 0x00401BE0 in vs2019/dc0d0o0/Debug/ooex5.exe
+  "ECF0507FF32A0E6FB578D5C247467073": "ignore",
 
   # MSVC2015, 2017, & 2019, security_check_cookie
-  "BDAB7F6A71098B4CB94C202B4E917EFA": "ignore",
+  # e.g. 0x00401A00 in vs2019/dc0d0o0/Debug/ooex5.exe
+  "7EF3442767C9306EEC9E450D163B8497": "ignore",
 
   # MSVC2010, Debug, security_check_cookie
-  "42456B47C1E2A1DEB20B6EDCE75CCC0A": "ignore",
+  # e.g. 0x00412740 in vs2010/dc0d0o0/Debug/oo.exe
+  "D44808B1CE1C107ADCF869D3F2B3C592": "ignore",
 
   # MSVC2008, 2010, 2012, & 2013, security_check_cookie
-  "D1FEA6BDFA4516785D743B39E9169331": "ignore",
+  # e.g. 0x0040608E in vs2008/dc0d0o0/Debug/oo.exe
+  "600EB003881EB35A2030818F0CBDAB31": "ignore",
 
   # MSVC2015, RelWothDebInfo, security_check_cookie
-  "F37D865A51154CE7B318690E1D4DCCFC": "ignore",
+  # e.g. 0x00401B32 in vs2015/dc0d0o0/RelWithDebInfo/oo.exe
+  "AD1C32CAA5562624FCDF2D5CC88AF8AA": "ignore",
 
   # mysqlpump.exe, security_check_cookie
-  "0914F0C17C15CA4C4F97659D552E0C59": "ignore",
+  # e.g. 0x004D6A38 in mysqlpump.exe
+  "9A742A6D50EE1B93828C8D4CB9E27FEE": "ignore",
 
   # ============================================================================
   # Non returning functions
   # ============================================================================
 
   # __CxxThrowException@8 from ooex_vs2010/Lite test cases.
-  "DD6F67B0A531EF4450EB8990F6FF3849": nonreturn
+  # e.g. 0x00406179 in vs2008/dc0d0o0/Debug/oo.exe
+  "28524D8E2C745F908E6542BCE6702481": nonreturn
 
   },
 addresses: {} # Currently empty
