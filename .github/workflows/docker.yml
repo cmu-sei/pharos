@@ -84,14 +84,15 @@ jobs:
         with:
           images: |
             ${{ env.REGISTRY }}/${{ github.repository }}
-      
       - name: Create and push manifest
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          # Extract the tag names from meta.outputs.tags (without the registry prefix)
-          TAGS=$(echo "${{ steps.meta.outputs.tags }}" | sed 's/${{ env.REGISTRY }}\/${{ github.repository }}://g')
+          # Remove the registry prefix from tags
+          CLEAN_TAGS=$(echo "$TAGS" | sed -E 's|^${{ env.REGISTRY }}/[^:]+:||g')
           
           # Loop over each tag and create a manifest
-          for TAG in $TAGS; do
+          for TAG in $CLEAN_TAGS; do
             docker manifest create ${{ env.REGISTRY }}/${{ github.repository }}:${TAG} \
               ${{ env.REGISTRY }}/${{ github.repository }}:${TAG}-amd64 \
               ${{ env.REGISTRY }}/${{ github.repository }}:${TAG}-arm64
