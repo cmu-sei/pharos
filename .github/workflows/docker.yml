@@ -1,5 +1,4 @@
 name: Docker Build and Push
-
 on:
   push:
     branches:
@@ -10,36 +9,42 @@ on:
   #  types: [labeled]
   schedule:
     - cron: '42 06 * * sat' # Run every Saturday at 06:42 UTC
-
-
 env:
   REGISTRY: ghcr.io
-
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-
+  build:
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
+      
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-
+      
     - name: Login to GitHub Container Registry (GHCR)
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-
+        
     - name: Extract metadata (tags, labels) for Docker
       id: meta
       uses: docker/metadata-action@v5
       with:
         images: |
           ${{ env.REGISTRY }}/${{ github.repository }}
-
+        flavor: |
+          suffix=-${{ matrix.arch }},onlatest=true
+          
     - name: Build and push Docker image
       id: build-and-push
       uses: docker/build-push-action@v5
@@ -52,10 +57,44 @@ jobs:
         provenance: false
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+        platforms: linux/${{ matrix.arch }}
         # Don't use cache for weekly builds
         cache-from: ${{ (github.event_name != 'schedule') && 'type=gha' }}
         cache-to: type=gha,mode=max
-
+        
     - name: Log Docker image digest
       if: steps.build-and-push.outputs.pushed
       run: echo "Docker image pushed ${{ steps.build-and-push.outputs.digest }}"
+
+  create-manifest:
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || ( github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'push to docker'))
+    steps:
+      - name: Login to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY }}/${{ github.repository }}
+      - name: Create and push manifest
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          # Remove the registry prefix from tags
+          CLEAN_TAGS=$(echo "$TAGS" | sed -E 's|^${{ env.REGISTRY }}/[^:]+:||g')
+          
+          # Loop over each tag and create a manifest
+          for TAG in $CLEAN_TAGS; do
+            docker manifest create ${{ env.REGISTRY }}/${{ github.repository }}:${TAG} \
+              ${{ env.REGISTRY }}/${{ github.repository }}:${TAG}-amd64 \
+              ${{ env.REGISTRY }}/${{ github.repository }}:${TAG}-arm64
+            docker manifest push ${{ env.REGISTRY }}/${{ github.repository }}:${TAG}
+          done
