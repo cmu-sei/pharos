@@ -1,7 +1,4 @@
-// Copyright 2015-2023 Carnegie Mellon University.  See LICENSE file for terms.
-
-#include <Sawyer/Message.h>
-#include <Sawyer/ProgressBar.h>
+// Copyright 2015-2025 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <libpharos/descriptors.hpp>
 #include <libpharos/misc.hpp>
@@ -12,6 +9,11 @@
 #include <libpharos/json.hpp>
 #include <libpharos/bua.hpp>
 
+#include <Sawyer/Message.h>
+#include <Sawyer/ProgressBar.h>
+#include <Rose/BinaryAnalysis/Architecture/X86.h>
+
+#include <boost/graph/iteration_macros.hpp>
 #include <boost/filesystem.hpp>
 
 using namespace pharos;
@@ -306,6 +308,14 @@ static int fn2hash_main(int argc, char **argv) {
   DescriptorSet ds(vm);
   // Resolve imports, load API data, etc.
   // ds.resolve_imports();
+
+  auto *arch = &*ds.get_architecture();
+  if (!dynamic_cast<Rose::BinaryAnalysis::Architecture::X86 const *>(arch)) {
+    GWARN << "Position independent code (PIC) hasing is not supported for the "
+          << "'" << ds.get_arch_name() << "' architecture." << LEND;
+    GWARN << "As a consequence, PIC hashes will match their exact hashes, "
+          << "reducing the effectiveness of this tool." << LEND;
+  }
 
   // let's see progress for each and every function:
   Sawyer::ProgressBarSettings::initialDelay(0.0);

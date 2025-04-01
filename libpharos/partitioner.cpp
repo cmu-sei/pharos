@@ -1,4 +1,4 @@
-// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2025 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <stdarg.h>
 #include <stdexcept>
@@ -124,10 +124,6 @@ P2::PartitionerPtr create_partitioner(const ProgOptVarMap& vm, P2::Engine* engin
     GINFO << "Marking all sections as executable during function partitioning." << LEND;
     settings.loader.memoryIsExecutable = true;
   }
-
-  // This change was required to fix an issue with incorrect computation of opaque predicates
-  // that Cory is still trying to fully understand.
-  settings.loader.memoryDataAdjustment = P2::DATA_NO_CHANGE;
 
   // The standard rose approach of marking blocks of zeros as non-excutable doesn't work well,
   // because among other issues, it consumes zeros in valid instructions that are adjacent to

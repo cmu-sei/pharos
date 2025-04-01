@@ -1,4 +1,4 @@
-// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2025 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Misc_H
 #define Pharos_Misc_H
@@ -14,6 +14,9 @@
 #include <Rose/BinaryAnalysis/Partitioner2/Partitioner.h>
 #include <Rose/BinaryAnalysis/MemoryMap.h>
 #include <Rose/BinaryAnalysis/Architecture/Base.h>
+#if PHAROS_ROSE_ADDR_T_HACK
+#include <Rose/BinaryAnalysis/Address.h>
+#endif
 
 #if PHAROS_ROSE_ADDRESSINTERVAL_HACK
 #include <Rose/BinaryAnalysis/AddressIntervalSet.h>
@@ -30,6 +33,10 @@
 #include <numeric>
 
 namespace pharos {
+
+#if PHAROS_ROSE_ADDR_T_HACK
+using rose_addr_t = Rose::BinaryAnalysis::Address;
+#endif
 
 #if PHAROS_ROSE_ADDRESSINTERVAL_HACK
 using Rose::BinaryAnalysis::AddressIntervalSet;
