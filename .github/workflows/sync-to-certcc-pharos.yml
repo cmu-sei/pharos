@@ -9,6 +9,8 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    # Only run if the secret is configured
+    if: ${{ secrets.CERTCC_PHAROS_DEPLOY_KEY != '' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
