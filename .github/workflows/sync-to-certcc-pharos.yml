@@ -9,7 +9,7 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    with: # Set the secret as an input
+    env: # Set the secret as an input
       CERTCC_PHAROS_DEPLOY_KEY: ${{ secrets.CERTCC_PHAROS_DEPLOY_KEY }}    # Only run if the secret is configured
     if: ${{ CERTCC_PHAROS_DEPLOY_KEY != '' }}
     steps:
