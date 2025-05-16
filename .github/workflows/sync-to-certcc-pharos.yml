@@ -1,0 +1,55 @@
+name: Sync to certcc/pharos repository
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:  # Allow manual triggering
+  schedule:
+    # Run nightly at midnight UTC (00:00)
+    - cron: '0 0 * * *'
+
+jobs:
+
+  # https://gist.github.com/jonico/24ffebee6d2fa2e679389fac8aef50a3  
+  hassecret:
+    runs-on: ubuntu-latest
+    outputs:
+      hassecret: ${{ steps.hassecret.outputs.hassecret }}
+
+    steps:
+      - name: Check whether container scanning should be enabled
+        id: hassecret
+        env:
+          CERTCC_PHAROS_DEPLOY_KEY: ${{ secrets.CERTCC_PHAROS_DEPLOY_KEY }}
+        run: |
+          echo "hassecret=${{ env.CERTCC_PHAROS_DEPLOY_KEY != '' }}" >> $GITHUB_OUTPUT
+
+  sync:
+    needs: [hassecret]
+    if: needs.hassecret.outputs.hassecret == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history and refs
+
+      - name: Set up SSH Deploy Key
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.CERTCC_PHAROS_DEPLOY_KEY }}
+      
+      - name: Setup Git Identity
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+        
+      - name: Add Target Repository as Remote
+        run: |
+          git remote add certcc git@github.com:CERTCC/pharos.git
+      
+      - name: Push to Target Repository
+        run: |
+          git push certcc ${GITHUB_REF#refs/heads/}:${GITHUB_REF#refs/heads/}

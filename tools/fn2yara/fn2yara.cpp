@@ -1,6 +1,4 @@
-// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
-
-#include <boost/algorithm/string.hpp>
+// Copyright 2015-2025 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <libpharos/descriptors.hpp>
 #include <libpharos/misc.hpp>
@@ -11,6 +9,9 @@
 #include <libpharos/masm.hpp>
 #include <libpharos/bua.hpp>
 
+#include <Rose/BinaryAnalysis/Architecture/X86.h>
+
+#include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 
 #define DEFAULT_MIN_INSTRUCTIONS 5
@@ -538,6 +539,14 @@ int fn2yara_main(int argc, char **argv) {
   DescriptorSet ds(vm);
   // Resolve imports, load API data, etc.
   // ds.resolve_imports();
+
+  auto *arch = &*ds.get_architecture();
+  if (!dynamic_cast<Rose::BinaryAnalysis::Architecture::X86 const *>(arch)) {
+    GWARN << "Position independent code (PIC) hasing is not supported for the "
+          << "'" << ds.get_arch_name() << "' architecture." << LEND;
+    GWARN << "As a consequence, generated signatures will not have wildcards "
+          << "reducing the effectiveness of this tool." << LEND;
+  }
 
   FnToYaraAnalyzer analyzer(ds, vm);
   analyzer.analyze();

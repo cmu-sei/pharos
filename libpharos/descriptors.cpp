@@ -1,4 +1,4 @@
-// Copyright 2015-2024 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2015-2025 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -54,9 +54,10 @@ void set_global_arch_bytes(size_t arch_bytes)
   }
 
   if (arch_bytes != 4 and arch_bytes != 8) {
-    GFATAL << "Architecture has unrecognized word size of " << arch_bytes << " bytes." << LEND;
+    GWARN << "Architecture has unrecognized word size of " << arch_bytes << " bytes." << LEND;
     // We should probably throw or exit, here since it's very unlikely that continuing will end
     // well.  On the other hand, nothing terrible has happened yet, so we can continue.
+    // Now seen in CIL files, as arch_bytes == 2, didn't impact results.
   }
 }
 
@@ -293,7 +294,7 @@ DescriptorSet::DescriptorSet(
   boost::optional<std::string> disassembler = vm.get<std::string>("pharos.disassembler");
   if (disassembler && *pname == "pharos") {
     auto arch = Rose::BinaryAnalysis::Architecture::findByName(*disassembler);
-    if (arch && std::dynamic_pointer_cast<Rose::BinaryAnalysis::Architecture::X86>(*arch)) {
+    if (arch && !std::dynamic_pointer_cast<Rose::BinaryAnalysis::Architecture::X86>(*arch)) {
       *pname = "rose";
       OWARN
         << "Using rose partitioner instead of pharos partitioner due to non-i386 disassembler"

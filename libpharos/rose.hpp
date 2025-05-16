@@ -1,4 +1,4 @@
-// Copyright 2021-2024 Carnegie Mellon University.  See LICENSE file for terms.
+// Copyright 2021-2025 Carnegie Mellon University.  See LICENSE file for terms.
 
 #ifndef Pharos_Rose_H
 #define Pharos_Rose_H
@@ -34,16 +34,22 @@
 #  error "Rose versions 0.11.145.158 through 0.11.145.166 are broken.  Please compile against a different version of Rose."
 #endif
 
-#define PHAROS_ROSE_DYNAMIC_PTR_CHANGE 11'145'0177
+#define PHAROS_ROSE_DYNAMIC_PTR_CHANGE 11'145'0177ul
 #if PHAROS_ROSE_DYNAMIC_PTR_CHANGE <= PHAROS_ROSE_MINIMUM_VERSION
 #  error "This hack is now always true.  Remove the hack and make it permanent."
 #endif
 #define PHAROS_ROSE_DYNAMIC_PTR_HACK (ROSE_VERSION >= PHAROS_ROSE_DYNAMIC_PTR_CHANGE)
 
-#define PHAROS_ROSE_ADDRESS_SPACE_CHANGE 11'145'0187
+#define PHAROS_ROSE_ADDRESS_SPACE_CHANGE 11'145'0187ul
 #if PHAROS_ROSE_ADDRESS_SPACE_CHANGE <= PHAROS_ROSE_MINIMUM_VERSION
 #  error "This hack is now always true.  Remove the hack and make it permanent."
 #endif
 #define PHAROS_ROSE_ADDRESS_SPACE_HACK (ROSE_VERSION >= PHAROS_ROSE_ADDRESS_SPACE_CHANGE)
+
+#define PHAROS_ROSE_ADDR_T_CHANGE 11'145'0236ul
+#if PHAROS_ROSE_ADDR_T_CHANGE <= PHAROS_ROSE_MINIMUM_VERSION
+#  error "This hack is now always true.  Remove the hack and make it permanent."
+#endif
+#define PHAROS_ROSE_ADDR_T_HACK (ROSE_VERSION >= PHAROS_ROSE_ADDR_T_CHANGE)
 
 #endif // Pharos_Rose_H

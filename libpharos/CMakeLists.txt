@@ -142,6 +142,7 @@ configure_file(version.hpp.in version.hpp)
 # Generate PHAROS_REVISION in every build
 add_custom_target(generate_pharos_revision ALL)
 add_custom_command(
+  POST_BUILD
   TARGET generate_pharos_revision
   COMMAND ${CMAKE_COMMAND}
   "-Dsrcdir=${CMAKE_CURRENT_SOURCE_DIR}"

@@ -3,7 +3,7 @@
 
 # User customizations can be placed in this directory in a file named "local.cmake".
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.5...3.10)
 
 # <Package>_ROOT variables are now added to the path by default.  We
 # were explicitly using our _ROOT variables for this purpose, so the
@@ -20,6 +20,10 @@ endif()
 # Handle option without warnings in newer cmake
 if(POLICY CMP0077)
   cmake_policy(SET CMP0077 NEW)
+endif()
+
+if(POLICY CMP0022)
+  cmake_policy(SET CMP0022 NEW)
 endif()
 
 project(pharos CXX C)

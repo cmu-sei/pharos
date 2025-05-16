@@ -75,7 +75,7 @@ fixups = [(re.compile(re.escape(a)), b) for (a,b) in fixups]
 def fixup_ugly_symbols(symbol):
     # XXX Use xlator
     for (old, new) in fixups:
-        symbol = re.sub(old, new, symbol, 99)
+        symbol = re.sub(old, new, symbol, count=99)
     return symbol
 
 # ===========================================================================
@@ -188,7 +188,7 @@ def postprocess_oo_output(input_file, output_file, addr2symbol):
         # Do we have a any variables?
         if l.find('=v') != -1 or l.find(' v') != -1:
             # If so normalize them.
-            l = re.sub('v[0-9a-f]*\[', 'v?[', l)
+            l = re.sub(r'v[0-9a-f]*\[', 'v?[', l)
 
         l = xlat.xlat (l)
 

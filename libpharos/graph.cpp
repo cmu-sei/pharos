@@ -251,7 +251,7 @@ Graph::populate(const DescriptorSet& ds, const P2::Partitioner& p)
         // Indeterminate successors should only occur on the last instruction in a block.
         // assert(i == (num_insns - 1));
         if (i != (num_insns - 1)) {
-          GWARN << "Instruction " << debug_instruction(insn) << " had incomplete successors." << LEND;
+          GINFO << "Instruction " << debug_instruction(insn) << " had incomplete successors." << LEND;
         }
 
         // If it's a RET instruction, and then the type should always be E_RETURN.  Otherwise
