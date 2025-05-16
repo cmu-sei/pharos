@@ -5,6 +5,9 @@ on:
     branches:
       - master
   workflow_dispatch:  # Allow manual triggering
+  schedule:
+    # Run nightly at midnight UTC (00:00)
+    - cron: '0 0 * * *'
 
 jobs:
 
