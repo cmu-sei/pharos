@@ -45,7 +45,7 @@ jobs:
         
       - name: Add Target Repository as Remote
         run: |
-          git remote add certcc git@github.com:certcc/pharos.git
+          git remote add certcc git@github.com:CERTCC/pharos.git
       
       - name: Push to Target Repository
         run: |
