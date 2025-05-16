@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env: # Set the secret as an input
       CERTCC_PHAROS_DEPLOY_KEY: ${{ secrets.CERTCC_PHAROS_DEPLOY_KEY }}    # Only run if the secret is configured
-    if: ${{ CERTCC_PHAROS_DEPLOY_KEY != '' }}
+    if: ${{ env.CERTCC_PHAROS_DEPLOY_KEY != '' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
