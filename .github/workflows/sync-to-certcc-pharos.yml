@@ -7,11 +7,26 @@ on:
   workflow_dispatch:  # Allow manual triggering
 
 jobs:
-  sync:
+
+  # https://gist.github.com/jonico/24ffebee6d2fa2e679389fac8aef50a3  
+  hassecret:
     runs-on: ubuntu-latest
-    env: # Set the secret as an input
-      CERTCC_PHAROS_DEPLOY_KEY: ${{ secrets.CERTCC_PHAROS_DEPLOY_KEY }}    # Only run if the secret is configured
-    if: ${{ env.CERTCC_PHAROS_DEPLOY_KEY != '' }}
+    outputs:
+      hassecret: ${{ steps.hassecret.outputs.hassecret }}
+
+    steps:
+      - name: Check whether container scanning should be enabled
+        id: hassecret
+        env:
+          CERTCC_PHAROS_DEPLOY_KEY: ${{ secrets.CERTCC_PHAROS_DEPLOY_KEY }}
+        run: |
+          echo "::set-output name=hassecret::${{ env.CERTCC_PHAROS_DEPLOY_KEY != '' }}"
+
+  sync:
+    needs: [hassecret]
+    if: needs.hassecret.outputs.hassecret == 'true'
+    runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
