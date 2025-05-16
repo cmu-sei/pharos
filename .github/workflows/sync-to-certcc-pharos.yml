@@ -20,7 +20,7 @@ jobs:
         env:
           CERTCC_PHAROS_DEPLOY_KEY: ${{ secrets.CERTCC_PHAROS_DEPLOY_KEY }}
         run: |
-          echo "{hassecret}=${{ env.CERTCC_PHAROS_DEPLOY_KEY != '' }}" >> $GITHUB_OUTPUT
+          echo "hassecret=${{ env.CERTCC_PHAROS_DEPLOY_KEY != '' }}" >> $GITHUB_OUTPUT
 
   sync:
     needs: [hassecret]
