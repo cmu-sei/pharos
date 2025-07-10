@@ -98,8 +98,6 @@ FunctionDescriptor::FunctionDescriptor(DescriptorSet& d) : ds(d) {
   pharos_control_flow_graph_cached = false;
 
   hashes_calculated = false;
-  num_blocks = 0;
-  num_blocks_in_cfg = 0;
   num_instructions = 0;
   num_bytes = 0;
 }
@@ -160,8 +158,6 @@ FunctionDescriptor::FunctionDescriptor(DescriptorSet& d, SgAsmFunction* f)
   pharos_control_flow_graph_cached = false;
 
   hashes_calculated = false;
-  num_blocks = 0;
-  num_blocks_in_cfg = 0;
   num_instructions = 0;
   num_bytes = 0;
 }
@@ -1031,376 +1027,40 @@ std::string FunctionDescriptor::get_pdg_hash(unsigned int num_hash_funcs) {
   return pdg_hash;
 }
 
-// A function hash variant close to the Uberflirt EHASH/PHASH stuff, plus a new Composite PIC
-// hash, and some "extra" hash types if requested.  Here's the basic gist:
-//
-// iterate over basic blocks in flow order (a consistent logical ordering)
-//   iterate over instructions in block
-//     add raw bytes to block ebytes
-//     if extra
-//       save mnemonic & mnemonic category info
-//     if jmp/call/ret
-//       ignore this completely for CPIC
-//     else
-//       look for integers operands in program range (more checks?) & replace w/ 00
-//     add exact bytes to ebytes
-//     add (modified) bytes to pbytes & cpicbytes
-//   calc md5 of block cpicbytes
-// md5 ebytes & pbytes
-// sort all block cpic hash values, concat & hash to generate fn level CPIC
-//
-
-// TODO: replace x86 specific stuff w/ code that will work w/ other ISAs, should we ever start
-// supporting those...  Here's a small start from Cory...  We might work with non-X86
-// architectures now, but we'll warn about it (once).
-//static bool arch_warned_once = false;
-void FunctionDescriptor::_compute_function_hashes(ExtraFunctionHashData *extra) {
-  // mwd: this code assumes this.  Is it guaranteed?
-  assert(func);
-
-  const CFG& cfg = get_pharos_cfg();
+void FunctionDescriptor::_compute_function_hashes() {
+  // Mutex lock while we're calculating the hashes.
   write_guard<decltype(mutex)> guard{mutex};
   if (hashes_calculated) { return; }
   auto finally = make_finalizer([this]{hashes_calculated = true;});
 
-  // should really do these elsewhere, but this is good for now:
-  num_blocks = 0;
-  num_blocks_in_cfg = 0;
-  num_instructions = 0;
-  num_bytes = 0;
+  const AddressIntervalSet& chunks = get_address_intervals();
+  for (SgAsmInstruction* insn : _get_insns_addr_order()) {
+    // Just append all of the bytes of the instruction to the exact bytes vector.
+    SgUnsignedCharList bytes = insn->get_rawBytes();
+    exact_bytes.insert(exact_bytes.end(), bytes.begin(), bytes.end());
 
-  // A non-trivial change was made here by Cory.  Previously we were using the ROSE
-  // (unfiltered) control flow graph, but now we're using the Pharos (filtered) control flow
-  // graph to compute the function hashes.  Of course this cna _change_ the hashes for
-  // functions.  The choice to use the unfiltered CFG seems to have been based on an inability
-  // to conveniently call get_pharos_cfg() here without doing the complete PDG analysis.  Since
-  // that bug is now fixed, there's no reason this shouldn't be based on the the Pharos CFG,
-  // especially since it updates the function descriptor with fields likethe count of basic
-  // blocks that are would be inconsistent with other important pharos analyses.
-  std::vector<CFGVertex> cfgblocks = get_vertices_in_flow_order(cfg, entry_vertex);
+    // Increase the number of instructions and the number of bytes.
+    num_instructions++;
+    num_bytes += bytes.size();
 
-  // ODEBUG produces too much in objdigger test output, so let's use trace for this:
-  GTRACE << _address_string() << " fn has " << cfgblocks.size()
-         << " basic blocks in control flow" << LEND;
-  if (cfgblocks.size() == 0) {
-    return;
-  }
-
-  SgAsmBlock *funceb = func->get_entryBlock();
-  SgAsmBlock *cfgeb = get(boost::vertex_name, cfg, cfgblocks[entry_vertex]);
-  // I don't think this should be possible:
-  if (funceb == NULL) {
-    GERROR << "CFB No entry block in function: " << _address_string() << LEND;
-    return;
-  }
-  if (cfgeb == NULL) {
-    GERROR << "CFB No entry block in flow order: " << _address_string() << LEND;
-    return;
-  }
-  // and I *really* hope this isn't either:
-  if (funceb != cfgeb) {
-    GERROR << "CFB Entry blocks do not match! " << addr_str(funceb->get_address()) << "!="
-           << addr_str(cfgeb->get_address()) << " in function: " << _address_string() << LEND;
-  }
-
-  num_blocks = func->get_statementList().size();
-  num_blocks_in_cfg = cfgblocks.size();
-
-  //std::set< std::string > bbcpics; // basic block PIC hashes for composite calc (no dupes)
-  std::multiset< std::string > bbcpics; // basic block cPIC hashes for fn composite PIC calc (keep dupes)
-
-  // moved these to "extra"
-  //std::string mnemonics; // concatenated mnemonics
-  //std::string mnemcats; // concatenated mnemonic categories
-
-  // would like to output some debugging disassembly, build up a string that then gets dumped
-  // to an appropriate output stream later:
-  std::ostringstream dbg_disasm;
-  dbg_disasm << "Debug Disassembly of Function " << display_name
-             << " (" << addr_str(address) << ")" << std::endl;
-
-  std::vector< rose_addr_t > bbaddrs;
-
-  // iterate over all basic blocks in the function:
-  for (size_t x = 0; x < num_blocks_in_cfg; x++) {
-    SgAsmBlock *bb = get(boost::vertex_name, cfg, cfgblocks[x]);
-    P2::BasicBlock::Ptr block = ds.get_block(bb->get_address());
-    assert(block != NULL);
-
-    std::string bbcpicbytes; // CPIC bytes (no control flow insns)
-    std::string bbpicbytes; // PIC bytes (control flow insns included)
-    std::vector< std::string > bbmnemonics;
-    std::vector< std::string > bbmnemcats;
-
-    dbg_disasm << "\t; --- bb start ---" << std::endl; // show start of basic block
-    // Iterate over the instructions in the basic block:
-    num_instructions += block->nInstructions();
-    for (SgAsmInstruction* insn : block->instructions()) {
-      // We're only X86 depdendent to the extent that we haven't thought about other architectures.
-      //if (!isSgAsmX86Instruction(insn) && !arch_warned_once) {
-      //  GERROR << "Non-X86 architectures are not supported!" << LEND;
-      //  arch_warned_once = true;
-      //}
-
-      // Get the raw bytes...
-      SgUnsignedCharList bytes = insn->get_rawBytes();
-      num_bytes += bytes.size();
-      if (bytes.size() == 0) { // is this possible?
-        GERROR << "CFB no raw bytes in instruction at " << addr_str(insn->get_address()) << LEND;
-        continue;
-      }
-
-      // okay place for debugging dumping the diassembly?  Tried to use ROSE's "unparser" but
-      // sadly the convenience unparser is not handling lea instructions correctly, but our
-      // debug_instruction code does (will revisit using the paritioner's unparser at some
-      // point):
-      std::string insnDisasm = debug_instruction(insn,17);
-      dbg_disasm
-        //<< addr_str(insn->get_address()) << " "
-        << insnDisasm
-        //<< std::endl
-        //<< "\t; EBYTES: " << MyHex(bytes)
-        //<< std::endl
-        ;
-
-      // Just append all of the bytes to exact_bytes.
-      exact_bytes.insert(exact_bytes.end(), bytes.begin(), bytes.end());
-
-      // For the various PIC bytes & hashes, it's more complicated...
-
-      std::vector< bool > wildcard(bytes.size(),false);
-
-      std::vector< std::pair< uint32_t, uint32_t > > candidates;
-      const auto handle_pic_offset = [&](const rose_addr_t addr, SgAsmIntegerValueExpression *intexp)
-      {
-        if (ds.memory.is_mapped(rose_addr_t(addr)))
-        {
-          AddressIntervalSet chunks = this->get_address_intervals();
-          const auto val = intexp->get_value();
-          auto chunk1 = chunks.find(insn->get_address());
-          auto chunk2 = chunks.find(val);
-          // only null out address reference if it leaves the current chunk
-          if (chunk1 != chunk2)
-          {
-            auto off = intexp->get_bitOffset();
-            auto sz = intexp->get_bitSize();
-            auto insnsz = insn->get_rawBytes().size();
-
-            // In some samples (e.g. 82c9e0083bd...) there are zero size expressions.  The
-            // cause seems to be related to an Image with an usual ImageBase of zero.
-            if (sz <= 0 || off % 8 != 0 || sz % 8 != 0 || // positive and byte-aligneed
-                sz / 8 >= insnsz || off / 8 >= insnsz || insnsz > 17)
-            { // reasonable sizes
-              GWARN << "Instruction '" << debug_instruction(insn)
-                    << "' has suspicious properties, size=" << insnsz
-                    << " opsize=" << sz << " opoffset=" << off << LEND;
-              return;
-            }
-            std::pair<uint32_t, uint32_t> pval(off, sz);
-            dbg_disasm << "Saving PIC candidate expression " << unparseExpression(intexp, {}, {})
-                       << " that corresponds to mapped address " << addr << LEND;
-            candidates.push_back(pval);
-          }
-        }
-      };
-
-      // need to traverse the AST for operands lookng for "appropriate" wilcard candidates.
-
-      // First we'll look for RIP-relative offsets, e.g., [rip + offset]
-
-      AstMatching m;
-      MatchResult rip_offsets = m.performMatching("$EXP=SgAsmMemoryReferenceExpression(SgAsmBinaryAdd($REG=SgAsmDirectRegisterExpression,$OFFSET=SgAsmIntegerValueExpression),$SEGMENTREG)", insn);
-
-      for (auto i = rip_offsets.begin(); i != rip_offsets.end(); i++)
-      {
-        auto reg = isSgAsmDirectRegisterExpression((*i)["$REG"]);
-        assert(reg);
-        auto rd = reg->get_descriptor();
-        auto offset = isSgAsmIntegerValueExpression((*i)["$OFFSET"]);
-        assert(offset);
-        auto segmentreg = isSgAsmDirectRegisterExpression((*i)["$SEGMENTREG"]);
-        assert(segmentreg);
-
-
-        // XXX: Check that segmentreg == ds?
-
-        if (rd == ds.get_ip_reg())
-        {
-          dbg_disasm << "Found RIP-relative register base expression " << unparseX86Register(rd, {})
-                     << " " << unparseExpression(reg, {}, {}) << " " << unparseExpression(offset, {}, {}) << " " << unparseExpression(segmentreg, {}, {})
-                     << " " << debug_instruction(insn)
-                     << LEND;
-          const auto relative_addr = insn->get_address() + insn->get_size() + offset->get_value();
-          handle_pic_offset(relative_addr, offset);
-        }
-      }
-
-      // Next we'll look for constant addresses.
-      MatchResult const_addrs = m.performMatching("$ADDR=SgAsmIntegerValueExpression", insn);
-
-      for (auto i = const_addrs.begin(); i != const_addrs.end(); i++) {
-        auto addr = isSgAsmIntegerValueExpression((*i)["$ADDR"]);
-        assert(addr);
-        handle_pic_offset(addr->get_value(), addr);
-      }
-
-      int numnulls = 0;
-      for (auto sc = candidates.begin(); sc != candidates.end(); ++sc) {
-        auto off = sc->first;
-        auto sz = sc->second;
-        // Ensure that updates will fit in the buffer. Should be enforced by insnsz above.
-        if ((off/8 + sz/8) > wildcard.size()) {
-          GERROR << "Instruction" << debug_instruction(insn) << " extends past buffer." << LEND;
-          continue;
-        }
-        do {
-          wildcard[off/8] = true;
-          off += 8;
-          sz -= 8;
-        } while (sz >= 8);
-      }
-
-      // okay, now know what to NULL out, so do it:
-      for (size_t i = 0; i < bytes.size(); ++i) {
-        if (wildcard[i]) {
-          bytes[i] = 0;
-          ++numnulls;
-          // save offsets so yara gen can use pic_bytes + offsets to wildcard correct bytes
-          pic_offsets.push_back(pic_bytes.size() + i);
-        }
-      }
-
-      std::string pbstr = "(same)";
-      if (numnulls)
-        pbstr = MyHex(bytes);
-
-      dbg_disasm
-        //<< "\t; PBYTES: " << MyHex(bytes)
-        << ", PBYTES: " << pbstr
-        //<< std::endl
-        ;
-
-      // PIC hash is based on same # and order of bytes as EHASH but w/ possible addrs nulled:
-      pic_bytes.insert(pic_bytes.end(), bytes.begin(), bytes.end());
-
-      std::string mnemonic = insn->get_mnemonic();
-      // need to address some silliness with what ROSE adds to some mnemonics first:
-      if (boost::starts_with(mnemonic,"far")) {  // WHY are "farCall" and "farJmp" being output as mnemonics???
-        if (mnemonic[3] == 'C')
-          mnemonic = "call";
-        else
-          mnemonic = "jmp";
-      }
-
-      // hmm...should I peel off the rep*_ prefix too, or leave it on there.  I think for
-      // this part I can leave it on there, but for the category determination I'll strip it
-      // out (in insn_get_generic_category).  There may be other prefixes that I should deal
-      // with too, but ignoring for now...
-      std::string mnemcat = insn_get_generic_category(insn);
-
-      //SDEBUG << addr_str(insn->get_address()) << " " << mnemonic << LEND;
-      //dbg_disasm << "\t; MNEMONIC: " << mnemonic;
-      dbg_disasm << ", MNEM: " << mnemonic;
-      //SDEBUG << addr_str(insn->get_address()) << " " << mnemcat << LEND;
-      dbg_disasm << ", CAT: " << mnemcat << std::endl;
-
-      bbmnemonics.push_back(mnemonic);
-      bbmnemcats.push_back(mnemcat);
-      if (extra) {
-        extra->mnemonics += mnemonic;
-        if (extra->mnemonic_counts.count(mnemonic) > 0)
-          extra->mnemonic_counts[mnemonic] += 1;
-        else
-          extra->mnemonic_counts[mnemonic] = 1;
-
-        extra->mnemcats += mnemcat;
-        if (extra->mnemonic_category_counts.count(mnemcat) > 0)
-          extra->mnemonic_category_counts[mnemcat] += 1;
-        else
-          extra->mnemonic_category_counts[mnemcat] = 1;
-      }
-
-      // Composite PIC Hash has no control flow instructions at all, and will be calculated
-      // by the hashes of the basic blocks sorted & concatenated, then that value hashed.
-      if (!insn_is_control_flow(insn))
-      {
-        bbcpicbytes.insert(bbcpicbytes.end(),bytes.begin(), bytes.end());
-      }
-      bbpicbytes.insert(bbpicbytes.end(),bytes.begin(), bytes.end());
-      //SDEBUG << dbg_disasm.str() << LEND;
-      SINFO << dbg_disasm.str() << LEND;
-      dbg_disasm.clear();
-      dbg_disasm.str("");
+    // Then PIC the instruction, and zero out those bits (bytes) requested.
+    std::vector<uint8_t> insn_pic_mask = pic_insn(ds, chunks, insn, 4096);
+    for (size_t i = 0; i < bytes.size(); ++i) {
+      bytes[i] = bytes[i] & insn_pic_mask[i];
     }
-    // bb insns done, calc (c)pic hash(es) for block
-    std::string bbcpic = get_string_md5(bbcpicbytes).str();
-    std::string bbpic = get_string_md5(bbpicbytes).str();
-    SDEBUG << "basic block @" << addr_str(bb->get_address()) << " has pic hash " << bbpic
-           << " and (c)pic hash " << bbcpic << LEND;
-    bbcpics.insert(bbcpic); // used to calc fn cpic later
-    if (extra) {
-      bbaddrs.push_back(bb->get_address());
-      ExtraFunctionHashData::BasicBlockHashData bbdat;
-      bbdat.pic = bbpic;
-      bbdat.cpic = bbcpic;
-      bbdat.mnemonics = bbmnemonics;
-      bbdat.mnemonic_categories = bbmnemcats;
-      // we only do this once per bb, so it's not in the map yet:
-      extra->basic_block_hash_data[bb->get_address()] = bbdat;
-      //extra->basic_block_hash_data.insert(std::pair< rose_addr_t, ExtraFunctionHashData::BasicBlockHashData > (bb->get_address(),bbdat));
-    }
+    // Append the PIC'd bytes for this instruction.
+    pic_bytes.insert(pic_bytes.end(), bytes.begin(), bytes.end());
+    // Append the PIC mask bytes for this instruction.
+    pic_mask.insert(pic_mask.end(), insn_pic_mask.begin(), insn_pic_mask.end());
   }
-
-  // bbs all processed, calc fn hashes
+  // Finally compute the hashses of the accumulated byte arrays.
   exact_hash = get_string_md5(exact_bytes).str();
   pic_hash = get_string_md5(pic_bytes).str();
-  std::string bbcpicsconcat;
-  for (auto const& bbcpic: bbcpics) {
-    bbcpicsconcat += bbcpic;
-  }
-  //OINFO << bbcpicsconcat << LEND;
-  composite_pic_hash = get_string_md5(bbcpicsconcat).str();
-
-  if (extra) {
-    GTRACE << "calculating 'extra' hashes" << LEND;
-    extra->mnemonic_hash = get_string_md5(extra->mnemonics).str();
-    extra->mnemonic_category_hash = get_string_md5(extra->mnemcats).str();
-    std::string mnemonic_counts_str;
-    for (auto const& mnemcount: extra->mnemonic_counts) {
-      mnemonic_counts_str += mnemcount.first + std::to_string(mnemcount.second);
-    }
-    extra->mnemonic_count_hash = get_string_md5(mnemonic_counts_str).str();
-    std::string mnemonic_category_counts_str;
-    for (auto const& mnemcatcount: extra->mnemonic_category_counts) {
-      mnemonic_category_counts_str += mnemcatcount.first + std::to_string(mnemcatcount.second);
-    }
-    extra->mnemonic_category_count_hash = get_string_md5(mnemonic_category_counts_str).str();
-    // add bb stuff here too
-    extra->basic_block_addrs = bbaddrs;
-    // iterate over CFG to get edge data:
-    BGL_FORALL_EDGES(edge, cfg, CFG) {
-      CFGVertex src_vtx = boost::source(edge, cfg);
-      SgAsmBlock *src_bb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, src_vtx));
-      CFGVertex tgt_vtx = boost::target(edge, cfg);
-      SgAsmBlock *tgt_bb = isSgAsmBlock(boost::get(boost::vertex_name, cfg, tgt_vtx));
-      std::pair< rose_addr_t, rose_addr_t > aedge; // will this be init to 0,0?
-      if (src_bb)
-        aedge.first = src_bb->get_address();
-      if (tgt_bb)
-        aedge.second = tgt_bb->get_address();
-      extra->cfg_edges.push_back(aedge);
-      GTRACE << "adding edge to cfg_edges: " << aedge.first << "->" << aedge.second << LEND;
-    }
-  }
 }
 
-void FunctionDescriptor::compute_function_hashes(ExtraFunctionHashData *extra) const {
-  const_cast<FunctionDescriptor *>(this)->_compute_function_hashes(extra);
+void FunctionDescriptor::compute_function_hashes() const {
+  const_cast<FunctionDescriptor *>(this)->_compute_function_hashes();
 }
-
-// The mnemonic and mnemonic category related hashes used to be computed above and stored on
-// the FD, but really only fn2hash cares about them so silly to always compute them and save
-// the data on the object, just generate them on the fly when fn2hash asks now
 
 const std::string& FunctionDescriptor::get_exact_bytes() const {
   // If the bytes haven't been computed already, do so now.
@@ -1420,22 +1080,16 @@ const std::string& FunctionDescriptor::get_pic_bytes() const {
   return pic_bytes;
 }
 
-const std::list< uint32_t > & FunctionDescriptor::get_pic_offsets() const {
+const std::vector<uint8_t>& FunctionDescriptor::get_pic_mask() const {
   // If the bytes haven't been computed already, do so now.
   if (!hashes_calculated) compute_function_hashes();
-  return pic_offsets;
+  return pic_mask;
 }
 
 const std::string& FunctionDescriptor::get_pic_hash() const {
   // If the bytes haven't been computed already, do so now.
   if (!hashes_calculated) compute_function_hashes();
   return pic_hash;
-}
-
-const std::string& FunctionDescriptor::get_composite_pic_hash() const {
-  // If the bytes haven't been computed already, do so now.
-  if (!hashes_calculated) compute_function_hashes();
-  return composite_pic_hash;
 }
 
 // There seems to have been some confusion about the ROSE versus Pharos control flow graphs.
@@ -1567,9 +1221,7 @@ SgAsmInstruction* FunctionDescriptor::get_insn(const rose_addr_t addr) const {
 }
 
 // explicit sorting of instructions by address using a map:
-InsnVector FunctionDescriptor::get_insns_addr_order() const {
-  read_guard<decltype(mutex)> guard{mutex};
-
+InsnVector FunctionDescriptor::_get_insns_addr_order() const {
   // TODO: do this once & cache on object?  Also, should there be another variant for "only
   // ones in CFG" too?
   InsnVector result;
@@ -1599,6 +1251,11 @@ InsnVector FunctionDescriptor::get_insns_addr_order() const {
   }
 
   return result;
+}
+
+InsnVector FunctionDescriptor::get_insns_addr_order() const {
+  read_guard<decltype(mutex)> guard{mutex};
+  return _get_insns_addr_order();
 }
 
 // There's probably a better way to do this.  I'm specifically looking for all addresses in the

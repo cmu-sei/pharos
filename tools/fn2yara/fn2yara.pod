@@ -9,7 +9,7 @@ B<fn2yara> - Function based Yara signature generation
 fn2yara [--output-filename=YARA_FILE] [--min-instructions=NUMBER]
   [--max-string-bytes=NUMBER] [--basic-blocks] [--comparison]
   [--threshold=NUMBER] [--prefix=STRING] [--address-only]
-  [--include-thunks] [--oldway] [...Pharos options...] EXECUTABLE_FILE
+  [--include-thunks] [...Pharos options...] EXECUTABLE_FILE
 
 fn2yara --help
 
@@ -70,10 +70,6 @@ in YARA format.
 =item B<--include-thunks>
 
 include thunks in output
-
-=item B<--oldway>, B<-o>
-
-use old hacky way to PIC.  (probably should be removed)
 
 =back
 

@@ -52,7 +52,6 @@ ProgOptDesc fn2yara_options() {
      ("Only output addresses of candidate functions, rather than rules.  "
       "Not in YARA format."))
     ("include-thunks", po::bool_switch(), "include thunks in output")
-    ("oldway,O", po::bool_switch(), "use old hacky way to PIC")
     ;
   return fn2yaraopt;
 }
@@ -102,9 +101,6 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
 
   // Whether to only output addresses
   bool address_only = false;
-
-  // Use old hacky method to determine PIC
-  bool oldway = false;
 
   // Percentage that have to match in a rule
   double match_threshold;
@@ -217,14 +213,20 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
         ++string_count;
         ++count;
       } else {
-        // would rather use GWARN but that requires verbose>=4, and other things come out then
-        // that I don't think we need to see...
-        OWARN << "rule for addr " << match.addr << " string too big ("
-              << match.byte_count << ") or min instr not met (" << match.count
-              << "), skipping rule string generation\n";
-        *out << "    // $" << prefix_str << "_" << match.addr
-             << " elided due to too few instructions ("
-             << match.count << ") or too many bytes (" << match.byte_count << ")\n";
+        if (match.count >= minimum_instr) {
+          // GINFO requires --verbose>=2, these are actually very weak warnings?
+          GINFO << "rule for addr " << match.addr << " min instr not met (" << match.count
+                << "), skipping rule string generation\n";
+          *out << "    // $" << prefix_str << "_" << match.addr
+               << " elided due to too few instructions (" << match.count << ")\n";
+        }
+        else {
+          // GINFO requires --verbose>=2, these are actually very weak warnings?
+          GINFO << "rule for addr " << match.addr << " string too big ("
+                << match.byte_count << "), skipping rule string generation\n";
+          *out << "    // $" << prefix_str << "_" << match.addr
+               << " elided due to too many bytes (" << match.byte_count << ")\n";
+        }
       }
     }
     return count;
@@ -243,9 +245,8 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
     }
     for (const RuleString &match : matches) {
       if (match.byte_count > maximum_str_bytes) {
-        // would rather use GWARN but that requires verbose>=4, and other things come out then
-        // that I don't think we need to see...
-        OWARN << "rule for func " << fd->address_string() << " addr " << match.addr
+        // GINFO requires --verbose>=2, these are actually very weak warnings?
+        GINFO << "rule for func " << fd->address_string() << " addr " << match.addr
               << " string too big (" << match.byte_count << "), skipping rule generation"
               << LEND;
         output = false;
@@ -303,7 +304,6 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
   {
     include_thunks = vm_["include-thunks"].as<bool>();
     address_only = vm_["address-only"].as<bool>();
-    oldway = vm_["oldway"].as<bool>();
     std::string filename = vm_["file"].as<Specimens>().name();
     size_t slash = filename.find_last_of('/');
     if (slash == std::string::npos) {
@@ -386,15 +386,16 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
       }
 
       *out << " of them\n}" << std::endl;
-      OINFO << "Examined " << func_count << " functions" << LEND;
-      OINFO << "Wrote " << string_count << " strings to " << outname << LEND;
+      GINFO << "Examined " << func_count << " functions" << LEND;
+      GINFO << "Wrote " << string_count << " strings to " << outname << LEND;
     } else {
-      OINFO << "Examined " << func_count << " functions" << LEND;
-      OINFO << "Wrote " << rule_count << " rules to " << outname << LEND;
+      GINFO << "Examined " << func_count << " functions" << LEND;
+      GINFO << "Wrote " << rule_count << " rules to " << outname << LEND;
     }
     if (dupe_count)
     {
-      OWARN << "Note, " << dupe_count << " duplicate addr funcs were detected and handled, this should never happen" << LEND;
+      GERROR << "Note, " << dupe_count << " duplicate addr funcs were detected "
+             << "and handled, this should never happen" << LEND;
     }
     if (outfile) {
       outfile->close();
@@ -411,8 +412,8 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
 
     if (addrs_processed.count(fd->get_address()))
     {
-      OWARN << "duplicate function same address (" << fd->address_string()
-            << ") detected, should never happen, skipping" << LEND;
+      GERROR << "duplicate function same address (" << fd->address_string()
+             << ") detected, should never happen, skipping" << LEND;
       ++dupe_count;
       return;
     }
@@ -469,7 +470,6 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
       // Get the raw bytes, and a vector of bool as to which bytes to wildcard away
       const SgUnsignedCharList &bytes = insn->get_rawBytes();
       byte_count += bytes.size();
-      std::vector<bool> wildcard(bytes.size());
 
       //GDEBUG << "  Instr: " << insn->get_mnemonic() << LEND;
       GDEBUG << "  Instr: " << debug_instruction(insn) << LEND;
@@ -481,144 +481,15 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
       }
       GDEBUG << LEND;
 
-      if (oldway)
-      {
-        // Build a list of address candidates in the instruction data
-        IntegerSearcher searcher(program);
-        searcher.traverse(insn, preorder);
-
-        // Try to find the candidate addresses
-        bool found = false;
-        uint32_t val;
-        // NOTE: assumes native byte order is the same as the byte order in the instruction
-        const unsigned char *target_begin =
-          reinterpret_cast<const unsigned char *>(&val);
-        const unsigned char *target_end = target_begin + sizeof(val);
-        for (auto sc = searcher.candidates.begin(); sc != searcher.candidates.end(); ++sc) {
-          val = *sc;
-          iter_t loc = std::search(bytes.begin() + 1, bytes.end(),
-                                   target_begin, target_end);
-          if (loc != bytes.end()) {
-            // A candidate was found, wildcard it
-            found = true;
-            size_t pos = loc - bytes.begin();
-            for (size_t i = 0; i < sizeof(val); ++i) {
-              wildcard[i + pos] = true;
-            }
-          }
-        }
-
-        // If no matches were found, search for addresses by offset at end of instruction (first
-        // matching only)
-        if (!found) {
-          rose_addr_t eip = insn->get_address() + bytes.size();
-          int32_t offset;
-          // NOTE: assumes native byte order is the same as the byte order in the instruction
-          target_begin = reinterpret_cast<const uint8_t *>(&offset);
-          target_end = target_begin + sizeof(offset);
-          for (uint32_t v : searcher.candidates) {
-            if (!cblock->contains(rose_addr_t(v))) {
-              offset = int64_t(v) - int64_t(eip);
-              for (int i = 4; i > 0; i >>= 1) {
-                // Match first i bytes of target with end of instruction
-                // NOTE: assumes little-endian byte order
-                if (std::equal(target_begin, target_begin + i, bytes.end() - i)) {
-                  // Found a match, wildcard it
-                  found = true;
-                  for (int j = 0; j < i; ++j) {
-                    wildcard[bytes.size() - j - 1] = true;
-                  }
-                  break;
-                }
-              }
-            }
-          }
-        }
-      }
-      else
-      {
-        // new (and hopefully) less hacky way would be to iterate over Operands and look at the
-        // SgAsmIntegerValueExpression get_bit_{offset,size}() values, I *think* we're only
-        // interested in PICing out an integer if it isn't part of a larger expression?
-        // Otherwise we might need to do AST traversal like the old hack did...yup, definitely
-        // hit a need to do the AST traversal, because I hit a SgAsmMemoryReferenceExpression
-        // that contains the SgAsmIntegerValueExpression and a SgAsmDirectRegisterExpression
-        // (for an implicit DS register usage, apparently)
-        struct IntegerOffsetSearcher : public AstSimpleProcessing {
-          std::vector< std::pair< uint32_t, uint32_t > > candidates;
-          const DescriptorSet& program;
-          FunctionDescriptor *fd;
-          SgAsmInstruction *insn;
-
-          IntegerOffsetSearcher(const DescriptorSet& _program, FunctionDescriptor *_fd,
-                                SgAsmInstruction *_insn) : program(_program) {
-            fd = _fd;
-            insn = _insn;
-          }
-
-          void visit(SgNode *node) override {
-            const SgAsmIntegerValueExpression *intexp =
-              isSgAsmIntegerValueExpression(node);
-            if (intexp) {
-              uint64_t val = intexp->get_value(); // or get_absoluteValue() ?
-              if (program.memory.is_mapped(rose_addr_t(val))) {
-                // In programs mapped at address zero, the memory map test will report that
-                // very small constants like 1, 4, and 8 are "addresses" that should be PIC'd
-                // out.  While this is very unprincipled solution, I think it's better than
-                // incorrectly PIC'ing lots of small constants.
-                if (val < 4096) {
-                  return;
-                }
-                AddressIntervalSet chunks = fd->get_address_intervals();
-                auto chunk1 = chunks.find(insn->get_address());
-                auto chunk2 = chunks.find(val);
-                // only null out address reference if it leaves the current chunk
-                if (chunk1 != chunk2)
-                {
-                  auto off = intexp->get_bitOffset();
-                  auto sz = intexp->get_bitSize();
-                  // should always be aligned to byte?
-                  if (off % 8 != 0 || sz % 8 != 0)
-                  {
-                    OWARN << "Non-byte alignment (" << off << ") or size (" << sz << ") found "
-                          << " in instruction: " << debug_instruction(insn) << LEND;
-                    return;
-                  }
-                  // Don't add candidates of size zero.
-                  if (sz < 8) {
-                    OWARN << "Integer operand of size " << sz << " bits in instruction: "
-                          << debug_instruction(insn) << " for value " << val <<  LEND;
-                    return;
-                  }
-                  std::pair< uint32_t, uint32_t > pval(off,sz);
-                  candidates.push_back(pval);
-                }
-              }
-            }
-          }
-        };
-
-        IntegerOffsetSearcher searcher(program,fd,insn);
-        searcher.traverse(insn, preorder);
-        for (auto sc = searcher.candidates.begin(); sc != searcher.candidates.end(); ++sc) {
-          auto off = sc->first;
-          auto sz = sc->second;
-          do
-          {
-            wildcard[off/8] = true;
-            off += 8;
-            sz -= 8;
-          } while (sz >= 8);
-        }
-      }
+      AddressIntervalSet chunks = fd->get_address_intervals();
+      std::vector<uint8_t> wildcard = pic_insn(program, chunks, insn, 4096);
 
       // Write out match data for instruction
       for (size_t i = 0; i < bytes.size(); ++i) {
-        if (wildcard[i]) {
-          match << "?? ";
+        if (wildcard[i] == 0xff) {
+          match << std::setfill('0') << std::hex << std::setw(2) << int(bytes[i]) << ' ';
         } else {
-          match << std::setfill('0') << std::hex << std::setw(2)
-                << int(bytes[i]) << ' ';
+          match << "?? ";
         }
       }
     }
