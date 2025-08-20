@@ -2366,6 +2366,11 @@ reasonClassRelatedMethod_C(InnerClass, InnerMethod) :-
     reasonClassAtOffset(OuterClass, Offset, InnerClass),
     iso_dif(OuterClass, InnerClass),
     iso_dif(InnerClass, InnerMethod),
+
+    % Ensure that InnerClass is only reachable through inheritance
+    forall(reasonClassAtOffset(OuterClass, Offset, InnerClass, Seq),
+           sequenceAreAllDerived(Seq)),
+
     % Debugging
     logtraceln('~@~Q.', [not(factClassCallsMethod(InnerClass, InnerMethod)),
                          reasonClassRelatedMethod_C(OuterClass, OuterMethod,
@@ -2428,16 +2433,48 @@ reasonClassCallsMethod_C(Class1, Method2) :-
 % This predicate is used to see if the object at the listed offset is a Class, and if so, which
 % one.  It's notable in that it is recursive however, so it can cover multiple levels.  It
 % turns out this is important because inlining may hide one level of the hierarchy.
-:- table reasonClassAtOffset/3 as incremental.
-reasonClassAtOffset(OuterClass, Offset, InnerClass) :-
-    factObjectInObject(OuterClass, InnerClass, Offset).
+:- table reasonClassAtOffset/4 as incremental.
 
-reasonClassAtOffset(OuterClass, Offset, InnerClass) :-
+%% reasonClassAtOffset(OuterClass, Offset, InnerClass, [Fact]) :-
+%%     Fact=factDerivedClass(OuterClass, InnerClass, Offset),
+%%     Fact.
+
+%% reasonClassAtOffset(OuterClass, Offset, InnerClass, [Fact]) :-
+%%     Fact=factEmbeddedObject(OuterClass, InnerClass, Offset),
+%%     Fact.
+
+reasonClassAtOffset_int(OuterClass, Offset, InnerClass, [Fact]) :-
+    Fact=factObjectInObject(OuterClass, InnerClass, Offset),
+    Fact.
+
+reasonClassAtOffset_int(OuterClass, Offset, InnerClass, L) :-
     ground(Offset),
-    reasonClassAtOffset(OuterClass, MiddleOffset, MiddleClass),
+    reasonClassAtOffset_int(OuterClass, MiddleOffset, MiddleClass, OL),
     % If Offset is bound, use it to bind InnerOffset.
     InnerOffset is Offset - MiddleOffset,
-    reasonClassAtOffset(MiddleClass, InnerOffset, InnerClass).
+    reasonClassAtOffset_int(MiddleClass, InnerOffset, InnerClass, IL),
+    append(OL, IL, L).
+
+refineHelper(factObjectInObject(OC, IC, Off), _) :-
+    (var(OC); var(IC); var(Off)),
+    throw(system_error(refineHelper)).
+
+refineHelper(factObjectInObject(OC, IC, Off), factDerivedClass(OC, IC, Off)) :-
+    factDerivedClass(OC, IC, Off).
+
+refineHelper(factObjectInObject(OC, IC, Off), factEmbeddedObject(OC, IC, Off)) :-
+    factEmbeddedObject(OC, IC, Off).
+
+reasonClassAtOffset(OuterClass, Offset, InnerClass, RefinedList) :-
+    reasonClassAtOffset_int(OuterClass, Offset, InnerClass, FactList),
+    maplist(refineHelper, FactList, RefinedList).
+
+reasonClassAtOffset(OuterClass, Offset, InnerClass) :-
+    reasonClassAtOffset_int(OuterClass, Offset, InnerClass, _).
+
+isDerivedHelper(factDerivedClass(_, _, _)).
+
+sequenceAreAllDerived(L) :- maplist(isDerivedHelper, L).
 
 % ejs 6/14/22 Isn't this just a more specific version of _C?  It's not clear what the OIO tells
 % us.
