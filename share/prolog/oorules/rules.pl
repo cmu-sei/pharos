@@ -2363,18 +2363,18 @@ reasonClassRelatedMethod_C(InnerClass, InnerMethod) :-
     find(OuterMethod, OuterClass),
     % We must know that there's an object within an object at that offset.
     % See comments in reasonClassCallsMethod_D about using reasonClassAtOffset...
-    reasonClassAtOffset(OuterClass, Offset, InnerClass),
+    reasonClassAtOffset(OuterClass, Offset, InnerClass, Seq),
     iso_dif(OuterClass, InnerClass),
     iso_dif(InnerClass, InnerMethod),
 
     % Ensure that InnerClass is only reachable through inheritance
-    forall(reasonClassAtOffset(OuterClass, Offset, InnerClass, Seq),
-           sequenceAreAllDerived(Seq)),
+    forall(reasonClassAtOffset(OuterClass, Offset, InnerClass2, Seq),
+           ((OuterClass=0x9ef0fc -> logtraceln('DEBUG ~Q ~Q', [InnerClass2, Seq]); true), sequenceAreAllDerived(Seq))),
 
     % Debugging
     logtraceln('~@~Q.', [not(factClassCallsMethod(InnerClass, InnerMethod)),
                          reasonClassRelatedMethod_C(OuterClass, OuterMethod,
-                                                    InnerClass, InnerMethod)]).
+                                                    InnerClass, InnerMethod, offset=Offset, seq=Seq)]).
 
 
 % classCallsMethod(Class, Method) means that Method can be called by a method on Class.  The
