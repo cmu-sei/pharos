@@ -2465,6 +2465,8 @@ refineHelper(factObjectInObject(OC, IC, Off), factDerivedClass(OC, IC, Off)) :-
 refineHelper(factObjectInObject(OC, IC, Off), factEmbeddedObject(OC, IC, Off)) :-
     factEmbeddedObject(OC, IC, Off).
 
+refineHelper(factObjectInObject(OC, IC, Off), factObjectInObject(OC, IC, Off)).
+
 reasonClassAtOffset(OuterClass, Offset, InnerClass, RefinedList) :-
     reasonClassAtOffset_int(OuterClass, Offset, InnerClass, FactList),
     maplist(refineHelper, FactList, RefinedList).
