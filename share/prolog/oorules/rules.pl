@@ -2368,13 +2368,19 @@ reasonClassRelatedMethod_C(InnerClass, InnerMethod) :-
     iso_dif(InnerClass, InnerMethod),
 
     % Ensure that InnerClass is only reachable through inheritance
-    forall(reasonClassAtOffset(OuterClass, Offset, InnerClass2, Seq),
-           ((OuterClass=0x9ef0fc -> logtraceln('DEBUG ~Q ~Q', [InnerClass2, Seq]); true), sequenceAreAllDerived(Seq))),
+    sequenceAreAllDerived(Seq),
+
+    % And that *any* class at the same offset is only reachable through inheritance.
+    % Otherwise, we might be seeing a call to [Inherit, Embedded] but mistakenly say
+    % that InnerMethod, which is Embedded, is related.
+    forall(reasonClassAtOffset(OuterClass, Offset, _AnyInnerClassAtOffset, AnySeq),
+           sequenceAreAllDerived(AnySeq)),
 
     % Debugging
     logtraceln('~@~Q.', [not(factClassCallsMethod(InnerClass, InnerMethod)),
                          reasonClassRelatedMethod_C(OuterClass, OuterMethod,
-                                                    InnerClass, InnerMethod, offset=Offset, seq=Seq)]).
+                                                    InnerClass, InnerMethod,
+                                                    offset=Offset, seq=Seq)]).
 
 
 % classCallsMethod(Class, Method) means that Method can be called by a method on Class.  The
