@@ -2377,7 +2377,7 @@ reasonClassRelatedMethod_C(InnerClass, InnerMethod) :-
            sequenceAreAllDerived(AnySeq)),
 
     % Debugging
-    logtraceln('~@~Q.', [not(factClassCallsMethod(InnerClass, InnerMethod)),
+    logtraceln('~@~Q.', [not(factClassRelatedMethod(InnerClass, InnerMethod)),
                          reasonClassRelatedMethod_C(OuterClass, OuterMethod,
                                                     InnerClass, InnerMethod,
                                                     offset=Offset, seq=Seq)]).
