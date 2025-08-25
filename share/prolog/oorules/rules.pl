@@ -2466,10 +2466,10 @@ refineHelper(factObjectInObject(OC, IC, Off), _) :-
     throw(system_error(refineHelper)).
 
 refineHelper(factObjectInObject(OC, IC, Off), factDerivedClass(OC, IC, Off)) :-
-    factDerivedClass(OC, IC, Off).
+    factDerivedClass(OC, IC, Off), !.
 
 refineHelper(factObjectInObject(OC, IC, Off), factEmbeddedObject(OC, IC, Off)) :-
-    factEmbeddedObject(OC, IC, Off).
+    factEmbeddedObject(OC, IC, Off), !.
 
 refineHelper(factObjectInObject(OC, IC, Off), factObjectInObject(OC, IC, Off)).
 
