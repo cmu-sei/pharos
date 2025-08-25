@@ -2367,14 +2367,9 @@ reasonClassRelatedMethod_C(InnerClass, InnerMethod) :-
     iso_dif(OuterClass, InnerClass),
     iso_dif(InnerClass, InnerMethod),
 
-    % Ensure that InnerClass is only reachable through inheritance
-    sequenceAreAllDerived(Seq),
-
-    % And that *any* class at the same offset is only reachable through inheritance.
-    % Otherwise, we might be seeing a call to [Inherit, Embedded] but mistakenly say
-    % that InnerMethod, which is Embedded, is related.
+    % Ensure that any class at Offset is related (through inheritance).
     forall(reasonClassAtOffset(OuterClass, Offset, _AnyInnerClassAtOffset, AnySeq),
-           sequenceAreAllDerived(AnySeq)),
+           isOffsetPrecise(AnySeq)),
 
     % Debugging
     logtraceln('~@~Q.', [not(factClassRelatedMethod(InnerClass, InnerMethod)),
@@ -2483,6 +2478,21 @@ reasonClassAtOffset(OuterClass, Offset, InnerClass) :-
 isDerivedHelper(factDerivedClass(_, _, _)).
 
 sequenceAreAllDerived(L) :- maplist(isDerivedHelper, L).
+
+longest_suffix(Pred, List, Suffix) :-
+    append(_, Suffix, List),   % generates suffixes longest → shortest
+    call(maplist(Pred), Suffix),
+    !.
+
+zeroOff(factDerivedClass(_,_,0)).
+zeroOff(factEmbeddedClass(_,_,0)).
+zeroOff(factObjectInObject(_,_,0)).
+
+% Given a sub-object sequence, make sure that all objects at the final offset are derived,
+% which ensures they are all related.
+isOffsetPrecise(Seq) :-
+    longest_suffix(zeroOff, Seq, Suf),
+    sequenceAreAllDerived(Suf).
 
 % ejs 6/14/22 Isn't this just a more specific version of _C?  It's not clear what the OIO tells
 % us.
