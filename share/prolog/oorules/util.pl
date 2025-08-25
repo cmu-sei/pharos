@@ -5,6 +5,11 @@
 
 :- use_module(library(lists), [append/3, nth1/4, list_to_set/2]).
 
+longest_suffix(Pred, List, Suffix) :-
+    append(_, Suffix, List),   % generates suffixes longest → shortest
+    call(maplist(Pred), Suffix),
+    !.
+
 sort_tuple((A,B), (C,D)) :-
     (A < B -> (C=A, D=B); (C=B, D=A)).
 

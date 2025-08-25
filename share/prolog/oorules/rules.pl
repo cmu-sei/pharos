@@ -2363,13 +2363,19 @@ reasonClassRelatedMethod_C(InnerClass, InnerMethod) :-
     find(OuterMethod, OuterClass),
     % We must know that there's an object within an object at that offset.
     % See comments in reasonClassCallsMethod_D about using reasonClassAtOffset...
-    reasonClassAtOffset(OuterClass, Offset, InnerClass),
+    reasonClassAtOffset(OuterClass, Offset, InnerClass, Seq),
     iso_dif(OuterClass, InnerClass),
     iso_dif(InnerClass, InnerMethod),
+
+    % Ensure that any class at Offset is related (through inheritance).
+    forall(reasonClassAtOffset(OuterClass, Offset, _AnyInnerClassAtOffset, AnySeq),
+           isOffsetPrecise(AnySeq)),
+
     % Debugging
-    logtraceln('~@~Q.', [not(factClassCallsMethod(InnerClass, InnerMethod)),
+    logtraceln('~@~Q.', [not(factClassRelatedMethod(InnerClass, InnerMethod)),
                          reasonClassRelatedMethod_C(OuterClass, OuterMethod,
-                                                    InnerClass, InnerMethod)]).
+                                                    InnerClass, InnerMethod,
+                                                    offset=Offset, seq=Seq)]).
 
 
 % classCallsMethod(Class, Method) means that Method can be called by a method on Class.  The
@@ -2428,16 +2434,60 @@ reasonClassCallsMethod_C(Class1, Method2) :-
 % This predicate is used to see if the object at the listed offset is a Class, and if so, which
 % one.  It's notable in that it is recursive however, so it can cover multiple levels.  It
 % turns out this is important because inlining may hide one level of the hierarchy.
-:- table reasonClassAtOffset/3 as incremental.
-reasonClassAtOffset(OuterClass, Offset, InnerClass) :-
-    factObjectInObject(OuterClass, InnerClass, Offset).
+:- table reasonClassAtOffset/4 as incremental.
 
-reasonClassAtOffset(OuterClass, Offset, InnerClass) :-
+%% reasonClassAtOffset(OuterClass, Offset, InnerClass, [Fact]) :-
+%%     Fact=factDerivedClass(OuterClass, InnerClass, Offset),
+%%     Fact.
+
+%% reasonClassAtOffset(OuterClass, Offset, InnerClass, [Fact]) :-
+%%     Fact=factEmbeddedObject(OuterClass, InnerClass, Offset),
+%%     Fact.
+
+reasonClassAtOffset_int(OuterClass, Offset, InnerClass, [Fact]) :-
+    Fact=factObjectInObject(OuterClass, InnerClass, Offset),
+    Fact.
+
+reasonClassAtOffset_int(OuterClass, Offset, InnerClass, L) :-
     ground(Offset),
-    reasonClassAtOffset(OuterClass, MiddleOffset, MiddleClass),
+    reasonClassAtOffset_int(OuterClass, MiddleOffset, MiddleClass, OL),
     % If Offset is bound, use it to bind InnerOffset.
     InnerOffset is Offset - MiddleOffset,
-    reasonClassAtOffset(MiddleClass, InnerOffset, InnerClass).
+    reasonClassAtOffset_int(MiddleClass, InnerOffset, InnerClass, IL),
+    append(OL, IL, L).
+
+refineHelper(factObjectInObject(OC, IC, Off), _) :-
+    (var(OC); var(IC); var(Off)),
+    throw(system_error(refineHelper)).
+
+refineHelper(factObjectInObject(OC, IC, Off), factDerivedClass(OC, IC, Off)) :-
+    factDerivedClass(OC, IC, Off), !.
+
+refineHelper(factObjectInObject(OC, IC, Off), factEmbeddedObject(OC, IC, Off)) :-
+    factEmbeddedObject(OC, IC, Off), !.
+
+refineHelper(factObjectInObject(OC, IC, Off), factObjectInObject(OC, IC, Off)).
+
+reasonClassAtOffset(OuterClass, Offset, InnerClass, RefinedList) :-
+    reasonClassAtOffset_int(OuterClass, Offset, InnerClass, FactList),
+    maplist(refineHelper, FactList, RefinedList).
+
+reasonClassAtOffset(OuterClass, Offset, InnerClass) :-
+    reasonClassAtOffset_int(OuterClass, Offset, InnerClass, _).
+
+isDerivedHelper(factDerivedClass(_, _, _)).
+
+sequenceAreAllDerived(L) :- maplist(isDerivedHelper, L).
+
+zeroOff(factDerivedClass(_,_,0)).
+zeroOff(factEmbeddedClass(_,_,0)).
+zeroOff(factObjectInObject(_,_,0)).
+
+% Given a sub-object sequence, make sure that all objects at the final offset are derived,
+% which ensures they are all related.
+isOffsetPrecise(Seq) :-
+    longest_suffix(zeroOff, Seq, Suf),
+    sequenceAreAllDerived(Suf).
 
 % ejs 6/14/22 Isn't this just a more specific version of _C?  It's not clear what the OIO tells
 % us.
