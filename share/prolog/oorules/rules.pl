@@ -2479,11 +2479,6 @@ isDerivedHelper(factDerivedClass(_, _, _)).
 
 sequenceAreAllDerived(L) :- maplist(isDerivedHelper, L).
 
-longest_suffix(Pred, List, Suffix) :-
-    append(_, Suffix, List),   % generates suffixes longest → shortest
-    call(maplist(Pred), Suffix),
-    !.
-
 zeroOff(factDerivedClass(_,_,0)).
 zeroOff(factEmbeddedClass(_,_,0)).
 zeroOff(factObjectInObject(_,_,0)).
