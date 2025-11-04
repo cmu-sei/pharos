@@ -3409,7 +3409,7 @@ reasonClassSizeGTE_C(Class, Size) :-
     factClassSizeGTE(BaseClass, Size),
     % Debugging
     logtraceln('~@~Q.', [not((factClassSizeGTE(Class, ExistingSize), ExistingSize >= Size)),
-                         reasonClassSizeGTE_C(Class, BaseClass, Size)]).
+                         reasonClassSizeGTE_C(class=Class, base=BaseClass, size=Size)]).
 
 % GTE_D is based on observing a heap allocation and a constructor invoation on the same
 % thisptr.  The question is whether the the constructor belongs on the allocated object's
@@ -3533,8 +3533,8 @@ reasonClassSizeGTE_F(Class, Size) :-
     Size is Offset + InnerClassSize,
     % Debugging
     logtraceln('~@~Q.', [not((factClassSizeGTE(Class, ExistingSize), ExistingSize >= Size)),
-                         reasonClassSizeGTE_F(Class, Size, Offset,
-                                              InnerClass, InnerClassSize)]).
+                         reasonClassSizeGTE_F(class=Class, size=Size, offset=Offset,
+                                              innerclass=InnerClass, innersize=InnerClassSize)]).
 
 % Because a virtual function table is installed at a given offset in the object.
 % PAPER: CSize-5
