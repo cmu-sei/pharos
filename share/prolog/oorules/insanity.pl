@@ -77,20 +77,6 @@ insanityInheritanceTwice(Out) :-
                   [A,B,O1,O2])
     ).
 
-% A class may not be derived from itself (even with intermediate classes).
-% PAPER: Sanity-InheritanceLoop
-:- table insanityInheritanceLoop/1 as incremental.
-insanityInheritanceLoop(Out) :-
-    reasonDerivedClassRelationship(DerivedClass, BaseClass),
-    reasonDerivedClassRelationship(BaseClass, DerivedClass),
-
-    Out = (
-        logwarnln('Consistency checks failed.'),
-        logwarn('A class may not be derived from itself:'),
-        logwarn(' Class1=~Q', [BaseClass]),
-        logwarnln(' Class2=~Q', [DerivedClass])
-    ).
-
 % Classes may not have an invalid size.
 % Perhaps this rule replaces all other size rules?
 % PAPER: NA.  Handled by constraint system.
@@ -343,7 +329,6 @@ sanityChecks(Out) :-
     insanityBaseVFTableLarger(Out);
     insanityConstructorAndDeletingDestructor(Out);
     insanityInheritanceTwice(Out);
-    insanityInheritanceLoop(Out);
     insanityContradictoryMerges(Out);
     insanityContradictoryNOTConstructor(Out);
     insanityTwoRealDestructorsOnClass(Out).
