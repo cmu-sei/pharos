@@ -27,6 +27,7 @@ set(PHAROS_SOURCES
   memory.cpp
   method.cpp
   misc.cpp
+  nop.cpp
   ooanalyzer.cpp
   ooclass.cpp
   ooelement.cpp

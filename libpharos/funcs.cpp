@@ -9,7 +9,6 @@
 #include <AstTerm.h>
 #include <AstMatching.h>
 #include <AstTraversal.h>
-#include <sageInterfaceAsm.h> // For isNOP().
 
 #include <Rose/BinaryAnalysis/Unparser/Settings.h>
 #include <Rose/BinaryAnalysis/Unparser/Base.h>
@@ -23,6 +22,7 @@
 #include "method.hpp"
 #include "masm.hpp"
 #include "badcode.hpp"
+#include "nop.hpp"
 
 #include <boost/graph/iteration_macros.hpp>
 
@@ -1034,7 +1034,7 @@ void FunctionDescriptor::_compute_function_hashes() {
   auto finally = make_finalizer([this]{hashes_calculated = true;});
 
   const AddressIntervalSet& chunks = get_address_intervals();
-  for (SgAsmInstruction* insn : _get_insns_addr_order()) {
+  for (SgAsmInstruction* insn : _get_insns_addr_order(true)) {
     // Just append all of the bytes of the instruction to the exact bytes vector.
     SgUnsignedCharList bytes = insn->get_rawBytes();
     exact_bytes.insert(exact_bytes.end(), bytes.begin(), bytes.end());
@@ -1221,7 +1221,7 @@ SgAsmInstruction* FunctionDescriptor::get_insn(const rose_addr_t addr) const {
 }
 
 // explicit sorting of instructions by address using a map:
-InsnVector FunctionDescriptor::_get_insns_addr_order() const {
+InsnVector FunctionDescriptor::_get_insns_addr_order(bool skip_align) const {
   // TODO: do this once & cache on object?  Also, should there be another variant for "only
   // ones in CFG" too?
   InsnVector result;
@@ -1229,11 +1229,16 @@ InsnVector FunctionDescriptor::_get_insns_addr_order() const {
   // No function means no instructions.
   if (!func) return result;
 
-  // Iterate through basic blocks.
-  SgAsmStatementPtrList & bb_list = func->get_statementList();
+  auto nop_detector = Rose::BinaryAnalysis::NoOperation(ds.get_disassembler());
+  nop_detector.ignoreTerminalBranches(true);
+
+  // Iterate through basic blocks, determining which are alignment blocks (if requested).
+  SgAsmStatementPtrList& bb_list = func->get_statementList();
   for (size_t x = 0; x < bb_list.size(); x++) {
     SgAsmBlock *bb = isSgAsmBlock(bb_list[x]);
+
     if (bb == NULL) continue;
+    if (skip_align && block_is_align(bb, ds, nop_detector)) continue;
     SgAsmStatementPtrList & insns = bb->get_statementList();
 
     // Iterate through instructions
@@ -1253,9 +1258,9 @@ InsnVector FunctionDescriptor::_get_insns_addr_order() const {
   return result;
 }
 
-InsnVector FunctionDescriptor::get_insns_addr_order() const {
+InsnVector FunctionDescriptor::get_insns_addr_order(bool skip_align) const {
   read_guard<decltype(mutex)> guard{mutex};
-  return _get_insns_addr_order();
+  return _get_insns_addr_order(skip_align);
 }
 
 // There's probably a better way to do this.  I'm specifically looking for all addresses in the
@@ -1326,26 +1331,6 @@ BlockSet FunctionDescriptor::get_return_blocks() const {
     if (block) blocks.insert(block);
   }
   return blocks;
-}
-
-// A little helper function used below.
-bool is_nop_block(SgAsmBlock* bb) {
-  // Iterate through instructions, returning false on the first non-NOP instruction.
-  SgAsmStatementPtrList & insns = bb->get_statementList();
-  for (size_t y = 0; y < insns.size(); y++) {
-    SgAsmX86Instruction *insn = isSgAsmX86Instruction(insns[y]);
-    // We're hoping that we've already made instructions out of all the NOPs.
-    if (insn == NULL) return false;
-
-    // INT3 instructions are commonly used as padding.  I'm not sure if this should really be
-    // here, but there should certainly be some code somewhere to accept INT3 as padding.
-    if (insn->get_kind() == x86_int3) continue;
-
-    // If there's an instruction and it's NOT a NOP, we're not a NOP block.
-    // Say that fast three times. :-)
-    if (SageInterface::isNOP(insn) != true) return false;
-  }
-  return true;
 }
 
 // The implementation of how to follow thunks is complicated because it has multiple corner

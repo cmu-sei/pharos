@@ -12,6 +12,7 @@
 #include "masm.hpp"
 #include "convention.hpp"
 #include "enums.hpp"
+#include "nop.hpp"
 
 namespace pharos {
 
@@ -310,7 +311,7 @@ void RegisterUsage::analyze_parameters() {
 
       // NOP instructions cannot lead to saved registers or register parameters.  Failure to
       // tes for NOPs here breaks thiscall detection of 0x411585 in 2008/Debug/ooex0.
-      if (insn_is_nop(insn)) {
+      if (insn_is_nop(insn, fd->ds)) {
         SDEBUG << "NOP instruction isn't a parameter: " << debug_instruction(insn) << LEND;
         continue;
       }

@@ -5,6 +5,7 @@
 #include "vftable.hpp"
 #include "masm.hpp"
 #include "ooanalyzer.hpp"
+#include "nop.hpp"
 
 #include <integerOps.h>
 
@@ -404,7 +405,7 @@ void ThisCallMethod::find_members() {
       rose_addr_t iaddr = insn->get_address();
 
       // NOPs don't result in member accesses.
-      if (insn_is_nop(insn)) {
+      if (insn_is_nop(insn, fd->ds)) {
         GDEBUG << "NOP instruction " << debug_instruction(insn)
                << " is not a member access." << LEND;
         continue;

@@ -94,6 +94,7 @@ constexpr auto x86_sub              = Rose::BinaryAnalysis::x86_sub;
 constexpr auto x86_xor              = Rose::BinaryAnalysis::x86_xor;
 constexpr auto x86_rep_insb         = Rose::BinaryAnalysis::x86_rep_insb;
 constexpr auto x86_repne_scasw      = Rose::BinaryAnalysis::x86_repne_scasw;
+constexpr auto x86_nop              = Rose::BinaryAnalysis::x86_nop;
 
 // Some Nodes are actually stored in a vector
 using TreeNodePtrVector = std::vector<TreeNodePtr>;
@@ -292,9 +293,6 @@ bool insn_is_control_flow(const SgAsmInstruction* insn);
 
 // Does this instruction have a valid repeat (REP/REPE/REPNE) prefix?
 bool insn_is_repeat(const SgAsmX86Instruction* insn);
-
-// Is the instruction an X86 nop?
-bool insn_is_nop(const SgAsmX86Instruction* insn);
 
 // Get the fallthru address of this instruction.
 rose_addr_t insn_get_fallthru(SgAsmInstruction* insn);

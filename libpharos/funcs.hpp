@@ -251,7 +251,7 @@ class FunctionDescriptor : private Immobile {
   // const, but defer calculation until needed.
   void _compute_function_hashes();
   // A mutexless version of get_insns_addr_order for internal callers.
-  InsnVector _get_insns_addr_order() const;
+  InsnVector _get_insns_addr_order(bool skip_align) const;
 
   const PDG * _get_pdg();
 
@@ -463,7 +463,7 @@ class FunctionDescriptor : private Immobile {
   BlockSet get_return_blocks() const; // Deprecated in favor of get_return_vertices()
 
   SgAsmInstruction* get_insn(const rose_addr_t) const;
-  InsnVector get_insns_addr_order() const;
+  InsnVector get_insns_addr_order(bool skip_align = false) const;
 
   // Called once we've found all of the functions.
   void update_connections(FunctionDescriptorMap& fdmap);

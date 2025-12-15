@@ -419,7 +419,7 @@ class FnToYaraAnalyzer : public BottomUpAnalyzer {
     }
     addrs_processed.insert(fd->get_address());
 
-    InsnVector insns = fd->get_insns_addr_order();
+    InsnVector insns = fd->get_insns_addr_order(true);
     GDEBUG << "(Function " << fd->address_string() << ")" << LEND;
     ++func_count;
 
