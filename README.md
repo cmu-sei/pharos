@@ -115,7 +115,15 @@ Outputs are written next to the binary:
 - `<binary>.facts.pl`
 - `<binary>.results.pl`
 
-For a sample workflow, see `tests/src/oo/elf_hierarchy/README.md`.
+Quick workflow from repo root:
+
+```bash
+./ooa-elf --testflight-only
+./ooa-elf --binary /path/to/binary --ghidra-text-start 0x1035a0
+```
+
+Import `<binary>.ghidra.json` in Kaiju/OOAnalyzer.
+- https://github.com/cmu-sei/kaiju
 
 ### Local ELF/x64 Rule Notes
 
