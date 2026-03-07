@@ -129,9 +129,8 @@ usefulClass(Class) :-
 usefulClass(Class) :-
     findVFTable(_VFTable, Class).
 
-% A class is useful if it is not size zero.
-usefulClass(Class) :-
-    reasonMinimumPossibleClassSize(Class, Size), Size > 0.
+% A non-zero size alone is weak evidence and creates many false positives in stripped binaries.
+% Keep stronger usefulness criteria based on relationships, vftables, or method properties.
 
 % A class containing a constructor is useful.
 usefulClass(Class) :-
@@ -186,18 +185,23 @@ finalClass(ClassID, VFTableOrNull, CSize, LSize, RealDestructorOrNull, MethodLis
       (findVFTable(VFTable, Class),
        forall(findVFTable(OtherVFTable, Class), VFTable = OtherVFTable)))
      ->
-         VFTableOrNull=VFTable
+          VFTableOrNull=VFTable
      ;
-     VFTableOrNull=0),
+      VFTableOrNull=0),
     % Get the certain and likely class sizes.
-    reasonMinimumPossibleClassSize(Class, CSize),
+    reasonMinimumPossibleClassSize(Class, RawCSize),
+    pointerSize(PtrSize),
+    ((VFTableOrNull =\= 0, RawCSize < PtrSize)
+     -> CSize = PtrSize
+     ;  CSize = RawCSize),
     LSize is CSize,
     % Optionally find the the real destructor as well.
     ((find(RealDestructor, Class),
       factRealDestructor(RealDestructor))
      -> RealDestructorOrNull=RealDestructor; RealDestructorOrNull=0),
     findallMethods(Class, UnsortedMethodList),
-    sort(UnsortedMethodList, MethodList).
+    sort(UnsortedMethodList, MethodList),
+    MethodList \= [].
 
 % --------------------------------------------------------------------------------------------
 % This final result defines the properties of a VFTable.   More details in results.txt.
@@ -209,7 +213,8 @@ finalVFTable(VFTable, CertainSize, LikelySize, RTTIAddressOrNull, RTTINameOrNull
      RTTIAddressOrNull=0, RTTINameOrNull=''),
     findall(CertainOffset, factVFTableEntry(VFTable, CertainOffset, _Method), CertainOffsets),
     max_list(CertainOffsets, CertainMax),
-    CertainSize is CertainMax + 4,
+    pointerSize(PtrSize),
+    CertainSize is CertainMax + PtrSize,
     % It's a little unclear what the likely size means in a proper guessing framework.
     LikelySize is CertainSize.
 
@@ -402,10 +407,25 @@ finalMethodProperty(Method, virtual, certain) :-
 % information for simplicity and clarity.
 finalResolvedVirtualCall(Insn, VFTable, Target) :-
     % Have we already confirmed that the Insn is legitimately a virtual function call?
-    factVirtualFunctionCall(Insn, _Method, _ObjectOffset, VFTable, VFTableOffset),
+    reasonVirtualFunctionCall(Insn, _Method, _ObjectOffset, VFTable, VFTableOffset),
     % Now actually resolve the call using the VftableOffset.
     factVFTableEntry(VFTable, VFTableOffset, Entry),
     dethunk(Entry, Target).
+
+% Fallback for cases where virtual call classification is weak, but we can still map a likely
+% receiver class to a known vftable entry at the requested slot.
+finalResolvedVirtualCall(Insn, VFTable, Target) :-
+    possibleVirtualFunctionCall(Insn, Function, _ThisPtr, _ObjectOffset, VFTableOffset),
+    find(Function, Class),
+    find(VFTable, Class),
+    factVFTable(VFTable),
+    pointerSize(PtrSize),
+    0 is VFTableOffset mod PtrSize,
+    finalVFTable(VFTable, CertainSize, _LikelySize, _RTTIAddressOrNull, _RTTINameOrNull),
+    VFTableOffset < CertainSize,
+    finalVFTableEntry(VFTable, VFTableOffset, Entry),
+    dethunk(Entry, Target),
+    possibleMethod(Target).
 
 % --------------------------------------------------------------------------------------------
 %:- table finalThunk/2 as incremental.

@@ -19,7 +19,8 @@ rTTIName(TDA, Name) :-
 rTTITDA2VFTable(TDA, VFTable) :-
     rTTITypeDescriptor(TDA, _TIVTable, _Name, _DName),
     rTTICompleteObjectLocator(Pointer, _COLA, TDA, _CHDA, _Offset, _O2),
-    VFTable is Pointer + 4.
+    pointerSize(PtrSize),
+    VFTable is Pointer + PtrSize.
 
 % This rule must be tabled incremental because of the find() clause.
 :- table rTTITDA2Class/2 as incremental.
@@ -40,7 +41,8 @@ rTTISelfRef(TDA, COLA, CHDA, BCDA, VFTable, Name) :-
     rTTICompleteObjectLocator(Pointer, COLA, TDA, CHDA, _O1, _CDOffset),
     % CDOffset is usually zero, but we've found at least one case (mysqld) where it was 4.  It
     % appears that this rule is too strict if it limits the CDOffset to zero.
-    VFTable is Pointer + 4,
+    pointerSize(PtrSize),
+    VFTable is Pointer + PtrSize,
     rTTIClassHierarchyDescriptor(CHDA, _HierarchyAttributes, Bases),
     member(BCDA, Bases),
 
@@ -151,7 +153,8 @@ rTTIDerivedClass(DerivedVFTable, BaseVFTable, Offset) :-
 reasonRTTIInformation(VFTableAddress, Pointer, RTTIName) :-
     rTTICompleteObjectLocator(Pointer, _COLAddress, TDAddress, _CHDAddress, _O1, _O2),
     rTTITypeDescriptor(TDAddress, _VFTableCheck, RTTIName, _DName),
-    VFTableAddress is Pointer + 4,
+    pointerSize(PtrSize),
+    VFTableAddress is Pointer + PtrSize,
     factVFTable(VFTableAddress).
 
 % ============================================================================================

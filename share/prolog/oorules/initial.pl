@@ -41,12 +41,14 @@ possibleVFTableEntry(VFTable, 0, Entry) :-
 
 possibleVFTableEntry(VFTable, 0, Entry) :-
     rTTICompleteObjectLocator(Pointer, _Address, _TDAddress, _CHAddress, _Offset, _CDOffset),
-    VFTable is Pointer + 4,
+    pointerSize(PtrSize),
+    VFTable is Pointer + PtrSize,
     initialMemory(VFTable, Entry).
 
 possibleVFTableEntry(VFTable, NewOffset, Entry) :-
     possibleVFTableEntry(VFTable, Offset, _),
-    NewOffset is Offset + 4,
+    pointerSize(PtrSize),
+    NewOffset is Offset + PtrSize,
     Address is VFTable + NewOffset,
     not(possibleVFTableWrite(_Insn, _Func, _ThisPtr, _Offset, Address)),
     initialMemory(Address, Entry),
@@ -62,7 +64,8 @@ possibleVBTableEntry(VBTable, Offset, Value) :-
 
 possibleVBTableEntry(VBTable, NewOffset, Value) :-
     possibleVBTableEntry(VBTable, Offset, _),
-    NewOffset is Offset + 4,
+    pointerSize(PtrSize),
+    NewOffset is Offset + PtrSize,
     Address is VBTable + NewOffset,
     not(possibleVBTableWrite(_Insn, _Func, _ThisPtr, _Offset, Address)),
     initialMemory(Address, Value).
@@ -101,7 +104,8 @@ validVBTableEntry(VBTable, Entry, Offset) :-
     % There's a possible entry...
     possibleVBTableEntry(VBTable, Entry, Offset),
     % And the entry that came before it is already valid...
-    PreviousEntry is Entry - 4,
+    pointerSize(PtrSize),
+    PreviousEntry is Entry - PtrSize,
     validVBTableEntry(VBTable, PreviousEntry, _PreviousOffset),
     % The constructor that the table was installed into will be the derived constructor.
     possibleVBTableWrite(_Insn1, DerivedConstructor, _ThisPtr, _BaseOffset, VBTable),

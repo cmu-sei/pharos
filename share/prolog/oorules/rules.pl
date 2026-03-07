@@ -22,6 +22,7 @@
 :- table reasonMethod_N/1 as incremental.
 :- table reasonMethod_O/1 as incremental.
 :- table reasonMethod_P/1 as incremental.
+:- table reasonMethod_Q/1 as incremental.
 
 reasonMethod(Method) :-
     %logwarnln('Recomputing reasonMethod...'),
@@ -38,7 +39,8 @@ reasonMethod(Method) :-
         reasonMethod_K(Method),
         reasonMethod_L(Method),
         reasonMethod_M(Method),
-        reasonMethod_N(Method)
+        reasonMethod_N(Method),
+        reasonMethod_Q(Method)
       %        reasonMethod_O(Method),
       %        reasonMethod_P(Method)
       ]).
@@ -138,6 +140,17 @@ reasonMethod_N(Func) :-
     (callingConvention(Func, '__thiscall'); callingConvention(Func, 'invalid')),
     funcParameter(Func, ecx, ThisPtr),
     logtraceln('~@~Q.', [not(factMethod(Func)), reasonMethod_N(Func)]).
+
+% Because functions that install possible vftables are almost always OO methods.
+% This helps bootstrap method discovery on non-MSVC/x64 binaries where this-pointer tracking
+% is often incomplete.
+reasonMethod_Q(Method) :-
+    possibleVFTableWrite(_Insn, Method, _ThisPtr, _Offset, VFTable),
+    possibleVFTableEntry(VFTable, 0, Entry),
+    dethunk(Entry, VirtualMethod),
+    possibleMethod(VirtualMethod),
+    possibleMethod(Method),
+    logtraceln('~@~Q.', [not(factMethod(Method)), reasonMethod_Q(Method)]).
 
 % Because a known OO __thiscall method passes the this-pointer as parameter zero to a cdecl
 % method, making the method in question a __cdecl OO method.  This happens sometimes when the
@@ -838,6 +851,7 @@ reasonVFTable(VFTable) :-
 :- table reasonNOTVFTable_F/1 as opaque.
 :- table reasonNOTVFTable_G/1 as opaque.
 :- table reasonNOTVFTable_H/1 as incremental.
+:- table reasonNOTVFTable_I/1 as incremental.
 
 reasonNOTVFTable(Address) :-
     %logwarnln('Recomputing reasonNOTVFTable...'),
@@ -848,7 +862,8 @@ reasonNOTVFTable(Address) :-
         reasonNOTVFTable_E(Address),
         reasonNOTVFTable_F(Address),
         reasonNOTVFTable_G(Address),
-        reasonNOTVFTable_H(Address)
+        reasonNOTVFTable_H(Address),
+        reasonNOTVFTable_I(Address)
       ]).
 
 reasonNOTVFTable_A(Address) :-
@@ -891,6 +906,12 @@ reasonNOTVFTable_H(Address) :-
     possibleVFTableEntry(Address, 0, Entry),
     factVFTable(Entry),
     logtraceln('~Q.', reasonNOTVFTable_C(Address)).
+
+% Extremely low addresses are unlikely to be real vftables in hosted binaries.
+reasonNOTVFTable_I(Address) :-
+    integer(Address),
+    Address < 0x1000,
+    logtraceln('~Q.', reasonNOTVFTable_I(Address)).
 
 % --------------------------------------------------------------------------------------------
 % The Insn in Method writing to Offset in the current object is known to be writing a certain
@@ -1209,7 +1230,7 @@ reasonVFTableEntry(VFTable, 0, Entry) :-
 % PAPER: Larger-VFTableEntry
 reasonVFTableEntry(VFTable, Offset, Entry) :-
     (factVFTableEntry(VFTable, ExistingOffset, _OtherEntry);
-     (factVFTableSizeGTE(VFTable, ExistingSize), ExistingOffset is ExistingSize - 4)),
+     (factVFTableSizeGTE(VFTable, ExistingSize), pointerSize(PtrSize), ExistingOffset is ExistingSize - PtrSize)),
     possibleVFTableEntry(VFTable, Offset, Entry),
     Offset =< ExistingOffset.
 
@@ -1232,6 +1253,7 @@ reasonVFTableEntry(VFTable, Offset, Entry) :-
 :- table reasonNOTVFTableEntry_C/3 as incremental.
 :- table reasonNOTVFTableEntry_D/3 as incremental.
 :- table reasonNOTVFTableEntry_E/3 as incremental.
+:- table reasonNOTVFTableEntry_F/3 as incremental.
 
 reasonNOTVFTableEntry(VFTable, Offset, Entry) :-
     %logwarnln('Recomputing reasonNOTVFTableEntry...'),
@@ -1239,7 +1261,8 @@ reasonNOTVFTableEntry(VFTable, Offset, Entry) :-
         reasonNOTVFTableEntry_B(VFTable, Offset, Entry),
         reasonNOTVFTableEntry_C(VFTable, Offset, Entry),
         reasonNOTVFTableEntry_D(VFTable, Offset, Entry),
-        reasonNOTVFTableEntry_E(VFTable, Offset, Entry)
+        reasonNOTVFTableEntry_E(VFTable, Offset, Entry),
+        reasonNOTVFTableEntry_F(VFTable, Offset, Entry)
       ]).
 
 % Because it has already been proved not to be.
@@ -1264,7 +1287,8 @@ reasonNOTVFTableEntry_C(VFTable, Offset, Entry) :-
     factVFTable(VFTable),
     possibleVFTableEntry(VFTable, Offset, Entry),
     Offset \= 0,
-    ComputedOffset is Offset - 4,
+    pointerSize(PtrSize),
+    ComputedOffset is Offset - PtrSize,
     possibleVFTableEntry(VFTable, ComputedOffset, OtherEntry),
     factNOTVFTableEntry(VFTable, ComputedOffset, OtherEntry).
 
@@ -1286,6 +1310,13 @@ reasonNOTVFTableEntry_E(VFTable, Offset, Entry) :-
     factConstructor(Method),
     % Debugging
     logtraceln('~Q.', reasonNOTVFTableEntry_E(VFTable, Offset, Entry)).
+
+% Because the table entry does not resolve to a plausible method target.
+reasonNOTVFTableEntry_F(VFTable, Offset, Entry) :-
+    possibleVFTableEntry(VFTable, Offset, Entry),
+    dethunk(Entry, Method),
+    not(possibleMethod(Method)),
+    logtraceln('~Q.', reasonNOTVFTableEntry_F(VFTable, Offset, Entry)).
 
 % Implement: Because our derived VFTable already has a smaller table?
 
@@ -1309,7 +1340,8 @@ reasonVFTableSizeGTE(VFTable, Size) :-
     % If we leave E as _, it will case on different values of E!
     setof(S, E^factVFTableEntry(VFTable, S, E), Set),
     max_list(Set, LastEntry),
-    Size is LastEntry + 4,
+    pointerSize(PtrSize),
+    Size is LastEntry + PtrSize,
     % Debugging
     logtraceln('~@~Q.', [not((factVFTableSizeGTE(VFTable, ExistingSize),
                               ExistingSize >= Size)),
@@ -1363,7 +1395,8 @@ reasonVFTableSizeLTE(VFTable, Size) :-
     % If we leave M as _, it will case on different values of M!
     setof(S, M^factNOTVFTableEntry(VFTable, S, M), Set),
     max_list(Set, LastEntry),
-    Size is LastEntry + 4,
+    pointerSize(PtrSize),
+    Size is LastEntry + PtrSize,
     % Debugging
     logtraceln('~@~Q.', [not((factVFTableSizeLTE(VFTable, ExistingSize),
                               ExistingSize >= Size)),
@@ -1417,6 +1450,21 @@ reasonVirtualFunctionCall(Insn, Method, ObjectOffset, VFTable, VFTableOffset) :-
     logtraceln('~Q.', reasonVirtualFunctionCall(Insn, Method, ObjectOffset,
                                                 VFTable, VFTableOffset)).
 
+% Fallback for binaries where usage tracking is weak: infer receiver vftable from the caller's
+% class and validate that the requested slot resolves to a plausible method.
+reasonVirtualFunctionCall(Insn, Function, ObjectOffset, VFTable, VFTableOffset) :-
+    possibleVirtualFunctionCall(Insn, Function, _ThisPtr, ObjectOffset, VFTableOffset),
+    find(Function, Class),
+    find(VFTable, Class),
+    factVFTable(VFTable),
+    pointerSize(PtrSize),
+    0 is VFTableOffset mod PtrSize,
+    factVFTableEntry(VFTable, VFTableOffset, Entry),
+    dethunk(Entry, Target),
+    possibleMethod(Target),
+    logtraceln('~Q.', reasonVirtualFunctionCall_fallback(Insn, Function, ObjectOffset,
+                                                         VFTable, VFTableOffset)).
+
 % ============================================================================================
 % Rules for virtual BASE tables.
 % ============================================================================================
@@ -1433,7 +1481,8 @@ reasonVBTable(VBTable) :-
 % PAPER: ??? NEW!
 reasonVBTable(VBTable) :-
     factVBTableEntry(VBTable, Offset, _Value),
-    Offset >= 4,
+    pointerSize(PtrSize),
+    Offset >= PtrSize,
     logtraceln('~Q.', reasonVBTable_A(VBTable)).
 
 % --------------------------------------------------------------------------------------------
@@ -1463,9 +1512,10 @@ reasonVBTableEntry(VBTable, Offset, Value) :-
 
 % Because the first two(?) entries in the VBTable are always valid.
 % PAPER: ??? NEW!
-reasonVBTableEntry(VBTable, 4, Value) :-
+reasonVBTableEntry(VBTable, Offset, Value) :-
+    pointerSize(Offset),
     factVBTable(VBTable),
-    possibleVBTableEntry(VBTable, 4, Value).
+    possibleVBTableEntry(VBTable, Offset, Value).
 
 % Because there is a larger valid VBTable entry in the same VBTable.
 % PAPER: ??? NEW!
@@ -3591,7 +3641,8 @@ reasonClassSizeGTE_F(Class, Size) :-
 reasonClassSizeGTE_G(Class, Size) :-
     factVFTableWrite(_Insn, Method, ObjectOffset, _VFTable),
     find(Method, Class),
-    Size is ObjectOffset + 4,
+    pointerSize(PtrSize),
+    Size is ObjectOffset + PtrSize,
     % Debugging
     logtraceln('~@~Q.', [not((factClassSizeGTE(Class, ExistingSize), ExistingSize >= Size)),
                          reasonClassSizeGTE_G(Class, Size)]).

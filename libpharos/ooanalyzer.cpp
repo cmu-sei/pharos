@@ -3,6 +3,7 @@
 // This code represents the new Prolog based approach!
 
 #include <boost/range/adaptor/map.hpp>
+#include <vector>
 
 #include "pdg.hpp"
 #include "descriptors.hpp"
@@ -76,7 +77,53 @@ bool OOAnalyzer::identify_method(
     }
     auto imp = ds.get_import(thunk_target);
     if (imp && imp->is_name_valid()) {
-      if (ds.tags().check_name(imp->get_name(), tag)) {
+      const std::string& raw_name = imp->get_name();
+      std::vector<std::string> name_candidates;
+      auto add_candidate = [&name_candidates](const std::string& s) {
+        if (s.empty()) return;
+        for (const auto& existing : name_candidates) {
+          if (existing == s) return;
+        }
+        name_candidates.push_back(s);
+      };
+
+      add_candidate(raw_name);
+
+      // Common ELF import naming includes version suffixes (e.g., @GLIBCXX_3.4).
+      auto at = raw_name.find('@');
+      if (at != std::string::npos) add_candidate(raw_name.substr(0, at));
+
+      // Some environments prefix imports.
+      if (raw_name.rfind("ELF:", 0) == 0) add_candidate(raw_name.substr(4));
+      if (raw_name.rfind("__imp_", 0) == 0) add_candidate(raw_name.substr(6));
+
+      // Try variants without leading underscores.
+      if (!raw_name.empty() && raw_name[0] == '_') {
+        add_candidate(raw_name.substr(1));
+      }
+      if (raw_name.size() > 1 && raw_name[0] == '_' && raw_name[1] == '_') {
+        add_candidate(raw_name.substr(2));
+      }
+
+      bool tagged = false;
+      for (const auto& candidate : name_candidates) {
+        if (ds.tags().check_name(candidate, tag)) {
+          tagged = true;
+          break;
+        }
+
+        // Fallback for demangled import names.
+        if (tag == "new" && candidate.find("operator new") == 0) {
+          tagged = true;
+          break;
+        }
+        if (tag == "delete" && candidate.find("operator delete") == 0) {
+          tagged = true;
+          break;
+        }
+      }
+
+      if (tagged) {
         GINFO << "Function at " << fd.address_string() << " is a " << tag << "() method"
               << " because it thunks to import \"" << imp->get_name() << "\"." << LEND;
         (this->*set)(faddr);

@@ -56,6 +56,104 @@ that functionality now and in the future, install the
 [Kaiju](https://github.com/CERTCC/kaiju) Ghidra plugin, which includes
 the functionality that was provided by the OOAnalayzer plugin.
 
+### ELF x64 Quick Start (experimental)
+
+This fork includes a helper script that runs OOAnalyzer, rebases JSON addresses for Ghidra, and
+prints an RTTI/quality summary.
+
+From repo root:
+
+```bash
+./ooa-elf
+```
+
+It prompts for:
+
+- ELF binary path
+- Ghidra `.text` start address (or paste the full `.text` memory-map line)
+
+Non-interactive example:
+
+```bash
+./ooa-elf --binary /path/to/binary --ghidra-text-start 0x1035a0
+```
+
+Run health checks only (Docker/readelf/rules/binary input):
+
+```bash
+./ooa-elf --testflight-only
+```
+
+Or include checks before analysis:
+
+```bash
+./ooa-elf --testflight --binary /path/to/binary --ghidra-text-start 0x1035a0
+```
+
+`--testflight` is fail-fast: if any check fails, analysis is aborted.
+
+Optional local-image mode (uses your forked/built OOAnalyzer if available):
+
+```bash
+./ooa-elf \
+  --use-local-image \
+  --local-image-tag pharos-local:latest \
+  --binary /path/to/binary \
+  --ghidra-text-start 0x1035a0
+```
+
+If the local image is missing, it falls back to `--image` by default. To auto-build local image:
+
+```bash
+./ooa-elf --use-local-image --build-local-image --binary /path/to/binary --ghidra-text-start 0x1035a0
+```
+
+Outputs are written next to the binary:
+
+- `<binary>.json`
+- `<binary>.ghidra.json` (import this one in Kaiju)
+- `<binary>.facts.pl`
+- `<binary>.results.pl`
+
+For a sample workflow, see `tests/src/oo/elf_hierarchy/README.md`.
+
+### Local ELF/x64 Rule Notes
+
+The repo-local Prolog rules mounted by `./ooa-elf` include ELF/x64-focused updates intended to be
+generic (not sample-specific):
+
+- **x64 this-pointer normalization**
+  - Maps SysV x64 object-parameter flow (`rdi`) into existing OO reasoning paths that previously
+    expected x86-style this-pointer facts.
+  - Adds pointer-size helpers so rules use architecture-aware slot math.
+
+- **Pointer-size-aware vtable/RTTI math**
+  - Replaces hardcoded 4-byte assumptions in multiple rules and JSON export paths with pointer
+    size inference.
+  - Improves correctness for ELF64 vtable offsets and lengths.
+
+- **Safer JSON export behavior**
+  - Ensures JSON output stays valid even when no classes are recovered, instead of writing empty
+    files.
+
+- **Method and class quality gating**
+  - Tightens method bootstrap criteria and vtable-entry plausibility checks.
+  - Reduces weak/noisy singleton class artifacts in stripped binaries.
+
+- **Virtual-call fallback reasoning**
+  - Adds guarded fallback logic that attempts to resolve vcalls from possible vcall evidence when
+    full usage tracking is incomplete.
+  - Uses alignment, slot bounds, and plausible-target checks to avoid overfitting.
+
+- **ELF allocator/deallocator tagging expansion**
+  - Extends GNU `new/delete` symbol variants in local tagging data to improve detection coverage.
+
+Current practical status:
+
+- Class/vtable recovery is improved versus baseline on the sample binaries.
+- Vcall recovery and new/delete-driven object-flow facts can still be sparse on heavily optimized
+  stripped ELF binaries; this is a known current limitation.
+
 ## [CallAnalyzer](tools/callanalyzer/callanalyzer.pod)
 
 CallAnalyzer is a tool for reporting the static parameters to API
@@ -84,5 +182,3 @@ using the Pharos framework in the same style as the other tools.  It
 has not been actively maintained, and you should consider using ROSE's
 standard recursiveDisassemble instead
 <http://rosecompiler.org/ROSE_HTML_Reference/rosetools.html>.
-
-
