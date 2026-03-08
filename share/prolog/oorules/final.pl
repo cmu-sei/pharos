@@ -4,6 +4,16 @@
 % ============================================================================================
 
 :- use_module(library(lists), [member/2, min_list/2, max_list/2]).
+:- discontiguous finalMemberAccess/4.
+:- discontiguous finalMember/4.
+
+:- table fallbackVCallCaller/1 as opaque.
+fallbackVCallCaller(Caller) :-
+    setof(C,
+          Insn^ThisPtr^VFTableOffset^
+             possibleVirtualFunctionCall(Insn, C, ThisPtr, 0, VFTableOffset),
+          Callers),
+    member(Caller, Callers).
 
 % Long ago, Ed wrote: A solution is <list of classes, a mapping of classes to methods, a
 % mapping of classes to members, a mapping of each class to its immediate parents and offset, a
@@ -203,6 +213,20 @@ finalClass(ClassID, VFTableOrNull, CSize, LSize, RealDestructorOrNull, MethodLis
     sort(UnsortedMethodList, MethodList),
     MethodList \= [].
 
+% ELF32 fallback: if explicit vftable-write evidence is unavailable, synthesize coarse classes
+% from callsites that repeatedly perform virtual dispatch on offset-zero receivers.
+finalClass(ClassID, 0, CSize, LSize, 0, MethodList) :-
+    pointerSize(4),
+    noExplicitVFTableWrites,
+    pointerSize(PtrSize),
+    fallbackVCallCaller(Caller),
+    possibleVirtualFunctionCall(_Insn0, Caller, _ThisPtr0, 0, _VFOffset0),
+    ClassID is Caller + 0x70000000,
+    possibleMethod(Caller),
+    MethodList = [Caller],
+    CSize is PtrSize,
+    LSize is PtrSize.
+
 % --------------------------------------------------------------------------------------------
 % This final result defines the properties of a VFTable.   More details in results.txt.
 %:- finalVFTable/5 as incremental.
@@ -338,6 +362,25 @@ finalMember(ClassID, Offset, Sizes, certain) :-
     % As a hack to prevent us from outputting a Class, Offset multiple times, only proceed if
     % EarlySize == Sizes[0]
     UnsortedSizes = [EarlySize|_].
+
+% ELF32 fallback: treat repeated virtual dispatch through object offset zero as evidence of a
+% vptr-like member usage when explicit member-access facts are missing.
+finalMemberAccess(ClassID, 0, PtrSize, EvidenceList) :-
+    pointerSize(4),
+    noExplicitVFTableWrites,
+    pointerSize(PtrSize),
+    finalClass(ClassID, _VFTableOrNull, _CSize, _LSize, _RealDestructorOrNull, _MethodList),
+    Caller is ClassID - 0x70000000,
+    setof(Insn,
+          ThisPtr^VFTableOffset^(possibleVirtualFunctionCall(Insn, Caller, ThisPtr, 0, VFTableOffset),
+                                 0 is VFTableOffset mod PtrSize),
+          EvidenceList).
+
+finalMember(ClassID, 0, [PtrSize], likely) :-
+    pointerSize(4),
+    noExplicitVFTableWrites,
+    pointerSize(PtrSize),
+    finalMemberAccess(ClassID, 0, PtrSize, _EvidenceList).
 
 
 % ============================================================================================

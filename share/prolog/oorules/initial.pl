@@ -221,6 +221,17 @@ methodCallAtOffset(Insn, Caller, Callee, 0) :-
     %loginfoln('~Q.', methodCallAtOffset(Insn, Caller, Callee, 0)),
     true.
 
+% ELF32 fallback: derive call-at-offset directly from virtual-call candidates.
+methodCallAtOffset(Insn, Caller, Callee, Offset) :-
+    pointerSize(4),
+    noExplicitVFTableWrites,
+    possibleVirtualFunctionCall(Insn, Caller, _ThisPtr, Offset, _VFTableOffset),
+    Offset >= 0,
+    Offset =< 0x100,
+    callTarget(Insn, Caller, Thunk),
+    dethunk(Thunk, Callee),
+    possibleMethod(Callee).
+
 % Replaces an old-style fact of the same name.
 :- table thisPtrUsage/4 as opaque.
 
@@ -230,6 +241,15 @@ thisPtrUsage(Insn, Function, ThisPtr, Method) :-
     dethunk(Thunk, Method),
     %loginfoln('~Q.', thisPtrUsage(Insn, Function, ThisPtr, Method)),
     true.
+
+% ELF32 fallback: derive this-pointer usage directly from virtual-call candidates.
+thisPtrUsage(Insn, Function, ThisPtr, Method) :-
+    pointerSize(4),
+    noExplicitVFTableWrites,
+    possibleVirtualFunctionCall(Insn, Function, ThisPtr, _ObjectOffset, _VFTableOffset),
+    callTarget(Insn, Function, Thunk),
+    dethunk(Thunk, Method),
+    possibleMethod(Method).
 
 % Here's an example of how we can use the "invalid" offsets to our advantage.  Defining an
 % invalid access as an offset greater than 100,000 allows us to subsequently observe that
@@ -248,6 +268,17 @@ validMethodMemberAccess(Insn, Method, Offset, Size) :-
     methodMemberAccess(Insn, Method, Offset, Size),
     factMethod(Method),
     not(invalidMethodMemberAccess(Method)).
+
+% ELF32 fallback: count vptr-style accesses as member accesses when explicit write evidence is
+% unavailable. This helps recover usage evidence for class members.
+validMethodMemberAccess(Insn, Method, ObjectOffset, Size) :-
+    pointerSize(Size),
+    pointerSize(4),
+    noExplicitVFTableWrites,
+    possibleVirtualFunctionCall(Insn, Method, _ThisPtr, ObjectOffset, _VFTableOffset),
+    ObjectOffset >= 0,
+    ObjectOffset =< 0x40,
+    factMethod(Method).
 
 % ============================================================================================
 % This code is an attempt to handle functions optimized by link-time code generation to use the

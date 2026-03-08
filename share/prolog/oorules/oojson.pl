@@ -1,6 +1,6 @@
 :- use_module(library(http/json), [json_write_dict/2]).
 :- use_module(library(apply), [maplist/3]).
-:- use_module(library(lists), [member/2, max_list/2]).
+:- use_module(library(lists), [member/2, max_list/2, list_to_set/2]).
 
 :- dynamic finalClass/6.
 :- dynamic finalVFTable/5.
@@ -239,8 +239,12 @@ makeOneMethodJson(ClassId, AddressKey, Json):-
 
     makeMethodJson(ClassId, Address, AddressKey, Json).
 
+oneMethodForAddress(ClassId, Address, Address:Out) :-
+    once(makeOneMethodJson(ClassId, Address, Out)).
+
 makeAllMethodsJson(ClassId, Json):-
-    bagof(Address:Out, makeOneMethodJson(ClassId, Address, Out), KVPairs),
+    setof(Address, Out^makeOneMethodJson(ClassId, Address, Out), Addresses),
+    maplist(oneMethodForAddress(ClassId), Addresses, KVPairs),
     dict_create(Json, methods, KVPairs).
 
 % ===================================================================
@@ -383,19 +387,24 @@ makeOneClassInOrder(List, SortedClassNames, NameKey, Json):-
      ClassIdStr = Json.name),
     atom_string(NameKey, ClassIdStr).
 
+oneClassForId(SortedClassIDList, SortedClassNameList, ClassId, NameKey:ClsJson) :-
+    once(makeOneClassInOrder([ClassId], SortedClassNameList, NameKey, ClsJson)),
+    member(ClassId, SortedClassIDList).
+
 makeAllStructuresJson(Json):-
     % Get a list of Class IDs and sort them by the class ID.
     findall(ClsId, finalClass(ClsId, _, _, _, _, _), ClassIDList),
-    sort(0, @=<, ClassIDList, SortedClassIDList),
+    list_to_set(ClassIDList, UniqueClassIDList),
+    sort(0, @=<, UniqueClassIDList, SortedClassIDList),
     (SortedClassIDList = []
      ->
          Json = structures{}
      ;
-         maplist(makeClassName, SortedClassIDList, SortedClassNameList),
-         bagof(NameKey:ClsJson,
-               makeOneClassInOrder(SortedClassIDList, SortedClassNameList, NameKey, ClsJson),
-               KVPairs),
-         dict_create(Json, structures, KVPairs)).
+          maplist(makeClassName, SortedClassIDList, SortedClassNameList),
+          maplist(oneClassForId(SortedClassIDList, SortedClassNameList),
+                  SortedClassIDList,
+                  KVPairs),
+          dict_create(Json, structures, KVPairs)).
 
 makeOneVcallUsageJson(Insn, Key, Out):-
     setof(Target, VFTable^finalResolvedVirtualCall(Insn, VFTable, Target), Targets),
