@@ -36,6 +36,8 @@ TAGS
 /tests/**/*.cvdump
 /tests/**/*.symbolspre
 /python/pharos/test/testpath.py
+/tests/src/oo/oo_matrix_out/
+/tests/src/oo/elf_hierarchy/out/
 
 # to support (& ignore) build dirs in the repo dir:
 /build

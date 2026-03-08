@@ -835,6 +835,19 @@ reasonVFTable(VFTable) :-
 reasonVFTable(VFTable) :-
     factVirtualFunctionCall(_Insn, _Method, _ObjectOffset, VFTable, _VFTableOffset).
 
+% ELF32 fallback: when explicit write evidence is missing, accept vftables with at least two
+% plausible method entries as seeds for downstream reasoning.
+reasonVFTable(VFTable) :-
+    pointerSize(4),
+    noExplicitVFTableWrites,
+    possibleVFTableEntry(VFTable, 0, Entry0),
+    possibleMethod(Entry0),
+    pointerSize(PtrSize),
+    NextOffset is PtrSize,
+    possibleVFTableEntry(VFTable, NextOffset, Entry1),
+    possibleMethod(Entry1),
+    logtraceln('~Q.', reasonVFTable_fallback(VFTable)).
+
 % Implement: Derived/Base class relationships validate the virtual function tables at the same
 % offsets in oteher class?  Is it possible to conclude the derived class relationship without
 % the being certain of the VFTables (if there are VFTables)?

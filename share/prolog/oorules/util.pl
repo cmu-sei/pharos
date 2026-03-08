@@ -142,6 +142,12 @@ pointerSize(8) :-
     !.
 pointerSize(4).
 
+% Some ELF32 binaries lack explicit vftable-write facts from the native analysis pass.
+% This predicate allows guarded fallback rules to activate only in that situation.
+:- table noExplicitVFTableWrites/0 as opaque.
+noExplicitVFTableWrites :-
+    not(possibleVFTableWrite(_Insn, _Function, _ThisPtr, _Offset, _ExpandedThisPtr, _VFTable)).
+
 % Normalize this-pointer register for non-MSVC conventions.
 % On x64 SysV ABI, implicit object parameter is usually passed in RDI.
 funcParameter(Function, ecx, ThisPtr) :-
@@ -160,6 +166,20 @@ funcParameter(Function, 0, ThisPtr) :-
 callParameter(Insn, Function, 0, ThisPtr) :-
     callingConvention(Function, '__x64call'),
     callParameter(Insn, Function, rdi, ThisPtr).
+
+% ELF32 fallback: when explicit vftable writes are unavailable, allow cdecl arg0 to participate
+% in legacy ecx-based this-pointer rules.
+funcParameter(Function, ecx, ThisPtr) :-
+    pointerSize(4),
+    callingConvention(Function, '__cdecl'),
+    noExplicitVFTableWrites,
+    funcParameter(Function, 0, ThisPtr).
+
+callParameter(Insn, Function, ecx, ThisPtr) :-
+    pointerSize(4),
+    callingConvention(Function, '__cdecl'),
+    noExplicitVFTableWrites,
+    callParameter(Insn, Function, 0, ThisPtr).
 
 % Treat x64 calling convention as thiscall-like for OO reasoning purposes.
 callingConvention(Function, '__thiscall') :-

@@ -56,78 +56,39 @@ that functionality now and in the future, install the
 [Kaiju](https://github.com/CERTCC/kaiju) Ghidra plugin, which includes
 the functionality that was provided by the OOAnalayzer plugin.
 
-### ELF x64 Quick Start (experimental)
+### OOAnalyzer x86/x64 Matrix Workflow (experimental)
 
-This fork includes a helper script that runs OOAnalyzer, rebases JSON addresses for Ghidra, and
-prints an RTTI/quality summary.
+This branch folds local ELF/x64 Prolog updates directly into the main rule set under
+`share/prolog/oorules`, so the normal `ooanalyzer` entrypoint benefits from both legacy x86 PE
+and newer x64/ELF rule paths.
 
-From repo root:
-
-```bash
-./ooa-elf
-```
-
-It prompts for:
-
-- ELF binary path
-- Ghidra `.text` start address (or paste the full `.text` memory-map line)
-
-Non-interactive example:
+To exercise and benchmark recovery quality across formats/architectures, use:
 
 ```bash
-./ooa-elf --binary /path/to/binary --ghidra-text-start 0x1035a0
+./tests/src/oo/run_oo_matrix.sh
 ```
 
-Run health checks only (Docker/readelf/rules/binary input):
+This builds and analyzes one single C++ source (`tests/src/oo/oo_matrix10.cpp`) across:
 
-```bash
-./ooa-elf --testflight-only
-```
+- PE and ELF
+- x86 and x64
+- RTTI on and RTTI off
+- stripped and unstripped
 
-Or include checks before analysis:
+Artifacts:
 
-```bash
-./ooa-elf --testflight --binary /path/to/binary --ghidra-text-start 0x1035a0
-```
+- binaries: `tests/src/oo/oo_matrix_out/bin`
+- ooanalyzer output: `tests/src/oo/oo_matrix_out/analysis`
+- combined report: `tests/src/oo/oo_matrix_out/report/accuracy_report.txt`
 
-`--testflight` is fail-fast: if any check fails, analysis is aborted.
+The report merges x86 and x64 outcomes into one summary and prints per-variant class recall
+against the known 10-class ground truth in the source program.
 
-Optional local-image mode (uses your forked/built OOAnalyzer if available):
-
-```bash
-./ooa-elf \
-  --use-local-image \
-  --local-image-tag pharos-local:latest \
-  --binary /path/to/binary \
-  --ghidra-text-start 0x1035a0
-```
-
-If the local image is missing, it falls back to `--image` by default. To auto-build local image:
-
-```bash
-./ooa-elf --use-local-image --build-local-image --binary /path/to/binary --ghidra-text-start 0x1035a0
-```
-
-Outputs are written next to the binary:
-
-- `<binary>.json`
-- `<binary>.ghidra.json` (import this one in Kaiju)
-- `<binary>.facts.pl`
-- `<binary>.results.pl`
-
-Quick workflow from repo root:
-
-```bash
-./ooa-elf --testflight-only
-./ooa-elf --binary /path/to/binary --ghidra-text-start 0x1035a0
-```
-
-Import `<binary>.ghidra.json` in Kaiju/OOAnalyzer.
-- https://github.com/cmu-sei/kaiju
+For detailed benchmark notes, see `tests/src/oo/README.md`.
 
 ### Local ELF/x64 Rule Notes
 
-The repo-local Prolog rules mounted by `./ooa-elf` include ELF/x64-focused updates intended to be
+The main Prolog rules in `share/prolog/oorules` include ELF/x64-focused updates intended to be
 generic (not sample-specific):
 
 - **x64 this-pointer normalization**

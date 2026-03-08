@@ -8,12 +8,29 @@
 
 :- table possibleVFTableWrite/5 as opaque.
 :- table possibleVBTableWrite/5 as opaque.
+:- discontiguous possibleVFTableWrite/5.
 
 % For now, ignore the ExpandedThisPtr argument.
 possibleVFTableWrite(Insn, Function, ThisPtr, Offset, VFTable) :-
   possibleVFTableWrite(Insn, Function, ThisPtr, Offset, _ExpandedThisPtr, VFTable).
 possibleVBTableWrite(Insn, Function, ThisPtr, Offset, VBTable) :-
   possibleVBTableWrite(Insn, Function, ThisPtr, Offset, _ExpandedThisPtr, VBTable).
+
+% ELF32 fallback: infer possible vftable writes from virtual-call evidence when native
+% possibleVFTableWrite/6 facts are absent.
+possibleVFTableWrite(Insn, Function, ThisPtr, 0, VFTable) :-
+  pointerSize(4),
+  noExplicitVFTableWrites,
+  possibleVirtualFunctionCall(Insn, Function, ThisPtr, 0, VFTableOffset),
+  VFTableOffset >= 0,
+  VFTableOffset =< 0x40,
+  callTarget(Insn, Function, Thunk),
+  dethunk(Thunk, Target),
+  possibleMethod(Target),
+  initialMemory(VFEntryAddress, Entry),
+  dethunk(Entry, Target),
+  VFTable is VFEntryAddress - VFTableOffset,
+  VFTable >= 0x1000.
 
 :- table possibleConstructor/1 as opaque.
 
@@ -38,6 +55,20 @@ possibleDestructor(M) :-
 possibleVFTableEntry(VFTable, 0, Entry) :-
     possibleVFTableWrite(_Insn, _Func, _ThisPtr, _ObjectOffset, VFTable),
     initialMemory(VFTable, Entry).
+
+% ELF32 fallback: recover candidate vftables directly from memory shape when explicit write facts
+% are unavailable. Require at least two plausible method-like entries.
+possibleVFTableEntry(VFTable, 0, Entry) :-
+    pointerSize(4),
+    noExplicitVFTableWrites,
+    initialMemory(VFTable, Entry),
+    Entry > 0x1000,
+    possibleMethod(Entry),
+    pointerSize(PtrSize),
+    Address2 is VFTable + PtrSize,
+    initialMemory(Address2, Entry2),
+    Entry2 > 0x1000,
+    possibleMethod(Entry2).
 
 possibleVFTableEntry(VFTable, 0, Entry) :-
     rTTICompleteObjectLocator(Pointer, _Address, _TDAddress, _CHAddress, _Offset, _CDOffset),
