@@ -8,14 +8,14 @@ Docker images.
 
 The first step is to download the image:
 ```
-$ docker pull seipharos/pharos
+$ docker pull ghcr.io/cmu-sei/pharos:master
 ```
 
 To start an interactive session in which the host directory `/dir` is
 mapped to `/dir` inside your container, run the following
 command:
 ```
-$ docker run --rm -it -v /dir:/dir seipharos/pharos
+$ docker run --rm -it -v /dir:/dir ghcr.io/cmu-sei/pharos:master
 ```
 
 The pharos tools will be installed in `/usr/local/bin`.
@@ -24,7 +24,7 @@ The pharos tools will be installed in `/usr/local/bin`.
 
 You can also build your own Docker image with:
 ```
-$ docker build --build-arg NCPU=4 -t seipharos/pharos .
+$ docker build --build-arg NCPU=4 -t ghcr.io/cmu-sei/pharos:master .
 ```
 
 where 4 is the number of cores you wish to use for building.  Using
