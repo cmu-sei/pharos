@@ -66,7 +66,19 @@ names:
   "_Znam": new,
   # _Znwm: operator new(unsigned long)
   "_Znwm": new,
+  # _ZnwmRKSt9nothrow_t: operator new(unsigned long, std::nothrow_t const&)
+  "_ZnwmRKSt9nothrow_t": new,
+  # _ZnwmSt11align_val_t: operator new(unsigned long, std::align_val_t)
+  "_ZnwmSt11align_val_t": new,
   "_ZnwmPv": new,
+  # _ZnwmSt11align_val_tRKSt9nothrow_t
+  "_ZnwmSt11align_val_tRKSt9nothrow_t": new,
+  # _ZnamRKSt9nothrow_t: operator new[](unsigned long, std::nothrow_t const&)
+  "_ZnamRKSt9nothrow_t": new,
+  # _ZnamSt11align_val_t: operator new[](unsigned long, std::align_val_t)
+  "_ZnamSt11align_val_t": new,
+  # _ZnamSt11align_val_tRKSt9nothrow_t
+  "_ZnamSt11align_val_tRKSt9nothrow_t": new,
 
   # ============================================================================
   # delete methods by name
@@ -135,6 +147,16 @@ names:
   "_ZdlPvS_t": delete,
   # _ZdaPv: operator delete[](void*)
   "_ZdaPv": delete,
+  # _ZdaPvm: operator delete[](void*, unsigned long)
+  "_ZdaPvm": delete,
+  # _ZdlPvSt11align_val_t: operator delete(void*, std::align_val_t)
+  "_ZdlPvSt11align_val_t": delete,
+  # _ZdlPvmSt11align_val_t: operator delete(void*, unsigned long, std::align_val_t)
+  "_ZdlPvmSt11align_val_t": delete,
+  # _ZdaPvSt11align_val_t: operator delete[](void*, std::align_val_t)
+  "_ZdaPvSt11align_val_t": delete,
+  # _ZdaPvmSt11align_val_t: operator delete[](void*, unsigned long, std::align_val_t)
+  "_ZdaPvmSt11align_val_t": delete,
 
   # ============================================================================
   # purecall functions by name
@@ -498,10 +520,6 @@ hashes:
   # ============================================================================
   # These methods are not indicative of delete or new, but there's a method
   # called from this method, and if it's indicative, then so is this method.
-
-  # C: _free_dbg(p1, -1); return;
-  # e.g. 0x00402510 in vs2019/dc0d0o0/Debug/ooex5.exe
-  "E34CEDB1A0A02AA76173BA4A52CAB822": callstub,
 
   # return func(p1);
   # e.g. 0x004019E0 in vs2019/dc0d0o0/Debug/ooex5.exe
