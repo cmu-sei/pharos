@@ -667,6 +667,17 @@ OOSolver::add_thisptrdefinition_facts()
   }
 }
 
+// Returns true if a calling convention is appropriate for the detected ABI.  Conventions tagged
+// ABI::UNKNOWN are always permitted.  This prevents e.g. __sysv32call from being emitted as a
+// fact for a PE/MSVC binary.
+static bool
+abi_matches_convention(DescriptorSet::ABI binary_abi, const CallingConvention& cc)
+{
+  auto cc_abi = cc.get_abi();
+  if (cc_abi == CallingConvention::ABI::UNKNOWN) return true;
+  return cc_abi == binary_abi;
+}
+
 // Report facts about functions (like purecall).
 void
 OOSolver::add_function_facts(const OOAnalyzer& ooa)
@@ -685,9 +696,11 @@ OOSolver::add_function_facts(const OOAnalyzer& ooa)
       session->add_fact("thunk", fdaddr, fd.get_jmp_addr());
     }
 
-    // Report all calling conventions for all functions.
+    // Report all calling conventions for all functions, filtered by the detected ABI so that
+    // e.g. __sysv32call is not emitted for PE binaries or __thiscall for ELF binaries.
     auto conventions = fd.get_calling_conventions();
     for (const CallingConvention* cc: conventions) {
+      if (!abi_matches_convention(ooa.ds.get_abi(), *cc)) continue;
       session->add_fact("callingConvention", fdaddr, cc->get_name());
     }
 
@@ -780,9 +793,10 @@ OOSolver::add_import_facts(const OOAnalyzer& ooa)
 
         session->add_fact("symbolClass", id.get_address(), id.get_name(), clsname, method_name);
 
-        // Add calling convention for imported functions
+        // Add calling convention for imported functions, filtered by ABI.
         auto conventions = id.get_function_descriptor()->get_calling_conventions();
         for (const CallingConvention* cc: conventions) {
+          if (!abi_matches_convention(ooa.ds.get_abi(), *cc)) continue;
           session->add_fact("callingConvention", id.get_address(), cc->get_name());
         }
         if (dtype->name.front()->is_ctor) {

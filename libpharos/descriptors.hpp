@@ -54,13 +54,8 @@ class DescriptorSet
 {
  public:
   // The ABI detected from the binary file format and architecture.
-  enum class ABI {
-    UNKNOWN,
-    MSVC_32,  // Windows PE 32-bit (__thiscall, this-pointer in ECX)
-    MSVC_64,  // Windows PE 64-bit (this-pointer in RCX)
-    SYSV_32,  // ELF 32-bit (this-pointer as first stack argument)
-    SYSV_64,  // ELF 64-bit (this-pointer in RDI)
-  };
+  // Re-exported from CallingConvention::ABI so callers can use DescriptorSet::ABI as before.
+  using ABI = CallingConvention::ABI;
 
  private:
   CallDescriptorMap call_descriptors;

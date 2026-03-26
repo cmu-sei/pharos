@@ -1258,6 +1258,7 @@ CallingConventionMatcher::CallingConventionMatcher()
   cc.set_retval_register(eax);
   cc.set_param_order(CallingConvention::ORDER_RTL);
   cc.add_nonvolatile(nonvol.get_nonvolatile());
+  cc.set_abi(CallingConvention::ABI::MSVC_32);
   conventions.push_back(cc);
 
   // Standard call
@@ -1268,6 +1269,7 @@ CallingConventionMatcher::CallingConventionMatcher()
   cc.set_retval_register(eax);
   cc.set_param_order(CallingConvention::ORDER_RTL);
   cc.add_nonvolatile(nonvol.get_nonvolatile());
+  cc.set_abi(CallingConvention::ABI::MSVC_32);
   conventions.push_back(cc);
 
   // This call
@@ -1280,6 +1282,7 @@ CallingConventionMatcher::CallingConventionMatcher()
   cc.add_reg_param(ecx);
   cc.set_this_register(ecx);
   cc.add_nonvolatile(nonvol.get_nonvolatile());
+  cc.set_abi(CallingConvention::ABI::MSVC_32);
   conventions.push_back(cc);
 
   // Fast call
@@ -1292,6 +1295,7 @@ CallingConventionMatcher::CallingConventionMatcher()
   cc.add_reg_param(ecx);
   cc.add_reg_param(edx);
   cc.add_nonvolatile(nonvol.get_nonvolatile());
+  cc.set_abi(CallingConvention::ABI::MSVC_32);
   conventions.push_back(cc);
 
 #if 0
@@ -1318,6 +1322,7 @@ CallingConventionMatcher::CallingConventionMatcher()
   cc.add_reg_param(ecx); // Might also be a this pointer...
   cc.add_reg_param(edx);
   cc.add_nonvolatile(nonvol.get_nonvolatile());
+  cc.set_abi(CallingConvention::ABI::MSVC_32);
   conventions.push_back(cc);
 
   // System V i386 C++ ABI (Linux/ELF 32-bit)
@@ -1329,6 +1334,7 @@ CallingConventionMatcher::CallingConventionMatcher()
   cc.set_param_order(CallingConvention::ORDER_RTL);
   cc.set_this_location(CallingConvention::THIS_FIRST_PARAM);
   cc.add_nonvolatile(nonvol.get_nonvolatile());
+  cc.set_abi(CallingConvention::ABI::SYSV_32);
   conventions.push_back(cc);
 
   // Obsolete calling conventions
@@ -1380,6 +1386,7 @@ CallingConventionMatcher::CallingConventionMatcher()
   cc.add_reg_param(xmm3);
   cc.set_this_register(rdi);
   cc.add_nonvolatile(nonvol.get_nonvolatile());
+  cc.set_abi(CallingConvention::ABI::SYSV_64);
   conventions.push_back(cc);
 
   // 64-bit Application Binary Interface
@@ -1417,6 +1424,7 @@ CallingConventionMatcher::CallingConventionMatcher()
   cc.add_reg_param(xmm3);
   cc.set_this_register(rcx);
   cc.add_nonvolatile(nonvol.get_nonvolatile());
+  cc.set_abi(CallingConvention::ABI::MSVC_64);
   conventions.push_back(cc);
 
 }
