@@ -259,17 +259,23 @@ OOSolver::add_method_facts(const OOAnalyzer& ooa)
       thisptr_term = "sv_" + std::to_string(this_ptr->get_hash());
     }
 
-    // Hackish forced exporting of "thisptr" arguments as register "ECX".  There's a difference
-    // between how the thisptr symbolic values are being determined for thiscall methods, and
-    // how it's being determined for function calling conventions in general.  By exporting the
-    // facts related to this defect in a way that draws more attention to the real problem that
-    // then old thisCallMethod facts, we can narrow in on the real problem gradually.  It's
-    // also not accetpable to export a normal callingConvention fact and normal funcParameter
-    // fact, as this results in non-OO functions
+    // Hackish forced exporting of "thisptr" arguments when no calling convention was detected.
+    // There's a difference between how the thisptr symbolic values are being determined for
+    // thiscall methods, and how it's being determined for function calling conventions in
+    // general.  By exporting the facts related to this defect in a way that draws more
+    // attention to the real problem than the old thisCallMethod facts, we can narrow in on the
+    // real problem gradually.  It's also not acceptable to export a normal callingConvention
+    // fact and normal funcParameter fact, as this results in non-OO functions.
     auto conventions = tcm->fd->get_calling_conventions();
     if (conventions.size() == 0) {
       session->add_fact("callingConvention", tcm->get_address(), "invalid");
-      session->add_fact("funcParameter", tcm->get_address(), "ecx", thisptr_term);
+      auto reg_name = tcm->fd->ds.get_this_ptr_reg_name();
+      if (reg_name) {
+        session->add_fact("funcParameter", tcm->get_address(), *reg_name, thisptr_term);
+      } else {
+        // System V 32-bit: this-pointer is the first stack argument (parameter position 0).
+        session->add_fact("funcParameter", tcm->get_address(), 0, thisptr_term);
+      }
     }
 
     // These facts are getting closer to correct, but should still be reviewed once more.

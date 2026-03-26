@@ -137,8 +137,12 @@ bool ThisCallMethod::find_this_pointer()
 
   // We should probably be using a RegisterDescriptor (or an AbstractAccess)
   // to describe the this pointer anyway.  Here we need it to pass to is_reg().
-  RegisterDescriptor this_reg = fd->ds.get_arch_reg(THIS_PTR_STR);
-  RegisterDescriptor edx = fd->ds.get_arch_reg("edx");
+  auto this_reg = fd->ds.get_this_ptr_reg();
+
+  // For System V 32-bit, the this-pointer is the first stack argument, not a register.
+  if (!this_reg) {
+    return find_this_pointer_from_stack();
+  }
 
   const PDG* p = fd->get_pdg();
   if (p == NULL) return false;
@@ -174,8 +178,8 @@ bool ThisCallMethod::find_this_pointer()
   GDEBUG << LEND;
 
   // So this is our ghetto version instead... Currently if we're not using the this_pointer
-  // (ECX), there's no point in continuing in ths function.
-  if (ru.parameter_registers.find(this_reg) == ru.parameter_registers.end()) {
+  // register, there's no point in continuing in this function.
+  if (ru.parameter_registers.find(*this_reg) == ru.parameter_registers.end()) {
     return false;
   }
 
@@ -184,8 +188,12 @@ bool ThisCallMethod::find_this_pointer()
   // causes saved register detection to fail, which results in extra parameters. :-( In the
   // meantime, let's just exclude EDX, which corrects for almost all of the __fastcall
   // functions that are currently causing the majority of the problems.
-  if (ru.parameter_registers.find(edx) != ru.parameter_registers.end()) {
-    return false;
+  // This heuristic applies to MSVC_32 where ECX/EDX overlap is the issue; skip for other ABIs.
+  if (fd->ds.get_abi() == DescriptorSet::ABI::MSVC_32) {
+    RegisterDescriptor edx = fd->ds.get_arch_reg("edx");
+    if (ru.parameter_registers.find(edx) != ru.parameter_registers.end()) {
+      return false;
+    }
   }
 
   auto & ud = p->get_usedef();
@@ -202,7 +210,7 @@ bool ThisCallMethod::find_this_pointer()
       // For each register access...
       for (const AbstractAccess& aa : ud.get_reads(insn->get_address())) {
         // We're looking for an access to the "this-pointer" register.
-        if (!aa.is_reg(this_reg)) continue;
+        if (!aa.is_reg(*this_reg)) continue;
 
         // We're looking for an access to the "this-pointer" register.
         const TreeNodePtr & tnptr = aa.value->get_expression();
@@ -243,11 +251,35 @@ bool ThisCallMethod::find_this_pointer()
   return false;
 }
 
+// For System V 32-bit: find the this-pointer from the first stack parameter.
+bool ThisCallMethod::find_this_pointer_from_stack()
+{
+  GTRACE << "ThisCallMethod::find_this_pointer_from_stack(): " << fd->address_string() << LEND;
+
+  const ParameterDefinition* pd = fd->get_parameters().get_stack_parameter(0);
+  if (!pd) {
+    GDEBUG << "SV32: No first stack parameter for " << fd->address_string() << LEND;
+    return false;
+  }
+  SymbolicValuePtr sv = pd->get_value();
+  if (!sv) return false;
+  LeafNodePtr ln = sv->get_expression()->isLeafNode();
+  if (!ln) {
+    GDEBUG << "SV32: First stack param is non-leaf for " << fd->address_string() << LEND;
+    return false;
+  }
+  leaf = ln;
+  thisptr = sv;
+  GDEBUG << "SV32: Accepted thisptr from first stack param for " << fd->address_string() << LEND;
+  return true;
+}
+
 void ThisCallMethod::test_for_constructor() {
   // This method is a heuristic attempt to determine whether we're a constructor or not.  The
-  // rule is that we're not a constructor if we don't return (in EAX) the this-pointer that was
-  // passed in ECX.  We originally thought that this rule was flawed, but have subsequently
-  // decided that perhaps it's actually a sound rule (for the Visual Studio compiler).
+  // rule is that we're not a constructor if we don't return (in EAX/RAX) the this-pointer that
+  // was passed in ECX/RDI (or as the first stack argument for SV32).  We originally thought
+  // that this rule was flawed, but have subsequently decided that perhaps it's actually a sound
+  // rule (for the Visual Studio compiler).
 
   // See commentary in find_this_pointer() regarding thunks, which are now handled as
   // separately exported facts in Prolog.
@@ -259,25 +291,34 @@ void ThisCallMethod::test_for_constructor() {
 
   // Get definition and usage analysis, so that we can access in the input and output states.
   const DUAnalysis& du = p->get_usedef();
-  // Obtain the final value of eax (the return value).
-  RegisterDescriptor eaxrd = fd->ds.get_arch_reg("eax");
+  // Obtain the final value of the return register (EAX or RAX depending on ABI).
+  RegisterDescriptor retval_rd = fd->ds.get_arch_reg(fd->ds.get_retval_reg_name());
   // If we don't have an output state, it's because analysis failed.  Just return that the
   // function is not a constructor in the lack of any better evidence.
   const SymbolicStatePtr output_state = du.get_output_state();
   if (!output_state) return;
-  SymbolicValuePtr final_eax = output_state->read_register(eaxrd);
-  // And the initial value of ECX (the this pointer).
-  RegisterDescriptor ecxrd = fd->ds.get_arch_reg(THIS_PTR_STR);
-  // Cory's unsure if it's even possible to be missing an input state, but returning false wil
-  // be better than performing an invalid memory dereference.
-  const SymbolicStatePtr input_state = du.get_input_state();
-  if (!input_state) return;
-  SymbolicValuePtr initial_ecx = input_state->read_register(ecxrd);
+  SymbolicValuePtr final_retval = output_state->read_register(retval_rd);
+
+  // Obtain the initial value of the this-pointer.
+  SymbolicValuePtr initial_thisptr;
+  auto this_rd = fd->ds.get_this_ptr_reg();
+  if (this_rd) {
+    // Cory's unsure if it's even possible to be missing an input state, but returning false
+    // will be better than performing an invalid memory dereference.
+    const SymbolicStatePtr input_state = du.get_input_state();
+    if (!input_state) return;
+    initial_thisptr = input_state->read_register(*this_rd);
+  } else {
+    // System V 32-bit: this-pointer was captured from the stack parameter in
+    // find_this_pointer_from_stack(), so use the already-stored symbolic value.
+    initial_thisptr = thisptr;
+  }
+  if (!initial_thisptr) return;
 
   // If they can't be equal, then we're going to say that we're not a constructor.  While this
   // is a good general rule, it's not always true.  We could be returning a new instance of the
   // same object that's different than the one we were passed for example.
-  if (final_eax->can_be_equal(initial_ecx)) {
+  if (final_retval->can_be_equal(initial_thisptr)) {
     GINFO << "Constructor test succeeded for " << addr_str(get_address()) << LEND;
     returns_self = true;
   }

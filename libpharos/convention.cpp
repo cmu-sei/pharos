@@ -1320,6 +1320,17 @@ CallingConventionMatcher::CallingConventionMatcher()
   cc.add_nonvolatile(nonvol.get_nonvolatile());
   conventions.push_back(cc);
 
+  // System V i386 C++ ABI (Linux/ELF 32-bit)
+  // The this-pointer is passed as the first stack argument — no dedicated register.
+  cc = CallingConvention(32, "__sysv32call", "GNU C Compiler");
+  cc.set_stack_alignment(32);
+  cc.set_stack_cleanup(CallingConvention::CLEANUP_CALLER);
+  cc.set_retval_register(eax);
+  cc.set_param_order(CallingConvention::ORDER_RTL);
+  cc.set_this_location(CallingConvention::THIS_FIRST_PARAM);
+  cc.add_nonvolatile(nonvol.get_nonvolatile());
+  conventions.push_back(cc);
+
   // Obsolete calling conventions
   // __pascal, __fortran, and __syscall
 
@@ -1352,7 +1363,7 @@ CallingConventionMatcher::CallingConventionMatcher()
   RegisterDescriptor xmm2 = regdict->find("xmm2");
   RegisterDescriptor xmm3 = regdict->find("xmm3");
 
-  cc = CallingConvention(64, "__x64call", "GNU C Compiler");
+  cc = CallingConvention(64, "__sysv64call", "GNU C Compiler");
   cc.set_stack_alignment(64);
   cc.set_stack_cleanup(CallingConvention::CLEANUP_CALLEE);
   cc.set_retval_register(rax);
@@ -1367,6 +1378,7 @@ CallingConventionMatcher::CallingConventionMatcher()
   cc.add_reg_param(xmm1);
   cc.add_reg_param(xmm2);
   cc.add_reg_param(xmm3);
+  cc.set_this_register(rdi);
   cc.add_nonvolatile(nonvol.get_nonvolatile());
   conventions.push_back(cc);
 
@@ -1403,6 +1415,7 @@ CallingConventionMatcher::CallingConventionMatcher()
   cc.add_reg_param(xmm1);
   cc.add_reg_param(xmm2);
   cc.add_reg_param(xmm3);
+  cc.set_this_register(rcx);
   cc.add_nonvolatile(nonvol.get_nonvolatile());
   conventions.push_back(cc);
 
