@@ -98,6 +98,18 @@ static int ooanalyzer_main(int argc, char **argv)
 
   // Find calls, functions, and imports.
   DescriptorSet ds(vm);
+
+  // OOAnalyzer requires non-zero base address when not explicitly specified
+  if (vm.count("base-address") == 0) {
+    auto memmap = ds.memory.get_memmap();
+    if (memmap && memmap->hull().least() == 0) {
+      GFATAL << "OOAnalyzer requires a non-zero base address." << LEND;
+      GFATAL << "The specimen has a base address of 0." << LEND;
+      GFATAL << "Please use --base-address to specify a non-zero load address." << LEND;
+      return EXIT_FAILURE;
+    }
+  }
+
   // Resolve imports, load API data, etc.
   ds.resolve_imports();
 
