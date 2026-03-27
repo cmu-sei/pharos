@@ -198,6 +198,32 @@ P2::PartitionerPtr create_partitioner(const ProgOptVarMap& vm, P2::Engine* engin
     std::exit(EXIT_FAILURE);
   }
 
+  // If the user requested a specific base address, shift all segments by the appropriate offset.
+  if (vm.count("base-address") > 0 && !map->isEmpty()) {
+    using namespace Rose::BinaryAnalysis;
+    std::string base_str = vm["base-address"].as<std::string>();
+    rose_addr_t desired_base = 0;
+    try {
+      desired_base = (rose_addr_t)parse_number(base_str);
+    } catch (std::exception const &) {
+      GFATAL << "Invalid --base-address value: " << base_str << LEND;
+      std::exit(EXIT_FAILURE);
+    }
+    rose_addr_t current_base = map->hull().least();
+    rose_addr_t offset = desired_base - current_base;
+    if (offset != 0) {
+      GINFO << "Rebasing specimen from " << addr_str(current_base)
+            << " to " << addr_str(desired_base) << LEND;
+      MemoryMap::Ptr shifted = MemoryMap::instance();
+      for (const MemoryMap::Node &node : map->nodes()) {
+        shifted->insert(AddressInterval::baseSize(node.key().least() + offset, node.key().size()),
+                        node.value());
+      }
+      engine->memoryMap(shifted);
+      map = shifted;
+    }
+  }
+
   // Get the interpretation.
   SgAsmInterpretation* interp = engine->interpretation();
 
