@@ -4,6 +4,7 @@
 #define Pharos_Funcs_H
 
 #include <boost/format.hpp>
+#include <boost/optional.hpp>
 #include <boost/ptr_container/ptr_vector.hpp> // for ptr_vector
 #include <boost/iterator/filter_iterator.hpp> // for filter_iterator
 #include <boost/range/adaptor/transformed.hpp> // for boost::adaptors::transformed
@@ -216,6 +217,12 @@ class FunctionDescriptor : private Immobile {
   // target_func, which is corrected in update_connections().
   void update_target_address();
 
+  // Detect the "mov REG, [esp]; ret" PIC thunk pattern.  Returns the target register
+  // if this function is a PIC thunk, or boost::none otherwise.
+  boost::optional<RegisterDescriptor> detect_pic_thunk();
+  // Cached result of detect_pic_thunk(): valid iff this is a PIC thunk.
+  RegisterDescriptor pic_thunk_register;
+
   // Walk the reads in the function, and identify reads of stack parameters.  Only called while
   // generating the PDG.
   void update_stack_parameters();
@@ -322,6 +329,17 @@ class FunctionDescriptor : private Immobile {
   bool is_thunk() const {
     read_guard<decltype(mutex)> guard{mutex};
     return (target_address != 0);
+  }
+
+  // Returns true if this function is a PIC thunk (mov REG, [esp]; ret or tagged pic_thunk).
+  bool is_pic_thunk() const {
+    read_guard<decltype(mutex)> guard{mutex};
+    return pic_thunk_register.is_valid();
+  }
+  // Returns the register that receives the return address, or an invalid descriptor.
+  RegisterDescriptor get_pic_thunk_register() const {
+    read_guard<decltype(mutex)> guard{mutex};
+    return pic_thunk_register;
   }
 
   // Accessor for the thunk target address, which will be zero if the function is not a thunk.

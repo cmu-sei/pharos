@@ -1027,6 +1027,22 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
     }
   }
 
+  // If the call target is a PIC thunk (e.g. __x86.get_pc_thunk.bx), substitute the known
+  // constant — the return address (i.e. the fall-through address of this CALL instruction) —
+  // into the target register instead of creating an opaque symbolic variable.  This allows
+  // downstream constant analysis to resolve GOT-relative addresses in 32-bit PIC code.
+  if (param_fd->is_pic_thunk()) {
+    RegisterDescriptor pic_reg = param_fd->get_pic_thunk_register();
+    rose_addr_t fallthru = insn_get_fallthru(insn);
+    SymbolicValuePtr retaddr = SymbolicValue::constant_instance(ds.get_arch_bits(), fallthru);
+    retaddr->defined_by(insn);
+    rops->writeRegister(pic_reg, retaddr);
+    rops->insn_accesses.push_back(AbstractAccess(ds, false, pic_reg, retaddr, rops->get_sstate()));
+    GDEBUG << "PIC thunk at " << cd->address_string() << " sets "
+           << unparseX86Register(pic_reg, {}) << " = " << addr_str(fallthru) << LEND;
+    return;
+  }
+
   // The parameter definitions for the function that we're calling (including the return code
   // type which we'll need before the other parameter analysis).
   const ParameterList& fparams = param_fd->get_parameters();
