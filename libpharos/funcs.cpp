@@ -501,31 +501,13 @@ boost::optional<RegisterDescriptor> FunctionDescriptor::detect_pic_thunk() {
   // Pattern: exactly two instructions: mov REG, [esp]; ret
   if (insns.size() != 2) return boost::none;
 
-  SgAsmX86Instruction* mov = isSgAsmX86Instruction(insns[0]);
-  SgAsmX86Instruction* ret = isSgAsmX86Instruction(insns[1]);
-  if (!mov || mov->get_kind() != x86_mov) return boost::none;
-  if (!ret || ret->get_kind() != x86_ret) return boost::none;
+  auto rd = match_pic_thunk_pattern(
+    isSgAsmInstruction(insns[0]), isSgAsmInstruction(insns[1]));
+  if (!rd) return boost::none;
 
-  const SgAsmExpressionPtrList& movArgs = mov->get_operandList()->get_operands();
-  if (movArgs.size() != 2) return boost::none;
-
-  // First operand: a GPR.
-  SgAsmDirectRegisterExpression* dst = isSgAsmDirectRegisterExpression(movArgs[0]);
-  if (!dst || dst->get_descriptor().majorNumber() != x86_regclass_gpr) return boost::none;
-
-  // Second operand: memory reference [esp] (no displacement).
-  SgAsmMemoryReferenceExpression* src = isSgAsmMemoryReferenceExpression(movArgs[1]);
-  if (!src) return boost::none;
-  SgAsmDirectRegisterExpression* base = isSgAsmDirectRegisterExpression(src->get_address());
-  if (!base) return boost::none;
-  // The base register must be ESP.
-  if (base->get_descriptor().majorNumber() != x86_regclass_gpr
-      || base->get_descriptor().minorNumber() != Rose::BinaryAnalysis::x86_gpr_sp) return boost::none;
-
-  RegisterDescriptor rd = dst->get_descriptor();
   GINFO << "Function " << _address_string()
         << " is a PIC thunk targeting register "
-        << unparseX86Register(rd, {})
+        << unparseX86Register(*rd, {})
         << " (by pattern)." << LEND;
   return rd;
 }
