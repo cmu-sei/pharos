@@ -9,7 +9,10 @@ int main() {
     path_goal();
   }
   volatile int x = n; // volatile to prevent optimization of nongoal
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wtautological-overlap-compare"
   if (x == 2 && x == 10) {
     path_nongoal();
   }
+#pragma clang diagnostic pop
 }

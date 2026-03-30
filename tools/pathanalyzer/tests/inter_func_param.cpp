@@ -6,9 +6,12 @@ void func1(volatile int n, int x) {
   if (n > 2 && x == 1) {
     path_goal();
   }
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wtautological-overlap-compare"
   if (n == 2 && n == 10) {
     path_nongoal();
   }
+#pragma clang diagnostic pop
 }
 void func0(int x) {
   int n=INT_RAND;

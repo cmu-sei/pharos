@@ -12,9 +12,6 @@ namespace pharos {
 // Forward declaration.
 class ThisCallMethod;
 
-// Assuming Visual Studio
-#define THIS_PTR_STR "ecx"
-
 // This class describes the passing of object pointers from a __thiscall method to another
 // __thiscall method.  This includes objects embedded in the current object.
 class FuncOffset {
@@ -92,6 +89,7 @@ class OOAnalyzer;
 class ThisCallMethod {
 
   bool find_this_pointer();
+  bool find_this_pointer_from_stack();
   void test_for_constructor();
   void find_members();
   void analyze_vftables();

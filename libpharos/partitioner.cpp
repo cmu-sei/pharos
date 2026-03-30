@@ -49,6 +49,60 @@ report_partitioner_statistics(P2::PartitionerConstPtr const & partitioner)
         << num_funcs << " functions." << LEND;
 }
 
+// Return true if the function at the given address in the partitioner is a PIC thunk, i.e.
+// its entry block contains exactly "mov GPR32, [esp]; ret".  Delegates to the shared
+// match_pic_thunk_pattern() helper in misc.hpp.
+static bool
+is_pic_thunk_at(P2::PartitionerConstPtr const & partitioner, rose_addr_t addr) {
+  if (!partitioner->functionExists(addr)) return false;
+  P2::BasicBlock::Ptr bb = partitioner->basicBlockExists(addr);
+  if (!bb || bb->instructions().size() != 2) return false;
+  return match_pic_thunk_pattern(bb->instructions()[0], bb->instructions()[1]).is_initialized();
+}
+
+// If the given function is a GOT preamble (call <pic_thunk>; add REG, IMM) that falls
+// through to a body function, return the body's start address.  Otherwise return nothing.
+//
+// Note: in ROSE's Partitioner2 a call instruction terminates a basic block, so the entry BB
+// of a preamble function contains only the call, and the add lives in the fallthrough BB.
+static boost::optional<rose_addr_t>
+get_got_preamble_body(P2::PartitionerConstPtr const & partitioner, const P2::Function::Ptr & func) {
+  // Entry BB must be a single call instruction.
+  P2::BasicBlock::Ptr call_bb = partitioner->basicBlockExists(func->address());
+  if (!call_bb || call_bb->instructions().size() != 1) return boost::none;
+
+  SgAsmX86Instruction* call = isSgAsmX86Instruction(call_bb->instructions()[0]);
+  if (!call || call->get_kind() != x86_call) return boost::none;
+
+  // The call target must be a concrete address hosting a PIC thunk.
+  bool complete;
+  auto succs = partitioner->basicBlockConcreteSuccessors(call_bb, &complete);
+  rose_addr_t fallthrough = call->get_address() + call->get_size();
+  bool found_thunk = false;
+  for (rose_addr_t s : succs) {
+    if (s != fallthrough && is_pic_thunk_at(partitioner, s)) { found_thunk = true; break; }
+  }
+  if (!found_thunk) return boost::none;
+
+  // The fallthrough BB must be a single add instruction.
+  P2::BasicBlock::Ptr add_bb = partitioner->basicBlockExists(fallthrough);
+  if (!add_bb || add_bb->instructions().size() != 1) return boost::none;
+
+  SgAsmX86Instruction* add = isSgAsmX86Instruction(add_bb->instructions()[0]);
+  if (!add || add->get_kind() != x86_add) return boost::none;
+
+  // The ADD's first operand must be a GPR and the second an immediate.
+  const SgAsmExpressionPtrList& addArgs = add->get_operandList()->get_operands();
+  if (addArgs.size() != 2) return boost::none;
+  SgAsmDirectRegisterExpression* addDst = isSgAsmDirectRegisterExpression(addArgs[0]);
+  if (!addDst || addDst->get_descriptor().majorNumber() != x86_regclass_gpr) return boost::none;
+  if (!isSgAsmIntegerValueExpression(addArgs[1])) return boost::none;
+
+  // The body starts at the instruction after the ADD.
+  rose_addr_t body = add->get_address() + add->get_size();
+  return body;
+}
+
 // Just sort of copying and pasting from the ROSE examples here...  We're adding a pattern for
 // a common tail-call optimization case where an object pointer in loaded into ECX, then
 // adjusted by some offset into the object, and then finally a function is called with a JMP
@@ -196,6 +250,32 @@ P2::PartitionerPtr create_partitioner(const ProgOptVarMap& vm, P2::Engine* engin
   } catch (std::exception const & e) {
     GFATAL << "Error while loading specimen: " << e.what () << LEND;
     std::exit(EXIT_FAILURE);
+  }
+
+  // If the user requested a specific base address, shift all segments by the appropriate offset.
+  if (vm.count("base-address") > 0 && !map->isEmpty()) {
+    using namespace Rose::BinaryAnalysis;
+    std::string base_str = vm["base-address"].as<std::string>();
+    rose_addr_t desired_base = 0;
+    try {
+      desired_base = (rose_addr_t)parse_number(base_str);
+    } catch (std::exception const &) {
+      GFATAL << "Invalid --base-address value: " << base_str << LEND;
+      std::exit(EXIT_FAILURE);
+    }
+    rose_addr_t current_base = map->hull().least();
+    rose_addr_t offset = desired_base - current_base;
+    if (offset != 0) {
+      GINFO << "Rebasing specimen from " << addr_str(current_base)
+            << " to " << addr_str(desired_base) << LEND;
+      MemoryMap::Ptr shifted = MemoryMap::instance();
+      for (const MemoryMap::Node &node : map->nodes()) {
+        shifted->insert(AddressInterval::baseSize(node.key().least() + offset, node.key().size()),
+                        node.value());
+      }
+      engine->memoryMap(shifted);
+      map = shifted;
+    }
   }
 
   // Get the interpretation.
@@ -1208,7 +1288,38 @@ CERTEngine::runPartitionerRecursive(P2::PartitionerPtr const & partitioner) {
 
   P2Engine::runPartitionerRecursive(partitioner);
 
+  // Merge GOT preambles when we are finally done
+  merge_got_preambles(partitioner);
+
   GDEBUG << "Custom partitioner 2 recursive pass complete." << LEND;
+}
+
+// In 32-bit PIC ELF code GCC emits a GOT preamble (call <pic_thunk>; add REG, IMM) at the
+// start of every function.  ROSE's prologue matcher sees the push/mov after the ADD and
+// creates a spurious function boundary there, splitting the preamble from the body.  Detect
+// these splits and merge the body back into the preamble's function.
+void
+CERTEngine::merge_got_preambles(P2::PartitionerPtr const & partitioner) {
+  // Collect merges first to avoid mutating while iterating.
+  std::vector<std::pair<P2::Function::Ptr, P2::Function::Ptr>> merges; // (preamble, body)
+  for (const P2::Function::Ptr & func : partitioner->functions()) {
+    auto body_addr = get_got_preamble_body(partitioner, func);
+    if (!body_addr) continue;
+    P2::Function::Ptr body_func = partitioner->functionExists(*body_addr);
+    if (!body_func) continue;
+    merges.emplace_back(func, body_func);
+  }
+
+  for (auto & pair : merges) {
+    GINFO << "Merging GOT preamble at " << addr_str(pair.first->address())
+          << " with body at " << addr_str(pair.second->address()) << LEND;
+
+    // Detach both so we can re-discover blocks for the combined function.
+    partitioner->detachFunction(pair.second);
+    partitioner->detachFunction(pair.first);
+    partitioner->discoverFunctionBasicBlocks(pair.first);
+    partitioner->attachFunction(pair.first);
+  }
 }
 
 #if 0

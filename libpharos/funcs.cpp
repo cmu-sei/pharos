@@ -452,6 +452,66 @@ void FunctionDescriptor::update_target_address() {
   // update_connections() method below.
 }
 
+// Try to identify this function as a PIC thunk — a tiny function whose body is
+// "mov REG, [esp]; ret" (or equivalently "pop REG; jmp [esp]" — though the former
+// is the only form GCC actually emits).  These functions return the call-site return
+// address in a general-purpose register so that 32-bit PIC code can compute its GOT
+// base.  If identified, pic_thunk_register is set to the target register.
+//
+// Detection has two paths:
+//  1. Tag-based: the function's name matches a known pic_thunk tag (e.g.
+//     "__x86.get_pc_thunk.bx").  The register is parsed from the name suffix.
+//  2. Pattern-based: the entry block contains exactly two instructions matching
+//     "mov GPR32, [esp]; ret".  This handles stripped binaries.
+boost::optional<RegisterDescriptor> FunctionDescriptor::detect_pic_thunk() {
+  // Only relevant for 32-bit x86 — 64-bit uses RIP-relative addressing.
+  if (ds.get_arch_bytes() != 4) return boost::none;
+
+  // Path 1: name-based detection via tags.
+  std::string fname = get_name();
+  if (ds.tags().check_name(fname, "pic_thunk")) {
+    // Parse the register suffix (last two characters, e.g. "bx" from ".bx").
+    if (fname.size() >= 2) {
+      std::string suffix = fname.substr(fname.size() - 2);
+      std::string regname = "e" + suffix;  // "bx" → "ebx"
+      RegisterDescriptor rd = ds.get_arch_reg(regname);
+      if (rd.is_valid()) {
+        GINFO << "Function " << _address_string() << " (" << fname
+              << ") is a PIC thunk targeting " << regname << " (by name)." << LEND;
+        return rd;
+      }
+    }
+  }
+
+  // Path 2: instruction-pattern detection for stripped binaries.
+  if (!func) return boost::none;
+  SgAsmStatementPtrList& bb_list = func->get_statementList();
+  if (bb_list.empty()) return boost::none;
+
+  // Find the entry block.
+  SgAsmBlock* bblock = NULL;
+  for (SgAsmStatement* stmt : bb_list) {
+    bblock = isSgAsmBlock(stmt);
+    if (bblock && bblock->get_address() == p2func->address()) break;
+    bblock = NULL;
+  }
+  if (!bblock) return boost::none;
+
+  SgAsmStatementPtrList& insns = bblock->get_statementList();
+  // Pattern: exactly two instructions: mov REG, [esp]; ret
+  if (insns.size() != 2) return boost::none;
+
+  auto rd = match_pic_thunk_pattern(
+    isSgAsmInstruction(insns[0]), isSgAsmInstruction(insns[1]));
+  if (!rd) return boost::none;
+
+  GINFO << "Function " << _address_string()
+        << " is a PIC thunk targeting register "
+        << unparseX86Register(*rd, {})
+        << " (by pattern)." << LEND;
+  return rd;
+}
+
 void FunctionDescriptor::update_connections(FunctionDescriptorMap& fdmap) {
   FunctionDescriptor * tfunc = nullptr;
   {
@@ -575,6 +635,8 @@ void FunctionDescriptor::analyze() {
   set_address(p2func->address());
   // Determine whether we're a thunk.
   update_target_address();
+  // Detect PIC thunks (mov REG, [esp]; ret) for 32-bit ELF binaries.
+  if (auto rd = detect_pic_thunk()) pic_thunk_register = *rd;
 
   STRACE << "Analyzing function descriptor: " << *this << LEND;
 }

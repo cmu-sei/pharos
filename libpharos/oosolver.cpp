@@ -259,17 +259,23 @@ OOSolver::add_method_facts(const OOAnalyzer& ooa)
       thisptr_term = "sv_" + std::to_string(this_ptr->get_hash());
     }
 
-    // Hackish forced exporting of "thisptr" arguments as register "ECX".  There's a difference
-    // between how the thisptr symbolic values are being determined for thiscall methods, and
-    // how it's being determined for function calling conventions in general.  By exporting the
-    // facts related to this defect in a way that draws more attention to the real problem that
-    // then old thisCallMethod facts, we can narrow in on the real problem gradually.  It's
-    // also not accetpable to export a normal callingConvention fact and normal funcParameter
-    // fact, as this results in non-OO functions
+    // Hackish forced exporting of "thisptr" arguments when no calling convention was detected.
+    // There's a difference between how the thisptr symbolic values are being determined for
+    // thiscall methods, and how it's being determined for function calling conventions in
+    // general.  By exporting the facts related to this defect in a way that draws more
+    // attention to the real problem than the old thisCallMethod facts, we can narrow in on the
+    // real problem gradually.  It's also not acceptable to export a normal callingConvention
+    // fact and normal funcParameter fact, as this results in non-OO functions.
     auto conventions = tcm->fd->get_calling_conventions();
     if (conventions.size() == 0) {
       session->add_fact("callingConvention", tcm->get_address(), "invalid");
-      session->add_fact("funcParameter", tcm->get_address(), "ecx", thisptr_term);
+      auto reg_name = tcm->fd->ds.get_this_ptr_reg_name();
+      if (reg_name) {
+        session->add_fact("funcParameter", tcm->get_address(), *reg_name, thisptr_term);
+      } else {
+        // System V 32-bit: this-pointer is the first stack argument (parameter position 0).
+        session->add_fact("funcParameter", tcm->get_address(), 0, thisptr_term);
+      }
     }
 
     // These facts are getting closer to correct, but should still be reviewed once more.
@@ -661,6 +667,17 @@ OOSolver::add_thisptrdefinition_facts()
   }
 }
 
+// Returns true if a calling convention is appropriate for the detected ABI.  Conventions tagged
+// ABI::UNKNOWN are always permitted.  This prevents e.g. __sysv32call from being emitted as a
+// fact for a PE/MSVC binary.
+static bool
+abi_matches_convention(DescriptorSet::ABI binary_abi, const CallingConvention& cc)
+{
+  auto cc_abi = cc.get_abi();
+  if (cc_abi == CallingConvention::ABI::UNKNOWN) return true;
+  return cc_abi == binary_abi;
+}
+
 // Report facts about functions (like purecall).
 void
 OOSolver::add_function_facts(const OOAnalyzer& ooa)
@@ -679,9 +696,11 @@ OOSolver::add_function_facts(const OOAnalyzer& ooa)
       session->add_fact("thunk", fdaddr, fd.get_jmp_addr());
     }
 
-    // Report all calling conventions for all functions.
+    // Report all calling conventions for all functions, filtered by the detected ABI so that
+    // e.g. __sysv32call is not emitted for PE binaries or __thiscall for ELF binaries.
     auto conventions = fd.get_calling_conventions();
     for (const CallingConvention* cc: conventions) {
+      if (!abi_matches_convention(ooa.ds.get_abi(), *cc)) continue;
       session->add_fact("callingConvention", fdaddr, cc->get_name());
     }
 
@@ -774,9 +793,10 @@ OOSolver::add_import_facts(const OOAnalyzer& ooa)
 
         session->add_fact("symbolClass", id.get_address(), id.get_name(), clsname, method_name);
 
-        // Add calling convention for imported functions
+        // Add calling convention for imported functions, filtered by ABI.
         auto conventions = id.get_function_descriptor()->get_calling_conventions();
         for (const CallingConvention* cc: conventions) {
+          if (!abi_matches_convention(ooa.ds.get_abi(), *cc)) continue;
           session->add_fact("callingConvention", id.get_address(), cc->get_name());
         }
         if (dtype->name.front()->is_ctor) {

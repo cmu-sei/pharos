@@ -188,6 +188,7 @@ class CERTEngine: public P2Engine {
   bool consume_thunks(P2::PartitionerPtr const & partitioner, bool top, bool bottom);
   bool consume_padding(P2::PartitionerPtr const & partitioner, bool top, bool bottom);
   bool create_arbitrary_code(P2::PartitionerPtr const & partitioner);
+  void merge_got_preambles(P2::PartitionerPtr const & partitioner);
 
  public:
   CERTEngine() : P2Engine(P2::Engine::Settings{}) {}

@@ -137,6 +137,28 @@ names:
   "_ZdaPv": delete,
 
   # ============================================================================
+  # PIC thunks by name (__i686.get_pc_thunk.REG and __x86.get_pc_thunk.REG)
+  # These functions simply return the return address in a register and are used
+  # in 32-bit PIC code to compute the GOT base.  Tagged so that constant
+  # analysis can substitute the known return address instead of treating the
+  # call as returning an opaque symbolic value.
+  # ============================================================================
+  "__i686.get_pc_thunk.ax": pic_thunk,
+  "__i686.get_pc_thunk.bx": pic_thunk,
+  "__i686.get_pc_thunk.cx": pic_thunk,
+  "__i686.get_pc_thunk.dx": pic_thunk,
+  "__i686.get_pc_thunk.si": pic_thunk,
+  "__i686.get_pc_thunk.di": pic_thunk,
+  "__i686.get_pc_thunk.bp": pic_thunk,
+  "__x86.get_pc_thunk.ax": pic_thunk,
+  "__x86.get_pc_thunk.bx": pic_thunk,
+  "__x86.get_pc_thunk.cx": pic_thunk,
+  "__x86.get_pc_thunk.dx": pic_thunk,
+  "__x86.get_pc_thunk.si": pic_thunk,
+  "__x86.get_pc_thunk.di": pic_thunk,
+  "__x86.get_pc_thunk.bp": pic_thunk,
+
+  # ============================================================================
   # purecall functions by name
   # ============================================================================
   "_purecall": purecall,

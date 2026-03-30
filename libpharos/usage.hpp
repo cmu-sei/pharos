@@ -28,6 +28,11 @@ extern template std::string Enum2Str<AllocType>(AllocType);
 // Allow others to use our utility function to pick a this-pointer out of an ITE expression.
 SymbolicValuePtr pick_this_ptr(const SymbolicValuePtr& sv);
 
+// Return the this-pointer symbolic value at the time of a call, reading from the saved
+// pre-call state.  ABI-aware: uses the this-pointer register for MSVC/SV64, or the first
+// stack parameter for SV32.  Returns an invalid SymbolicValue if the state is unavailable.
+SymbolicValuePtr get_this_ptr_for_call(const CallDescriptor* cd);
+
 // Track the usage of a specific this-pointer.  This class is now clearly the one that tracks a
 // specific object while it has a given symbolic value for its this-pointer.  There was also
 // some confusion about the ObjectUse class, which was basically just a set of ThisPtrUsages

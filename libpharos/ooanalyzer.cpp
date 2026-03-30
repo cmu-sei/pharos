@@ -544,11 +544,10 @@ void OOAnalyzer::record_this_ptrs_for_calls(FunctionDescriptor* fd) {
       continue;
     }
     write_guard<decltype(mutex)> guard{mutex};
-    // We should be able to find this globally somehow...
-    RegisterDescriptor this_reg = cd->ds.get_arch_reg(THIS_PTR_STR);
-    assert(this_reg.is_valid());
-    // Read ECX from the state immediately before the call.
-    callptrs[cd->get_address()] = state->read_register(this_reg);
+    SymbolicValuePtr this_ptr = pharos::get_this_ptr_for_call(cd);
+    if (this_ptr->is_valid()) {
+      callptrs[cd->get_address()] = this_ptr;
+    }
     // Now that we've saved a copy of the this-pointer value, we don't need the the rest of the
     // state anymore, and we can free a lot of memory simply by removing the reference to the
     // state from the call descriptor.

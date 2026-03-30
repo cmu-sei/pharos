@@ -233,6 +233,9 @@ ProgOptDesc cert_standard_options() {
      "do not mark the entry point segment as executable")
     ("mark-executable",
      "mark all segments as executable during partitioning")
+    ("base-address",
+     po::value<std::string>(),
+     "load the specimen at the specified base address (hexadecimal)")
     ("log",
      po::value<std::string>(),
      "log facility control string")

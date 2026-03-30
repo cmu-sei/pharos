@@ -296,6 +296,11 @@ bool insn_is_repeat(const SgAsmX86Instruction* insn);
 // Is the instruction an X86 nop?
 bool insn_is_nop(const SgAsmX86Instruction* insn);
 
+// If two instructions match the PIC thunk pattern "mov GPR32, [esp]; ret", return the
+// target GPR.  Used by both partitioner-level and FunctionDescriptor-level detection.
+boost::optional<RegisterDescriptor>
+match_pic_thunk_pattern(SgAsmInstruction* first, SgAsmInstruction* second);
+
 // Get the fallthru address of this instruction.
 rose_addr_t insn_get_fallthru(SgAsmInstruction* insn);
 // Get the non-fallthru (branch) address of this instruction.

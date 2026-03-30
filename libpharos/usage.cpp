@@ -663,12 +663,17 @@ SymbolicValuePtr get_this_ptr_for_call(const CallDescriptor* cd) {
     }
     return SymbolicValue::instance();
   }
-  // We should be able to find this globally somehow...
-  RegisterDescriptor this_reg = cd->ds.get_arch_reg(THIS_PTR_STR);
-  assert(this_reg.is_valid());
-  // Read ECX from the state immediately before the call.
-  SymbolicValuePtr this_value = state->read_register(this_reg);
-  return this_value;
+  auto this_reg = cd->ds.get_this_ptr_reg();
+  if (this_reg) {
+    // Read the this-pointer register from the state immediately before the call.
+    return state->read_register(*this_reg);
+  }
+  // System V 32-bit: the this-pointer is the first stack argument to the called function.
+  const ParameterDefinition* pd = cd->get_parameters().get_stack_parameter(0);
+  if (pd && pd->get_value()) {
+    return pd->get_value();
+  }
+  return SymbolicValue::instance();
 }
 
 // Analyze the function and populate the references member with information about each

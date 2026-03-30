@@ -66,6 +66,18 @@ class CallingConvention {
     CLEANUP_UNKNOWN,        // It is not known how the stack is cleaned up.
   };
 
+  // The ABI this calling convention belongs to.  Used to filter conventions that are not
+  // applicable to the binary under analysis (e.g. suppress __sysv32call for PE binaries).
+  // ABI::UNKNOWN means the convention is not restricted to a specific ABI.
+  // DescriptorSet re-exports this as DescriptorSet::ABI for use in ABI detection.
+  enum class ABI {
+    UNKNOWN,  // Not restricted to a specific ABI
+    MSVC_32,  // Windows PE 32-bit
+    MSVC_64,  // Windows PE 64-bit
+    SYSV_32,  // ELF 32-bit (System V i386)
+    SYSV_64,  // ELF 64-bit (System V AMD64)
+  };
+
  private:
 
   // Word size for the architecture for which this calling convention applies.  The size is
@@ -144,6 +156,10 @@ class CallingConvention {
   // convention.  All other registers are assumed to be volatile (saved by caller if needed).
   RegisterSet nonvolatile;
 
+  // The ABI this calling convention belongs to.  ABI::UNKNOWN means the convention applies to
+  // any binary regardless of ABI.
+  ABI abi = ABI::UNKNOWN;
+
   // With regards to floating point, Microsoft says: If you are writing assembly routines for
   // the floating point coprocessor, you must preserve the floating point control word and
   // clean the coprocessor stack unless you are returning a float or double value (which your
@@ -208,6 +224,9 @@ class CallingConvention {
   void add_nonvolatile(RegisterDictionaryPtrArg dict, std::string name);
   void add_nonvolatile(RegisterDescriptor rd);
   void add_nonvolatile(const RegisterSet& regs);
+
+  ABI get_abi() const { return abi; }
+  void set_abi(ABI a) { abi = a; }
 
   // Write information about this calling convention to the debug log stream.
   void report() const;
