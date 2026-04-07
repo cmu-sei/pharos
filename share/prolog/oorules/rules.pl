@@ -2441,17 +2441,22 @@ reasonClassCallsMethod_C(Class1, Method2) :-
 %%     Fact=factEmbeddedObject(OuterClass, InnerClass, Offset),
 %%     Fact.
 
-reasonClassAtOffset_int(OuterClass, Offset, InnerClass, [Fact]) :-
-    Fact=factObjectInObject(OuterClass, InnerClass, Offset),
-    Fact.
-
 reasonClassAtOffset_int(OuterClass, Offset, InnerClass, L) :-
+    reasonClassAtOffset_int_(OuterClass, Offset, InnerClass, [], L).
+
+reasonClassAtOffset_int_(OuterClass, Offset, InnerClass, Acc, [Fact|Acc]) :-
+    Fact=factObjectInObject(OuterClass, InnerClass, Offset),
+    Fact,
+    not(memberchk(Fact, Acc)).
+
+reasonClassAtOffset_int_(OuterClass, Offset, InnerClass, Acc, L) :-
     ground(Offset),
-    reasonClassAtOffset_int(OuterClass, MiddleOffset, MiddleClass, OL),
+    factObjectInObject(OuterClass, MiddleClass, MiddleOffset),
+    Hop=factObjectInObject(OuterClass, MiddleClass, MiddleOffset),
+    not(memberchk(Hop, Acc)),
     % If Offset is bound, use it to bind InnerOffset.
     InnerOffset is Offset - MiddleOffset,
-    reasonClassAtOffset_int(MiddleClass, InnerOffset, InnerClass, IL),
-    append(OL, IL, L).
+    reasonClassAtOffset_int_(MiddleClass, InnerOffset, InnerClass, [Hop|Acc], L).
 
 refineHelper(factObjectInObject(OC, IC, Off), _) :-
     (var(OC); var(IC); var(Off)),
