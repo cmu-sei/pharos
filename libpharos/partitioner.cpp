@@ -8,6 +8,8 @@
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 
+#include <Rose/BinaryAnalysis/BinaryLoader.h>
+
 #include "partitioner.hpp"
 #include "masm.hpp"
 #include "util.hpp"
@@ -240,42 +242,50 @@ P2::PartitionerPtr create_partitioner(const ProgOptVarMap& vm, P2::Engine* engin
     std::exit(EXIT_FAILURE);
   }
 
-  // Load the specimen as raw data or an ELF or PE container.
+  // Parse the binary container (ELF/PE) and obtain a loader configured for relocations.
+  auto *binary_engine = dynamic_cast<P2Engine*>(engine);
   MemoryMap::Ptr map;
   try {
-    map = engine->loadSpecimens(specimen_names);
+    engine->parseContainers(specimen_names);
+
+    // Enable ROSE's built-in relocation fixups (R_X86_64_RELATIVE, etc.) so that PIE vtable
+    // entries and other relocated data are patched in the memory map.
+    if (binary_engine) {
+      auto loader = binary_engine->obtainLoader();
+      loader->performingRelocations(true);
+    }
+
+    // If the user requested a specific base address, set it on the file headers before mapping
+    // so that ROSE's remap and relocation fixup phases use the desired base.
+    if (vm.count("base-address") > 0) {
+      std::string base_str = vm["base-address"].as<std::string>();
+      rose_addr_t desired_base = 0;
+      try {
+        desired_base = (rose_addr_t)parse_number(base_str);
+      } catch (std::exception const &) {
+        GFATAL << "Invalid --base-address value: " << base_str << LEND;
+        std::exit(EXIT_FAILURE);
+      }
+      if (SgAsmInterpretation* interp = engine->interpretation()) {
+        for (SgAsmGenericHeader *hdr : interp->get_headers()->get_headers()) {
+          GINFO << "Rebasing specimen from " << addr_str(hdr->get_baseVa())
+                << " to " << addr_str(desired_base) << LEND;
+          hdr->set_baseVa(desired_base);
+        }
+      }
+    }
+
+    if (binary_engine) {
+      binary_engine->loadContainers(specimen_names);
+      binary_engine->loadNonContainers(specimen_names);
+    }
+    map = engine->memoryMap();
   } catch (SgAsmExecutableFileFormat::FormatError &e) {
     GFATAL << "Error while loading specimen: " << e.what () << LEND;
     std::exit(EXIT_FAILURE);
   } catch (std::exception const & e) {
     GFATAL << "Error while loading specimen: " << e.what () << LEND;
     std::exit(EXIT_FAILURE);
-  }
-
-  // If the user requested a specific base address, shift all segments by the appropriate offset.
-  if (vm.count("base-address") > 0 && !map->isEmpty()) {
-    using namespace Rose::BinaryAnalysis;
-    std::string base_str = vm["base-address"].as<std::string>();
-    rose_addr_t desired_base = 0;
-    try {
-      desired_base = (rose_addr_t)parse_number(base_str);
-    } catch (std::exception const &) {
-      GFATAL << "Invalid --base-address value: " << base_str << LEND;
-      std::exit(EXIT_FAILURE);
-    }
-    rose_addr_t current_base = map->hull().least();
-    rose_addr_t offset = desired_base - current_base;
-    if (offset != 0) {
-      GINFO << "Rebasing specimen from " << addr_str(current_base)
-            << " to " << addr_str(desired_base) << LEND;
-      MemoryMap::Ptr shifted = MemoryMap::instance();
-      for (const MemoryMap::Node &node : map->nodes()) {
-        shifted->insert(AddressInterval::baseSize(node.key().least() + offset, node.key().size()),
-                        node.value());
-      }
-      engine->memoryMap(shifted);
-      map = shifted;
-    }
   }
 
   // Get the interpretation.
