@@ -246,17 +246,20 @@ P2::PartitionerPtr create_partitioner(const ProgOptVarMap& vm, P2::Engine* engin
   auto *binary_engine = dynamic_cast<P2Engine*>(engine);
   MemoryMap::Ptr map;
   try {
+    // Parse containers so that the interpretation and headers exist.
     engine->parseContainers(specimen_names);
 
-    // Enable ROSE's built-in relocation fixups (R_X86_64_RELATIVE, etc.) so that PIE vtable
-    // entries and other relocated data are patched in the memory map.
+    // Enable ROSE's built-in relocation fixups so that PIE vtable entries and other
+    // relocated data are patched in the memory map.  Obtain and configure the loader
+    // now so that subsequent load calls performed by engine->loadSpecimens() will
+    // perform relocations.
     if (binary_engine) {
       auto loader = binary_engine->obtainLoader();
       loader->performingRelocations(true);
     }
 
-    // If the user requested a specific base address, set it on the file headers before mapping
-    // so that ROSE's remap and relocation fixup phases use the desired base.
+    // If the user requested a specific base address, set it on the file headers before
+    // mapping so that ROSE's remap and relocation fixup phases use the desired base.
     if (vm.count("base-address") > 0) {
       std::string base_str = vm["base-address"].as<std::string>();
       rose_addr_t desired_base = 0;
@@ -275,11 +278,7 @@ P2::PartitionerPtr create_partitioner(const ProgOptVarMap& vm, P2::Engine* engin
       }
     }
 
-    if (binary_engine) {
-      binary_engine->loadContainers(specimen_names);
-      binary_engine->loadNonContainers(specimen_names);
-    }
-    map = engine->memoryMap();
+    map = engine->loadSpecimens(specimen_names);
   } catch (SgAsmExecutableFileFormat::FormatError &e) {
     GFATAL << "Error while loading specimen: " << e.what () << LEND;
     std::exit(EXIT_FAILURE);
