@@ -8,12 +8,29 @@
 
 :- table possibleVFTableWrite/5 as opaque.
 :- table possibleVBTableWrite/5 as opaque.
+:- discontiguous possibleVFTableWrite/5.
 
 % For now, ignore the ExpandedThisPtr argument.
 possibleVFTableWrite(Insn, Function, ThisPtr, Offset, VFTable) :-
   possibleVFTableWrite(Insn, Function, ThisPtr, Offset, _ExpandedThisPtr, VFTable).
 possibleVBTableWrite(Insn, Function, ThisPtr, Offset, VBTable) :-
   possibleVBTableWrite(Insn, Function, ThisPtr, Offset, _ExpandedThisPtr, VBTable).
+
+% ELF32 fallback: infer possible vftable writes from virtual-call evidence when native
+% possibleVFTableWrite/6 facts are absent.
+possibleVFTableWrite(Insn, Function, ThisPtr, 0, VFTable) :-
+  pointerSize(4),
+  noExplicitVFTableWrites,
+  possibleVirtualFunctionCall(Insn, Function, ThisPtr, 0, VFTableOffset),
+  VFTableOffset >= 0,
+  VFTableOffset =< 0x40,
+  callTarget(Insn, Function, Thunk),
+  dethunk(Thunk, Target),
+  possibleMethod(Target),
+  initialMemory(VFEntryAddress, Entry),
+  dethunk(Entry, Target),
+  VFTable is VFEntryAddress - VFTableOffset,
+  VFTable >= 0x1000.
 
 :- table possibleConstructor/1 as opaque.
 
@@ -39,14 +56,30 @@ possibleVFTableEntry(VFTable, 0, Entry) :-
     possibleVFTableWrite(_Insn, _Func, _ThisPtr, _ObjectOffset, VFTable),
     initialMemory(VFTable, Entry).
 
+% ELF32 fallback: recover candidate vftables directly from memory shape when explicit write facts
+% are unavailable. Require at least two plausible method-like entries.
+possibleVFTableEntry(VFTable, 0, Entry) :-
+    pointerSize(4),
+    noExplicitVFTableWrites,
+    initialMemory(VFTable, Entry),
+    Entry > 0x1000,
+    possibleMethod(Entry),
+    pointerSize(PtrSize),
+    Address2 is VFTable + PtrSize,
+    initialMemory(Address2, Entry2),
+    Entry2 > 0x1000,
+    possibleMethod(Entry2).
+
 possibleVFTableEntry(VFTable, 0, Entry) :-
     rTTICompleteObjectLocator(Pointer, _Address, _TDAddress, _CHAddress, _Offset, _CDOffset),
-    VFTable is Pointer + 4,
+    pointerSize(PtrSize),
+    VFTable is Pointer + PtrSize,
     initialMemory(VFTable, Entry).
 
 possibleVFTableEntry(VFTable, NewOffset, Entry) :-
     possibleVFTableEntry(VFTable, Offset, _),
-    NewOffset is Offset + 4,
+    pointerSize(PtrSize),
+    NewOffset is Offset + PtrSize,
     Address is VFTable + NewOffset,
     not(possibleVFTableWrite(_Insn, _Func, _ThisPtr, _Offset, Address)),
     initialMemory(Address, Entry),
@@ -62,7 +95,8 @@ possibleVBTableEntry(VBTable, Offset, Value) :-
 
 possibleVBTableEntry(VBTable, NewOffset, Value) :-
     possibleVBTableEntry(VBTable, Offset, _),
-    NewOffset is Offset + 4,
+    pointerSize(PtrSize),
+    NewOffset is Offset + PtrSize,
     Address is VBTable + NewOffset,
     not(possibleVBTableWrite(_Insn, _Func, _ThisPtr, _Offset, Address)),
     initialMemory(Address, Value).
@@ -101,7 +135,8 @@ validVBTableEntry(VBTable, Entry, Offset) :-
     % There's a possible entry...
     possibleVBTableEntry(VBTable, Entry, Offset),
     % And the entry that came before it is already valid...
-    PreviousEntry is Entry - 4,
+    pointerSize(PtrSize),
+    PreviousEntry is Entry - PtrSize,
     validVBTableEntry(VBTable, PreviousEntry, _PreviousOffset),
     % The constructor that the table was installed into will be the derived constructor.
     possibleVBTableWrite(_Insn1, DerivedConstructor, _ThisPtr, _BaseOffset, VBTable),
@@ -186,6 +221,17 @@ methodCallAtOffset(Insn, Caller, Callee, 0) :-
     %loginfoln('~Q.', methodCallAtOffset(Insn, Caller, Callee, 0)),
     true.
 
+% ELF32 fallback: derive call-at-offset directly from virtual-call candidates.
+methodCallAtOffset(Insn, Caller, Callee, Offset) :-
+    pointerSize(4),
+    noExplicitVFTableWrites,
+    possibleVirtualFunctionCall(Insn, Caller, _ThisPtr, Offset, _VFTableOffset),
+    Offset >= 0,
+    Offset =< 0x100,
+    callTarget(Insn, Caller, Thunk),
+    dethunk(Thunk, Callee),
+    possibleMethod(Callee).
+
 % Replaces an old-style fact of the same name.
 :- table thisPtrUsage/4 as opaque.
 
@@ -195,6 +241,15 @@ thisPtrUsage(Insn, Function, ThisPtr, Method) :-
     dethunk(Thunk, Method),
     %loginfoln('~Q.', thisPtrUsage(Insn, Function, ThisPtr, Method)),
     true.
+
+% ELF32 fallback: derive this-pointer usage directly from virtual-call candidates.
+thisPtrUsage(Insn, Function, ThisPtr, Method) :-
+    pointerSize(4),
+    noExplicitVFTableWrites,
+    possibleVirtualFunctionCall(Insn, Function, ThisPtr, _ObjectOffset, _VFTableOffset),
+    callTarget(Insn, Function, Thunk),
+    dethunk(Thunk, Method),
+    possibleMethod(Method).
 
 % Here's an example of how we can use the "invalid" offsets to our advantage.  Defining an
 % invalid access as an offset greater than 100,000 allows us to subsequently observe that
@@ -213,6 +268,17 @@ validMethodMemberAccess(Insn, Method, Offset, Size) :-
     methodMemberAccess(Insn, Method, Offset, Size),
     factMethod(Method),
     not(invalidMethodMemberAccess(Method)).
+
+% ELF32 fallback: count vptr-style accesses as member accesses when explicit write evidence is
+% unavailable. This helps recover usage evidence for class members.
+validMethodMemberAccess(Insn, Method, ObjectOffset, Size) :-
+    pointerSize(Size),
+    pointerSize(4),
+    noExplicitVFTableWrites,
+    possibleVirtualFunctionCall(Insn, Method, _ThisPtr, ObjectOffset, _VFTableOffset),
+    ObjectOffset >= 0,
+    ObjectOffset =< 0x40,
+    factMethod(Method).
 
 % ============================================================================================
 % This code is an attempt to handle functions optimized by link-time code generation to use the

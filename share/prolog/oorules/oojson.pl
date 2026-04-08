@@ -1,6 +1,6 @@
 :- use_module(library(http/json), [json_write_dict/2]).
 :- use_module(library(apply), [maplist/3]).
-:- use_module(library(lists), [member/2, max_list/2]).
+:- use_module(library(lists), [member/2, max_list/2, list_to_set/2]).
 
 :- dynamic finalClass/6.
 :- dynamic finalVFTable/5.
@@ -239,8 +239,12 @@ makeOneMethodJson(ClassId, AddressKey, Json):-
 
     makeMethodJson(ClassId, Address, AddressKey, Json).
 
+oneMethodForAddress(ClassId, Address, Address:Out) :-
+    once(makeOneMethodJson(ClassId, Address, Out)).
+
 makeAllMethodsJson(ClassId, Json):-
-    bagof(Address:Out, makeOneMethodJson(ClassId, Address, Out), KVPairs),
+    setof(Address, Out^makeOneMethodJson(ClassId, Address, Out), Addresses),
+    maplist(oneMethodForAddress(ClassId), Addresses, KVPairs),
     dict_create(Json, methods, KVPairs).
 
 % ===================================================================
@@ -264,10 +268,9 @@ makeVFTableEntryJson(ClassId, VFTable, Key, Out):-
     methodPrependVirt(ClassId, Address, Type1, Type),
     makeMethodName(Address, Type, Imported, MangledName, DemangledName),
     hexAddr(Address, AddrStr),
-    % Convert the memory offset (bytes) into a table entry offset by dividing by the size of
-    % pointer.  Hard coding 4 here presumes 32-bit addresses.  If we support 64-bit OO programs
-    % in the future, we'll need to know our architecture byte size here.
-    OffsetCount is Offset // 4,
+    % Convert the memory offset (bytes) into a table entry offset by dividing by pointer size.
+    pointerSize(PtrSize),
+    OffsetCount is Offset // PtrSize,
     decAddr(OffsetCount, OffsetDecStr),
     atom_string(Key, OffsetDecStr),
     Out = vftentry{'ea': AddrStr, 'offset': OffsetCount, 'name': MangledName,
@@ -290,7 +293,8 @@ findEntries(ClassId, VFTable, VFTableEntriesJson):-
 makeVFTableJson(ClassId, VFTable, Offset, AddrStr, Out):-
     hexAddr(VFTable, AddrStr),
     finalVFTable(VFTable, Size, _, _, _),
-    Length is Size // 4,
+    pointerSize(PtrSize),
+    Length is Size // PtrSize,
     hexAddr(Offset, OffsetStr),
     findEntries(ClassId, VFTable, VFTableEntries),
     Out = vftable{'ea': AddrStr, 'vftptr': OffsetStr, 'entries': VFTableEntries, 'length': Length }.
@@ -383,13 +387,24 @@ makeOneClassInOrder(List, SortedClassNames, NameKey, Json):-
      ClassIdStr = Json.name),
     atom_string(NameKey, ClassIdStr).
 
+oneClassForId(SortedClassIDList, SortedClassNameList, ClassId, NameKey:ClsJson) :-
+    once(makeOneClassInOrder([ClassId], SortedClassNameList, NameKey, ClsJson)),
+    member(ClassId, SortedClassIDList).
+
 makeAllStructuresJson(Json):-
     % Get a list of Class IDs and sort them by the class ID.
     findall(ClsId, finalClass(ClsId, _, _, _, _, _), ClassIDList),
-    sort(0, @=<, ClassIDList, SortedClassIDList),
-    maplist(makeClassName, SortedClassIDList, SortedClassNameList),
-    bagof(NameKey:ClsJson, makeOneClassInOrder(SortedClassIDList, SortedClassNameList, NameKey, ClsJson), KVPairs),
-    dict_create(Json, structures, KVPairs).
+    list_to_set(ClassIDList, UniqueClassIDList),
+    sort(0, @=<, UniqueClassIDList, SortedClassIDList),
+    (SortedClassIDList = []
+     ->
+         Json = structures{}
+     ;
+          maplist(makeClassName, SortedClassIDList, SortedClassNameList),
+          maplist(oneClassForId(SortedClassIDList, SortedClassNameList),
+                  SortedClassIDList,
+                  KVPairs),
+          dict_create(Json, structures, KVPairs)).
 
 makeOneVcallUsageJson(Insn, Key, Out):-
     setof(Target, VFTable^finalResolvedVirtualCall(Insn, VFTable, Target), Targets),

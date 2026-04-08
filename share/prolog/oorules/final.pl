@@ -4,6 +4,16 @@
 % ============================================================================================
 
 :- use_module(library(lists), [member/2, min_list/2, max_list/2]).
+:- discontiguous finalMemberAccess/4.
+:- discontiguous finalMember/4.
+
+:- table fallbackVCallCaller/1 as opaque.
+fallbackVCallCaller(Caller) :-
+    setof(C,
+          Insn^ThisPtr^VFTableOffset^
+             possibleVirtualFunctionCall(Insn, C, ThisPtr, 0, VFTableOffset),
+          Callers),
+    member(Caller, Callers).
 
 % Long ago, Ed wrote: A solution is <list of classes, a mapping of classes to methods, a
 % mapping of classes to members, a mapping of each class to its immediate parents and offset, a
@@ -129,9 +139,8 @@ usefulClass(Class) :-
 usefulClass(Class) :-
     findVFTable(_VFTable, Class).
 
-% A class is useful if it is not size zero.
-usefulClass(Class) :-
-    reasonMinimumPossibleClassSize(Class, Size), Size > 0.
+% A non-zero size alone is weak evidence and creates many false positives in stripped binaries.
+% Keep stronger usefulness criteria based on relationships, vftables, or method properties.
 
 % A class containing a constructor is useful.
 usefulClass(Class) :-
@@ -186,18 +195,37 @@ finalClass(ClassID, VFTableOrNull, CSize, LSize, RealDestructorOrNull, MethodLis
       (findVFTable(VFTable, Class),
        forall(findVFTable(OtherVFTable, Class), VFTable = OtherVFTable)))
      ->
-         VFTableOrNull=VFTable
+          VFTableOrNull=VFTable
      ;
-     VFTableOrNull=0),
+      VFTableOrNull=0),
     % Get the certain and likely class sizes.
-    reasonMinimumPossibleClassSize(Class, CSize),
+    reasonMinimumPossibleClassSize(Class, RawCSize),
+    pointerSize(PtrSize),
+    ((VFTableOrNull =\= 0, RawCSize < PtrSize)
+     -> CSize = PtrSize
+     ;  CSize = RawCSize),
     LSize is CSize,
     % Optionally find the the real destructor as well.
     ((find(RealDestructor, Class),
       factRealDestructor(RealDestructor))
      -> RealDestructorOrNull=RealDestructor; RealDestructorOrNull=0),
     findallMethods(Class, UnsortedMethodList),
-    sort(UnsortedMethodList, MethodList).
+    sort(UnsortedMethodList, MethodList),
+    MethodList \= [].
+
+% ELF32 fallback: if explicit vftable-write evidence is unavailable, synthesize coarse classes
+% from callsites that repeatedly perform virtual dispatch on offset-zero receivers.
+finalClass(ClassID, 0, CSize, LSize, 0, MethodList) :-
+    pointerSize(4),
+    noExplicitVFTableWrites,
+    pointerSize(PtrSize),
+    fallbackVCallCaller(Caller),
+    possibleVirtualFunctionCall(_Insn0, Caller, _ThisPtr0, 0, _VFOffset0),
+    ClassID is Caller + 0x70000000,
+    possibleMethod(Caller),
+    MethodList = [Caller],
+    CSize is PtrSize,
+    LSize is PtrSize.
 
 % --------------------------------------------------------------------------------------------
 % This final result defines the properties of a VFTable.   More details in results.txt.
@@ -209,7 +237,8 @@ finalVFTable(VFTable, CertainSize, LikelySize, RTTIAddressOrNull, RTTINameOrNull
      RTTIAddressOrNull=0, RTTINameOrNull=''),
     findall(CertainOffset, factVFTableEntry(VFTable, CertainOffset, _Method), CertainOffsets),
     max_list(CertainOffsets, CertainMax),
-    CertainSize is CertainMax + 4,
+    pointerSize(PtrSize),
+    CertainSize is CertainMax + PtrSize,
     % It's a little unclear what the likely size means in a proper guessing framework.
     LikelySize is CertainSize.
 
@@ -334,6 +363,25 @@ finalMember(ClassID, Offset, Sizes, certain) :-
     % EarlySize == Sizes[0]
     UnsortedSizes = [EarlySize|_].
 
+% ELF32 fallback: treat repeated virtual dispatch through object offset zero as evidence of a
+% vptr-like member usage when explicit member-access facts are missing.
+finalMemberAccess(ClassID, 0, PtrSize, EvidenceList) :-
+    pointerSize(4),
+    noExplicitVFTableWrites,
+    pointerSize(PtrSize),
+    finalClass(ClassID, _VFTableOrNull, _CSize, _LSize, _RealDestructorOrNull, _MethodList),
+    Caller is ClassID - 0x70000000,
+    setof(Insn,
+          ThisPtr^VFTableOffset^(possibleVirtualFunctionCall(Insn, Caller, ThisPtr, 0, VFTableOffset),
+                                 0 is VFTableOffset mod PtrSize),
+          EvidenceList).
+
+finalMember(ClassID, 0, [PtrSize], likely) :-
+    pointerSize(4),
+    noExplicitVFTableWrites,
+    pointerSize(PtrSize),
+    finalMemberAccess(ClassID, 0, PtrSize, _EvidenceList).
+
 
 % ============================================================================================
 % Final Method Properties
@@ -402,10 +450,25 @@ finalMethodProperty(Method, virtual, certain) :-
 % information for simplicity and clarity.
 finalResolvedVirtualCall(Insn, VFTable, Target) :-
     % Have we already confirmed that the Insn is legitimately a virtual function call?
-    factVirtualFunctionCall(Insn, _Method, _ObjectOffset, VFTable, VFTableOffset),
+    reasonVirtualFunctionCall(Insn, _Method, _ObjectOffset, VFTable, VFTableOffset),
     % Now actually resolve the call using the VftableOffset.
     factVFTableEntry(VFTable, VFTableOffset, Entry),
     dethunk(Entry, Target).
+
+% Fallback for cases where virtual call classification is weak, but we can still map a likely
+% receiver class to a known vftable entry at the requested slot.
+finalResolvedVirtualCall(Insn, VFTable, Target) :-
+    possibleVirtualFunctionCall(Insn, Function, _ThisPtr, _ObjectOffset, VFTableOffset),
+    find(Function, Class),
+    find(VFTable, Class),
+    factVFTable(VFTable),
+    pointerSize(PtrSize),
+    0 is VFTableOffset mod PtrSize,
+    finalVFTable(VFTable, CertainSize, _LikelySize, _RTTIAddressOrNull, _RTTINameOrNull),
+    VFTableOffset < CertainSize,
+    finalVFTableEntry(VFTable, VFTableOffset, Entry),
+    dethunk(Entry, Target),
+    possibleMethod(Target).
 
 % --------------------------------------------------------------------------------------------
 %:- table finalThunk/2 as incremental.

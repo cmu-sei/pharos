@@ -4,9 +4,11 @@
 % ============================================================================================
 
 :- use_module(library(lists), [append/3, nth1/4, list_to_set/2]).
+:- discontiguous funcParameter/3.
+:- discontiguous callParameter/4.
 
 longest_suffix(Pred, List, Suffix) :-
-    append(_, Suffix, List),   % generates suffixes longest → shortest
+    append(_, Suffix, List),   % generates suffixes longest to shortest
     call(maplist(Pred), Suffix),
     !.
 
@@ -127,6 +129,61 @@ maplistm2([Elem|Tail], Goal) :-
 bitmask_check(Value, BitMask) :-
     Result is Value /\ BitMask,
     Result == BitMask.
+
+% ============================================================================================
+% Architecture-dependent helpers.
+% ============================================================================================
+
+% Infer pointer size from observed calling conventions.
+% Keep defaults conservative for historical 32-bit workflows.
+:- table pointerSize/1 as opaque.
+pointerSize(8) :-
+    callingConvention(_Address, '__x64call'),
+    !.
+pointerSize(4).
+
+% Some ELF32 binaries lack explicit vftable-write facts from the native analysis pass.
+% This predicate allows guarded fallback rules to activate only in that situation.
+:- table noExplicitVFTableWrites/0 as opaque.
+noExplicitVFTableWrites :-
+    not(possibleVFTableWrite(_Insn, _Function, _ThisPtr, _Offset, _ExpandedThisPtr, _VFTable)).
+
+% Normalize this-pointer register for non-MSVC conventions.
+% On x64 SysV ABI, implicit object parameter is usually passed in RDI.
+funcParameter(Function, ecx, ThisPtr) :-
+    callingConvention(Function, '__x64call'),
+    funcParameter(Function, rdi, ThisPtr).
+
+callParameter(Insn, Function, ecx, ThisPtr) :-
+    callingConvention(Function, '__x64call'),
+    callParameter(Insn, Function, rdi, ThisPtr).
+
+% Also provide argument-index aliases for x64 calling convention.
+funcParameter(Function, 0, ThisPtr) :-
+    callingConvention(Function, '__x64call'),
+    funcParameter(Function, rdi, ThisPtr).
+
+callParameter(Insn, Function, 0, ThisPtr) :-
+    callingConvention(Function, '__x64call'),
+    callParameter(Insn, Function, rdi, ThisPtr).
+
+% ELF32 fallback: when explicit vftable writes are unavailable, allow cdecl arg0 to participate
+% in legacy ecx-based this-pointer rules.
+funcParameter(Function, ecx, ThisPtr) :-
+    pointerSize(4),
+    callingConvention(Function, '__cdecl'),
+    noExplicitVFTableWrites,
+    funcParameter(Function, 0, ThisPtr).
+
+callParameter(Insn, Function, ecx, ThisPtr) :-
+    pointerSize(4),
+    callingConvention(Function, '__cdecl'),
+    noExplicitVFTableWrites,
+    callParameter(Insn, Function, 0, ThisPtr).
+
+% Treat x64 calling convention as thiscall-like for OO reasoning purposes.
+callingConvention(Function, '__thiscall') :-
+    callingConvention(Function, '__x64call').
 
 
 % ============================================================================================
