@@ -11,12 +11,14 @@
 % in contrast to the "dynamic facts", which typically of the form factXXX, and are concluded by
 % the reasoning and guessing rules of the Prolog logic.
 
-% fileInfo(FileMD5, Filename).
+% fileInfo(FileMD5, Filename, ABI, ArchBytes).
 %
 % Documents which executable file was analyzed, reporting the FileMD5 and Filename.  This
-% information is used in part to pair JSON outputs with inpute executables.
+% information is used in part to pair JSON outputs with input executables.  ABI is one of
+% 'MSVC_32', 'MSVC_64', 'SYSV_32', or 'SYSV_64'.  ArchBytes is the pointer width in bytes
+% (4 or 8).
 %
-initialFact(fileInfo/2).
+initialFact(fileInfo/4).
 
 % returnsSelf(Method).
 %

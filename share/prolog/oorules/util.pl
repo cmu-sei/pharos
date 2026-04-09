@@ -128,6 +128,14 @@ bitmask_check(Value, BitMask) :-
     Result is Value /\ BitMask,
     Result == BitMask.
 
+% ============================================================================================
+% Architecture-dependent helpers.
+% ============================================================================================
+
+% Derive pointer size from the architecture width recorded in fileInfo/4.
+:- table pointerSize/1 as opaque.
+pointerSize(PtrSize) :-
+    fileInfo(_, _, _, PtrSize).
 
 % ============================================================================================
 % Load dynamic predicates from a file (basis of validated loading in facts.pl and results.pl)

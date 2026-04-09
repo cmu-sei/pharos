@@ -201,7 +201,17 @@ OOSolver::add_facts(const OOAnalyzer& ooa) {
     if (no_guessing) {
       session->add_fact("guessingDisabled");
     }
-    session->add_fact("fileInfo", ds.get_filemd5(), ds.get_filename());
+    static const auto abi_name = [](DescriptorSet::ABI a) -> std::string {
+      switch (a) {
+        case DescriptorSet::ABI::MSVC_32: return "MSVC_32";
+        case DescriptorSet::ABI::MSVC_64: return "MSVC_64";
+        case DescriptorSet::ABI::SYSV_32: return "SYSV_32";
+        case DescriptorSet::ABI::SYSV_64: return "SYSV_64";
+        default:                          return "UNKNOWN";
+      }
+    };
+    session->add_fact("fileInfo", ds.get_filemd5(), ds.get_filename(), abi_name(ds.get_abi()),
+                      ds.get_arch_bytes());
     add_method_facts(ooa);
     add_vftable_facts(ooa);
     add_usage_facts(ooa);
@@ -865,7 +875,7 @@ OOSolver::dump_facts_private()
 
   size_t exported = 0;
 
-  exported += session->print_predicate(facts_file, "fileInfo", 2);
+  exported += session->print_predicate(facts_file, "fileInfo", 4);
   exported += session->print_predicate(facts_file, "returnsSelf", 1);
   exported += session->print_predicate(facts_file, "noCallsBefore", 1);
   exported += session->print_predicate(facts_file, "noCallsAfter", 1);

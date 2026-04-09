@@ -990,7 +990,7 @@ callTarget(0x413bed, 0x413a20, 0x411023).
 callTarget(0x414c87, 0x414c80, 0x41109b).
 callTarget(0x414c9d, 0x414c8e, 0x411023).
 callTarget(0x414ca7, 0x414c8e, 0x4111ae).
-fileInfo('31280CB0682773615A24584A5F440259', 'ooex9.exe').
+fileInfo('31280CB0682773615A24584A5F440259', 'ooex9.exe', 'MSVC_32', 0x4).
 funcParameter(0x411014, 0, sv_11382892923863022042).
 funcParameter(0x411019, ecx, sv_2815711700362380679).
 funcParameter(0x411023, ecx, sv_7379822680089985568).

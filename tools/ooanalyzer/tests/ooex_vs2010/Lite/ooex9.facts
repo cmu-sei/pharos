@@ -2540,7 +2540,7 @@ callTarget(0x4056a7, 0x4055c4, 0x402fe1).
 callTarget(0x4056b9, 0x4055c4, 0x402fe1).
 callTarget(0x40577e, 0x40577c, 0x4060dc).
 callTarget(0x405a37, 0x405a28, 0x4015e5).
-fileInfo('21338951169551868966AD070B29FF71', 'ooex9.exe').
+fileInfo('21338951169551868966AD070B29FF71', 'ooex9.exe', 'MSVC_32', 0x4).
 funcParameter(0x401000, ecx, sv_11567588786447410778).
 funcParameter(0x401010, ecx, sv_11477067286536882509).
 funcParameter(0x401020, 0x1, sv_9763729666476151071).

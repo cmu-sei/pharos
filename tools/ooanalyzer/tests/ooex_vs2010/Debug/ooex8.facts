@@ -889,7 +889,7 @@ callTarget(0x41367a, 0x413600, 0x4110af).
 callTarget(0x4147a7, 0x4147a0, 0x411082).
 callTarget(0x4147bd, 0x4147ae, 0x411014).
 callTarget(0x4147c7, 0x4147ae, 0x411181).
-fileInfo('0F94BB87C561B21083F7646B2FB9B0B5', 'ooex8.exe').
+fileInfo('0F94BB87C561B21083F7646B2FB9B0B5', 'ooex8.exe', 'MSVC_32', 0x4).
 funcParameter(0x41100f, 0, sv_15721919380702408794).
 funcParameter(0x411014, ecx, sv_13353420459560175592).
 funcParameter(0x411028, 0x2, sv_3824466645261221084).

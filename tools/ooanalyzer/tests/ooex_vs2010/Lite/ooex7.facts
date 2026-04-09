@@ -11025,7 +11025,7 @@ callTarget(0x417cf2, 0x417ced, 0x405b9a).
 callTarget(0x417cfc, 0x417cf7, 0x404443).
 callTarget(0x417d06, 0x417d01, 0x405cc4).
 callTarget(0x417d1a, 0x417d0b, 0x4061b1).
-fileInfo('BE390C1EB4B313C892F8F754A0FCD7BD', 'ooex7.exe').
+fileInfo('BE390C1EB4B313C892F8F754A0FCD7BD', 'ooex7.exe', 'MSVC_32', 0x4).
 funcParameter(0x401000, ecx, sv_11271028604342265152).
 funcParameter(0x401020, ecx, sv_6400873049879244086).
 funcParameter(0x401030, 0x1, sv_12322450193513579215).

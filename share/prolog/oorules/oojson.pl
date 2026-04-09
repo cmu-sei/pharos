@@ -264,10 +264,9 @@ makeVFTableEntryJson(ClassId, VFTable, Key, Out):-
     methodPrependVirt(ClassId, Address, Type1, Type),
     makeMethodName(Address, Type, Imported, MangledName, DemangledName),
     hexAddr(Address, AddrStr),
-    % Convert the memory offset (bytes) into a table entry offset by dividing by the size of
-    % pointer.  Hard coding 4 here presumes 32-bit addresses.  If we support 64-bit OO programs
-    % in the future, we'll need to know our architecture byte size here.
-    OffsetCount is Offset // 4,
+    % Convert the memory offset (bytes) into a table entry offset by dividing by pointer size.
+    pointerSize(PtrSize),
+    OffsetCount is Offset // PtrSize,
     decAddr(OffsetCount, OffsetDecStr),
     atom_string(Key, OffsetDecStr),
     Out = vftentry{'ea': AddrStr, 'offset': OffsetCount, 'name': MangledName,
@@ -290,7 +289,8 @@ findEntries(ClassId, VFTable, VFTableEntriesJson):-
 makeVFTableJson(ClassId, VFTable, Offset, AddrStr, Out):-
     hexAddr(VFTable, AddrStr),
     finalVFTable(VFTable, Size, _, _, _),
-    Length is Size // 4,
+    pointerSize(PtrSize),
+    Length is Size // PtrSize,
     hexAddr(Offset, OffsetStr),
     findEntries(ClassId, VFTable, VFTableEntries),
     Out = vftable{'ea': AddrStr, 'vftptr': OffsetStr, 'entries': VFTableEntries, 'length': Length }.

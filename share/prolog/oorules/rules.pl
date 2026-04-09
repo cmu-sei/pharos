@@ -1209,7 +1209,7 @@ reasonVFTableEntry(VFTable, 0, Entry) :-
 % PAPER: Larger-VFTableEntry
 reasonVFTableEntry(VFTable, Offset, Entry) :-
     (factVFTableEntry(VFTable, ExistingOffset, _OtherEntry);
-     (factVFTableSizeGTE(VFTable, ExistingSize), ExistingOffset is ExistingSize - 4)),
+     (factVFTableSizeGTE(VFTable, ExistingSize), pointerSize(PtrSize), ExistingOffset is ExistingSize - PtrSize)),
     possibleVFTableEntry(VFTable, Offset, Entry),
     Offset =< ExistingOffset.
 
@@ -1264,7 +1264,8 @@ reasonNOTVFTableEntry_C(VFTable, Offset, Entry) :-
     factVFTable(VFTable),
     possibleVFTableEntry(VFTable, Offset, Entry),
     Offset \= 0,
-    ComputedOffset is Offset - 4,
+    pointerSize(PtrSize),
+    ComputedOffset is Offset - PtrSize,
     possibleVFTableEntry(VFTable, ComputedOffset, OtherEntry),
     factNOTVFTableEntry(VFTable, ComputedOffset, OtherEntry).
 
@@ -1309,9 +1310,10 @@ reasonVFTableSizeGTE(VFTable, Size) :-
     % If we leave E as _, it will case on different values of E!
     setof(S, E^factVFTableEntry(VFTable, S, E), Set),
     max_list(Set, LastEntry),
-    Size is LastEntry + 4,
+    pointerSize(PtrSize),
+    Size is LastEntry + PtrSize,
     % Debugging
-    logtraceln('~@~Q.', [not((factVFTableSizeGTE(VFTable, ExistingSize),
+    logtraceln('~@~Q.', [not((factVFTableSizeGTE(VFTable, ExistingSize)),
                               ExistingSize >= Size)),
                          reasonVFTableSizeGTE_A(VFTable, Size)]).
 
@@ -1363,9 +1365,10 @@ reasonVFTableSizeLTE(VFTable, Size) :-
     % If we leave M as _, it will case on different values of M!
     setof(S, M^factNOTVFTableEntry(VFTable, S, M), Set),
     max_list(Set, LastEntry),
-    Size is LastEntry + 4,
+    pointerSize(PtrSize),
+    Size is LastEntry + PtrSize,
     % Debugging
-    logtraceln('~@~Q.', [not((factVFTableSizeLTE(VFTable, ExistingSize),
+    logtraceln('~@~Q.', [not((factVFTableSizeLTE(VFTable, ExistingSize)),
                               ExistingSize >= Size)),
                          reasonVFTableSizeLTE_A(VFTable, Size)]).
 
@@ -1433,7 +1436,8 @@ reasonVBTable(VBTable) :-
 % PAPER: ??? NEW!
 reasonVBTable(VBTable) :-
     factVBTableEntry(VBTable, Offset, _Value),
-    Offset >= 4,
+    pointerSize(PtrSize),
+    Offset >= PtrSize,
     logtraceln('~Q.', reasonVBTable_A(VBTable)).
 
 % --------------------------------------------------------------------------------------------
@@ -1463,9 +1467,10 @@ reasonVBTableEntry(VBTable, Offset, Value) :-
 
 % Because the first two(?) entries in the VBTable are always valid.
 % PAPER: ??? NEW!
-reasonVBTableEntry(VBTable, 4, Value) :-
+reasonVBTableEntry(VBTable, Offset, Value) :-
+    pointerSize(Offset),
     factVBTable(VBTable),
-    possibleVBTableEntry(VBTable, 4, Value).
+    possibleVBTableEntry(VBTable, Offset, Value).
 
 % Because there is a larger valid VBTable entry in the same VBTable.
 % PAPER: ??? NEW!
@@ -3591,7 +3596,8 @@ reasonClassSizeGTE_F(Class, Size) :-
 reasonClassSizeGTE_G(Class, Size) :-
     factVFTableWrite(_Insn, Method, ObjectOffset, _VFTable),
     find(Method, Class),
-    Size is ObjectOffset + 4,
+    pointerSize(PtrSize),
+    Size is ObjectOffset + PtrSize,
     % Debugging
     logtraceln('~@~Q.', [not((factClassSizeGTE(Class, ExistingSize), ExistingSize >= Size)),
                          reasonClassSizeGTE_G(Class, Size)]).
