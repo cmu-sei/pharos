@@ -137,6 +137,27 @@ bitmask_check(Value, BitMask) :-
 pointerSize(PtrSize) :-
     fileInfo(_, _, _, PtrSize).
 
+% thisPtrParam(Function, Param) - the parameter name or position that carries the object
+% pointer for Function, based on its calling convention.
+%   MSVC __thiscall:        ecx (register)
+%   SysV i386 __sysv32call: 0   (first stack argument, integer position)
+% Note: 'invalid' convention is intentionally excluded - rules that need to handle it
+% (e.g. reasonMethod_N, guessMethodB) do so explicitly.
+:- table thisPtrParam/2 as opaque.
+thisPtrParam(Function, ecx) :-
+    callingConvention(Function, '__thiscall').
+thisPtrParam(Function, 0) :-
+    callingConvention(Function, '__sysv32call').
+
+% Convenience wrappers that look up the this-pointer symbolic value for a function or call-site.
+thisParamFuncParameter(Function, ThisPtr) :-
+    thisPtrParam(Function, Param),
+    funcParameter(Function, Param, ThisPtr).
+
+thisParamCallParameter(Insn, Function, ThisPtr) :-
+    thisPtrParam(Function, Param),
+    callParameter(Insn, Function, Param, ThisPtr).
+
 % ============================================================================================
 % Load dynamic predicates from a file (basis of validated loading in facts.pl and results.pl)
 % ============================================================================================

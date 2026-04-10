@@ -402,8 +402,15 @@ guessMethodB(Method) :-
     % It is sufficient for __thiscall to be possible, since our confidence derives from Caller.
     % This rule currently needs to permit the slightly different ECX parameter standard.
     % This bug is wrapped up in std::_Yarn and std::locale in Lite/ooex7 (and oo and poly).
-    (callingConvention(Caller, '__thiscall'); callingConvention(Caller, 'invalid')),
-    funcParameter(Caller, ecx, ThisPtr1),
+
+
+    (thisParamFuncParameter(Caller, ThisPtr1);
+    (
+        % old quirk case
+        callingConvention(Caller, 'invalid'),
+        funcParameter(Caller, ecx, ThisPtr1)
+    )),
+
     thisPtrOffset(ThisPtr1, _Offset, ThisPtr2),
     thisPtrUsage(_Insn1, Caller, ThisPtr2, Method),
     doNotGuessHelper(factMethod(Method),
@@ -1430,9 +1437,10 @@ minimalRealDestructor(Method) :-
 
     % Destructors can't take multiple arguments (well except for when they have virtual bases),
     % but this should at least get us closer...
+    % Exclude any parameter that is not the this-pointer.
     not((
                funcParameter(Method, Position, _SV),
-               iso_dif(Position, ecx)
+               not(thisPtrParam(Method, Position))
        )),
 
     % There must be at least one other method besides this one on the class.  There's a strong
@@ -1646,8 +1654,15 @@ likelyDeletingDestructor(DeletingDestructor, RealDestructor) :-
 
     % This rule currently needs to permit the slightly different ECX parameter standard.  An
     % example is std::basic_filebuf:~basic_filebuf in Lite/oo.
-    (callingConvention(DeletingDestructor, '__thiscall'); callingConvention(DeletingDestructor, 'invalid')),
-    funcParameter(DeletingDestructor, ecx, ThisPtr),
+
+    (thisParamFuncParameter(DeletingDestructor, ThisPtr);
+    (
+        % invalid hack
+        callingConvention(DeletingDestructor, 'invalid'),
+        funcParameter(DeletingDestructor, ecx, ThisPtr)
+    )),
+
+
     (
         insnCallsDelete(DeleteInsn, DeletingDestructor, ThisPtr);
         insnCallsDelete(DeleteInsn, DeletingDestructor, invalid)

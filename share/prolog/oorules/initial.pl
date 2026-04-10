@@ -174,8 +174,8 @@ validMethodCallAtOffset(Insn, Caller, Callee, Offset) :-
 :- table methodCallAtOffset/4 as opaque.
 
 methodCallAtOffset(Insn, Caller, Callee, Offset) :-
-    funcParameter(Caller, ecx, CallerThisPtr),
-    callParameter(Insn, Caller, ecx, CalleeThisPtr),
+    thisParamFuncParameter(Caller, CallerThisPtr),
+    thisParamCallParameter(Insn, Caller, CalleeThisPtr),
     thisPtrOffset(CallerThisPtr, Offset, CalleeThisPtr),
     callTarget(Insn, Caller, Thunk),
     dethunk(Thunk, Callee),
@@ -183,8 +183,8 @@ methodCallAtOffset(Insn, Caller, Callee, Offset) :-
     true.
 
 methodCallAtOffset(Insn, Caller, Callee, 0) :-
-    funcParameter(Caller, ecx, ThisPtr),
-    callParameter(Insn, Caller, ecx, ThisPtr),
+    thisParamFuncParameter(Caller, ThisPtr),
+    thisParamCallParameter(Insn, Caller, ThisPtr),
     callTarget(Insn, Caller, Thunk),
     dethunk(Thunk, Callee),
     %loginfoln('~Q.', methodCallAtOffset(Insn, Caller, Callee, 0)),
@@ -194,7 +194,7 @@ methodCallAtOffset(Insn, Caller, Callee, 0) :-
 :- table thisPtrUsage/4 as opaque.
 
 thisPtrUsage(Insn, Function, ThisPtr, Method) :-
-    callParameter(Insn, Function, ecx, ThisPtr),
+    thisParamCallParameter(Insn, Function, ThisPtr),
     callTarget(Insn, Function, Thunk),
     dethunk(Thunk, Method),
     %loginfoln('~Q.', thisPtrUsage(Insn, Function, ThisPtr, Method)),
