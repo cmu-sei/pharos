@@ -1313,7 +1313,7 @@ reasonVFTableSizeGTE(VFTable, Size) :-
     pointerSize(PtrSize),
     Size is LastEntry + PtrSize,
     % Debugging
-    logtraceln('~@~Q.', [not((factVFTableSizeGTE(VFTable, ExistingSize)),
+    logtraceln('~@~Q.', [not((factVFTableSizeGTE(VFTable, ExistingSize),
                               ExistingSize >= Size)),
                          reasonVFTableSizeGTE_A(VFTable, Size)]).
 
@@ -1368,7 +1368,7 @@ reasonVFTableSizeLTE(VFTable, Size) :-
     pointerSize(PtrSize),
     Size is LastEntry + PtrSize,
     % Debugging
-    logtraceln('~@~Q.', [not((factVFTableSizeLTE(VFTable, ExistingSize)),
+    logtraceln('~@~Q.', [not((factVFTableSizeLTE(VFTable, ExistingSize),
                               ExistingSize >= Size)),
                          reasonVFTableSizeLTE_A(VFTable, Size)]).
 
