@@ -1427,6 +1427,28 @@ CallingConventionMatcher::CallingConventionMatcher()
   cc.set_abi(CallingConvention::ABI::MSVC_64);
   conventions.push_back(cc);
 
+  // On x64 Windows, __cdecl/__stdcall/__fastcall all resolve to the same calling convention.
+  // The API database uses "cdecl" for many 64-bit CRT functions; alias them to __x64call so
+  // set_api() lookups don't produce "Unrecognized calling convention" warnings.
+  for (auto const& alias : {"__cdecl", "__stdcall", "__fastcall"}) {
+    cc = CallingConvention(64, alias, "Microsoft Visual Studio");
+    cc.set_stack_alignment(64);
+    cc.set_stack_cleanup(CallingConvention::CLEANUP_CALLEE);
+    cc.set_retval_register(rax);
+    cc.set_param_order(CallingConvention::ORDER_RTL);
+    cc.add_reg_param(rcx);
+    cc.add_reg_param(rdx);
+    cc.add_reg_param(r8);
+    cc.add_reg_param(r9);
+    cc.add_reg_param(xmm0);
+    cc.add_reg_param(xmm1);
+    cc.add_reg_param(xmm2);
+    cc.add_reg_param(xmm3);
+    cc.add_nonvolatile(nonvol.get_nonvolatile());
+    cc.set_abi(CallingConvention::ABI::MSVC_64);
+    conventions.push_back(cc);
+  }
+
 }
 
 } // namespace pharos
