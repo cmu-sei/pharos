@@ -161,6 +161,15 @@ genericThisPtrABIParam(rcx) :- fileInfo(_, _, 'MSVC_64', _).
 genericThisPtrABIParam(rdi) :- fileInfo(_, _, 'SYSV_64', _).
 genericThisPtrABIParam(0)   :- fileInfo(_, _, 'SYSV_32', _).
 
+% explicitThisCallConvention(Method)
+% True when Method's calling convention is an explicitly identified OO this-call convention.
+% '__thiscall' (MSVC) and '__sysv32call' (SysV) are confirmed by the convention matcher.
+% 'genericthisptr' is excluded — it is emitted for C++ method identification false positives
+% and seeding guesses from it causes spurious classes on MSVC binaries.
+:- table explicitThisCallConvention/1 as opaque.
+explicitThisCallConvention(Method) :- callingConvention(Method, '__thiscall').
+explicitThisCallConvention(Method) :- callingConvention(Method, '__sysv32call').
+
 % thisParamFuncParameter(Function, ThisPtr)
 % The symbolic value of Function's own incoming this-pointer, as recorded in funcParameter,
 % looked up using Function's calling convention.
