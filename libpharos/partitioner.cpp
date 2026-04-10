@@ -354,13 +354,7 @@ P2::PartitionerPtr create_partitioner(const ProgOptVarMap& vm, P2::Engine* engin
         }
       }
       if (!pehdr) {
-        // If this message is preventing you from testing OOAnalyzer on Linux ELF executables,
-        // just remove this test.  OOAnalyzer _will_ do something on ELF executables produced by
-        // GCC, just not the "right" thing.  Since too many public users of the OOAnalyzer tool
-        // were not aware of this limitation, we felt that it would be better to disable the
-        // feature entirely unless you were motivated enough to remove this test. :-)
-        GFATAL << "This tool only suppports Windows Portable (PE) executable files." << LEND;
-        std::exit(EXIT_FAILURE);
+        GWARN << "Support for ELF executables is *very* experimental!" << LEND;
       }
     }
   }
