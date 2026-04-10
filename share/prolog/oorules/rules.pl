@@ -133,11 +133,7 @@ reasonMethod_M(Method) :-
 reasonMethod_N(Func) :-
     thisPtrUsage(_Insn1, Func, ThisPtr, Method),
     factMethod(Method),
-    % thisParamFuncParameter covers __thiscall and SysV ABIs. Additionally handle 'invalid'
-    % explicitly: the convention analyser sometimes fails to settle on __thiscall for MSVC
-    % methods, which produces many correct results in Lite/oo, poly, and ooex7 test cases.
-    (thisParamFuncParameter(Func, ThisPtr);
-     (callingConvention(Func, 'invalid'), funcParameter(Func, ecx, ThisPtr))),
+    thisParamFuncParameter(Func, ThisPtr),
     logtraceln('~@~Q.', [not(factMethod(Func)), reasonMethod_N(Func)]).
 
 % Because a known OO __thiscall method passes the this-pointer as parameter zero to a cdecl

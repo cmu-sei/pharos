@@ -175,28 +175,32 @@ validMethodCallAtOffset(Insn, Caller, Callee, Offset) :-
 
 methodCallAtOffset(Insn, Caller, Callee, Offset) :-
     thisParamFuncParameter(Caller, CallerThisPtr),
-    thisParamCallParameter(Insn, Caller, CalleeThisPtr),
-    thisPtrOffset(CallerThisPtr, Offset, CalleeThisPtr),
     callTarget(Insn, Caller, Thunk),
     dethunk(Thunk, Callee),
+    thisParamCallParameter(Insn, Caller, Callee, CalleeThisPtr),
+    thisPtrOffset(CallerThisPtr, Offset, CalleeThisPtr),
     %loginfoln('~Q.', methodCallAtOffset(Insn, Caller, Callee, Offset)),
     true.
 
 methodCallAtOffset(Insn, Caller, Callee, 0) :-
     thisParamFuncParameter(Caller, ThisPtr),
-    thisParamCallParameter(Insn, Caller, ThisPtr),
     callTarget(Insn, Caller, Thunk),
     dethunk(Thunk, Callee),
+    thisParamCallParameter(Insn, Caller, Callee, ThisPtr),
     %loginfoln('~Q.', methodCallAtOffset(Insn, Caller, Callee, 0)),
     true.
 
-% Replaces an old-style fact of the same name.
+% thisPtrUsage(Insn, Function, ThisPtr, Method)
+% At call site Insn within Function, the this-pointer value ThisPtr is passed to Method.
+% Uses Method's calling convention to determine which parameter carries the this-pointer,
+% with no constraint on Function's own convention (Function need not itself be an OO method).
 :- table thisPtrUsage/4 as opaque.
 
 thisPtrUsage(Insn, Function, ThisPtr, Method) :-
-    thisParamCallParameter(Insn, Function, ThisPtr),
     callTarget(Insn, Function, Thunk),
     dethunk(Thunk, Method),
+    thisPtrParam(Method, Param),
+    callParameter(Insn, Function, Param, ThisPtr),
     %loginfoln('~Q.', thisPtrUsage(Insn, Function, ThisPtr, Method)),
     true.
 

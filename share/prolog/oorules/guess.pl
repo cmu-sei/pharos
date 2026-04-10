@@ -399,17 +399,7 @@ guessMethod(Out) :-
 
 guessMethodB(Method) :-
     factMethod(Caller),
-    % It is sufficient for __thiscall to be possible, since our confidence derives from Caller.
-    % This rule currently needs to permit the slightly different ECX parameter standard.
-    % This bug is wrapped up in std::_Yarn and std::locale in Lite/ooex7 (and oo and poly).
-
-
-    (thisParamFuncParameter(Caller, ThisPtr1);
-    (
-        % old quirk case
-        callingConvention(Caller, 'invalid'),
-        funcParameter(Caller, ecx, ThisPtr1)
-    )),
+    thisParamFuncParameter(Caller, ThisPtr1),
 
     thisPtrOffset(ThisPtr1, _Offset, ThisPtr2),
     thisPtrUsage(_Insn1, Caller, ThisPtr2, Method),
@@ -1652,15 +1642,7 @@ likelyDeletingDestructor(DeletingDestructor, RealDestructor) :-
     % delete(), in the mean time lets try accepting an fact-generation failure as well, but not
     % a pointer that's known to be unrelated).
 
-    % This rule currently needs to permit the slightly different ECX parameter standard.  An
-    % example is std::basic_filebuf:~basic_filebuf in Lite/oo.
-
-    (thisParamFuncParameter(DeletingDestructor, ThisPtr);
-    (
-        % invalid hack
-        callingConvention(DeletingDestructor, 'invalid'),
-        funcParameter(DeletingDestructor, ecx, ThisPtr)
-    )),
+    thisParamFuncParameter(DeletingDestructor, ThisPtr),
 
 
     (

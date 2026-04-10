@@ -137,26 +137,43 @@ bitmask_check(Value, BitMask) :-
 pointerSize(PtrSize) :-
     fileInfo(_, _, _, PtrSize).
 
-% thisPtrParam(Function, Param) - the parameter name or position that carries the object
-% pointer for Function, based on its calling convention.
+% thisPtrParam(Function, Param)
+% The calling-convention parameter name/position that carries the this-pointer for Function.
+% Param is a register atom (e.g. ecx, rcx, rdi) or an integer stack position (0 = first arg).
 %   MSVC __thiscall:        ecx (register)
 %   SysV i386 __sysv32call: 0   (first stack argument, integer position)
-% Note: 'invalid' convention is intentionally excluded - rules that need to handle it
-% (e.g. reasonMethod_N, guessMethodB) do so explicitly.
+%   genericthisptr:         derived from the ABI when the convention analyser fails to match.
 :- table thisPtrParam/2 as opaque.
 thisPtrParam(Function, ecx) :-
     callingConvention(Function, '__thiscall').
 thisPtrParam(Function, 0) :-
     callingConvention(Function, '__sysv32call').
+thisPtrParam(Function, Param) :-
+    callingConvention(Function, 'genericthisptr'),
+    genericThisPtrABIParam(Param).
 
-% Convenience wrappers that look up the this-pointer symbolic value for a function or call-site.
+% genericThisPtrABIParam(Param)
+% The this-pointer parameter for the current file's ABI, used when a function's calling
+% convention could not be determined precisely (genericthisptr sentinel).
+:- table genericThisPtrABIParam/1 as opaque.
+genericThisPtrABIParam(ecx) :- fileInfo(_, _, 'MSVC_32', _).
+genericThisPtrABIParam(rcx) :- fileInfo(_, _, 'MSVC_64', _).
+genericThisPtrABIParam(rdi) :- fileInfo(_, _, 'SYSV_64', _).
+genericThisPtrABIParam(0)   :- fileInfo(_, _, 'SYSV_32', _).
+
+% thisParamFuncParameter(Function, ThisPtr)
+% The symbolic value of Function's own incoming this-pointer, as recorded in funcParameter,
+% looked up using Function's calling convention.
 thisParamFuncParameter(Function, ThisPtr) :-
     thisPtrParam(Function, Param),
     funcParameter(Function, Param, ThisPtr).
 
-thisParamCallParameter(Insn, Function, ThisPtr) :-
-    thisPtrParam(Function, Param),
-    callParameter(Insn, Function, Param, ThisPtr).
+% thisParamCallParameter(Insn, CallerFunc, Callee, ThisPtr)
+% The symbolic value of the this-pointer passed to Callee at call site Insn within
+% CallerFunc, looked up using Callee's calling convention.
+thisParamCallParameter(Insn, CallerFunc, Callee, ThisPtr) :-
+    thisPtrParam(Callee, Param),
+    callParameter(Insn, CallerFunc, Param, ThisPtr).
 
 % ============================================================================================
 % Load dynamic predicates from a file (basis of validated loading in facts.pl and results.pl)

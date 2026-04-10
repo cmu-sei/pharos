@@ -88,7 +88,7 @@ callingConvention(0x41109b, '__thiscall').
 callingConvention(0x41109b, '__vectorcall').
 callingConvention(0x4110a0, '__stdcall').
 callingConvention(0x4110a5, '__cdecl').
-callingConvention(0x4110aa, invalid).
+callingConvention(0x4110aa, genericthisptr).
 callingConvention(0x4110af, '__cdecl').
 callingConvention(0x4110b4, '__fastcall').
 callingConvention(0x4110b4, '__thiscall').
@@ -101,7 +101,7 @@ callingConvention(0x4110be, '__thiscall').
 callingConvention(0x4110be, '__vectorcall').
 callingConvention(0x4110c3, '__stdcall').
 callingConvention(0x4110c8, '__cdecl').
-callingConvention(0x4110cd, invalid).
+callingConvention(0x4110cd, genericthisptr).
 callingConvention(0x4110d2, '__cdecl').
 callingConvention(0x4110d2, '__fastcall').
 callingConvention(0x4110d2, '__stdcall').
@@ -226,7 +226,7 @@ callingConvention(0x4111b8, '__stdcall').
 callingConvention(0x4111bd, '__fastcall').
 callingConvention(0x4111bd, '__thiscall').
 callingConvention(0x4111bd, '__vectorcall').
-callingConvention(0x4111c2, invalid).
+callingConvention(0x4111c2, genericthisptr).
 callingConvention(0x4111c7, '__thiscall').
 callingConvention(0x4111cc, '__cdecl').
 callingConvention(0x4111cc, '__fastcall').
@@ -352,7 +352,7 @@ callingConvention(0x41128a, '__cdecl').
 callingConvention(0x41128f, '__fastcall').
 callingConvention(0x41128f, '__thiscall').
 callingConvention(0x41128f, '__vectorcall').
-callingConvention(0x411294, invalid).
+callingConvention(0x411294, genericthisptr).
 callingConvention(0x411299, '__cdecl').
 callingConvention(0x411299, '__fastcall').
 callingConvention(0x411299, '__stdcall').
@@ -576,14 +576,14 @@ callingConvention(0x4126d0, '__vectorcall').
 callingConvention(0x412710, '__fastcall').
 callingConvention(0x412710, '__thiscall').
 callingConvention(0x412710, '__vectorcall').
-callingConvention(0x412780, invalid).
+callingConvention(0x412780, genericthisptr).
 callingConvention(0x4127e0, '__fastcall').
 callingConvention(0x4127e0, '__thiscall').
 callingConvention(0x4127e0, '__vectorcall').
 callingConvention(0x4128e0, '__fastcall').
 callingConvention(0x4128e0, '__thiscall').
 callingConvention(0x4128e0, '__vectorcall').
-callingConvention(0x412960, invalid).
+callingConvention(0x412960, genericthisptr).
 callingConvention(0x4129c0, '__fastcall').
 callingConvention(0x4129c0, '__thiscall').
 callingConvention(0x4129c0, '__vectorcall').

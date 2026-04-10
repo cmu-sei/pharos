@@ -278,7 +278,7 @@ OOSolver::add_method_facts(const OOAnalyzer& ooa)
     // fact and normal funcParameter fact, as this results in non-OO functions.
     auto conventions = tcm->fd->get_calling_conventions();
     if (conventions.size() == 0) {
-      session->add_fact("callingConvention", tcm->get_address(), "invalid");
+      session->add_fact("callingConvention", tcm->get_address(), "genericthisptr");
       auto reg_name = tcm->fd->ds.get_this_ptr_reg_name();
       if (reg_name) {
         session->add_fact("funcParameter", tcm->get_address(), *reg_name, thisptr_term);
