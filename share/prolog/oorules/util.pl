@@ -141,13 +141,19 @@ pointerSize(PtrSize) :-
 % The calling-convention parameter name/position that carries the this-pointer for Function.
 % Param is a register atom (e.g. ecx, rcx, rdi) or an integer stack position (0 = first arg).
 %   MSVC __thiscall:        ecx (register)
+%   MSVC __x64call:         rcx (register)
 %   SysV i386 __sysv32call: 0   (first stack argument, integer position)
+%   SysV x86-64 __sysv64call: rdi (register)
 %   genericthisptr:         derived from the ABI when the convention analyser fails to match.
 :- table thisPtrParam/2 as opaque.
 thisPtrParam(Function, ecx) :-
     callingConvention(Function, '__thiscall').
+thisPtrParam(Function, rcx) :-
+    callingConvention(Function, '__x64call').
 thisPtrParam(Function, 0) :-
     callingConvention(Function, '__sysv32call').
+thisPtrParam(Function, rdi) :-
+    callingConvention(Function, '__sysv64call').
 thisPtrParam(Function, Param) :-
     callingConvention(Function, 'genericthisptr'),
     genericThisPtrABIParam(Param).
@@ -163,12 +169,14 @@ genericThisPtrABIParam(0)   :- fileInfo(_, _, 'SYSV_32', _).
 
 % explicitThisCallConvention(Method)
 % True when Method's calling convention is an explicitly identified OO this-call convention.
-% '__thiscall' (MSVC) and '__sysv32call' (SysV) are confirmed by the convention matcher.
+% '__thiscall', '__x64call', '__sysv32call', '__sysv64call' are confirmed by the convention matcher.
 % 'genericthisptr' is excluded — it is emitted for C++ method identification false positives
 % and seeding guesses from it causes spurious classes on MSVC binaries.
 :- table explicitThisCallConvention/1 as opaque.
 explicitThisCallConvention(Method) :- callingConvention(Method, '__thiscall').
+explicitThisCallConvention(Method) :- callingConvention(Method, '__x64call').
 explicitThisCallConvention(Method) :- callingConvention(Method, '__sysv32call').
+explicitThisCallConvention(Method) :- callingConvention(Method, '__sysv64call').
 
 % thisParamFuncParameter(Function, ThisPtr)
 % The symbolic value of Function's own incoming this-pointer, as recorded in funcParameter,
