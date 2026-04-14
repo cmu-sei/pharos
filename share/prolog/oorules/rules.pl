@@ -1401,16 +1401,26 @@ reasonVirtualFunctionCall(Insn, Method, ObjectOffset, VFTable, VFTableOffset) :-
 % PAPER: XXX
 % The call proves the entry in this rule.  It relies on the VFTableWrite which can be proven
 % from the VFTable, which can come from RTTI for example.
-reasonVirtualFunctionCall(Insn, Method, ObjectOffset, VFTable, VFTableOffset) :-
-    % There's a possible virtual function call.
-    possibleVirtualFunctionCall(Insn, Function, ThisPtr, ObjectOffset, VFTableOffset),
-    % There's a this-pointer usage that calls a method.
-    thisPtrUsage(_CallInsn, Function, ThisPtr, Method),
-    % We know what VFTable was written into that object offset.
-    factVFTableWrite(_WriteInsn, Method, ObjectOffset, VFTable),
-    % Debugging
-    logtraceln('~Q.', reasonVirtualFunctionCall(Insn, Method, ObjectOffset,
-                                                VFTable, VFTableOffset)).
+% ejs thinks this is a broken rule
+% reasonVirtualFunctionCall(Insn, Method, ObjectOffset, VFTable, VFTableOffset) :-
+%     % There's a possible virtual function call.
+%     possibleVirtualFunctionCall(Insn, Function, ThisPtr, ObjectOffset, VFTableOffset),
+%     % There's a this-pointer usage that calls a method.
+%     thisPtrUsage(_CallInsn, Function, ThisPtr, Method),
+%     % We know what VFTable was written into that object offset.
+%     factVFTableWrite(_WriteInsn, Method, ObjectOffset, VFTable),
+%     % Debugging
+%     logtraceln('~Q.', reasonVirtualFunctionCall(Insn, Method, ObjectOffset,
+%                                                 VFTable, VFTableOffset)).
+
+% This actually does resolving via vftables...
+reasonVirtualFunctionCall(Insn, CalleeMethod, ObjectOffset, VFTable, VFTableOffset) :-
+    possibleVirtualFunctionCall(Insn, CallerMethod, ThisPtr, ObjectOffset, VFTableOffset),
+    thisParamFuncParameter(CallerMethod, ThisPtr),
+    find(CallerMethod, CallerClass),
+    find(SomeMethodWithWrite, CallerClass),
+    factVFTableWrite(_WriteInsn, SomeMethodWithWrite, ObjectOffset, VFTable),
+    factVFTableEntry(VFTable, VFTableOffset, CalleeMethod).
 
 % ============================================================================================
 % Rules for virtual BASE tables.
