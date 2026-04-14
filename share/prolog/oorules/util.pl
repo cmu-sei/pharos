@@ -128,6 +128,69 @@ bitmask_check(Value, BitMask) :-
     Result is Value /\ BitMask,
     Result == BitMask.
 
+% ============================================================================================
+% Architecture-dependent helpers.
+% ============================================================================================
+
+% Derive pointer size from the architecture width recorded in fileInfo/4.
+:- table pointerSize/1 as opaque.
+pointerSize(PtrSize) :-
+    fileInfo(_, _, _, PtrSize).
+
+% thisPtrParam(Function, Param)
+% The calling-convention parameter name/position that carries the this-pointer for Function.
+% Param is a register atom (e.g. ecx, rcx, rdi) or an integer stack position (0 = first arg).
+%   MSVC __thiscall:        ecx (register)
+%   MSVC __x64call:         rcx (register)
+%   SysV i386 __sysv32call: 0   (first stack argument, integer position)
+%   SysV x86-64 __sysv64call: rdi (register)
+%   genericthisptr:         derived from the ABI when the convention analyser fails to match.
+:- table thisPtrParam/2 as opaque.
+thisPtrParam(Function, ecx) :-
+    callingConvention(Function, '__thiscall').
+thisPtrParam(Function, rcx) :-
+    callingConvention(Function, '__x64call').
+thisPtrParam(Function, 0) :-
+    callingConvention(Function, '__sysv32call').
+thisPtrParam(Function, rdi) :-
+    callingConvention(Function, '__sysv64call').
+thisPtrParam(Function, Param) :-
+    callingConvention(Function, 'genericthisptr'),
+    genericThisPtrABIParam(Param).
+
+% genericThisPtrABIParam(Param)
+% The this-pointer parameter for the current file's ABI, used when a function's calling
+% convention could not be determined precisely (genericthisptr sentinel).
+:- table genericThisPtrABIParam/1 as opaque.
+genericThisPtrABIParam(ecx) :- fileInfo(_, _, 'MSVC_32', _).
+genericThisPtrABIParam(rcx) :- fileInfo(_, _, 'MSVC_64', _).
+genericThisPtrABIParam(rdi) :- fileInfo(_, _, 'SYSV_64', _).
+genericThisPtrABIParam(0)   :- fileInfo(_, _, 'SYSV_32', _).
+
+% explicitThisCallConvention(Method)
+% True when Method's calling convention is an explicitly identified OO this-call convention.
+% '__thiscall', '__x64call', '__sysv32call', '__sysv64call' are confirmed by the convention matcher.
+% 'genericthisptr' is excluded — it is emitted for C++ method identification false positives
+% and seeding guesses from it causes spurious classes on MSVC binaries.
+:- table explicitThisCallConvention/1 as opaque.
+explicitThisCallConvention(Method) :- callingConvention(Method, '__thiscall').
+explicitThisCallConvention(Method) :- callingConvention(Method, '__x64call').
+explicitThisCallConvention(Method) :- callingConvention(Method, '__sysv32call').
+explicitThisCallConvention(Method) :- callingConvention(Method, '__sysv64call').
+
+% thisParamFuncParameter(Function, ThisPtr)
+% The symbolic value of Function's own incoming this-pointer, as recorded in funcParameter,
+% looked up using Function's calling convention.
+thisParamFuncParameter(Function, ThisPtr) :-
+    thisPtrParam(Function, Param),
+    funcParameter(Function, Param, ThisPtr).
+
+% thisParamCallParameter(Insn, CallerFunc, Callee, ThisPtr)
+% The symbolic value of the this-pointer passed to Callee at call site Insn within
+% CallerFunc, looked up using Callee's calling convention.
+thisParamCallParameter(Insn, CallerFunc, Callee, ThisPtr) :-
+    thisPtrParam(Callee, Param),
+    callParameter(Insn, CallerFunc, Param, ThisPtr).
 
 % ============================================================================================
 % Load dynamic predicates from a file (basis of validated loading in facts.pl and results.pl)

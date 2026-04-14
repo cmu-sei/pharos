@@ -80,12 +80,12 @@ reasonMethod_G(Method) :-
 reasonMethod_H(Method) :-
     factVFTableWrite(Insn, Method, Offset, VFTable),
     possibleVFTableWrite(Insn, Method, ThisPtr, Offset, VFTable),
-    funcParameter(Method, ecx, ThisPtr).
+    thisParamFuncParameter(Method, ThisPtr).
 
 reasonMethod_I(Method) :-
     factVBTableWrite(Insn, Method, Offset, VBTable),
     possibleVBTableWrite(Insn, Method, ThisPtr, Offset, VBTable),
-    funcParameter(Method, ecx, ThisPtr).
+    thisParamFuncParameter(Method, ThisPtr).
 
 % Because the calling convention proves it's on OO method.
 % This is currently weak enough that we're guessing it instead.
@@ -111,7 +111,7 @@ reasonMethod_L(Method) :-
     % Intentionally NOT a validMethodCallAtOffset!
     methodCallAtOffset(_Insn1, Caller, Method, 0),
     % Require that the Method also read/use the value.
-    funcParameter(Method, ecx, _SymbolicValue),
+    thisParamFuncParameter(Method, _SymbolicValue),
     logtraceln('~@~Q.', [not(factMethod(Method)), reasonMethod_L(Method)]).
 
 % Because direct data flow from new() makes the function a method.
@@ -126,17 +126,14 @@ reasonMethod_M(Method) :-
     member(Type, [type_Heap, type_Global]),
     thisPtrUsage(_Insn2, Func, ThisPtr, Method),
     % Require that the Method also read/use the value.
-    funcParameter(Method, ecx, _SymbolicValue),
+    thisParamFuncParameter(Method, _SymbolicValue),
     logtraceln('~@~Q.', [not(factMethod(Method)), reasonMethod_M(Method)]).
 
 % Because the thisptr is known to be an object pointer.
 reasonMethod_N(Func) :-
     thisPtrUsage(_Insn1, Func, ThisPtr, Method),
     factMethod(Method),
-    % This rule needs to permit invalid calling conventions for many correct results in Lite
-    % oo, poly, and ooex7 test cases.
-    (callingConvention(Func, '__thiscall'); callingConvention(Func, 'invalid')),
-    funcParameter(Func, ecx, ThisPtr),
+    thisParamFuncParameter(Func, ThisPtr),
     logtraceln('~@~Q.', [not(factMethod(Func)), reasonMethod_N(Func)]).
 
 % Because a known OO __thiscall method passes the this-pointer as parameter zero to a cdecl
@@ -418,7 +415,7 @@ reasonRealDestructorSet(Set) :-
 :- table reasonNOTRealDestructor_E/1 as incremental.
 :- table reasonNOTRealDestructor_F/1 as incremental.
 :- table reasonNOTRealDestructor_G/1 as incremental.
-:- table reasonNOTRealDestructor_H/1 as incremental.
+%:- table reasonNOTRealDestructor_H/1 as incremental.
 :- table reasonNOTRealDestructor_I/1 as incremental.
 :- table reasonNOTRealDestructor_J/1 as incremental.
 
@@ -431,7 +428,7 @@ reasonNOTRealDestructor(Method) :-
         reasonNOTRealDestructor_E(Method),
         reasonNOTRealDestructor_F(Method),
         reasonNOTRealDestructor_G(Method),
-        reasonNOTRealDestructor_H(Method),
+        %reasonNOTRealDestructor_H(Method),
         reasonNOTRealDestructor_I(Method),
         reasonNOTRealDestructor_J(Method)
       ]).
@@ -506,18 +503,17 @@ reasonNOTRealDestructor_G(Method) :-
 
 % Real destructors cannot delete themselves.  This rule should help distinguish between real
 % destructors and deleting destructors.
-reasonNOTRealDestructor_H(Method) :-
-    % We should already know that Method is an OO method in general.
-    factMethod(Method),
-    % The method calls delete on ThisPtr.
-    insnCallsDelete(_Insn, Method, ThisPtr),
-    % And ThisPtr was literally "this" for the method.
-    funcParameter(Method, ecx, ThisPtr),
-    % The presumption about ECX also necessitates this restriction?
-    callingConvention(Method, '__thiscall'),
-    % Debugging
-    logtraceln('~@~Q.', [not(factNOTRealDestructor(Method)),
-                         reasonNOTRealDestructor_H(Method)]).
+% Same as reasonDeletingDestructor
+% reasonNOTRealDestructor_H(Method) :-
+%     % We should already know that Method is an OO method in general.
+%     factMethod(Method),
+%     % The method calls delete on ThisPtr.
+%     insnCallsDelete(_Insn, Method, ThisPtr),
+%     % And ThisPtr was literally "this" for the method.
+%     thisParamFuncParameter(Method, ThisPtr),
+%     % Debugging
+%     logtraceln('~@~Q.', [not(factNOTRealDestructor(Method)),
+%                          reasonNOTRealDestructor_H(Method)]).
 
 % Destructors normally have one argument.  According to
 % https://fossies.org/linux/cfe/lib/CodeGen/MicrosoftCXXABI.cpp, deleting destructors have a
@@ -593,9 +589,7 @@ reasonDeletingDestructor(Method) :-
     % The method calls delete on ThisPtr.
     insnCallsDelete(_Insn, Method, ThisPtr),
     % And ThisPtr was literally "this" for the method.
-    funcParameter(Method, ecx, ThisPtr),
-    % The presumption about ECX also necessitates this restriction?
-    callingConvention(Method, '__thiscall').
+    thisParamFuncParameter(Method, ThisPtr).
 
 % Because a symbol says so!
 reasonDeletingDestructor(Method) :-
@@ -679,10 +673,8 @@ reasonNOTDeletingDestructor_F(Method) :-
     % We don't call delete at all...
     (not(insnCallsDelete(_, Method, _AnyPtr));
 
-     % Or If we have thiscall, ensure we don't delete ourself
-     callingConvention(Method, '__thiscall'),
-     funcParameter(Method, ecx, ThisPtr),
-     % But we don't call delete on ourself
+     % Or if we do call delete, ensure we don't delete ourself. 
+     thisParamFuncParameter(Method, ThisPtr),
      not(insnCallsDelete(_Insn2, Method, ThisPtr))),
 
     logtraceln('~@~Q.', [not(factNOTDeletingDestructor(Method)),
@@ -739,12 +731,12 @@ reasonNOTDeletingDestructorSet(Set) :-
 certainConstructorOrDestructor(Method) :-
     factVFTableWrite(Insn, Method, Offset, VFTable),
     possibleVFTableWrite(Insn, Method, ThisPtr, Offset, VFTable),
-    funcParameter(Method, ecx, ThisPtr).
+    thisParamFuncParameter(Method, ThisPtr).
 
 certainConstructorOrDestructor(Method) :-
     factVBTableWrite(Insn, Method, Offset, VBTable),
     possibleVBTableWrite(Insn, Method, ThisPtr, Offset, VBTable),
-    funcParameter(Method, ecx, ThisPtr).
+    thisParamFuncParameter(Method, ThisPtr).
 
 % When calls to a base constructor/destructor are not inlined, and the child overwrites the
 % vftable, we can tell if both are constructors or destructors by the order in which this
@@ -983,7 +975,7 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
     factVFTableWrite(Insn, Method, Offset, VFTable),
     % Verify that this vftable write is in method's this class
     possibleVFTableWrite(Insn, Method, ThisPtr, Offset, VFTable),
-    funcParameter(Method, ecx, ThisPtr),
+    thisParamFuncParameter(Method, ThisPtr),
 
     VFTableWrite=factVFTableWrite(Insn, Method, Offset, VFTable),
 
@@ -1090,7 +1082,7 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
     factVFTableWrite(Insn, Method, Offset, VFTable),
     % Verify that this vftable write is in method's this class
     possibleVFTableWrite(Insn, Method, ThisPtr, Offset, VFTable),
-    funcParameter(Method, ecx, ThisPtr),
+    thisParamFuncParameter(Method, ThisPtr),
     VFTableWrite=factVFTableWrite(Insn, Method, Offset, VFTable),
     find(Method, Class),
 
@@ -1209,7 +1201,7 @@ reasonVFTableEntry(VFTable, 0, Entry) :-
 % PAPER: Larger-VFTableEntry
 reasonVFTableEntry(VFTable, Offset, Entry) :-
     (factVFTableEntry(VFTable, ExistingOffset, _OtherEntry);
-     (factVFTableSizeGTE(VFTable, ExistingSize), ExistingOffset is ExistingSize - 4)),
+     (factVFTableSizeGTE(VFTable, ExistingSize), pointerSize(PtrSize), ExistingOffset is ExistingSize - PtrSize)),
     possibleVFTableEntry(VFTable, Offset, Entry),
     Offset =< ExistingOffset.
 
@@ -1264,7 +1256,8 @@ reasonNOTVFTableEntry_C(VFTable, Offset, Entry) :-
     factVFTable(VFTable),
     possibleVFTableEntry(VFTable, Offset, Entry),
     Offset \= 0,
-    ComputedOffset is Offset - 4,
+    pointerSize(PtrSize),
+    ComputedOffset is Offset - PtrSize,
     possibleVFTableEntry(VFTable, ComputedOffset, OtherEntry),
     factNOTVFTableEntry(VFTable, ComputedOffset, OtherEntry).
 
@@ -1309,7 +1302,8 @@ reasonVFTableSizeGTE(VFTable, Size) :-
     % If we leave E as _, it will case on different values of E!
     setof(S, E^factVFTableEntry(VFTable, S, E), Set),
     max_list(Set, LastEntry),
-    Size is LastEntry + 4,
+    pointerSize(PtrSize),
+    Size is LastEntry + PtrSize,
     % Debugging
     logtraceln('~@~Q.', [not((factVFTableSizeGTE(VFTable, ExistingSize),
                               ExistingSize >= Size)),
@@ -1363,7 +1357,8 @@ reasonVFTableSizeLTE(VFTable, Size) :-
     % If we leave M as _, it will case on different values of M!
     setof(S, M^factNOTVFTableEntry(VFTable, S, M), Set),
     max_list(Set, LastEntry),
-    Size is LastEntry + 4,
+    pointerSize(PtrSize),
+    Size is LastEntry + PtrSize,
     % Debugging
     logtraceln('~@~Q.', [not((factVFTableSizeLTE(VFTable, ExistingSize),
                               ExistingSize >= Size)),
@@ -1433,7 +1428,8 @@ reasonVBTable(VBTable) :-
 % PAPER: ??? NEW!
 reasonVBTable(VBTable) :-
     factVBTableEntry(VBTable, Offset, _Value),
-    Offset >= 4,
+    pointerSize(PtrSize),
+    Offset >= PtrSize,
     logtraceln('~Q.', reasonVBTable_A(VBTable)).
 
 % --------------------------------------------------------------------------------------------
@@ -1463,9 +1459,10 @@ reasonVBTableEntry(VBTable, Offset, Value) :-
 
 % Because the first two(?) entries in the VBTable are always valid.
 % PAPER: ??? NEW!
-reasonVBTableEntry(VBTable, 4, Value) :-
+reasonVBTableEntry(VBTable, Offset, Value) :-
+    pointerSize(Offset),
     factVBTable(VBTable),
-    possibleVBTableEntry(VBTable, 4, Value).
+    possibleVBTableEntry(VBTable, Offset, Value).
 
 % Because there is a larger valid VBTable entry in the same VBTable.
 % PAPER: ??? NEW!
@@ -3596,7 +3593,8 @@ reasonClassSizeGTE_F(Class, Size) :-
 reasonClassSizeGTE_G(Class, Size) :-
     factVFTableWrite(_Insn, Method, ObjectOffset, _VFTable),
     find(Method, Class),
-    Size is ObjectOffset + 4,
+    pointerSize(PtrSize),
+    Size is ObjectOffset + PtrSize,
     % Debugging
     logtraceln('~@~Q.', [not((factClassSizeGTE(Class, ExistingSize), ExistingSize >= Size)),
                          reasonClassSizeGTE_G(Class, Size)]).

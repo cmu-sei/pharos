@@ -66,7 +66,19 @@ names:
   "_Znam": new,
   # _Znwm: operator new(unsigned long)
   "_Znwm": new,
+  # _ZnwmRKSt9nothrow_t: operator new(unsigned long, std::nothrow_t const&)
+  "_ZnwmRKSt9nothrow_t": new,
+  # _ZnwmSt11align_val_t: operator new(unsigned long, std::align_val_t)
+  "_ZnwmSt11align_val_t": new,
   "_ZnwmPv": new,
+  # _ZnwmSt11align_val_tRKSt9nothrow_t
+  "_ZnwmSt11align_val_tRKSt9nothrow_t": new,
+  # _ZnamRKSt9nothrow_t: operator new[](unsigned long, std::nothrow_t const&)
+  "_ZnamRKSt9nothrow_t": new,
+  # _ZnamSt11align_val_t: operator new[](unsigned long, std::align_val_t)
+  "_ZnamSt11align_val_t": new,
+  # _ZnamSt11align_val_tRKSt9nothrow_t
+  "_ZnamSt11align_val_tRKSt9nothrow_t": new,
 
   # ============================================================================
   # delete methods by name
@@ -135,6 +147,38 @@ names:
   "_ZdlPvS_t": delete,
   # _ZdaPv: operator delete[](void*)
   "_ZdaPv": delete,
+  # _ZdaPvm: operator delete[](void*, unsigned long)
+  "_ZdaPvm": delete,
+  # _ZdlPvSt11align_val_t: operator delete(void*, std::align_val_t)
+  "_ZdlPvSt11align_val_t": delete,
+  # _ZdlPvmSt11align_val_t: operator delete(void*, unsigned long, std::align_val_t)
+  "_ZdlPvmSt11align_val_t": delete,
+  # _ZdaPvSt11align_val_t: operator delete[](void*, std::align_val_t)
+  "_ZdaPvSt11align_val_t": delete,
+  # _ZdaPvmSt11align_val_t: operator delete[](void*, unsigned long, std::align_val_t)
+  "_ZdaPvmSt11align_val_t": delete,
+
+  # ============================================================================
+  # PIC thunks by name (__i686.get_pc_thunk.REG and __x86.get_pc_thunk.REG)
+  # These functions simply return the return address in a register and are used
+  # in 32-bit PIC code to compute the GOT base.  Tagged so that constant
+  # analysis can substitute the known return address instead of treating the
+  # call as returning an opaque symbolic value.
+  # ============================================================================
+  "__i686.get_pc_thunk.ax": pic_thunk,
+  "__i686.get_pc_thunk.bx": pic_thunk,
+  "__i686.get_pc_thunk.cx": pic_thunk,
+  "__i686.get_pc_thunk.dx": pic_thunk,
+  "__i686.get_pc_thunk.si": pic_thunk,
+  "__i686.get_pc_thunk.di": pic_thunk,
+  "__i686.get_pc_thunk.bp": pic_thunk,
+  "__x86.get_pc_thunk.ax": pic_thunk,
+  "__x86.get_pc_thunk.bx": pic_thunk,
+  "__x86.get_pc_thunk.cx": pic_thunk,
+  "__x86.get_pc_thunk.dx": pic_thunk,
+  "__x86.get_pc_thunk.si": pic_thunk,
+  "__x86.get_pc_thunk.di": pic_thunk,
+  "__x86.get_pc_thunk.bp": pic_thunk,
 
   # ============================================================================
   # purecall functions by name

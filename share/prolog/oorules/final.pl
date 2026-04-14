@@ -171,7 +171,7 @@ worthlessClass(Class) :-
     logtraceln('Rejecting worthless finalClass ~Q because it contains purecall and is a singleton', [Class]).
 
 finalFileInfo(FileMD5, Filename) :-
-   fileInfo(FileMD5, Filename).
+   fileInfo(FileMD5, Filename, _ABI, _ArchBytes).
 
 % --------------------------------------------------------------------------------------------
 % This final result defines the existance of a class.   More details in results.txt.
@@ -209,7 +209,8 @@ finalVFTable(VFTable, CertainSize, LikelySize, RTTIAddressOrNull, RTTINameOrNull
      RTTIAddressOrNull=0, RTTINameOrNull=''),
     findall(CertainOffset, factVFTableEntry(VFTable, CertainOffset, _Method), CertainOffsets),
     max_list(CertainOffsets, CertainMax),
-    CertainSize is CertainMax + 4,
+    pointerSize(PtrSize),
+    CertainSize is CertainMax + PtrSize,
     % It's a little unclear what the likely size means in a proper guessing framework.
     LikelySize is CertainSize.
 

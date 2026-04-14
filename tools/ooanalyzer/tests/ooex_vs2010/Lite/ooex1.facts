@@ -51,7 +51,7 @@ callingConvention(0x4012d8, '__fastcall').
 callingConvention(0x4012d8, '__stdcall').
 callingConvention(0x4012d8, '__thiscall').
 callingConvention(0x4012d8, '__vectorcall').
-callingConvention(0x4013af, invalid).
+callingConvention(0x4013af, genericthisptr).
 callingConvention(0x40144e, '__cdecl').
 callingConvention(0x40144e, '__fastcall').
 callingConvention(0x40144e, '__stdcall').
@@ -244,7 +244,7 @@ callingConvention(0x402273, '__fastcall').
 callingConvention(0x402273, '__stdcall').
 callingConvention(0x402273, '__thiscall').
 callingConvention(0x402273, '__vectorcall').
-callingConvention(0x402332, invalid).
+callingConvention(0x402332, genericthisptr).
 callingConvention(0x4026d2, '__cdecl').
 callingConvention(0x4026d2, '__fastcall').
 callingConvention(0x4026d2, '__stdcall').
@@ -501,7 +501,7 @@ callingConvention(0x404da9, '__fastcall').
 callingConvention(0x404da9, '__stdcall').
 callingConvention(0x404da9, '__thiscall').
 callingConvention(0x404da9, '__vectorcall').
-callingConvention(0x404db2, invalid).
+callingConvention(0x404db2, genericthisptr).
 callingConvention(0x404de2, '__cdecl').
 callingConvention(0x404de2, '__fastcall').
 callingConvention(0x404de2, '__stdcall').
@@ -537,7 +537,7 @@ callingConvention(0x4052d9, '__fastcall').
 callingConvention(0x4052d9, '__stdcall').
 callingConvention(0x4052d9, '__thiscall').
 callingConvention(0x4052d9, '__vectorcall').
-callingConvention(0x4052fc, invalid).
+callingConvention(0x4052fc, genericthisptr).
 callingConvention(0x405327, '__cdecl').
 callingConvention(0x405327, '__fastcall').
 callingConvention(0x405327, '__stdcall').
@@ -736,7 +736,7 @@ callingConvention(0x406c20, '__fastcall').
 callingConvention(0x406c20, '__stdcall').
 callingConvention(0x406c20, '__thiscall').
 callingConvention(0x406c20, '__vectorcall').
-callingConvention(0x406d70, invalid).
+callingConvention(0x406d70, genericthisptr).
 callingConvention(0x406dd0, '__fastcall').
 callingConvention(0x406dd0, '__stdcall').
 callingConvention(0x406dd0, '__thiscall').
@@ -3299,7 +3299,7 @@ callTarget(0x406f31, 0x406f1b, 0x40126f).
 callTarget(0x406f42, 0x406f36, 0x4015c6).
 callTarget(0x406f4c, 0x406f36, 0x40126f).
 callTarget(0x406f60, 0x406f51, 0x40184d).
-fileInfo('1C0ED38374144580F3186B2379D49F3A', 'ooex1.exe').
+fileInfo('1C0ED38374144580F3186B2379D49F3A', 'ooex1.exe', 'MSVC_32', 0x4).
 funcParameter(0x401000, ecx, sv_3262386385522208281).
 funcParameter(0x401010, ecx, sv_4377022161505831935).
 funcParameter(0x401020, ecx, sv_4767097618783088250).

@@ -43,6 +43,9 @@ bool VirtualBaseTable::analyze() {
     // Read the function pointer in that memory location.
     rose_addr_t fptr = ds.memory.read_address(taddr);
 
+    // GDEBUG << "Read possible virtual base table entry " << size << " at " << addr_str(taddr)
+    //       << " with value " << addr_str(fptr) << LEND;
+
     // If the value point to a valid image addreses, then this entry is NOT a valid virtual
     // base table entry.  Unless coincidentally the object is so large that progam image
     // addresses are also valid object offsets, which is very unlikely.

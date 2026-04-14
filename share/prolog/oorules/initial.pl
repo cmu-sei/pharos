@@ -41,12 +41,14 @@ possibleVFTableEntry(VFTable, 0, Entry) :-
 
 possibleVFTableEntry(VFTable, 0, Entry) :-
     rTTICompleteObjectLocator(Pointer, _Address, _TDAddress, _CHAddress, _Offset, _CDOffset),
-    VFTable is Pointer + 4,
+    pointerSize(PtrSize),
+    VFTable is Pointer + PtrSize,
     initialMemory(VFTable, Entry).
 
 possibleVFTableEntry(VFTable, NewOffset, Entry) :-
     possibleVFTableEntry(VFTable, Offset, _),
-    NewOffset is Offset + 4,
+    pointerSize(PtrSize),
+    NewOffset is Offset + PtrSize,
     Address is VFTable + NewOffset,
     not(possibleVFTableWrite(_Insn, _Func, _ThisPtr, _Offset, Address)),
     initialMemory(Address, Entry),
@@ -62,7 +64,8 @@ possibleVBTableEntry(VBTable, Offset, Value) :-
 
 possibleVBTableEntry(VBTable, NewOffset, Value) :-
     possibleVBTableEntry(VBTable, Offset, _),
-    NewOffset is Offset + 4,
+    pointerSize(PtrSize),
+    NewOffset is Offset + PtrSize,
     Address is VBTable + NewOffset,
     not(possibleVBTableWrite(_Insn, _Func, _ThisPtr, _Offset, Address)),
     initialMemory(Address, Value).
@@ -101,7 +104,8 @@ validVBTableEntry(VBTable, Entry, Offset) :-
     % There's a possible entry...
     possibleVBTableEntry(VBTable, Entry, Offset),
     % And the entry that came before it is already valid...
-    PreviousEntry is Entry - 4,
+    pointerSize(PtrSize),
+    PreviousEntry is Entry - PtrSize,
     validVBTableEntry(VBTable, PreviousEntry, _PreviousOffset),
     % The constructor that the table was installed into will be the derived constructor.
     possibleVBTableWrite(_Insn1, DerivedConstructor, _ThisPtr, _BaseOffset, VBTable),
@@ -170,29 +174,33 @@ validMethodCallAtOffset(Insn, Caller, Callee, Offset) :-
 :- table methodCallAtOffset/4 as opaque.
 
 methodCallAtOffset(Insn, Caller, Callee, Offset) :-
-    funcParameter(Caller, ecx, CallerThisPtr),
-    callParameter(Insn, Caller, ecx, CalleeThisPtr),
-    thisPtrOffset(CallerThisPtr, Offset, CalleeThisPtr),
+    thisParamFuncParameter(Caller, CallerThisPtr),
     callTarget(Insn, Caller, Thunk),
     dethunk(Thunk, Callee),
+    thisParamCallParameter(Insn, Caller, Callee, CalleeThisPtr),
+    thisPtrOffset(CallerThisPtr, Offset, CalleeThisPtr),
     %loginfoln('~Q.', methodCallAtOffset(Insn, Caller, Callee, Offset)),
     true.
 
 methodCallAtOffset(Insn, Caller, Callee, 0) :-
-    funcParameter(Caller, ecx, ThisPtr),
-    callParameter(Insn, Caller, ecx, ThisPtr),
+    thisParamFuncParameter(Caller, ThisPtr),
     callTarget(Insn, Caller, Thunk),
     dethunk(Thunk, Callee),
+    thisParamCallParameter(Insn, Caller, Callee, ThisPtr),
     %loginfoln('~Q.', methodCallAtOffset(Insn, Caller, Callee, 0)),
     true.
 
-% Replaces an old-style fact of the same name.
+% thisPtrUsage(Insn, Function, ThisPtr, Method)
+% At call site Insn within Function, the this-pointer value ThisPtr is passed to Method.
+% Uses Method's calling convention to determine which parameter carries the this-pointer,
+% with no constraint on Function's own convention (Function need not itself be an OO method).
 :- table thisPtrUsage/4 as opaque.
 
 thisPtrUsage(Insn, Function, ThisPtr, Method) :-
-    callParameter(Insn, Function, ecx, ThisPtr),
     callTarget(Insn, Function, Thunk),
     dethunk(Thunk, Method),
+    thisPtrParam(Method, Param),
+    callParameter(Insn, Function, Param, ThisPtr),
     %loginfoln('~Q.', thisPtrUsage(Insn, Function, ThisPtr, Method)),
     true.
 

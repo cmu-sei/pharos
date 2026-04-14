@@ -269,6 +269,17 @@ the segments are not correctly marked executable will reveal
 additional legitimate code, but in the more usual cases will just
 result in additional incorrect code detection.
 
+=item B<--base-address>=I<ADDRESS>
+
+Load the specimen at the specified base address. This is useful when
+analyzing binary files that are Position Independent Code (PIE) or
+were relocated to a non-default address. The address should be
+specified in hexadecimal (e.g., C<0x8048000>). If this option is not
+specified, the specimen is loaded at its default base address as
+specified in the executable file header. This option can be used to
+shift all memory segments by a constant offset, which is particularly
+useful for stripped or PIE binaries loaded at non-zero addresses.
+
 =item B<--log>=I<LOG_CONTROL_STRING>
 
 Use I<LOG_CONTROL_STRING> to determine what log messages are output.

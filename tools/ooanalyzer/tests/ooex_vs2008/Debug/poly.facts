@@ -75,7 +75,7 @@ callingConvention(0x411096, '__thiscall').
 callingConvention(0x411096, '__vectorcall').
 callingConvention(0x41109b, '__stdcall').
 callingConvention(0x4110a0, '__cdecl').
-callingConvention(0x4110a5, invalid).
+callingConvention(0x4110a5, genericthisptr).
 callingConvention(0x4110aa, '__cdecl').
 callingConvention(0x4110aa, '__fastcall').
 callingConvention(0x4110aa, '__stdcall').
@@ -210,7 +210,7 @@ callingConvention(0x4111c7, '__fastcall').
 callingConvention(0x4111c7, '__vectorcall').
 callingConvention(0x4111cc, '__cdecl').
 callingConvention(0x4111d1, '__cdecl').
-callingConvention(0x4111d6, invalid).
+callingConvention(0x4111d6, genericthisptr).
 callingConvention(0x4111db, '__cdecl').
 callingConvention(0x4111db, '__fastcall').
 callingConvention(0x4111db, '__stdcall').
@@ -1288,7 +1288,7 @@ callTarget(0x415701, 0x4156e8, 0x411212).
 callTarget(0x415713, 0x415710, 0x411190).
 callTarget(0x415727, 0x415718, 0x41102d).
 callTarget(0x415731, 0x415718, 0x411212).
-fileInfo('F9F1CCE5AADCEE408A28A3C537134994', 'poly.exe').
+fileInfo('F9F1CCE5AADCEE408A28A3C537134994', 'poly.exe', 'MSVC_32', 0x4).
 funcParameter(0x411005, ecx, sv_13118226140144432868).
 funcParameter(0x41101e, 0, sv_7273048434054156767).
 funcParameter(0x411023, ecx, sv_2207830033280103353).

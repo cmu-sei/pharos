@@ -5,6 +5,8 @@
 
 #include <iterator>
 
+#include <boost/optional.hpp>
+
 #include "rose.hpp"
 #include <Rose/BinaryAnalysis/Partitioner2/EngineBinary.h>
 #include <Rose/BinaryAnalysis/Partitioner2/Engine.h>
@@ -50,6 +52,11 @@ using ArchitecturePtr = Rose::BinaryAnalysis::Architecture::BaseConstPtr;
 
 class DescriptorSet
 {
+ public:
+  // The ABI detected from the binary file format and architecture.
+  // Re-exported from CallingConvention::ABI so callers can use DescriptorSet::ABI as before.
+  using ABI = CallingConvention::ABI;
+
  private:
   CallDescriptorMap call_descriptors;
   FunctionDescriptorMap function_descriptors;
@@ -78,6 +85,8 @@ class DescriptorSet
   size_t arch_bytes;
   // Architecture name from the disassembler.
   std::string arch_name;
+
+  ABI abi_ = ABI::UNKNOWN;
 
   // I think that in the new Partitioner 2 world, it will be the most convenient to just have
   // access to the entire Partitioner 2 engine.  We'll eventually probably want to do things
@@ -247,6 +256,16 @@ class DescriptorSet
   SgAsmInstruction* get_insn(rose_addr_t addr) const {
     return partitioner->instructionProvider()[addr];
   }
+
+  // Return the detected ABI.
+  ABI get_abi() const { return abi_; }
+  // Return the register that holds the this-pointer, or boost::none for ABIs that pass
+  // the this-pointer on the stack (SYSV_32).
+  boost::optional<RegisterDescriptor> get_this_ptr_reg() const;
+  // Return the register name string for the this-pointer, or boost::none for SYSV_32.
+  boost::optional<std::string> get_this_ptr_reg_name() const;
+  // Return the name of the return value register ("eax" or "rax").
+  std::string get_retval_reg_name() const;
 
   // Return the default word size on the architecture.
   const std::string& get_arch_name() const { return arch_name; }

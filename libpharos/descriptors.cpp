@@ -191,6 +191,20 @@ void DescriptorSet::init()
       }
     }
 
+    // Detect the ABI from the file format and architecture word size.
+    {
+      SgAsmElfFileHeader* elfHdr = isSgAsmElfFileHeader(hdr);
+      if (elfHdr) {
+        abi_ = (arch_bytes == 8) ? ABI::SYSV_64 : ABI::SYSV_32;
+      } else {
+        abi_ = (arch_bytes == 8) ? ABI::MSVC_64 : ABI::MSVC_32;
+      }
+      OINFO << "Detected ABI: "
+            << (abi_ == ABI::SYSV_64 ? "SYSV_64" :
+                abi_ == ABI::SYSV_32 ? "SYSV_32" :
+                abi_ == ABI::MSVC_64 ? "MSVC_64" : "MSVC_32") << LEND;
+    }
+
     // Experimental new code to create "imports" based on ELF RelocEntry objects.
     SgAsmElfFileHeader* elfHeader = isSgAsmElfFileHeader(hdr);
     if (elfHeader) {
@@ -712,6 +726,36 @@ unsigned int DescriptorSet::get_concurrency_level(ProgOptVarMap const & vm)
 #endif
 }
 
+
+boost::optional<RegisterDescriptor>
+DescriptorSet::get_this_ptr_reg() const
+{
+  switch (abi_) {
+    case ABI::MSVC_32: return get_arch_reg("ecx");
+    case ABI::SYSV_64: return get_arch_reg("rdi");
+    case ABI::MSVC_64: return get_arch_reg("rcx");
+    case ABI::SYSV_32: return boost::none; // stack-based, no register
+    default:           return get_arch_reg("ecx");  // safe fallback
+  }
+}
+
+boost::optional<std::string>
+DescriptorSet::get_this_ptr_reg_name() const
+{
+  switch (abi_) {
+    case ABI::MSVC_32: return std::string("ecx");
+    case ABI::SYSV_64: return std::string("rdi");
+    case ABI::MSVC_64: return std::string("rcx");
+    case ABI::SYSV_32: return boost::none; // stack-based, no register
+    default:           return std::string("ecx"); // safe fallback
+  }
+}
+
+std::string
+DescriptorSet::get_retval_reg_name() const
+{
+  return (arch_bytes == 8) ? "rax" : "eax";
+}
 
 } // namespace pharos
 

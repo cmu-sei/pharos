@@ -380,7 +380,7 @@ tryDerivedClass(DerivedClass, BaseClass, Offset) :-
 % positives by reducing the limit further beyond what would obviously be too limiting for
 % validMethodMemberAccess.
 guessMethodA(Method) :-
-    callingConvention(Method, '__thiscall'),
+    explicitThisCallConvention(Method),
     doNotGuessHelper(factMethod(Method),
                      factNOTMethod(Method)),
     % Intentionally use the _unvalidated_ access to guess that the Method is actually object
@@ -399,11 +399,8 @@ guessMethod(Out) :-
 
 guessMethodB(Method) :-
     factMethod(Caller),
-    % It is sufficient for __thiscall to be possible, since our confidence derives from Caller.
-    % This rule currently needs to permit the slightly different ECX parameter standard.
-    % This bug is wrapped up in std::_Yarn and std::locale in Lite/ooex7 (and oo and poly).
-    (callingConvention(Caller, '__thiscall'); callingConvention(Caller, 'invalid')),
-    funcParameter(Caller, ecx, ThisPtr1),
+    thisParamFuncParameter(Caller, ThisPtr1),
+
     thisPtrOffset(ThisPtr1, _Offset, ThisPtr2),
     thisPtrUsage(_Insn1, Caller, ThisPtr2, Method),
     doNotGuessHelper(factMethod(Method),
@@ -423,7 +420,7 @@ guessMethod(Out) :-
 % logically.
 % ED_PAPER_INTERESTING
 guessMethodC(Method) :-
-    callingConvention(Method, '__thiscall'),
+    explicitThisCallConvention(Method),
     doNotGuessHelper(factMethod(Method),
                      factNOTMethod(Method)),
     % Also intentionally an unvalidated methodMemberAccess because we're guessing the
@@ -446,7 +443,7 @@ guessMethod(Out) :-
 % method.
 :- table guessMethodD/1 as incremental.
 guessMethodD(Method) :-
-    callingConvention(Method, '__thiscall'),
+    explicitThisCallConvention(Method),
     doNotGuessHelper(factMethod(Method),
                      factNOTMethod(Method)),
     validMethodMemberAccess(_Insn0, Method, Offset, _Size0),
@@ -468,7 +465,7 @@ guessMethod(Out) :-
 % multiple methods.  Just guess the first and the rest will follow...
 :- table guessMethodE/1 as incremental.
 guessMethodE(Method) :-
-    callingConvention(Method, '__thiscall'),
+    explicitThisCallConvention(Method),
     doNotGuessHelper(factMethod(Method),
                      factNOTMethod(Method)),
     validMethodMemberAccess(_Insn0, Method, Offset, _Size0),
@@ -491,7 +488,7 @@ guessMethod(Out) :-
 % suggesting that it's a method.  In this case, it's a possible constructor with memory
 % accesses.
 guessMethodF(Method) :-
-    callingConvention(Method, '__thiscall'),
+    explicitThisCallConvention(Method),
     doNotGuessHelper(factMethod(Method),
                      factNOTMethod(Method)),
     validMethodMemberAccess(_Insn1, Method, Offset, _Size1),
@@ -507,7 +504,7 @@ guessMethod(Out) :-
 
 % Also guess possible constructors and destructors with calls from known methods.
 guessMethodG(Method) :-
-    callingConvention(Method, '__thiscall'),
+    explicitThisCallConvention(Method),
     doNotGuessHelper(factMethod(Method),
                      factNOTMethod(Method)),
     thisPtrUsage(_Insn, Caller, _ThisPtr2, Method),
@@ -1430,9 +1427,10 @@ minimalRealDestructor(Method) :-
 
     % Destructors can't take multiple arguments (well except for when they have virtual bases),
     % but this should at least get us closer...
+    % Exclude any parameter that is not the this-pointer.
     not((
                funcParameter(Method, Position, _SV),
-               iso_dif(Position, ecx)
+               not(thisPtrParam(Method, Position))
        )),
 
     % There must be at least one other method besides this one on the class.  There's a strong
@@ -1646,8 +1644,15 @@ likelyDeletingDestructor(DeletingDestructor, RealDestructor) :-
 
     % This rule currently needs to permit the slightly different ECX parameter standard.  An
     % example is std::basic_filebuf:~basic_filebuf in Lite/oo.
-    (callingConvention(DeletingDestructor, '__thiscall'); callingConvention(DeletingDestructor, 'invalid')),
-    funcParameter(DeletingDestructor, ecx, ThisPtr),
+
+    (thisParamFuncParameter(DeletingDestructor, ThisPtr);
+    (
+        % invalid hack
+        callingConvention(DeletingDestructor, 'invalid'),
+        funcParameter(DeletingDestructor, ecx, ThisPtr)
+    )),
+
+
     (
         insnCallsDelete(DeleteInsn, DeletingDestructor, ThisPtr);
         insnCallsDelete(DeleteInsn, DeletingDestructor, invalid)

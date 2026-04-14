@@ -185,6 +185,29 @@ bool insn_is_repeat(const SgAsmX86Instruction* insn) {
   return false;
 }
 
+boost::optional<RegisterDescriptor>
+match_pic_thunk_pattern(SgAsmInstruction* first, SgAsmInstruction* second) {
+  SgAsmX86Instruction* mov = isSgAsmX86Instruction(first);
+  SgAsmX86Instruction* ret = isSgAsmX86Instruction(second);
+  if (!mov || mov->get_kind() != x86_mov) return boost::none;
+  if (!ret || ret->get_kind() != x86_ret) return boost::none;
+
+  const SgAsmExpressionPtrList& movArgs = mov->get_operandList()->get_operands();
+  if (movArgs.size() != 2) return boost::none;
+
+  SgAsmDirectRegisterExpression* dst = isSgAsmDirectRegisterExpression(movArgs[0]);
+  if (!dst || dst->get_descriptor().majorNumber() != x86_regclass_gpr) return boost::none;
+
+  SgAsmMemoryReferenceExpression* src = isSgAsmMemoryReferenceExpression(movArgs[1]);
+  if (!src) return boost::none;
+  SgAsmDirectRegisterExpression* base = isSgAsmDirectRegisterExpression(src->get_address());
+  if (!base) return boost::none;
+  if (base->get_descriptor().majorNumber() != x86_regclass_gpr
+      || base->get_descriptor().minorNumber() != Rose::BinaryAnalysis::x86_gpr_sp) return boost::none;
+
+  return dst->get_descriptor();
+}
+
 bool insn_is_nop(const SgAsmX86Instruction* insn) {
   // The function is a response to poor performance and accuracy problems in
   // SageInterface::isNOP().  We should really attempt to create an exhaustive list and handle

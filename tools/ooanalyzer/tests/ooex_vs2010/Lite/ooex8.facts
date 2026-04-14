@@ -470,7 +470,7 @@ callingConvention(0x40409d, '__fastcall').
 callingConvention(0x40409d, '__stdcall').
 callingConvention(0x40409d, '__thiscall').
 callingConvention(0x40409d, '__vectorcall').
-callingConvention(0x4040a6, invalid).
+callingConvention(0x4040a6, genericthisptr).
 callingConvention(0x4040d6, '__cdecl').
 callingConvention(0x4040d6, '__fastcall').
 callingConvention(0x4040d6, '__stdcall').
@@ -618,7 +618,7 @@ callingConvention(0x405599, '__fastcall').
 callingConvention(0x405599, '__stdcall').
 callingConvention(0x405599, '__thiscall').
 callingConvention(0x405599, '__vectorcall').
-callingConvention(0x4055bc, invalid).
+callingConvention(0x4055bc, genericthisptr).
 callingConvention(0x4055f0, '__fastcall').
 callingConvention(0x4055f0, '__stdcall').
 callingConvention(0x4055f0, '__thiscall').
@@ -628,8 +628,8 @@ callingConvention(0x405788, '__fastcall').
 callingConvention(0x405788, '__stdcall').
 callingConvention(0x405788, '__thiscall').
 callingConvention(0x405788, '__vectorcall').
-callingConvention(0x4057a0, invalid).
-callingConvention(0x4057b6, invalid).
+callingConvention(0x4057a0, genericthisptr).
+callingConvention(0x4057b6, genericthisptr).
 callingConvention(0x4058c0, '__fastcall').
 callingConvention(0x4058c0, '__stdcall').
 callingConvention(0x4058c0, '__thiscall').
@@ -2535,7 +2535,7 @@ callTarget(0x405577, 0x405515, 0x4055c5).
 callTarget(0x405580, 0x405515, 0x4055e4).
 callTarget(0x40578a, 0x405788, 0x4060dc).
 callTarget(0x405a07, 0x4059f8, 0x401454).
-fileInfo('2CA8BE0C325377DEEDEE792A6F34B2A6', 'ooex8.exe').
+fileInfo('2CA8BE0C325377DEEDEE792A6F34B2A6', 'ooex8.exe', 'MSVC_32', 0x4).
 funcParameter(0x401000, ecx, sv_397746600649626522).
 funcParameter(0x401020, 0x1, sv_4774986519023879369).
 funcParameter(0x401020, ecx, sv_1577218646134795789).
