@@ -774,6 +774,14 @@ certainConstructorOrDestructorInheritanceSpecialCase(Method, Type) :-
 certainConstructorOrDestructorSet(Set) :-
     setof(Method, certainConstructorOrDestructor(Method), Set).
 
+% A method is known to be virtual either because symbol properties say so (available for
+% PE/MSVC, where the mangled name encodes virtuality) or because it appears as an entry in a
+% vftable (available for any binary where vftables are detected, including ELF/GCC).
+knownVirtualMethod(Method) :-
+    symbolProperty(Method, virtual).
+knownVirtualMethod(Method) :-
+    factMethodInVFTable(_, _, Method).
+
 % factVFTableOverwrite is directional, which requires us to know whether the methods involved
 % are constructors or destructors.  But sometimes we know that there is an overwrite, but not
 % which direction.  The following facts attempt to express this so that it can be used to delay
