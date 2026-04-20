@@ -6,7 +6,7 @@
 :- use_module(library(lists), [append/3, nth1/4, list_to_set/2]).
 
 longest_suffix(Pred, List, Suffix) :-
-    append(_, Suffix, List),   % generates suffixes longest → shortest
+    append(_, Suffix, List),   % generates suffixes longest -> shortest
     call(maplist(Pred), Suffix),
     !.
 
@@ -170,7 +170,7 @@ genericThisPtrABIParam(0)   :- fileInfo(_, _, 'SYSV_32', _).
 % explicitThisCallConvention(Method)
 % True when Method's calling convention is an explicitly identified OO this-call convention.
 % '__thiscall', '__x64call', '__sysv32call', '__sysv64call' are confirmed by the convention matcher.
-% 'genericthisptr' is excluded — it is emitted for C++ method identification false positives
+% 'genericthisptr' is excluded -- it is emitted for C++ method identification false positives
 % and seeding guesses from it causes spurious classes on MSVC binaries.
 :- table explicitThisCallConvention/1 as opaque.
 explicitThisCallConvention(Method) :- callingConvention(Method, '__thiscall').
