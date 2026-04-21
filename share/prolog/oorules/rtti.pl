@@ -82,7 +82,12 @@ rTTIInheritsIndirectlyFrom(DerivedTDA, AncestorTDA) :-
 
 :- table rTTIInheritsDirectlyFrom/6 as opaque.
 rTTIInheritsDirectlyFrom(DerivedTDA, AncestorTDA, Attributes, M, P, V) :-
-    rTTICompleteObjectLocator(_Pointer, _COLA, DerivedTDA, CHDA, M, _O2),
+    % _ColM is the offset of the vftable pointer within the complete object; this is NOT the
+    % same as M (mdisp = subobject offset from derived this-pointer) in the BCD.  They only
+    % coincide when M=0, i.e., when the vftable is at the start of the object (no vbptr before
+    % the vftable).  Classes that directly virtually inherit something have a vbptr-first layout,
+    % putting the vftable at a non-zero offset, so _ColM != M for their direct non-virtual bases.
+    rTTICompleteObjectLocator(_Pointer, _COLA, DerivedTDA, CHDA, _ColM, _O2),
     rTTIClassHierarchyDescriptor(CHDA, Attributes, Bases),
     member(BCDA, Bases),
     rTTIBaseClassDescriptor(BCDA, AncestorTDA, _NumBases, M, P, V, AttrValue, _ECHDA),
@@ -103,7 +108,8 @@ rTTIInheritsDirectlyFrom(DerivedTDA, AncestorTDA, Attributes, M, P, V) :-
 
 :- table rTTIInheritsVirtuallyFrom/6 as opaque.
 rTTIInheritsVirtuallyFrom(DerivedTDA, AncestorTDA, Attributes, M, P, V) :-
-    rTTICompleteObjectLocator(_Pointer, _COLA, DerivedTDA, CHDA, M, _O2),
+    % Same reasoning as rTTIInheritsDirectlyFrom: _ColM is the vftable pointer offset, not mdisp.
+    rTTICompleteObjectLocator(_Pointer, _COLA, DerivedTDA, CHDA, _ColM, _O2),
     rTTIClassHierarchyDescriptor(CHDA, Attributes, Bases),
     member(BCDA, Bases),
     rTTIBaseClassDescriptor(BCDA, AncestorTDA, _NumBases, M, P, V, AttrValue, _ECHDA),
