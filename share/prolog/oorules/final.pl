@@ -384,8 +384,7 @@ finalMethodProperty(Method, virtual, certain) :-
     % By unifying Method first, we make sure that we don't produce duplicate results.  It may
     % not be the most efficient thing to do here.
     factMethod(Method),
-    once((symbolProperty(Method, virtual);
-          (factMethodInVFTable(_VFTable, _Offset, Method), not(symbolProperty(Method, virtual))))),
+    knownVirtualMethod(Method),
     find(Method, Class),
     not(worthlessClass(Class)),
     not(purecall(Method)).

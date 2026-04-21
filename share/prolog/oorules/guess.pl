@@ -880,7 +880,7 @@ guessLateMergeClasses_G1(Class1, Class2) :-
     factClassRelatedMethod(Class1, Method),
     not(purecall(Method)), % Never merge purecall methods into classes.
     % Same reasoning as in guessMergeClasses_B...
-    not(symbolProperty(Method, virtual)),
+    not(knownVirtualMethod(Method)),
 
     % Prioritize classes with constructors over classes without them compared to the G2 rule
     % that's about to follow.  An unusual corner case is demonstrated by the Lite troublemakers
@@ -924,7 +924,7 @@ guessLateMergeClasses_G2(Class1, Class2) :-
     factClassRelatedMethod(Class1, Method),
     not(purecall(Method)), % Never merge purecall methods into classes.
     % Same reasoning as in guessMergeClasses_B...
-    not(symbolProperty(Method, virtual)),
+    not(knownVirtualMethod(Method)),
     find(Method, Class2),
     checkMergeClasses(Class1, Class2),
     logtraceln('Proposing ~Q.', factLateMergeClasses_G2(Class1, Class2)).
