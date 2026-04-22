@@ -71,8 +71,8 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         platforms: linux/${{ matrix.arch }}
         # Don't use cache for weekly builds
-        cache-from: ${{ (github.event_name != 'schedule') && 'type=gha' }}
-        cache-to: type=gha,mode=max
+        cache-from: ${{ (github.event_name != 'schedule') && format('type=gha,scope={0}-{1}', github.workflow, matrix.arch) }}
+        cache-to: type=gha,mode=max,scope=${{ github.workflow }}-${{ matrix.arch }}
 
     - name: Log Docker image digest
       if: steps.build-and-push.outputs.pushed
