@@ -1604,16 +1604,25 @@ reasonObjectInObject_E(OuterClass, InnerClass, Offset) :-
     factConstructor(OuterConstructor),
     find(OuterConstructor, OuterClass),
 
-    % We previously used a not(ReasonClassRelationship()) clause to prevent creating
-    % ObjectInObject facts for child to grand-parent relationships, expecially in the
-    % std::exception classes, but that has ordering problems because this rule triggers before
-    % we've assigned the constructors to the correct classes (a clas merge).  This stricter
-    % requirement that there NOT be an existing ObjectInObject and the same offset is a better
-    % solution.  Without this constraint, this rule instead becomes a stealth class merge
-    % because of logic that occurs later saying that two objects at the same offset must be the
-    % same class.  And there doesn't appear be any downside either since there's already an
-    % ObjectInObject at the appropriate offset, and we can reach the right conclusions through
-    % those later class merges.
+    % Delay this rule until any pending VFTable merges for OuterClass have been committed.
+    % reasonMergeVFTables becomes satisfiable for OuterClass at the same time as this rule
+    % (both require factConstructor), but concludeMergeVFTables is ordered after
+    % concludeObjectInObject in the forward-chaining loop.  Without this guard, rule E fires
+    % before the constructor has been merged with its VFTable class (i.e. find() still returns
+    % the constructor address rather than the RTTI class address).  After the merge, the
+    % not(factObjectInObject) guard below correctly blocks spurious grandparent OIO facts
+    % because the direct-base OIO was already established by reasonObjectInObject_B from
+    % factDerivedClass (which is populated from RTTI before any constructor reasoning begins).
+    not(reasonMergeVFTables(_, OuterClass)),
+
+    % We previously used a not(reasonClassRelationship()) clause to prevent creating
+    % ObjectInObject facts for child-to-grandparent relationships, especially in the
+    % std::exception classes, but that had ordering problems because this rule triggered before
+    % we had assigned the constructors to the correct classes via a class merge.  With the
+    % reasonMergeVFTables guard above ensuring the merge has happened first, the stricter
+    % requirement that there NOT be an existing ObjectInObject at the same offset is now
+    % sufficient: the direct-base OIO is already present (from reasonObjectInObject_B), so
+    % this check blocks any spurious additional OIO at the same offset.
     not(factObjectInObject(OuterClass, _, Offset)),
 
     factConstructor(InnerConstructor),
