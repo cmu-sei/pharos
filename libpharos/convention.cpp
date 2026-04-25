@@ -286,6 +286,7 @@ void RegisterUsage::analyze_parameters() {
   // Get a handle to the stack pointer register, because it's special.
   RegisterDictionaryPtrArg regdict = fd->ds.get_regdict();
   RegisterDescriptor esp = regdict->find("esp");
+  RegisterDescriptor rsp = regdict->find("rsp");
 
   // This is for keeping track of which stack parameter deltas we've actually used, and which
   // which haven't.  This might be duplicated work, and we've not saved this anywhere.  Here is
@@ -385,11 +386,15 @@ void RegisterUsage::analyze_parameters() {
           continue;
         }
 
-        // If we're pushing a register, and the access is for ESP, that's normal.  Just record
-        // that the function uses the stack as a parameter.
-        if (insn->get_kind() == x86_push && aa.is_reg(esp)) {
+        // If we're pushing a register, and the access is for ESP/RSP, that's normal.  Just
+        // record that the function uses the stack as a parameter.  Critically, use 'continue'
+        // and not 'break' here so that we can also evaluate the register being pushed (e.g.
+        // for 'push rdi', we need to continue past RSP to check whether rdi_0 is a saved
+        // register or a genuine parameter).
+        if (insn->get_kind() == x86_push && (aa.is_reg(esp) || aa.is_reg(rsp))) {
           parameter_registers[aa.register_descriptor] = insn;
-          STRACE << "Function " << fd->address_string() << " uses ESP at "
+          STRACE << "Function " << fd->address_string() << " uses "
+                 << unparseX86Register(aa.register_descriptor, {}) << " at "
                  << debug_instruction(insn) << LEND;
           continue;
         }
@@ -1154,9 +1159,12 @@ CallingConventionMatcher::match(const FunctionDescriptor* fd,
     RegisterEvidenceMap temp_params = ru.parameter_registers;
 
     // A list of registers that functions are allowed to use without being considered
-    // parameters
+    // parameters.  rsp is added alongside esp: in 64-bit code, push instructions record the
+    // initial RSP value in parameter_registers (via the push special case in
+    // analyze_parameters), but RSP is never an explicit parameter — it is accounted for via
+    // stack delta analysis instead.
     static char const * allowed_registers[] =
-      {"esp", "df", "cs", "ds", "ss", "es", "gs", "fs", nullptr};
+      {"esp", "rsp", "df", "cs", "ds", "ss", "es", "gs", "fs", nullptr};
     for (char const ** regname = allowed_registers; *regname; ++regname) {
       RegisterDescriptor rd = regdict->find(*regname);
       if (temp_params.find(rd) != temp_params.end()) temp_params.erase(rd);
