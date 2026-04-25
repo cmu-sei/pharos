@@ -3082,7 +3082,6 @@ reasonNOTMergeClasses_C(Class1, Class2) :-
 % PAPER: Merging-7
 % ED_PAPER_INTERESTING
 reasonNOTMergeClasses_E(Class1, Class2, Insn1, Method1, 0, VFTable1) :-
-    false,
     % Two VFTables are written into the zero object offset in two different methods.  The
     % sterotypical case is of course two compeltely unrelated classes.  This rule applies
     % equally to constructors and destructors.  There were problems in Lite/oo with 0x402766 (a
