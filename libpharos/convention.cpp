@@ -454,6 +454,17 @@ void RegisterUsage::analyze_changed() {
   RegisterDescriptor esi = regdict->find("esi");
   RegisterDescriptor edi = regdict->find("edi");
   RegisterDescriptor ebx = regdict->find("ebx");
+  // 64-bit equivalents of the callee-saved registers above.
+  RegisterDescriptor rsp = regdict->find("rsp");
+  RegisterDescriptor rbp = regdict->find("rbp");
+  RegisterDescriptor rsi = regdict->find("rsi");
+  RegisterDescriptor rdi = regdict->find("rdi");
+  RegisterDescriptor rbx = regdict->find("rbx");
+  // Additional x64 non-volatile callee-save registers.
+  RegisterDescriptor r12 = regdict->find("r12");
+  RegisterDescriptor r13 = regdict->find("r13");
+  RegisterDescriptor r14 = regdict->find("r14");
+  RegisterDescriptor r15 = regdict->find("r15");
 
   // It turns out that we can't enable this code properly because our system is just too
   // fragile.  If we're incorrect in any low-level function, this propogates that failure
@@ -476,10 +487,15 @@ void RegisterUsage::analyze_changed() {
   // the registers occurs in make_call_dependencies() in defuse.cpp.
 
   for (RegisterDescriptor rd : all_changed_registers) {
-    // Silently reject changes to ESP, we'll handle those through stack delta analysis code.
-    if (rd == esp) continue;
+    // Silently reject changes to ESP/RSP, we'll handle those through stack delta analysis code.
+    if (rd == esp || rd == rsp) continue;
     // Warn about cases where we reject register changes based on calling convention assumptions.
-    if (rd == ebp or rd == esi or rd == edi or rd == ebx) {
+    // This covers both 32-bit (ebp/esi/edi/ebx) and 64-bit (rbp/rsi/rdi/rbx/r12-r15)
+    // callee-saved registers that may be falsely reported as changed due to symbolic analysis
+    // imprecision (e.g., SEH prolog/epilog pairs that save/restore registers for the caller).
+    if (rd == ebp or rd == esi or rd == edi or rd == ebx or
+        rd == rbp or rd == rsi or rd == rdi or rd == rbx or
+        rd == r12 or rd == r13 or rd == r14 or rd == r15) {
       GDEBUG << "Function " << fd->address_string() << " overwrites "
              << unparseX86Register(rd, {})
              << " violating all known calling conventions." << LEND;
