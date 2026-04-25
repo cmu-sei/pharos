@@ -17,6 +17,16 @@ names:
   "??2@YAPAXIW4align_val_t@std@@@Z": new,
   # operator new[](unsigned int, enum std::align_val_t)
   "??_U@YAPAXIW4align_val_t@std@@@Z": new,
+  # x64 equivalents (size_t = unsigned __int64, pointers are 64-bit)
+  # operator new(unsigned __int64)
+  "??2@YAPEAX_K@Z": new,
+  # operator new[](unsigned __int64)
+  "??_U@YAPEAX_K@Z": new,
+  # since C++17:
+  # operator new(unsigned __int64, enum std::align_val_t)
+  "??2@YAPEAX_KW4align_val_t@std@@@Z": new,
+  # operator new[](unsigned __int64, enum std::align_val_t)
+  "??_U@YAPEAX_KW4align_val_t@std@@@Z": new,
 
   # replaceable non-throwing allocation functions
   # ----------------------------------------------------------------------------
@@ -29,6 +39,16 @@ names:
   "??2@YAPAXIW4align_val_t@std@@ABUnothrow_t@1@@Z": new,
   # operator new[](unsigned int, enum std::align_val_t, near struct std::nothrow_t const &)
   "??_U@YAPAXIW4align_val_t@std@@ABUnothrow_t@1@@Z": new,
+  # x64 equivalents
+  # operator new(unsigned __int64, struct std::nothrow_t const &)
+  "??2@YAPEAX_KAEBUnothrow_t@std@@@Z": new,
+  # operator new[](unsigned __int64, struct std::nothrow_t const &)
+  "??_U@YAPEAX_KAEBUnothrow_t@std@@@Z": new,
+  # since C++17:
+  # operator new(unsigned __int64, enum std::align_val_t, struct std::nothrow_t const &)
+  "??2@YAPEAX_KW4align_val_t@std@@AEBUnothrow_t@1@@Z": new,
+  # operator new[](unsigned __int64, enum std::align_val_t, struct std::nothrow_t const &)
+  "??_U@YAPEAX_KW4align_val_t@std@@AEBUnothrow_t@1@@Z": new,
 
   # non-allocating placement allocation functions
   # ----------------------------------------------------------------------------
@@ -36,6 +56,11 @@ names:
   "??2@YAPAXIPAX@Z": new,
   # operator new[](unsigned int, near void *)
   "??_U@YAPAXIPAX@Z": new,
+  # x64 equivalents
+  # operator new(unsigned __int64, void *)
+  "??2@YAPEAX_KPEAX@Z": new,
+  # operator new[](unsigned __int64, void *)
+  "??_U@YAPEAX_KPEAX@Z": new,
 
   # user-defined placement allocation functions (using _standard_ arguments)
   # ----------------------------------------------------------------------------
@@ -51,6 +76,19 @@ names:
   "??2@YAPAXIAAV_HeapManager@@H@Z": new,
   # operator new[](unsigned int, near class _HeapManager &, int)
   "??_U@YAPAXIAAV_HeapManager@@H@Z": new,
+  # x64 equivalents
+  # operator new(unsigned __int64, int, char const *, int)
+  "??2@YAPEAX_KHPEBDH@Z": new,
+  # operator new[](unsigned __int64, int, char const *, int)
+  "??_U@YAPEAX_KHPEBDH@Z": new,
+  # operator new(unsigned __int64, struct std::_DebugHeapTag_t const &, char *, int)
+  "??2@YAPEAX_KAEBU_DebugHeapTag_t@std@@PEADH@Z": new,
+  # operator new[](unsigned __int64, struct std::_DebugHeapTag_t const &, char *, int)
+  "??_U@YAPEAX_KAEBU_DebugHeapTag_t@std@@PEADH@Z": new,
+  # operator new(unsigned __int64, class _HeapManager &, int)
+  "??2@YAPEAX_KAEAV_HeapManager@@H@Z": new,
+  # operator new[](unsigned __int64, class _HeapManager &, int)
+  "??_U@YAPEAX_KAEAV_HeapManager@@H@Z": new,
 
   # should "_callnewh" be included as well?
 
@@ -103,6 +141,20 @@ names:
   "??3@YAXPAXIW4align_val_t@std@@@Z": delete,
   # operator delete[](near void *, unsigned int, enum std::align_val_t)
   "??_V@YAXPAXIW4align_val_t@std@@@Z": delete,
+  # x64 equivalents
+  # operator delete(void *)
+  "??3@YAXPEAX@Z": delete,
+  # operator delete[](void *)
+  "??_V@YAXPEAX@Z": delete,
+  # operator delete(void *, unsigned __int64)
+  "??3@YAXPEAX_K@Z": delete,
+  # operator delete[](void *, unsigned __int64)
+  "??_V@YAXPEAX_K@Z": delete,
+  # since C++17:
+  # operator delete(void *, enum std::align_val_t)
+  "??3@YAXPEAX_KW4align_val_t@std@@@Z": delete,
+  # operator delete[](void *, enum std::align_val_t)
+  "??_V@YAXPEAX_KW4align_val_t@std@@@Z": delete,
 
   # replaceable placement deallocation functions
   # ----------------------------------------------------------------------------
@@ -111,6 +163,11 @@ names:
   # operator delete[](near void *, near struct std::nothrow_t const &)
   "??_V@YAXPAXABUnothrow_t@std@@@Z": delete,
   # align nothrow variants are missing!
+  # x64 equivalents
+  # operator delete(void *, struct std::nothrow_t const &)
+  "??3@YAXPEAXAEBUnothrow_t@std@@@Z": delete,
+  # operator delete[](void *, struct std::nothrow_t const &)
+  "??_V@YAXPEAXAEBUnothrow_t@std@@@Z": delete,
 
   # non-allocating placement deallocation functions
   # ----------------------------------------------------------------------------
@@ -118,6 +175,11 @@ names:
   "??3@YAXPAX0@Z": delete,
   # operator delete[](near void *, near void *)
   "??_V@YAXPAX0@Z": delete,
+  # x64 equivalents
+  # operator delete(void *, void *)
+  "??3@YAXPEAX0@Z": delete,
+  # operator delete[](void *, void *)
+  "??_V@YAXPEAX0@Z": delete,
 
   # user-defined placement allocation functions (using _standard_ arguments)
   # ----------------------------------------------------------------------------
@@ -127,6 +189,13 @@ names:
   "??_V@YAXPAXABU_DebugHeapTag_t@std@@PADH@Z": delete,
   # operator delete(near void *, int, near char const *, int)
   "??3@YAXPAXHPBDH@Z": delete,
+  # x64 equivalents
+  # operator delete(void *, struct std::_DebugHeapTag_t const &, char *, int)
+  "??3@YAXPEAXAEBU_DebugHeapTag_t@std@@PEADH@Z": delete,
+  # operator delete[](void *, struct std::_DebugHeapTag_t const &, char *, int)
+  "??_V@YAXPEAXAEBU_DebugHeapTag_t@std@@PEADH@Z": delete,
+  # operator delete(void *, int, char const *, int)
+  "??3@YAXPEAXHPEBDH@Z": delete,
 
   # A strange case in BuildExes/vs2010/dc0d0o1/Lite/ooex[01238].exe
   # From MSVCR100.DLL?
