@@ -286,6 +286,7 @@ void RegisterUsage::analyze_parameters() {
   // Get a handle to the stack pointer register, because it's special.
   RegisterDictionaryPtrArg regdict = fd->ds.get_regdict();
   RegisterDescriptor esp = regdict->find("esp");
+  RegisterDescriptor rsp = regdict->find("rsp");
 
   // This is for keeping track of which stack parameter deltas we've actually used, and which
   // which haven't.  This might be duplicated work, and we've not saved this anywhere.  Here is
@@ -385,11 +386,15 @@ void RegisterUsage::analyze_parameters() {
           continue;
         }
 
-        // If we're pushing a register, and the access is for ESP, that's normal.  Just record
-        // that the function uses the stack as a parameter.
-        if (insn->get_kind() == x86_push && aa.is_reg(esp)) {
+        // If we're pushing a register, and the access is for ESP/RSP, that's normal.  Just
+        // record that the function uses the stack as a parameter.  Critically, use 'continue'
+        // and not 'break' here so that we can also evaluate the register being pushed (e.g.
+        // for 'push rdi', we need to continue past RSP to check whether rdi_0 is a saved
+        // register or a genuine parameter).
+        if (insn->get_kind() == x86_push && (aa.is_reg(esp) || (rsp.is_valid() && aa.is_reg(rsp)))) {
           parameter_registers[aa.register_descriptor] = insn;
-          STRACE << "Function " << fd->address_string() << " uses ESP at "
+          STRACE << "Function " << fd->address_string() << " uses "
+                 << unparseX86Register(aa.register_descriptor, {}) << " at "
                  << debug_instruction(insn) << LEND;
           continue;
         }
@@ -454,6 +459,17 @@ void RegisterUsage::analyze_changed() {
   RegisterDescriptor esi = regdict->find("esi");
   RegisterDescriptor edi = regdict->find("edi");
   RegisterDescriptor ebx = regdict->find("ebx");
+  // 64-bit equivalents of the callee-saved registers above.
+  RegisterDescriptor rsp = regdict->find("rsp");
+  RegisterDescriptor rbp = regdict->find("rbp");
+  RegisterDescriptor rsi = regdict->find("rsi");
+  RegisterDescriptor rdi = regdict->find("rdi");
+  RegisterDescriptor rbx = regdict->find("rbx");
+  // Additional x64 non-volatile callee-save registers.
+  RegisterDescriptor r12 = regdict->find("r12");
+  RegisterDescriptor r13 = regdict->find("r13");
+  RegisterDescriptor r14 = regdict->find("r14");
+  RegisterDescriptor r15 = regdict->find("r15");
 
   // It turns out that we can't enable this code properly because our system is just too
   // fragile.  If we're incorrect in any low-level function, this propogates that failure
@@ -476,10 +492,19 @@ void RegisterUsage::analyze_changed() {
   // the registers occurs in make_call_dependencies() in defuse.cpp.
 
   for (RegisterDescriptor rd : all_changed_registers) {
-    // Silently reject changes to ESP, we'll handle those through stack delta analysis code.
-    if (rd == esp) continue;
+    // Silently reject changes to ESP/RSP, we'll handle those through stack delta analysis code.
+    if (rd == esp || (rsp.is_valid() && rd == rsp)) continue;
     // Warn about cases where we reject register changes based on calling convention assumptions.
-    if (rd == ebp or rd == esi or rd == edi or rd == ebx) {
+    // This covers both 32-bit (ebp/esi/edi/ebx) and 64-bit (rbp/rsi/rdi/rbx/r12-r15)
+    // callee-saved registers that may be falsely reported as changed due to symbolic analysis
+    // imprecision (e.g., SEH prolog/epilog pairs that save/restore registers for the caller).
+    // The is_valid() guards below prevent default-constructed descriptors (returned by
+    // regdict->find() for registers not in the binary's dictionary) from matching via operator==.
+    if (rd == ebp or rd == esi or rd == edi or rd == ebx or
+        (rbp.is_valid() and rd == rbp) or (rsi.is_valid() and rd == rsi) or
+        (rdi.is_valid() and rd == rdi) or (rbx.is_valid() and rd == rbx) or
+        (r12.is_valid() and rd == r12) or (r13.is_valid() and rd == r13) or
+        (r14.is_valid() and rd == r14) or (r15.is_valid() and rd == r15)) {
       GDEBUG << "Function " << fd->address_string() << " overwrites "
              << unparseX86Register(rd, {})
              << " violating all known calling conventions." << LEND;
@@ -1138,9 +1163,12 @@ CallingConventionMatcher::match(const FunctionDescriptor* fd,
     RegisterEvidenceMap temp_params = ru.parameter_registers;
 
     // A list of registers that functions are allowed to use without being considered
-    // parameters
+    // parameters.  rsp is added alongside esp: in 64-bit code, push instructions record the
+    // initial RSP value in parameter_registers (via the push special case in
+    // analyze_parameters), but RSP is never an explicit parameter — it is accounted for via
+    // stack delta analysis instead.
     static char const * allowed_registers[] =
-      {"esp", "df", "cs", "ds", "ss", "es", "gs", "fs", nullptr};
+      {"esp", "rsp", "df", "cs", "ds", "ss", "es", "gs", "fs", nullptr};
     for (char const ** regname = allowed_registers; *regname; ++regname) {
       RegisterDescriptor rd = regdict->find(*regname);
       if (temp_params.find(rd) != temp_params.end()) temp_params.erase(rd);
