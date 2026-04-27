@@ -391,7 +391,7 @@ void RegisterUsage::analyze_parameters() {
         // and not 'break' here so that we can also evaluate the register being pushed (e.g.
         // for 'push rdi', we need to continue past RSP to check whether rdi_0 is a saved
         // register or a genuine parameter).
-        if (insn->get_kind() == x86_push && (aa.is_reg(esp) || aa.is_reg(rsp))) {
+        if (insn->get_kind() == x86_push && (aa.is_reg(esp) || (rsp.is_valid() && aa.is_reg(rsp)))) {
           parameter_registers[aa.register_descriptor] = insn;
           STRACE << "Function " << fd->address_string() << " uses "
                  << unparseX86Register(aa.register_descriptor, {}) << " at "
