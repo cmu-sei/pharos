@@ -799,6 +799,31 @@ certainConstructorOrDestructorButUndecided(Method) :-
 mayHavePendingOverwrites(Method) :-
     certainConstructorOrDestructorButUndecided(Method).
 
+% True when Class has a pending VFTable merge that has not yet been committed.
+%
+% This arises because concludeMergeVFTables is ordered after concludeObjectInObject and
+% concludeDerivedClass in the forward-chaining loop.  A VFTable merge becomes satisfiable for
+% a method M (via reasonMergeVFTables) at the same moment that M is confirmed as a constructor,
+% real destructor, or deleting destructor -- because all three clear mayHavePendingOverwrites,
+% which is the gate on reasonVFTableBelongsToClass.  In that same iteration, any rule that
+% calls find(M, Class) also becomes satisfiable.  But find(M, Class) still returns M itself
+% -- not the canonical VFTable/RTTI class address -- because the merge has not committed yet.
+%
+% Any rule that derives a Class via find(Method, Class) and then checks not(P(Class,...)) is
+% therefore unsound: P was populated using canonical VFTable/RTTI class addresses, so
+% P(M,...) spuriously fails and the not() spuriously succeeds.
+%
+% The fix is to guard such rules with not(hasPendingVFTableMerge(Class)), which delays them
+% until the merge commits and find() returns the canonical class identity.  At that point
+% not(P(Class,...)) checks correctly against the class that actually has RTTI and derived-class
+% facts asserted.
+%
+% This predicate is only relevant in forward reasoning rules, not guesses: guesses run only
+% after reasonForwardAsManyTimesAsPossible completes, by which time all pending merges are
+% committed and hasPendingVFTableMerge is universally false.
+hasPendingVFTableMerge(Class) :-
+    reasonMergeVFTables(_, Class).
+
 % ============================================================================================
 % Rules for virtual function tables, virtual function calls, etc.
 % ============================================================================================
@@ -1577,12 +1602,17 @@ reasonObjectInObject_D(OuterClass, InnerClass, Offset) :-
     find(InnerConstructor, InnerClass),
     find(OuterConstructor, OuterClass),
 
+    % Wait until find() returns canonical class identities for both constructors.  Until
+    % the VFTable merges commit, find() returns the raw constructor address rather than the
+    % RTTI class id, making reasonClassRelationship (and iso_dif) unreliable.
+    not(hasPendingVFTableMerge(OuterClass)),
+    not(hasPendingVFTableMerge(InnerClass)),
+
     % This constraint is the one that makes this rule different from ObjectInObject_E.
     iso_dif(Offset, 0),
     iso_dif(InnerClass, OuterClass),
 
-    % Prevent grand ancestors from being decalred object in object.  See commentary below.
-    % It's unclear of this constraint is really required in cases where Offset is non-zero.
+    % Prevent grand ancestors from being declared object in object.
     not(reasonClassRelationship(OuterClass, InnerClass)),
 
     % Debugging
@@ -1604,21 +1634,22 @@ reasonObjectInObject_E(OuterClass, InnerClass, Offset) :-
     factConstructor(OuterConstructor),
     find(OuterConstructor, OuterClass),
 
-    % We previously used a not(ReasonClassRelationship()) clause to prevent creating
-    % ObjectInObject facts for child to grand-parent relationships, expecially in the
-    % std::exception classes, but that has ordering problems because this rule triggers before
-    % we've assigned the constructors to the correct classes (a clas merge).  This stricter
-    % requirement that there NOT be an existing ObjectInObject and the same offset is a better
-    % solution.  Without this constraint, this rule instead becomes a stealth class merge
-    % because of logic that occurs later saying that two objects at the same offset must be the
-    % same class.  And there doesn't appear be any downside either since there's already an
-    % ObjectInObject at the appropriate offset, and we can reach the right conclusions through
-    % those later class merges.
+    % Wait until find() returns canonical class identities.  reasonMergeVFTables becomes
+    % satisfiable at the same time as this rule (both require factConstructor), but
+    % concludeMergeVFTables is ordered after concludeObjectInObject in the forward-chaining
+    % loop.  Without this guard, rule E fires before the constructor is merged with its
+    % VFTable/RTTI class, so find() returns a stale constructor address.  After the merge,
+    % not(factObjectInObject) below correctly blocks spurious grandparent OIO facts because
+    % the direct-base OIO is already present (from reasonObjectInObject_B via factDerivedClass,
+    % which RTTI populates before any constructor reasoning begins).
+    not(hasPendingVFTableMerge(OuterClass)),
+
     not(factObjectInObject(OuterClass, _, Offset)),
 
     factConstructor(InnerConstructor),
     iso_dif(InnerConstructor, OuterConstructor),
     find(InnerConstructor, InnerClass),
+    not(hasPendingVFTableMerge(InnerClass)),
 
     % It's not good enough for the methods to currently be assigned to different classes
     % because they could actually be on the same class, and we just haven't merged them yet.
@@ -1652,6 +1683,8 @@ reasonObjectInObject_F(OuterClass, InnerClass, Offset) :-
     not(factVFTableOverwrite(Method, VFTable, _OtherTable, Offset)),
 
     find(Method, OuterClass),
+    % Wait until the constructor is merged with its VFTable class before concluding OIO.
+    not(hasPendingVFTableMerge(OuterClass)),
     find(VFTable, InnerClass),
     iso_dif(Method, VFTable),
 
@@ -1845,6 +1878,12 @@ reasonDerivedClass_B(DerivedClass, BaseClass, ObjectOffset) :-
 
     find(DerivedConstructor, DerivedClass),
     find(BaseConstructor, BaseClass),
+
+    % Wait until both constructors have been merged with their VFTable class.  Until then,
+    % find() returns the raw constructor address rather than the canonical class id, so
+    % not(reasonClassRelationship(...)) below would spuriously pass for grandparent pairs.
+    not(hasPendingVFTableMerge(DerivedClass)),
+    not(hasPendingVFTableMerge(BaseClass)),
 
     % There's not already a relationship.  (Prevent grand ancestors)
     not(reasonClassRelationship(DerivedClass, BaseClass)),
@@ -3082,7 +3121,6 @@ reasonNOTMergeClasses_C(Class1, Class2) :-
 % PAPER: Merging-7
 % ED_PAPER_INTERESTING
 reasonNOTMergeClasses_E(Class1, Class2, Insn1, Method1, 0, VFTable1) :-
-    false,
     % Two VFTables are written into the zero object offset in two different methods.  The
     % sterotypical case is of course two compeltely unrelated classes.  This rule applies
     % equally to constructors and destructors.  There were problems in Lite/oo with 0x402766 (a
