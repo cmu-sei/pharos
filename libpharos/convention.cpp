@@ -493,14 +493,18 @@ void RegisterUsage::analyze_changed() {
 
   for (RegisterDescriptor rd : all_changed_registers) {
     // Silently reject changes to ESP/RSP, we'll handle those through stack delta analysis code.
-    if (rd == esp || rd == rsp) continue;
+    if (rd == esp || (rsp.is_valid() && rd == rsp)) continue;
     // Warn about cases where we reject register changes based on calling convention assumptions.
     // This covers both 32-bit (ebp/esi/edi/ebx) and 64-bit (rbp/rsi/rdi/rbx/r12-r15)
     // callee-saved registers that may be falsely reported as changed due to symbolic analysis
     // imprecision (e.g., SEH prolog/epilog pairs that save/restore registers for the caller).
+    // The is_valid() guards below prevent default-constructed descriptors (returned by
+    // regdict->find() for registers not in the binary's dictionary) from matching via operator==.
     if (rd == ebp or rd == esi or rd == edi or rd == ebx or
-        rd == rbp or rd == rsi or rd == rdi or rd == rbx or
-        rd == r12 or rd == r13 or rd == r14 or rd == r15) {
+        (rbp.is_valid() and rd == rbp) or (rsi.is_valid() and rd == rsi) or
+        (rdi.is_valid() and rd == rdi) or (rbx.is_valid() and rd == rbx) or
+        (r12.is_valid() and rd == r12) or (r13.is_valid() and rd == r13) or
+        (r14.is_valid() and rd == r14) or (r15.is_valid() and rd == r15)) {
       GDEBUG << "Function " << fd->address_string() << " overwrites "
              << unparseX86Register(rd, {})
              << " violating all known calling conventions." << LEND;
