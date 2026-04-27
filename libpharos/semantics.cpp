@@ -321,10 +321,10 @@ int64_t get_signed_value(LeafNodePtr lp) {
 }
 
 
-// Examine the current symbolic value to decide whether it is of the form "esp_0+X+Y+Z".  If it
-// is, return X+Y+Z.  If it is not, return boost::none.  If the expression contains complex
-// sub-expressions or references to other variables, but it does contain esp_0 as one of the
-// terms, return 0xFFFFFFFF.
+// Examine the current symbolic value to decide whether it is of the form "esp_0+X+Y+Z" (32-bit)
+// or "rsp_0+X+Y+Z" (64-bit).  If it is, return X+Y+Z.  If it is not, return boost::none.  If
+// the expression contains complex sub-expressions or references to other variables, but it does
+// contain esp_0/rsp_0 as one of the terms, return 0xFFFFFFFF.
 
 // Increasingly, Cory suspects that this is the wrong way to do this... Instead we should:
 // 1. Check if the expression is a constant.  Reject as a stack delta.
@@ -342,10 +342,11 @@ boost::optional<int64_t> SymbolicValue::get_stack_const() const {
   InternalNodePtr inode = get_expression()->isInteriorNode();
   if (!inode) {
     // If we're not a number, we should be variable, and the only variable we care about is the
-    // initial value of ESP.  Per the latest change in ROSE, this should have the name esp_0.
+    // initial value of ESP/RSP.  Per the latest change in ROSE, this should have the name
+    // esp_0 (32-bit) or rsp_0 (64-bit).
     const std::string& cmt = get_comment();
     if (cmt.empty()) return boost::none;
-    if (cmt.compare("esp_0") == 0) {
+    if (cmt.compare("esp_0") == 0 || cmt.compare("rsp_0") == 0) {
       SDEBUG << "Stack constant was: 0" << LEND;
       return (int64_t)0;
     }
@@ -376,11 +377,11 @@ boost::optional<int64_t> SymbolicValue::get_stack_const() const {
         // Ignore unknown stack delta variables
         // do nothing
       } else {
-        // Otherwise, check to see if this variable is the expected esp_0.
+        // Otherwise, check to see if this variable is the expected esp_0 (32-bit) or rsp_0 (64-bit).
         const std::string& cmt = lp->comment();
         //SDEBUG << "Leaf node comment is: '" << cmt << "'" << LEND;
         if (cmt.empty()) confused = true;
-        else if (cmt.compare("esp_0") == 0) found = true;
+        else if (cmt.compare("esp_0") == 0 || cmt.compare("rsp_0") == 0) found = true;
         else confused = true;
         //SDEBUG << "Register match: found=" << found << " confused=" << confused << LEND;
       }
