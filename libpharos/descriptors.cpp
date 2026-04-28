@@ -757,6 +757,12 @@ DescriptorSet::get_retval_reg_name() const
   return (arch_bytes == 8) ? "rax" : "eax";
 }
 
+RegisterDescriptor
+DescriptorSet::get_retval_reg() const
+{
+  return get_arch_reg(get_retval_reg_name());
+}
+
 } // namespace pharos
 
 /* Local Variables:   */
