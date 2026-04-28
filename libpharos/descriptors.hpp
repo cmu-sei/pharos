@@ -266,6 +266,8 @@ class DescriptorSet
   boost::optional<std::string> get_this_ptr_reg_name() const;
   // Return the name of the return value register ("eax" or "rax").
   std::string get_retval_reg_name() const;
+  // Return the return value register descriptor for the current architecture.
+  RegisterDescriptor get_retval_reg() const;
 
   // Return the default word size on the architecture.
   const std::string& get_arch_name() const { return arch_name; }
