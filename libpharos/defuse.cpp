@@ -1006,6 +1006,18 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
   if (param_fd == NULL) {
     SWARN << "Unknown call target at: " << debug_instruction(insn)
           << ", parameter analysis failed." << LEND;
+    // Even without a known function descriptor, imported functions always clobber eax/rax
+    // per standard calling conventions.  Without this write the caller's post-call reads of
+    // eax/rax have no definer and are incorrectly attributed as input parameters.
+    if (id != NULL) {
+      size_t arch_bits = ds.get_arch_bits();
+      RegisterDescriptor retval_rd = ds.get_retval_reg();
+      SymbolicValuePtr rv = create_return_value(insn, arch_bits, true);
+      ParameterList empty_pl;
+      create_overwritten_register(rops, ds, retval_rd, true, rv, cd, empty_pl);
+      SDEBUG << "Clobbering " << unparseX86Register(retval_rd, {})
+             << " for unresolved import call at " << debug_instruction(insn) << LEND;
+    }
     return;
   }
 
@@ -1061,7 +1073,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
   SymbolicStatePtr state = rops->get_sstate();
 
   RegisterDescriptor esprd = ds.get_stack_reg();
-  RegisterDescriptor eaxrd = ds.get_arch_reg("eax");
+  RegisterDescriptor retval_rd = ds.get_retval_reg();
   RegisterDescriptor ecxrd = ds.get_arch_reg("ecx");
 
   if (id != NULL) {
@@ -1088,9 +1100,9 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
     SymbolicValuePtr rv = create_return_value(insn, arch_bits, real_return_value);
     // This call propogates the performs the actual write, creates the abstract access, sets
     // the return value in the call descriptor, propogates the parameter definition, etc.
-    create_overwritten_register(rops, ds, eaxrd, real_return_value, rv, cd, fparams);
+    create_overwritten_register(rops, ds, retval_rd, real_return_value, rv, cd, fparams);
     SDEBUG << "Setting standard return value for " << addr_str(insn->get_address())
-           << " to " << *(rops->read_register(eaxrd)) << LEND;
+           << " to " << *(rops->read_register(retval_rd)) << LEND;
   }
   // There Otherwise (if cfd == NULL), check for an import.
   else if (cfd != NULL) {
@@ -1103,7 +1115,7 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
            << " returns-ecx: " << cfd->get_returns_this_pointer() << LEND;
 
     for (RegisterDescriptor rd : ru.changed_registers) {
-      if (rd != eaxrd) {
+      if (rd != retval_rd) {
         // Mark the register as overwritten.
         SymbolicValuePtr rv = create_return_value(insn, rd.get_nbits(), false);
         create_overwritten_register(rops, ds, rd, false, rv, cd, fparams);
@@ -1119,16 +1131,16 @@ DUAnalysis::make_call_dependencies(SgAsmX86Instruction* insn, SymbolicStatePtr& 
         // Assign to EAX in the current state, the value of ECX from the previous state.
         // Read the value of ecx from the current state at the time of the call.
         SymbolicValuePtr ecx_value = cstate->read_register(ecxrd);
-        create_overwritten_register(rops, ds, eaxrd, true, ecx_value, cd, fparams);
+        create_overwritten_register(rops, ds, retval_rd, true, ecx_value, cd, fparams);
         GTRACE << "Setting return value for " << addr_str(insn->get_address())
-               << " to ECX prior to call, value=" << *(rops->read_register(eaxrd)) << LEND;
+               << " to ECX prior to call, value=" << *(rops->read_register(retval_rd)) << LEND;
       }
       else {
         // Create a new symbolic value to represent the modified return code value.
         SymbolicValuePtr eax_value = create_return_value(insn, arch_bits, true);
-        create_overwritten_register(rops, ds, eaxrd, true, eax_value, cd, fparams);
+        create_overwritten_register(rops, ds, retval_rd, true, eax_value, cd, fparams);
         GTRACE << "Setting standard return value for " << addr_str(insn->get_address())
-               << " to " << *(rops->read_register(eaxrd)) << LEND;
+               << " to " << *(rops->read_register(retval_rd)) << LEND;
       }
     }
   }
@@ -1592,10 +1604,10 @@ void DUAnalysis::analyze_return_code() {
   // Check to see whether we're returning the initial value of EAX in ECX.  This is basically a
   // hack to make up for a lack of real calling convention detection.  We have sufficient
   // calling convention data to improve this code now, but that's not my current goal.
-  RegisterDescriptor eaxrd = ds.get_arch_reg("eax");
+  RegisterDescriptor retval_rd = ds.get_retval_reg();
   RegisterDescriptor ecxrd = ds.get_arch_reg("ecx");
 
-  SymbolicValuePtr retvalue = output_state->read_register(eaxrd);
+  SymbolicValuePtr retvalue = output_state->read_register(retval_rd);
   SymbolicValuePtr initial_ecx = input_state->read_register(ecxrd);
 
   // If EAX at the end of the function contains the same value as ECX at the beginning of the
