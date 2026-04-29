@@ -557,6 +557,14 @@ T* as(U *p) {
 #endif
 
 
+// Given an instruction and a memory reference expression, if the memory reference uses
+// RIP-relative addressing (e.g. [rip+0x1234] on x64), return the absolute address of the
+// referenced memory (instruction_address + instruction_size + displacement).  Returns 0 if the
+// expression is not RIP-relative.
+rose_addr_t get_rip_relative_address(const SgAsmInstruction* insn,
+                                     const SgAsmMemoryReferenceExpression* mem,
+                                     RegisterDescriptor ip_reg);
+
 } // namespace pharos
 
 #endif // Pharos_Misc_H
