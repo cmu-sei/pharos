@@ -91,7 +91,7 @@ jobs:
           type=ref,event=pr
 
     - name: Build and push dev image
-      if: github.event_name == 'push' || ( github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'push to docker'))
+      if: github.event_name == 'push' || github.event_name == 'pull_request' || ( github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'push to docker'))
       uses: docker/build-push-action@v7
       with:
         context: .
@@ -178,6 +178,7 @@ jobs:
 
   test:
     needs: [build]
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || ( github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'push to docker'))
     strategy:
       matrix:
         arch: [amd64, arm64]
