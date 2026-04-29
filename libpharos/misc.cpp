@@ -509,7 +509,10 @@ struct PICSearcher : public AstSimpleProcessing {
     // can test whether the address is in define memory correctly.  To do this we add the
     // current value of RIP (which will be the address of the instruction plus the size of the
     // instruction) to the offset in the expression.
-    rose_addr_t absolute_addr = insn->get_address() + insn->get_size() + off_expr->get_value();
+    rose_addr_t absolute_addr = get_rip_relative_address(insn, mem_expr, ds.get_ip_reg());
+    if (absolute_addr == 0) {
+      return;
+    }
     handle_pic_offset(absolute_addr, off_expr);
 
     // Having handled this SgAsmMemoryReferenceExpression, we're done with this node.  We'll
@@ -1423,6 +1426,37 @@ std::string unparseX86Register(RegisterDescriptor reg,
            + numberToString(reg.offset()) + "." + numberToString(reg.nBits());
   }
   return name;
+}
+
+rose_addr_t get_rip_relative_address(const SgAsmInstruction* insn,
+                                       const SgAsmMemoryReferenceExpression* mem,
+                                       RegisterDescriptor ip_reg)
+{
+  if (!insn || !mem) return 0;
+
+  SgAsmExpression* addr_expr = mem->get_address();
+
+  // Handle [rip] with zero displacement (no binary add expression).
+  SgAsmDirectRegisterExpression* reg_expr = isSgAsmDirectRegisterExpression(addr_expr);
+  if (reg_expr && reg_expr->get_descriptor() == ip_reg) {
+    return insn->get_address() + insn->get_size();
+  }
+
+  SgAsmBinaryAdd* add_expr = isSgAsmBinaryAdd(addr_expr);
+  if (!add_expr) return 0;
+
+  // The register and displacement can be on either side of the add.
+  reg_expr = isSgAsmDirectRegisterExpression(add_expr->get_lhs());
+  SgAsmIntegerValueExpression* off_expr = isSgAsmIntegerValueExpression(add_expr->get_rhs());
+  if (!reg_expr) {
+    reg_expr = isSgAsmDirectRegisterExpression(add_expr->get_rhs());
+    off_expr = isSgAsmIntegerValueExpression(add_expr->get_lhs());
+  }
+
+  if (!reg_expr || reg_expr->get_descriptor() != ip_reg) return 0;
+  if (!off_expr) return 0;
+
+  return insn->get_address() + insn->get_size() + off_expr->get_value();
 }
 
 } // namespace pharos
