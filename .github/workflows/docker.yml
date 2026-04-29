@@ -91,7 +91,7 @@ jobs:
           type=ref,event=pr
 
     - name: Build and push dev image
-      if: github.event_name == 'push' || github.event_name == 'pull_request' || ( github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'push to docker'))
+      if: github.event_name == 'push' || ( github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'push to docker'))
       uses: docker/build-push-action@v7
       with:
         context: .
@@ -106,6 +106,28 @@ jobs:
         platforms: linux/${{ matrix.arch }}
         cache-from: ${{ (github.event_name != 'schedule') && format('type=gha,scope={0}-{1}-dev', github.workflow, matrix.arch) }}
         cache-to: type=gha,mode=max,scope=${{ github.workflow }}-${{ matrix.arch }}-dev
+
+    - name: Build dev image locally (PR - no push)
+      if: github.event_name == 'pull_request'
+      uses: docker/build-push-action@v7
+      with:
+        context: .
+        target: dev
+        push: false
+        load: true
+        build-args: |
+          CFLAGS=
+          NCPU=4
+        provenance: false
+        tags: ${{ steps.meta-dev.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        platforms: linux/${{ matrix.arch }}
+        cache-from: type=gha,scope=${{ github.workflow }}-${{ matrix.arch }}-dev
+        cache-to: type=gha,mode=max,scope=${{ github.workflow }}-${{ matrix.arch }}-dev
+
+    - name: Run tests (PR)
+      if: github.event_name == 'pull_request'
+      run: docker run --rm ${{ steps.meta-dev.outputs.tags }} ctest --output-on-failure -j 4
 
   create-manifest:
     needs: [build]
@@ -178,7 +200,7 @@ jobs:
 
   test:
     needs: [build]
-    if: github.event_name == 'push' || github.event_name == 'pull_request' || ( github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'push to docker'))
+    if: github.event_name == 'push' || ( github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'push to docker'))
     strategy:
       matrix:
         arch: [amd64, arm64]
