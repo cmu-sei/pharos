@@ -1456,7 +1456,12 @@ rose_addr_t get_rip_relative_address(const SgAsmInstruction* insn,
   if (!reg_expr || reg_expr->get_descriptor() != ip_reg) return 0;
   if (!off_expr) return 0;
 
-  return insn->get_address() + insn->get_size() + off_expr->get_value();
+  // The displacement in x64 RIP-relative addressing is a 32-bit signed value. Use
+  // get_signedValue() so that negative offsets (common for IAT references, where the IAT
+  // precedes the code section) are sign-extended to 64 bits before addition rather than
+  // zero-extended by get_value() / get_absoluteValue().
+  return insn->get_address() + insn->get_size()
+         + static_cast<int64_t>(off_expr->get_signedValue());
 }
 
 } // namespace pharos
