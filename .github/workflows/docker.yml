@@ -91,6 +91,7 @@ jobs:
           NCPU=4
         provenance: false
         tags: ${{ env.GHCR_REGISTRY }}/${{ github.repository }}:${{ github.ref_name }}-${{ matrix.arch }}-dev
+        labels: ${{ steps.meta.outputs.labels }}
         platforms: linux/${{ matrix.arch }}
         cache-from: ${{ (github.event_name != 'schedule') && format('type=gha,scope={0}-{1}-dev', github.workflow, matrix.arch) }}
         cache-to: type=gha,mode=max,scope=${{ github.workflow }}-${{ matrix.arch }}-dev

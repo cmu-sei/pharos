@@ -24,6 +24,8 @@ RUN /root/pharos/scripts/build.bash && \
 # Test stage - runs unit tests (never pushed)
 FROM dev AS test
 
+ARG NCPU=1
+
 RUN ldconfig && \
     cd /root/pharos/build && \
     ctest --output-on-failure -j $NCPU
