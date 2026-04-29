@@ -56,6 +56,7 @@ jobs:
         tags: |
           type=ref,event=branch
           type=raw,value=latest,enable={{is_default_branch}}
+          type=raw,value=${{ matrix.arch }}-dev,enable={{is_default_branch}}
 
     - name: Build and push Docker image
       id: build-and-push
@@ -77,6 +78,22 @@ jobs:
     - name: Log Docker image digest
       if: steps.build-and-push.outputs.pushed
       run: echo "Docker image pushed ${{ steps.build-and-push.outputs.digest }}"
+
+    - name: Build and push dev image
+      if: github.event_name == 'push' || ( github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'push to docker'))
+      uses: docker/build-push-action@v7
+      with:
+        context: .
+        target: dev
+        push: true
+        build-args: |
+          CFLAGS=
+          NCPU=4
+        provenance: false
+        tags: ${{ env.GHCR_REGISTRY }}/${{ github.repository }}:${{ github.ref_name }}-${{ matrix.arch }}-dev
+        platforms: linux/${{ matrix.arch }}
+        cache-from: ${{ (github.event_name != 'schedule') && format('type=gha,scope={0}-{1}-dev', github.workflow, matrix.arch) }}
+        cache-to: type=gha,mode=max,scope=${{ github.workflow }}-${{ matrix.arch }}-dev
 
   create-manifest:
     needs: [build]
@@ -116,3 +133,25 @@ jobs:
             docker manifest create $TAG ${TAG}-amd64 ${TAG}-arm64
             docker manifest push $TAG
           done
+
+  test:
+    needs: [build]
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Login to GitHub Container Registry (GHCR)
+      uses: docker/login-action@v4
+      with:
+        registry: ${{ env.GHCR_REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Pull dev image
+      run: |
+        docker pull ${{ env.GHCR_REGISTRY }}/${{ github.repository }}:${{ github.ref_name }}-${{ matrix.arch }}-dev
+
+    - name: Run tests
+      run: |
+        docker run --rm ${{ env.GHCR_REGISTRY }}/${{ github.repository }}:${{ github.ref_name }}-${{ matrix.arch }}-dev ctest --output-on-failure -j 4
