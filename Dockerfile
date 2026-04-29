@@ -16,6 +16,7 @@ ADD scripts/build_prereqs.bash /root/pharos/scripts/
 RUN /root/pharos/scripts/build_prereqs.bash
 
 ADD . /root/pharos
+WORKDIR /root/pharos/build
 
 # Build everything in one layer to minimize image size
 RUN /root/pharos/scripts/build.bash && \
@@ -34,6 +35,7 @@ RUN ldconfig && \
 FROM dev AS reclaimed
 
 RUN rm -rf /root/pharos/build
+WORKDIR /root/pharos
 
 # Default target is reclaimed
 FROM reclaimed AS final

@@ -79,6 +79,17 @@ jobs:
       if: steps.build-and-push.outputs.pushed
       run: echo "Docker image pushed ${{ steps.build-and-push.outputs.digest }}"
 
+    - name: Extract metadata for dev image
+      id: meta-dev
+      uses: docker/metadata-action@v6
+      with:
+        images: ${{ env.GHCR_REGISTRY }}/${{ github.repository }}
+        flavor: |
+          suffix=-${{ matrix.arch }}-dev,onlatest=false
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+
     - name: Build and push dev image
       if: github.event_name == 'push' || ( github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'push to docker'))
       uses: docker/build-push-action@v7
@@ -90,7 +101,7 @@ jobs:
           CFLAGS=
           NCPU=4
         provenance: false
-        tags: ${{ env.GHCR_REGISTRY }}/${{ github.repository }}:${{ github.ref_name }}-${{ matrix.arch }}-dev
+        tags: ${{ steps.meta-dev.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         platforms: linux/${{ matrix.arch }}
         cache-from: ${{ (github.event_name != 'schedule') && format('type=gha,scope={0}-{1}-dev', github.workflow, matrix.arch) }}
@@ -147,20 +158,35 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Extract metadata for dev manifest
+      id: meta-dev
+      uses: docker/metadata-action@v6
+      with:
+        images: ${{ env.GHCR_REGISTRY }}/${{ github.repository }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+
     - name: Create and push dev manifests
       env:
-        REPO: ${{ env.GHCR_REGISTRY }}/${{ github.repository }}
-        REF: ${{ github.ref_name }}
+        TAGS: ${{ steps.meta-dev.outputs.tags }}
       run: |
-        docker manifest create $REPO:$REF-dev $REPO:$REF-amd64-dev $REPO:$REF-arm64-dev
-        docker manifest push $REPO:$REF-dev
+        for TAG in $TAGS; do
+          docker manifest create ${TAG}-dev ${TAG}-amd64-dev ${TAG}-arm64-dev
+          docker manifest push ${TAG}-dev
+        done
 
   test:
     needs: [build]
     strategy:
       matrix:
         arch: [amd64, arm64]
-    runs-on: ubuntu-latest
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
     - name: Login to GitHub Container Registry (GHCR)
       uses: docker/login-action@v4
@@ -169,10 +195,19 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Extract metadata for dev image
+      id: meta-dev
+      uses: docker/metadata-action@v6
+      with:
+        images: ${{ env.GHCR_REGISTRY }}/${{ github.repository }}
+        flavor: |
+          suffix=-${{ matrix.arch }}-dev,onlatest=false
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+
     - name: Pull dev image
-      run: |
-        docker pull ${{ env.GHCR_REGISTRY }}/${{ github.repository }}:${{ github.ref_name }}-${{ matrix.arch }}-dev
+      run: docker pull ${{ steps.meta-dev.outputs.tags }}
 
     - name: Run tests
-      run: |
-        docker run --rm ${{ env.GHCR_REGISTRY }}/${{ github.repository }}:${{ github.ref_name }}-${{ matrix.arch }}-dev ctest --output-on-failure -j 4
+      run: docker run --rm ${{ steps.meta-dev.outputs.tags }} ctest --output-on-failure -j 4
