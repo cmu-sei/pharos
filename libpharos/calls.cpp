@@ -8,6 +8,7 @@
 
 #include "calls.hpp"
 #include "masm.hpp"
+#include "misc.hpp"
 #include "vcall.hpp"
 
 namespace pharos {
@@ -465,8 +466,23 @@ void CallDescriptor::analyze() {
          targets.insert(id->get_address());
        } else
          call_type = CallGlobalVariable;
-     } else
-       call_type = CallUnknown;
+     } else {
+       rose_addr_t rip_addr = get_rip_relative_address(insn, mr, ds.get_ip_reg());
+       if (rip_addr != 0) {
+         ImportDescriptor *id = ds.get_rw_import(rip_addr);
+         if (id) {
+           confidence = ConfidenceConfident;
+           call_location = CallExternal;
+           call_type = CallImport;
+           import_descriptor = id;
+           targets.insert(id->get_address());
+         } else {
+           call_type = CallGlobalVariable;
+         }
+       } else {
+         call_type = CallUnknown;
+       }
+     }
      break;
    }
    case V_SgAsmDirectRegisterExpression: {

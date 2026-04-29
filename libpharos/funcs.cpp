@@ -431,6 +431,14 @@ void FunctionDescriptor::update_target_address() {
         SDEBUG << "Function " << _address_string() << " is a thunk that jumps to ["
                << addr_str(target_address) << "]." << LEND;
       }
+      else {
+        rose_addr_t rip_addr = get_rip_relative_address(insn, mr, ds.get_ip_reg());
+        if (rip_addr != 0) {
+          target_address = rip_addr;
+          SDEBUG << "Function " << _address_string() << " is a thunk that jumps to ["
+                 << addr_str(target_address) << "] (RIP-relative)." << LEND;
+        }
+      }
     }
     // Don't fall through and allow our possibly updated target address to be overwritten.
     return;
