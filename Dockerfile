@@ -50,5 +50,5 @@ WORKDIR /root/pharos
 
 RUN ldconfig
 
-# Default target is reclaimed
+# Default target is release
 FROM release AS final
