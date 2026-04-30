@@ -31,8 +31,8 @@ RUN ldconfig && \
     cd /root/pharos/build && \
     ctest --output-on-failure -j $NCPU
 
-# Reclaimed stage - runtime only, no build tools
-FROM ubuntu:latest AS reclaimed
+# Release stage - runtime only, no build tools
+FROM ubuntu:latest AS release
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y update && DEBIAN_FRONTEND=noninteractive apt-get -y install \
     libncurses6 libsqlite3-0 zlib1g libyaml-cpp0.8 libboostchrono1.85.0 libboostfilesystem1.85.0 \
@@ -51,4 +51,4 @@ WORKDIR /root/pharos
 RUN ldconfig
 
 # Default target is reclaimed
-FROM reclaimed AS final
+FROM release AS final
