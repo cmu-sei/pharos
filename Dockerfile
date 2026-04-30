@@ -42,6 +42,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get -y update && DEBIAN_FRONTEND=noninter
     libncurses6 libsqlite3-0 zlib1g libyaml-cpp0.8 \
     libboost-filesystem1.83.0 libboost-iostreams1.83.0 libboost-program-options1.83.0 \
     libboost-regex1.83.0 libboost-system1.83.0 libboost-thread1.83.0 libboost-chrono1.83.0 libboost-timer1.83.0 \
+    libboost-serialization1.83.0 libboost-wave1.83.0 \
     libxml2 libcapstone4 && rm -rf /var/lib/apt/lists/*
 
 COPY --from=reclaimed /usr/local/lib /usr/local/lib
