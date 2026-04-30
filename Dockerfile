@@ -18,7 +18,6 @@ RUN /root/pharos/scripts/build_prereqs.bash
 ADD . /root/pharos
 WORKDIR /root/pharos/build
 
-# Build everything in one layer to minimize image size
 RUN /root/pharos/scripts/build.bash && \
     find /usr/local/lib /usr/local/bin | xargs file | grep 'current ar archive' | awk -F':' '{print $1}' | xargs strip
 
@@ -31,20 +30,25 @@ RUN ldconfig && \
     cd /root/pharos/build && \
     ctest --output-on-failure -j $NCPU
 
+# Reclaimed stage - dev with build artifacts removed
+FROM dev AS reclaimed
+
+RUN rm -rf /root/pharos/build /root/pharos/scripts/swipl-devel /root/pharos/scripts/z3 /root/pharos/scripts/rose /root/pharos/scripts/rose-build
+
 # Release stage - runtime only, no build tools
 FROM ubuntu:latest AS release
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y update && DEBIAN_FRONTEND=noninteractive apt-get -y install \
-    libncurses6 libsqlite3-0 zlib1g libyaml-cpp0.8 libboostchrono1.85.0 libboostfilesystem1.85.0 \
-    libboostiostreams1.85.0 libboostprogram-options1.85.0 libboostrandom1.85.0 libboostregex1.85.0 \
-    libboostsystem1.85.0 libboostwave1.85.0 libboostthread1.85.0 libboosttimer1.85.0 \
-    libxml2 libcapstone3 && rm -rf /var/lib/apt/lists/*
+    libncurses6 libsqlite3-0 zlib1g libyaml-cpp0.8 \
+    libboost-filesystem1.83.0 libboost-iostreams1.83.0 libboost-program-options1.83.0 \
+    libboost-regex1.83.0 libboost-system1.83.0 libboost-thread1.83.0 libboost-chrono1.83.0 libboost-timer1.83.0 \
+    libxml2 libcapstone4 && rm -rf /var/lib/apt/lists/*
 
-COPY --from=dev /usr/local/lib /usr/local/lib
-COPY --from=dev /usr/local/bin /usr/local/bin
-COPY --from=dev /usr/local/include /usr/local/include
-COPY --from=dev /usr/local/share /usr/local/share
-COPY --from=dev /root/pharos /root/pharos
+COPY --from=reclaimed /usr/local/lib /usr/local/lib
+COPY --from=reclaimed /usr/local/bin /usr/local/bin
+COPY --from=reclaimed /usr/local/include /usr/local/include
+COPY --from=reclaimed /usr/local/share /usr/local/share
+COPY --from=reclaimed /root/pharos /root/pharos
 
 WORKDIR /root/pharos
 
