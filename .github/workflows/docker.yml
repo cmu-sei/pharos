@@ -56,7 +56,6 @@ jobs:
         tags: |
           type=ref,event=branch
           type=raw,value=latest,enable={{is_default_branch}}
-          type=raw,value=${{ matrix.arch }}-dev,enable={{is_default_branch}}
 
     - name: Build and push Docker image
       id: build-and-push
@@ -85,10 +84,11 @@ jobs:
       with:
         images: ${{ env.GHCR_REGISTRY }}/${{ github.repository }}
         flavor: |
-          suffix=-${{ matrix.arch }}-dev,onlatest=false
+          suffix=-${{ matrix.arch }}-dev,onlatest=true
         tags: |
           type=ref,event=branch
           type=ref,event=pr
+          type=raw,value=latest,enable={{is_default_branch}}
 
     - name: Build and push dev image
       if: github.event_name == 'push' || ( github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'push to docker'))
@@ -188,6 +188,7 @@ jobs:
         tags: |
           type=ref,event=branch
           type=ref,event=pr
+          type=raw,value=latest,enable={{is_default_branch}}
 
     - name: Create and push dev manifests
       env:
