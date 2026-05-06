@@ -37,7 +37,7 @@ test "$1" = "-reclaim" && rm -rf $DIR/swipl-devel
 cd $DIR
 test -d z3 && rm -rf z3
 
-git clone --depth 1 -b z3-4.8.7 https://github.com/Z3Prover/z3.git z3
+git clone --depth 1 -b z3-4.16.0 https://github.com/Z3Prover/z3.git z3
 cd z3
 mkdir build
 cd build
