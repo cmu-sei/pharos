@@ -1,5 +1,5 @@
 # Dev stage - full build with tests
-FROM ubuntu:noble AS dev
+FROM ubuntu:latest AS dev
 
 ARG NCPU=1
 ENV NCPU=$NCPU
@@ -36,7 +36,7 @@ FROM dev AS reclaimed
 RUN rm -rf /root/pharos/build /root/pharos/scripts/swipl-devel /root/pharos/scripts/z3 /root/pharos/scripts/rose /root/pharos/scripts/rose-build
 
 # Release stage - runtime only, no build tools
-FROM ubuntu:noble AS release
+FROM ubuntu:latest AS release
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y update && DEBIAN_FRONTEND=noninteractive apt-get -y install \
     libncurses6 libsqlite3-0 zlib1g libyaml-cpp0.8 \
@@ -44,7 +44,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get -y update && DEBIAN_FRONTEND=noninter
     libboost-filesystem1.83.0 libboost-iostreams1.83.0 libboost-program-options1.83.0 \
     libboost-regex1.83.0 libboost-system1.83.0 libboost-thread1.83.0 libboost-chrono1.83.0 libboost-timer1.83.0 \
     libboost-serialization1.83.0 libboost-wave1.83.0 \
-    libxml2 libcapstone4 && rm -rf /var/lib/apt/lists/*
+    libxml2-16 libcapstone5 && rm -rf /var/lib/apt/lists/*
 
 COPY --from=reclaimed /usr/local/lib /usr/local/lib
 COPY --from=reclaimed /usr/local/bin /usr/local/bin
