@@ -28,7 +28,7 @@ git clone --recursive -b V10.1.6 --depth 1 https://github.com/swi-prolog/swipl-d
 cd swipl-devel
 mkdir build
 cd build
-cmake -G Ninja -DCMAKE_INSTALL_PREFIX=$PREFIX -DINSTALL_DOCUMENTATION=off ..
+cmake -G Ninja -DCMAKE_INSTALL_PREFIX=$PREFIX -DINSTALL_DOCUMENTATION=off -DCMAKE_C_STANDARD=17 ..
 ninja -j $NCPU
 sudo ninja -j $NCPU install
 test "$1" = "-reclaim" && rm -rf $DIR/swipl-devel
