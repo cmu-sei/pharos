@@ -62,7 +62,8 @@ env CXXFLAGS="$CXXFLAGS -DBOOST_TIMER_ENABLE_DEPRECATED" \
 cmake -GNinja -DCMAKE_INSTALL_PREFIX=$PREFIX -DBoost_ROOT=$PREFIX -DZ3_ROOT=$PREFIX \
         -Denable-binary-analysis=yes -Denable-c=no -Denable-opencl=no -Denable-java=no -Denable-php=no \
         -Denable-fortran=no -Ddisable-tutorial-directory=yes -Denable-projects-directory=no \
-        -Ddisable-tests-directory=yes ../rose
+        -Ddisable-tests-directory=yes \
+        -DCMAKE_POLICY_DEFAULT_CMP0167=OLD ../rose
 
 # Try once in parallel and then if things fail due to memory
 # shortages, try again one thread at a time.  This is a reasonable
