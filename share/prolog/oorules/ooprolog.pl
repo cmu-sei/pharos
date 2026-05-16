@@ -240,6 +240,7 @@ run(Opts) :-
 generate_results(Opts) :-
     check_option(facts(Facts), Opts),
     option(results(Results), Opts), !,
+    load_ground(Opts),
     (   current_prolog_flag(break_level, _) % interactive session
     ->  psolve_no_halt(Facts)
     ;   setup_call_cleanup(
@@ -269,15 +270,21 @@ generate_json(Opts) :-
         run_with_backtrace(exportJSONTo(JsonFile))
     ; true.
 
-%% If there is a ground option, validate results
-validate_results(Opts) :-
+load_ground(Opts) :-
     check_option(ground(Ground), Opts) ->
         setup_call_cleanup(
             open(Ground, read, Stream),
             run_with_backtrace(
-                (loadPredicates(stream(Stream)),
-                 validateResults)),
+                loadPredicates(stream(Stream))
+                ),
             close(Stream))
+    ; true.
+
+%% If there is a ground option, validate results
+validate_results(Opts) :-
+    check_option(ground(_Ground), Opts) ->
+        (load_ground(Opts),
+         validateResults)
     ; true.
 
 /* Local Variables:   */
