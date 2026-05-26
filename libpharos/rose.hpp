@@ -8,28 +8,36 @@
 
 #include "version.hpp"
 
+// ROSE 2.x changed its ROSE_VERSION encoding. Its ROSE_VERSION values (e.g. 20000100
+// for 2.1.0) are numerically smaller than ROSE 0.11.145.x values (~111450xxx), so the
+// version-threshold comparisons below would incorrectly treat ROSE 2.x as older code.
+// Use PHAROS_ROSE_VERSION (cmake-computed, with consistent encoding) to detect ROSE 2.x
+// specifically by checking for major version 2.
+#define PHAROS_ROSE_IS_2X (PHAROS_ROSE_MAJOR_VERSION(PHAROS_ROSE_VERSION) == 2ul)
+
 #define PHAROS_ROSE_ADDRESSINTERVAL_CHANGE 11'145'0029ul
 #if PHAROS_ROSE_ADDRESSINTERVAL_CHANGE <= PHAROS_ROSE_MINIMUM_VERSION
 #  error "This hack is now always true.  Remove the hack and make it permanent."
 #endif
-#define PHAROS_ROSE_ADDRESSINTERVAL_HACK (ROSE_VERSION >= PHAROS_ROSE_ADDRESSINTERVAL_CHANGE)
+#define PHAROS_ROSE_ADDRESSINTERVAL_HACK (PHAROS_ROSE_IS_2X || (ROSE_VERSION >= PHAROS_ROSE_ADDRESSINTERVAL_CHANGE))
 
 #define PHAROS_ROSE_RVA_CHANGE 11'145'0029ul
 #if PHAROS_ROSE_RVA_CHANGE <= PHAROS_ROSE_MINIMUM_VERSION
 #  error "This hack is now always true.  Remove the hack and make it permanent."
 #endif
-#define PHAROS_ROSE_RVA_HACK (ROSE_VERSION >= PHAROS_ROSE_RVA_CHANGE)
+#define PHAROS_ROSE_RVA_HACK (PHAROS_ROSE_IS_2X || (ROSE_VERSION >= PHAROS_ROSE_RVA_CHANGE))
 
 #define PHAROS_ROSE_UNPARSE_CHANGE 11'145'0167ul
 #if PHAROS_ROSE_UNPARSE_CHANGE <= PHAROS_ROSE_MINIMUM_VERSION
 #  error "This hack is now always true.  Remove the hack and make it permanent."
 #endif
-#define PHAROS_ROSE_UNPARSE_HACK (ROSE_VERSION >= PHAROS_ROSE_UNPARSE_CHANGE)
+#define PHAROS_ROSE_UNPARSE_HACK (PHAROS_ROSE_IS_2X || (ROSE_VERSION >= PHAROS_ROSE_UNPARSE_CHANGE))
 
 #define PHAROS_ROSE_UNPARSE_BROKEN 11'145'0158ul
 #if PHAROS_ROSE_UNPARSE_CHANGE <= PHAROS_ROSE_MINIMUM_VERSION
 #  error "This warning should be removed."
-#elif ((ROSE_VERSION >= PHAROS_ROSE_UNPARSE_BROKEN) \
+#elif (!PHAROS_ROSE_IS_2X \
+       && (ROSE_VERSION >= PHAROS_ROSE_UNPARSE_BROKEN) \
        && (ROSE_VERSION < PHAROS_ROSE_UNPARSE_CHANGE))
 #  error "Rose versions 0.11.145.158 through 0.11.145.166 are broken.  Please compile against a different version of Rose."
 #endif
@@ -38,18 +46,18 @@
 #if PHAROS_ROSE_DYNAMIC_PTR_CHANGE <= PHAROS_ROSE_MINIMUM_VERSION
 #  error "This hack is now always true.  Remove the hack and make it permanent."
 #endif
-#define PHAROS_ROSE_DYNAMIC_PTR_HACK (ROSE_VERSION >= PHAROS_ROSE_DYNAMIC_PTR_CHANGE)
+#define PHAROS_ROSE_DYNAMIC_PTR_HACK (PHAROS_ROSE_IS_2X || (ROSE_VERSION >= PHAROS_ROSE_DYNAMIC_PTR_CHANGE))
 
 #define PHAROS_ROSE_ADDRESS_SPACE_CHANGE 11'145'0187ul
 #if PHAROS_ROSE_ADDRESS_SPACE_CHANGE <= PHAROS_ROSE_MINIMUM_VERSION
 #  error "This hack is now always true.  Remove the hack and make it permanent."
 #endif
-#define PHAROS_ROSE_ADDRESS_SPACE_HACK (ROSE_VERSION >= PHAROS_ROSE_ADDRESS_SPACE_CHANGE)
+#define PHAROS_ROSE_ADDRESS_SPACE_HACK (PHAROS_ROSE_IS_2X || (ROSE_VERSION >= PHAROS_ROSE_ADDRESS_SPACE_CHANGE))
 
 #define PHAROS_ROSE_ADDR_T_CHANGE 11'145'0236ul
 #if PHAROS_ROSE_ADDR_T_CHANGE <= PHAROS_ROSE_MINIMUM_VERSION
 #  error "This hack is now always true.  Remove the hack and make it permanent."
 #endif
-#define PHAROS_ROSE_ADDR_T_HACK (ROSE_VERSION >= PHAROS_ROSE_ADDR_T_CHANGE)
+#define PHAROS_ROSE_ADDR_T_HACK (PHAROS_ROSE_IS_2X || (ROSE_VERSION >= PHAROS_ROSE_ADDR_T_CHANGE))
 
 #endif // Pharos_Rose_H

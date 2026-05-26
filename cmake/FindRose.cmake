@@ -42,9 +42,9 @@ mark_as_advanced(ROSE_LIBRARY ROSE_INCLUDE_DIR SAWYER_INCLUDE_DIR)
 if(ROSE_INCLUDE_DIR)
 
   file(STRINGS "${ROSE_INCLUDE_DIR}/rosePublicConfig.h" _ver_line
-    REGEX "^#define ROSE_PACKAGE_VERSION  *\"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+\""
+    REGEX "^#define ROSE_PACKAGE_VERSION  *\"[0-9]+\\.[0-9]+\\.[0-9]+(\\.[0-9]+)?\""
     LIMIT_COUNT 1)
-  string(REGEX MATCH "[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+" ROSE_VERSION "${_ver_line}")
+  string(REGEX MATCH "[0-9]+\\.[0-9]+\\.[0-9]+(\\.[0-9]+)?" ROSE_VERSION "${_ver_line}")
   unset(_ver_line)
 
   file(STRINGS "${ROSE_INCLUDE_DIR}/rosePublicConfig.h" needs_capstone
