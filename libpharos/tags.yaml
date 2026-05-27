@@ -612,10 +612,6 @@ hashes:
   # These methods are not indicative of delete or new, but there's a method
   # called from this method, and if it's indicative, then so is this method.
 
-  # C: _free_dbg(p1, -1); return;
-  # e.g. 0x00402510 in vs2019/dc0d0o0/Debug/ooex5.exe
-  "E34CEDB1A0A02AA76173BA4A52CAB822": callstub,
-
   # return func(p1);
   # e.g. 0x004019E0 in vs2019/dc0d0o0/Debug/ooex5.exe
   "7461553B7014A7921AC39DBA12CCC3A7": callstub,
