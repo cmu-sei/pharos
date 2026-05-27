@@ -113,6 +113,13 @@ if(PHAROS_BROKEN_THREADS)
   add_definitions(-DPHAROS_BROKEN_THREADS)
 endif()
 
+# Acknowledge Boost 1.75 deprecations that originate entirely in third-party
+# headers (boost::graph and boost::python system headers) that pharos cannot
+# change.  Both macros are the documented suppression mechanism provided by
+# Boost for this purpose; boost/bind.hpp even instructs users to define
+# BOOST_BIND_GLOBAL_PLACEHOLDERS.  The actual fix is a system Boost upgrade.
+add_definitions(-DBOOST_BIND_GLOBAL_PLACEHOLDERS -DBOOST_ALLOW_DEPRECATED_HEADERS)
+
 # Add gtests
 add_subdirectory(gtest)
 
