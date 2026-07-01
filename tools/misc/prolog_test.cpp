@@ -190,8 +190,8 @@ int main()
   query->next();
   assert(query->done());
 
-  // Values with the high bit set must remain positive across the C++/Prolog
-  // boundary.  This catches accidental uint64_t-to-int64_t conversion.
+  // Values with the high bit set must retain their bit pattern across the
+  // C++/Prolog boundary, including on SWI-Prolog builds without GMP.
   std::uint64_t uint64_in = UINT64_C(0x8000000000000000);
   session->add_fact("uint64_value", uint64_in);
   std::uint64_t uint64_out = 0;
