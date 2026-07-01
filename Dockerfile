@@ -8,7 +8,10 @@ ENV NCPU=$NCPU
 ARG CXXFLAGS="--param ggc-min-expand=5 --param ggc-min-heapsize=32768"
 ENV CXXFLAGS="$CXXFLAGS"
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get -y update && DEBIAN_FRONTEND=noninteractive apt-get -y install sudo build-essential wget flex ghostscript bzip2 git subversion automake libtool bison python3 python3-setuptools libncurses-dev vim-common sqlite3 libsqlite3-0 libsqlite3-dev zlib1g-dev cmake ninja-build libyaml-cpp-dev libboost-dev libboost-chrono-dev libboost-filesystem-dev libboost-iostreams-dev libboost-program-options-dev libboost-random-dev libboost-regex-dev libboost-system-dev libboost-wave-dev libboost-thread-dev libboost-timer-dev libxml2-dev libcapstone-dev && rm -rf /var/lib/apt/lists/*
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    DEBIAN_FRONTEND=noninteractive apt-get -y update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -y install sudo build-essential wget flex ghostscript bzip2 git subversion automake libtool bison python3 python3-setuptools libncurses-dev vim-common sqlite3 libsqlite3-0 libsqlite3-dev zlib1g-dev cmake ninja-build libyaml-cpp-dev libboost-dev libboost-chrono-dev libboost-filesystem-dev libboost-iostreams-dev libboost-program-options-dev libboost-random-dev libboost-regex-dev libboost-system-dev libboost-wave-dev libboost-thread-dev libboost-timer-dev libxml2-dev libcapstone-dev
 
 # Only add the build prerequisites script so they won't be rebuilt on pharos code change
 RUN mkdir -p /root/pharos/scripts/
@@ -38,13 +41,16 @@ RUN rm -rf /root/pharos/build /root/pharos/scripts/swipl-devel /root/pharos/scri
 # Release stage - runtime only, no build tools
 FROM ubuntu:noble AS release
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get -y update && DEBIAN_FRONTEND=noninteractive apt-get -y install \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    DEBIAN_FRONTEND=noninteractive apt-get -y update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -y install \
     libncurses6 libsqlite3-0 zlib1g libyaml-cpp0.8 \
     python3 python3-pip \
     libboost-filesystem1.83.0 libboost-iostreams1.83.0 libboost-program-options1.83.0 \
     libboost-regex1.83.0 libboost-system1.83.0 libboost-thread1.83.0 libboost-chrono1.83.0 libboost-timer1.83.0 \
     libboost-serialization1.83.0 libboost-wave1.83.0 \
-    libxml2 libcapstone4 && rm -rf /var/lib/apt/lists/*
+    libxml2 libcapstone4
 
 COPY --from=reclaimed /usr/local/lib /usr/local/lib
 COPY --from=reclaimed /usr/local/bin /usr/local/bin
