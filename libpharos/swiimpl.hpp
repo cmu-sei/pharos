@@ -223,6 +223,23 @@ struct Convert<pl_int> {
   }
 };
 
+// Unsigned values must not be routed through pl_int.  In particular, casting
+// 0x8000000000000000 to int64_t produces INT64_MIN.  Besides changing the
+// value's meaning, attempting to print that value as hexadecimal used to
+// overflow in the Prolog portray hook when it negated the number.
+template <>
+struct Convert<std::uint64_t> {
+  static void c2p(std::uint64_t arg, pl_term pt) {
+    wrap_error(PL_put_uint64(pt, arg));
+  }
+  static void p2c(std::uint64_t & arg, pl_term pt) {
+    if (!PL_is_integer(pt)) {
+      throw TypeMismatch(pt, "integer");
+    }
+    wrap_error(PL_get_uint64(pt, &arg));
+  }
+};
+
 // char const *
 template <>
 struct Convert<char const *> {

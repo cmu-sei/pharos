@@ -78,7 +78,7 @@ logLevelEnabled(S) :-
 
 portray_hex(X, _Options) :-
     integer(X),
-    (X < 0 -> (Y is X * -1, format('-0x~16r', Y))
+    (X < 0 -> (format(atom(S), '~16r', X), sub_atom(S, 1, _, 0, D), format('-0x~w', D))
     ; (X > 0 -> format('0x~16r', X))).
 
 writeHex(X, Options) :-

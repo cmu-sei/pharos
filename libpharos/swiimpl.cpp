@@ -203,7 +203,7 @@ void init()
   static constexpr auto integers_as_hex1 =
     "pharos:assertz((integers_as_hex(0, _) :- !, false))";
   static constexpr auto integers_as_hex2 =
-    "pharos:assertz((integers_as_hex(X, _) :- integer(X), (X < 0 -> (Y is X * -1, system:format('-0x~16r', [Y])); system:format('0x~16r', [X]))))";
+    "pharos:assertz((integers_as_hex(X, _) :- integer(X), (X < 0 -> (system:format(atom(S), '~16r', [X]), sub_atom(S, 1, _, 0, D), system:format('-0x~w', [D])); system:format('0x~16r', [X]))))";
   static constexpr auto term_to_string =
     "pharos:assertz((term_to_string(Term, String) :- with_output_to(string(String), write_term(Term, [quoted(true), spacing(next_argument), portray_goal(integers_as_hex)]))))";
   static constexpr auto register_predicate =

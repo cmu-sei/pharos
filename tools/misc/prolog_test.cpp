@@ -1,6 +1,7 @@
 // Copyright 2016-2019 Carnegie Mellon University.  See LICENSE file for terms.
 
 #include <cassert>
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <libpharos/prologimpl.hpp>
@@ -186,6 +187,17 @@ int main()
   assert(!query->done());
   query->debug_print(std::cout);
   assert(ic.x == 2);
+  query->next();
+  assert(query->done());
+
+  // Values with the high bit set must remain positive across the C++/Prolog
+  // boundary.  This catches accidental uint64_t-to-int64_t conversion.
+  std::uint64_t uint64_in = UINT64_C(0x8000000000000000);
+  session->add_fact("uint64_value", uint64_in);
+  std::uint64_t uint64_out = 0;
+  query = session->query("uint64_value", var(uint64_out));
+  assert(!query->done());
+  assert(uint64_out == uint64_in);
   query->next();
   assert(query->done());
 
