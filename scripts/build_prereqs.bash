@@ -60,7 +60,7 @@ cd ../rose-build
 sudo ldconfig
 env CXXFLAGS="$CXXFLAGS -DBOOST_TIMER_ENABLE_DEPRECATED" \
 cmake -GNinja -DCMAKE_INSTALL_PREFIX=$PREFIX -DBoost_ROOT=$PREFIX -DZ3_ROOT=$PREFIX \
-        -Denable-binary-analysis=yes -Denable-c=no -Denable-opencl=no -Denable-java=no -Denable-php=no \
+        -Denable-binary-analysis=yes -DENABLE_BINARY_ANALYSIS=ON -Denable-c=no -Denable-opencl=no -Denable-java=no -Denable-php=no \
         -Denable-fortran=no -Ddisable-tutorial-directory=yes -Denable-projects-directory=no \
         -Ddisable-tests-directory=yes ../rose
 
