@@ -490,12 +490,17 @@ void TypeRTCFrameDesc::dump() {
   }
 }
 
+void TypeRTTITypeDescriptor::read(RTTIParsingContext & ctx, rose_addr_t a) {
+  read(ctx.ea(a));
+}
+
 void TypeRTTITypeDescriptor::read(rose_addr_t a) {
   address = a;
   pVFTable.read(a);
-  spare.read(a + 4);
-  name.read(a + 8);
-  size = 8 + name.size;
+  spare.read(a + pVFTable.size);
+  name.read(a + pVFTable.size + spare.size);
+  size = pVFTable.size + spare.size + name.size;
+  GDEBUG << "Read RTTITypeDescriptor " << str() << LEND;
 }
 
 std::string TypeRTTITypeDescriptor::str() const {
@@ -511,8 +516,17 @@ void TypeRTTICompleteObjectLocator::read(rose_addr_t a) {
   pTypeDescriptor.read(a + 12);
   pClassDescriptor.read(a + 16);
 
-  type_desc.read(pTypeDescriptor.value);
-  class_desc.read(pClassDescriptor.value);
+  RTTIParsingContext ctx(memory);
+
+  if (signature.value == 1 /* COL_SIG_REV1 */) {
+    size = 24;
+    pSelf.read(a + 20);
+    ctx.image_base = a - pSelf.value;
+    ctx.image_base_relative = true;
+  }
+
+  type_desc.read(ctx, ctx.ea(pTypeDescriptor.value));
+  class_desc.read(ctx, ctx.ea(pClassDescriptor.value));
 }
 
 std::string TypeRTTICompleteObjectLocator::str() const {
@@ -525,12 +539,13 @@ void TypeRTTICompleteObjectLocator::dump() {
   GINFO << "RTTI Object @0x" << std::hex << address << std::dec << ": " << str() << LEND;
   GINFO << "  Type: " << type_desc.str() << LEND;
   GINFO << "  Class: " << class_desc.str() << LEND;
-  for (const TypeRTTIBaseClassDescriptor & bcd : class_desc.base_classes) {
+  for (const TypeRTTIBaseClassDescriptor & bcd : *class_desc.base_classes) {
     GINFO << "    Base Class: " << bcd.str() << LEND;
   }
 }
 
-void TypeRTTIClassHierarchyDescriptor::read(rose_addr_t a) {
+void TypeRTTIClassHierarchyDescriptor::read(RTTIParsingContext & ctx, rose_addr_t a) {
+  a = ctx.ea(a);
   address = a;
   size = 16;
   signature.read(a);
@@ -538,11 +553,21 @@ void TypeRTTIClassHierarchyDescriptor::read(rose_addr_t a) {
   numBaseClasses.read(a + 8);
   pBaseClassArray.read(a + 12);
 
-  rose_addr_t base_class_array = pBaseClassArray.value;
+  auto it = ctx.visited_chds.find(a);
+  if (it != ctx.visited_chds.end()) {
+    auto tmp = it->second.lock();
+    ASSERT_not_null(tmp);
+    base_classes = tmp;
+    return;
+  }
+
+  base_classes = std::make_shared<std::vector<TypeRTTIBaseClassDescriptor>>();
+  ctx.visited_chds[a] = base_classes;
+
+  rose_addr_t base_class_array = ctx.ea(pBaseClassArray.value);
   for (unsigned int i = 0; i < numBaseClasses.value; i++) {
     TypeDwordAddr bcaddr(memory, base_class_array);
-    TypeRTTIBaseClassDescriptor bcd(memory, bcaddr.value);
-    base_classes.push_back(bcd);
+    base_classes->push_back(TypeRTTIBaseClassDescriptor(ctx, ctx.ea(bcaddr.value)));
     base_class_array += bcaddr.size;
   }
 }
@@ -559,7 +584,12 @@ std::string TypeRTTIBaseClassArray::str() const {
   return boost::str(boost::format("<incomplete>"));
 }
 
-void TypeRTTIBaseClassDescriptor::read(rose_addr_t a) {
+void TypeRTTIBaseClassArray::read(RTTIParsingContext & ctx, rose_addr_t a) {
+  read(ctx.ea(a));
+}
+
+void TypeRTTIBaseClassDescriptor::read(RTTIParsingContext & ctx, rose_addr_t a) {
+  a = ctx.ea(a);
   address = a;
   size = 28;
   pTypeDescriptor.read(a);
@@ -570,7 +600,7 @@ void TypeRTTIBaseClassDescriptor::read(rose_addr_t a) {
   attributes.read(a + 20);
   pClassDescriptor.read(a + 24);
 
-  type_desc.read(pTypeDescriptor.value);
+  type_desc.read(ctx.ea(pTypeDescriptor.value));
 
   // This quickly turns into a recursive relationship, and could even be a cycle, so we'll need
   // to give some more thought to whether we ought to be doing this.  A visited list is

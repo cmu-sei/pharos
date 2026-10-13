@@ -39,6 +39,9 @@ read_RTTI(const DescriptorSet& ds, rose_addr_t addr)
       if (rtti->signature.value == 0 && rtti->class_desc.signature.value == 0) {
         return rtti;
       }
+      if (rtti->signature.value == 1 /* COL_SIG_REV1 */ && rtti->class_desc.signature.value == 0) {
+        return rtti;
+      }
     }
   }
   catch (...) {

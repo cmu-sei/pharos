@@ -16,6 +16,7 @@ class OOClassDescriptor;
 class OOSolver;
 
 using OOClassDescriptorPtr = std::shared_ptr<OOClassDescriptor>;
+class RTTIParsingContext;
 
 class OOSolverAnalysisPass {
  protected:
@@ -209,7 +210,7 @@ class OOSolver {
   void add_method_facts(const OOAnalyzer& ooa);
   void add_vftable_facts(const OOAnalyzer& ooa);
   void add_rtti_facts(const VirtualFunctionTable* vft);
-  void add_rtti_chd_facts(const rose_addr_t addr);
+  void add_rtti_chd_facts(RTTIParsingContext & ctx, const rose_addr_t addr);
   void add_usage_facts(const OOAnalyzer& ooa);
   void add_call_facts(const OOAnalyzer& ooa);
   void add_thisptroffset_facts();

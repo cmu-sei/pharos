@@ -11,6 +11,10 @@ namespace pharos {
 
 class Memory;
 
+// FIXME: assert that global_arch_bytes has been initialized before use, which
+// it should have been.
+extern size_t global_arch_bytes;
+
 class TypeBase {
  public:
   Memory const & memory;
@@ -63,6 +67,32 @@ class TypeWordSignedInt: public TypeWord {
   TypeWordSignedInt(Memory const & mem, rose_addr_t a): TypeWord(mem, a) { }
   inline std::string str() const { return boost::str(boost::format("%d") % (int16_t)value); }
   inline DataType type() const { return DTypeWordSignedInt; }
+};
+
+// FIXME: ensure that global_arch_bytes has been initialized before use
+class TypeAddr: public TypeBase {
+ public:
+  rose_addr_t value;
+  TypeAddr(Memory const & mem) : TypeBase(mem, 0, global_arch_bytes) { }
+  TypeAddr(Memory const & mem, rose_addr_t a): TypeBase(mem, a, global_arch_bytes) { read(); } 
+  using TypeBase::read;
+  void read(rose_addr_t a) {
+    address = a;
+    if (size == 4) {
+      int32_t tmp;
+      TypeBase::read(&tmp);
+      value = tmp;
+    } else /* if (size == 8) */ {
+      static_assert(sizeof(value) == 8, "rose_addr_t assumed to be 64 bits wide");
+      TypeBase::read(&value);
+    }
+  }
+  inline rose_addr_t read() {
+    read(address);
+    return value;
+  }
+  inline std::string str() const { return addr_str(value); }
+  inline DataType type() const { return DTypeAddr; }
 };
 
 class TypeDword: public TypeBase {
@@ -313,17 +343,21 @@ class TypeRTCFrameDesc: public TypeBase {
   inline DataType type() const { return DTypeRTCFrameDesc; }
 };
 
+class RTTIParsingContext;
+
 // 'RTTI Type Descriptor'
 class TypeRTTITypeDescriptor: public TypeBase {
  public:
-  TypeDwordAddr pVFTable{memory};
-  TypeDword spare{memory};
+  TypeAddr pVFTable{memory};
+  TypeAddr spare{memory};
   TypeString name{memory};
   TypeRTTITypeDescriptor(Memory const & mem): TypeBase(mem) { }
   TypeRTTITypeDescriptor(Memory const & mem, rose_addr_t a) : TypeBase(mem) { read(a); }
+  TypeRTTITypeDescriptor(RTTIParsingContext& ctx, rose_addr_t a);
   virtual ~TypeRTTITypeDescriptor() {};
   using TypeBase::read;
   void read(rose_addr_t a);
+  void read(RTTIParsingContext & ctx, rose_addr_t a);
   std::string str() const;
   inline DataType type() const { return DTypeRTTITypeDescriptor; }
 };
@@ -333,8 +367,10 @@ class TypeRTTIBaseClassArray: public TypeBase {
  public:
   TypeRTTIBaseClassArray(Memory const & mem): TypeBase(mem) { }
   TypeRTTIBaseClassArray(Memory const & mem, rose_addr_t a) : TypeBase(mem) { read(a); }
+  TypeRTTIBaseClassArray(RTTIParsingContext & ctx, rose_addr_t a);
   using TypeBase::read;
   void read(rose_addr_t a);
+  void read(RTTIParsingContext & ctx, rose_addr_t a);
   std::string str() const;
   inline DataType type() const { return DTypeRTTIBaseClassArray; }
 };
@@ -354,9 +390,9 @@ class TypeRTTIBaseClassDescriptor: public TypeBase {
 
   TypeRTTITypeDescriptor type_desc{memory};
   TypeRTTIBaseClassDescriptor(Memory const & mem): TypeBase(mem) { }
-  TypeRTTIBaseClassDescriptor(Memory const & mem, rose_addr_t a) : TypeBase(mem) { read(a); }
+  TypeRTTIBaseClassDescriptor(RTTIParsingContext & ctx, rose_addr_t a);
   using TypeBase::read;
-  void read(rose_addr_t a);
+  void read(RTTIParsingContext & ctx, rose_addr_t a);
   std::string str() const;
   inline DataType type() const { return DTypeRTTIBaseClassDescriptor; }
 };
@@ -368,15 +404,37 @@ class TypeRTTIClassHierarchyDescriptor: public TypeBase {
   TypeDword attributes{memory};
   TypeDwordInt numBaseClasses{memory};
   TypeDwordAddr pBaseClassArray{memory};
-  std::vector<TypeRTTIBaseClassDescriptor> base_classes;
+  std::shared_ptr<std::vector<TypeRTTIBaseClassDescriptor>> base_classes;
   TypeRTTIClassHierarchyDescriptor(Memory const & mem): TypeBase(mem) { }
-  TypeRTTIClassHierarchyDescriptor(Memory const & mem, rose_addr_t a) : TypeBase(mem)
-  { read(a); }
+  TypeRTTIClassHierarchyDescriptor(RTTIParsingContext & ctx, rose_addr_t a);
   using TypeBase::read;
-  void read(rose_addr_t a);
+  void read(RTTIParsingContext & ctx, rose_addr_t a);
   std::string str() const;
   inline DataType type() const { return DTypeRTTIClassHierarchyDescriptor; }
 };
+
+class RTTIParsingContext {
+ public:
+  Memory const & memory;
+  rose_addr_t image_base{0};
+  bool image_base_relative {false};
+
+  // Avoid cyclic parsing
+  std::map<rose_addr_t, std::weak_ptr<std::vector<TypeRTTIBaseClassDescriptor>>> visited_chds;
+
+  RTTIParsingContext(Memory const & mem) : memory(mem) {}
+
+  rose_addr_t ea(rose_addr_t a) { return image_base_relative && ((a & image_base) != image_base) ? image_base | a : a; }
+  rose_addr_t rva(rose_addr_t a) { return image_base_relative && ((a & image_base) == image_base) ? a & ~image_base : a; }
+};
+
+inline TypeRTTIBaseClassDescriptor::TypeRTTIBaseClassDescriptor(RTTIParsingContext & ctx, rose_addr_t a) : TypeBase(ctx.memory) {
+  read(ctx, ctx.ea(a));
+}
+
+inline TypeRTTIClassHierarchyDescriptor::TypeRTTIClassHierarchyDescriptor(RTTIParsingContext & ctx, rose_addr_t a) : TypeBase(ctx.memory) {
+  read(ctx, ctx.ea(a));
+}
 
 // 'RTTI Complete Object Locator'
 class TypeRTTICompleteObjectLocator: public TypeBase {
@@ -386,6 +444,7 @@ class TypeRTTICompleteObjectLocator: public TypeBase {
   TypeDword cdOffset{memory};
   TypeDwordAddr pTypeDescriptor{memory};
   TypeDwordAddr pClassDescriptor{memory};
+  TypeDwordAddr pSelf{memory};
 
   TypeRTTITypeDescriptor type_desc{memory};
   TypeRTTIClassHierarchyDescriptor class_desc{memory};
