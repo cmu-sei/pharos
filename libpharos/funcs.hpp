@@ -73,7 +73,6 @@ using CallTargetSet = Rose::BinaryAnalysis::AddressSet;
 using TokenSet = std::vector<std::string>;
 
 // Forward declaration of object-oriented analysis data structure.
-class ThisCallMethod;
 
 class FunctionDescriptor : private Immobile {
 
@@ -118,6 +117,10 @@ class FunctionDescriptor : private Immobile {
   // A set of functions that are known to be thunks to this function.  While there's typically
   // only one thunk for a given function, it's possible that there could be more than one.
   FunctionDescriptorSet thunks;
+
+  // How this function adjusts the this-pointer before jumping, when it is an adjusting thunk.
+  // Empty for an ordinary thunk and for anything that is not a thunk at all.
+  boost::optional<ThunkAdjustment> thunk_adjustment;
 
   // The addresses of the call instructions that call to this function.
   CallTargetSet callers;
@@ -238,6 +241,11 @@ class FunctionDescriptor : private Immobile {
 
   CFG const & _get_rose_cfg() const;
 
+  // Blocks ending in a call that never returns, mapped to the unreachable fall-through address.
+  // Takes no lock of its own; see get_pharos_cfg().
+  using AddrMap = std::map<rose_addr_t, rose_addr_t>;
+  AddrMap _nonreturning_call_blocks() const;
+
   // Update the return value fields in the parameter list.  Only called while generating
   // the PDG.
   void update_return_values();
@@ -329,6 +337,18 @@ class FunctionDescriptor : private Immobile {
   bool is_thunk() const {
     read_guard<decltype(mutex)> guard{mutex};
     return (target_address != 0);
+  }
+
+  // How this thunk retargets the callee onto a different subobject, or boost::none if it does
+  // not.  A non-empty adjustment implies is_thunk().
+  boost::optional<ThunkAdjustment> get_thunk_adjustment() const {
+    read_guard<decltype(mutex)> guard{mutex};
+    return thunk_adjustment;
+  }
+  // A boolean convenience function for when we only want to test if we adjust the this-pointer.
+  bool is_adjusting_thunk() const {
+    read_guard<decltype(mutex)> guard{mutex};
+    return bool(thunk_adjustment);
   }
 
   // Returns true if this function is a PIC thunk (mov REG, [esp]; ret or tagged pic_thunk).

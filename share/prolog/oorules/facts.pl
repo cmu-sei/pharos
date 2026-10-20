@@ -75,7 +75,7 @@ initialFact(insnCallsNew/3).
 %
 initialFact(purecall/1).
 
-% rTTICompleteObjectLocator(Pointer, Address, TDAddress, CHDAddress, Offset, CDOffset)
+% rTTIMSVCCompleteObjectLocator(Pointer, Address, TDAddress, CHDAddress, Offset, CDOffset)
 %
 % There's a pointer to an RTTI Complete Object Locator data structure at Pointer which points
 % to Address which is where the RTTI Complete Object Locator data structure is located in
@@ -85,7 +85,7 @@ initialFact(purecall/1).
 % occurs once per VFTable (not once per class), and the VFTable being described occurs one
 % pointer length (typically 4 or 8 bytes) beyond the address of pointer.
 %
-initialFact(rTTICompleteObjectLocator/6).
+initialFact(rTTIMSVCCompleteObjectLocator/6).
 
 % rTTITypeDescriptor(Address, VFTable, Name, DemangledName)
 %
@@ -93,17 +93,21 @@ initialFact(rTTICompleteObjectLocator/6).
 % Name of the class being described is specified (in the mangled name format).  The
 % DemangledName is also exported using the Pharos Visual Studio name demangler now.
 %
+% Both ABIs assert this fact, because both describe a type the same way.  Under the Itanium ABI
+% the Address is that of the '_ZTI' record, VFTable is the __cxxabiv1 type_info vtable that
+% says which of the three kinds of record it is, and the names come from __cxa_demangle.
+%
 initialFact(rTTITypeDescriptor/4).
 
-% rTTIClassHierarchyDescriptor(Address, Attributes, BaseClasses)
+% rTTIMSVCClassHierarchyDescriptor(Address, Attributes, BaseClasses)
 %
 % There's an RTTI Class Hierarchy Descriptor at Address. The Attributes are reported to be two
 % individual bits.  If bit zero is set there is multiple inheritance.  If bit one set, there is
 % virtual inheritance.  BaseClasses is a list of RTTI Base Class Descriptor addresses.
 %
-initialFact(rTTIClassHierarchyDescriptor/3).
+initialFact(rTTIMSVCClassHierarchyDescriptor/3).
 
-% rTTIBaseClassDescriptor(Address, TypeDescriptorAddress, NumBases, WhereM, WhereP, WhereV,
+% rTTIMSVCBaseClassDescriptor(Address, TypeDescriptorAddress, NumBases, WhereM, WhereP, WhereV,
 %                         Attributes, ClassHierarchyDescriptor)
 %
 % There's an RTTI Base Class Descriptor at Address. The type of the base class is described by
@@ -113,7 +117,44 @@ initialFact(rTTIClassHierarchyDescriptor/3).
 % hierarchy descriptor parameter is an undocumented extension that appears to describe this
 % particular base class' hierarchy.
 %
-initialFact(rTTIBaseClassDescriptor/8).
+initialFact(rTTIMSVCBaseClassDescriptor/8).
+
+% rTTIItaniumTypeInfo(Address, Kind)
+%
+% There's an Itanium ABI type information record at Address, and it is an instance of the
+% __cxxabiv1 class named by Kind: 'class' for a class with no base classes, 'si_class' for one
+% with a single public non-virtual base, and 'vmi_class' for anything else.  The kind decides
+% the layout of the record, and knowing it is what separates a class that provably has no base
+% classes from a record we were unable to read.
+%
+initialFact(rTTIItaniumTypeInfo/2).
+
+% rTTIItaniumVFTableTypeInfo(VFTable, TIAddress, OffsetToTop)
+%
+% The virtual function table at VFTable is described by the type information record at
+% TIAddress, and serves the subobject beginning OffsetToTop bytes from the top of the complete
+% object.  OffsetToTop is zero for a primary table and negative for a secondary one.
+%
+% This is the Itanium counterpart of rTTIMSVCCompleteObjectLocator, but there is no locator
+% structure to name: both words are simply stored below the table's address point.  Unlike the
+% MSVC case, one record can describe several tables -- every secondary component of a class,
+% and the construction vtables that other classes carry for it, name the same record.
+%
+initialFact(rTTIItaniumVFTableTypeInfo/3).
+
+% rTTIItaniumBaseTypeInfo(TIAddress, BaseTIAddress, Offset, Virtual, Public)
+%
+% The class described by the type information record at TIAddress derives directly from the one
+% at BaseTIAddress.  Virtual and Public are 'true' or 'false'.
+%
+% Only direct base classes are reported, which is the reverse of the MSVC convention: an
+% rTTIMSVCClassHierarchyDescriptor lists every ancestor and leaves directness to be worked out.
+%
+% Offset is where the base subobject begins in the derived object, EXCEPT for a virtual base,
+% where the ABI has nowhere to put a constant: it is instead the offset within the virtual
+% table of the slot that holds the real offset, which is only known at run time.
+%
+initialFact(rTTIItaniumBaseTypeInfo/5).
 
 % thisPtrAllocation(Insn, Function, ThisPtr, Type, Size).
 %
@@ -157,6 +198,27 @@ initialFact(possibleVFTableWrite/6).
 % The ExpandedThisPtr is a thisptr hash that has a corresponding thisPtrDefinition fact.
 %
 initialFact(possibleVBTableWrite/6).
+
+% possibleVTTEntry(VTT, Offset, VFTable).
+%
+% The Itanium ABI virtual table table (VTT) at address VTT names the virtual function table
+% VFTable at Offset bytes into it.  A VTT belongs to a class with virtual bases, and holds the
+% address points that the complete-object constructor passes down to the base-object
+% constructors of its base subobjects, so that each base installs the table appropriate to the
+% stage of construction it is in.  Usually this is the only evidence that the construction
+% vtables exist at all, since the constructor reads the address point from the VTT.
+%
+% Entry zero is always the most-derived class' own primary table.  The other entries are a
+% mixture of that class' secondary tables and the construction vtables of its bases.  A
+% possibleVFTableWrite usually tells the two apart, but not reliably: inlining can fold the VTT
+% load into a constant, giving the construction vtable a write of its own.
+%
+% The slots of the VTT itself are not reported as initialMemory facts.  A VTT is stored
+% adjacent to the tables it describes, and treating its slots as ordinary initialized memory
+% would let possibleVFTableSlot/2 walk out of the end of the preceding table and absorb them
+% as though they were virtual function pointers.
+%
+initialFact(possibleVTTEntry/3).
 
 % initialMemory(Address, Value).
 %
@@ -206,11 +268,34 @@ initialFact(symbolClass/4).
 %
 initialFact(symbolProperty/2).
 
-% thunk(Thunk, Function).
+% thunk(Thunk, Function, Adjustment).
 %
-% The instruction at Thunk is an unconditional jump to Function.
+% The instruction at Thunk is an unconditional jump to Function.  Adjustment describes how the
+% this-pointer is modified before the jump, and takes one of three shapes:
 %
-initialFact(thunk/2).
+%   Delta                       A signed constant is added to the this-pointer.  Zero for an
+%                               ordinary thunk that passes the this-pointer through unchanged.
+%
+%   virtual(Delta, Slot)        The this-pointer is adjusted by Delta plus the value found at
+%                               Slot bytes from the object's vftable pointer.  This is the
+%                               Itanium ABI vcall offset, emitted by GCC and Clang for both
+%                               AMD64 and i386.  The slot lives in read-only vtable data, so
+%                               its value may be recoverable statically.
+%
+%   vtordisp(Delta, Slot)       The this-pointer is adjusted by Delta MINUS the value found at
+%                               Slot bytes from the this-pointer itself.  This is the MSVC
+%                               vtordisp field, which is written into the object during
+%                               construction, so its value is only ever known at run time.
+%
+% The two dynamic shapes are deliberately not unified: they read from different bases and
+% combine with opposite signs, so a single slot displacement could not mean the same thing on
+% both.  A rule that only cares whether the adjustment is dynamic should match both explicitly
+% rather than assume one stands in for the other.
+%
+% A thunk with a non-zero adjustment retargets the callee onto a different subobject, so it is
+% deliberately not followed by eventualThunk/2 and therefore not by dethunk/2.
+%
+initialFact(thunk/3).
 
 % callingConvention(Function, Convention).
 %
@@ -226,13 +311,6 @@ initialFact(callingConvention/2).
 %
 initialFact(funcParameter/3).
 
-% funcReturn(Function, Position, SVHash).
-%
-% The Function returns the symbolic value represented by SVHash in Position.  Position is
-% always a register name, and is typically 'eax'.
-%
-initialFact(funcReturn/3).
-
 % callParameter(Instruction, Function, Position, SVHash).
 %
 % The call Instruction in Function passes the symbolic value SVHash in Position. The Position
@@ -240,13 +318,6 @@ initialFact(funcReturn/3).
 % register for register parameters.
 %
 initialFact(callParameter/4).
-
-% callReturn(Instruction, Function, Position, SVHash).
-%
-% The call Instruction in Function returns the symbolic value represented by SVHash in
-% Position.  Position is always a register name, and is typically 'eax'.
-%
-initialFact(callReturn/4).
 
 % callTarget(Instruction, Function, Target).
 %

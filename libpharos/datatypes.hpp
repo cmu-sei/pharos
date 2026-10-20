@@ -101,6 +101,21 @@ class TypeDwordAddr: public TypeDword {
   inline DataType type() const { return DTypeDwordAddr; }
 };
 
+// An address of whatever width the architecture uses, unlike TypeDwordAddr.
+class TypeAddr: public TypeBase {
+ public:
+  rose_addr_t value = 0;
+  TypeAddr(Memory const & mem);
+  TypeAddr(Memory const & mem, rose_addr_t a);
+  using TypeBase::read;
+  rose_addr_t read();
+  inline rose_addr_t read(rose_addr_t a) { address = a; return read(); }
+  // The same word read as a signed integer, for the offsets that the Itanium ABI stores at
+  // pointer width.
+  int64_t signed_value() const;
+  std::string str() const;
+};
+
 class TypeQword: public TypeBase {
  public:
   uint64_t value;
@@ -398,6 +413,69 @@ class TypeRTTICompleteObjectLocator: public TypeBase {
   std::string str() const;
   void dump();
   inline DataType type() const { return DTypeRTTICompleteObjectLocator; }
+};
+
+// The Itanium C++ ABI describes a class type with one of three __cxxabiv1 classes, which
+// differ only in how they report base classes.  Which one a record is an instance of is
+// decided by the type_info vtable it points at rather than by anything in the record itself,
+// so it has to be handed to read().
+enum class ItaniumTypeInfoKind { Class, SIClass, VMIClass };
+
+// The name of a kind, which is also how it is reported to Prolog.
+inline const char* kind_str(ItaniumTypeInfoKind kind) {
+  switch (kind) {
+    case ItaniumTypeInfoKind::SIClass:  return "si_class";
+    case ItaniumTypeInfoKind::VMIClass: return "vmi_class";
+    case ItaniumTypeInfoKind::Class:    break;
+  }
+  return "class";
+}
+
+// One entry of the base class array of an '__vmi_class_type_info'.
+class TypeItaniumBaseTypeInfo: public TypeBase {
+ public:
+  TypeAddr pTypeInfo{memory};
+  TypeAddr offset_flags{memory};
+
+  TypeItaniumBaseTypeInfo(Memory const & mem): TypeBase(mem) { }
+  TypeItaniumBaseTypeInfo(Memory const & mem, rose_addr_t a) : TypeBase(mem) { read(a); }
+  using TypeBase::read;
+  void read(rose_addr_t a);
+  // Read the base of an '__si_class_type_info', which holds only the pointer.
+  void read_single(rose_addr_t a);
+  // Where the base subobject begins in the derived object.  For a virtual base this is
+  // instead the offset within the virtual table of the slot holding the real offset, which is
+  // only known at run time.
+  int64_t offset() const { return offset_flags.signed_value() >> 8; }
+  bool is_virtual() const { return (offset_flags.value & 0x1) != 0; }
+  bool is_public() const { return (offset_flags.value & 0x2) != 0; }
+  std::string str() const;
+};
+
+// '_ZTI', the Itanium type information record that the word below a virtual function table's
+// address point points at.
+class TypeItaniumTypeInfo: public TypeBase {
+ public:
+  // The type_info vtable, which says which of the three kinds this record is.  It reads as
+  // zero when the word is a relocation the dynamic linker was going to fill in.
+  TypeAddr pVTable{memory};
+  TypeAddr pName{memory};
+  // The mangled name, as type_info::name() would report it.
+  TypeString name{memory};
+  // Both are only present in an '__vmi_class_type_info'.
+  TypeDword flags{memory};
+  TypeDwordInt numBaseClasses{memory};
+
+  ItaniumTypeInfoKind kind = ItaniumTypeInfoKind::Class;
+  std::vector<TypeItaniumBaseTypeInfo> base_classes;
+
+  TypeItaniumTypeInfo(Memory const & mem): TypeBase(mem) { }
+  TypeItaniumTypeInfo(Memory const & mem, rose_addr_t a, ItaniumTypeInfoKind k)
+    : TypeBase(mem) { read(a, k); }
+  using TypeBase::read;
+  void read(rose_addr_t a, ItaniumTypeInfoKind k);
+  std::string str() const;
+  void dump();
 };
 
 } // namespace pharos

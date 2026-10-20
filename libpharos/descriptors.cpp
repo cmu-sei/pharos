@@ -19,7 +19,6 @@
 #include "pdg.hpp"
 #include "apidb.hpp"
 #include "partitioner.hpp"
-#include "vftable.hpp"
 #include "imports.hpp"
 #include "masm.hpp"
 #include "threads.hpp"
@@ -126,12 +125,11 @@ RegisterVector DescriptorSet::get_usual_registers()
   return pharos::get_usual_registers(get_architecture());
 }
 
-// ELF ET_DYN relocation offsets are relative to the image, but ROSE leaves r_offset in that
-// original coordinate system after mapping a PIE at a non-zero base.  Translate the offset
-// through its containing section so imports use the same addresses as the partitioner's
+// ELF ET_DYN relocation offsets and symbol values are relative to the image, but ROSE leaves
+// them in that original coordinate system after mapping a PIE at a non-zero base.  Translate
+// one through its containing section so it uses the same addresses as the partitioner's
 // instructions and memory map.
-static rose_addr_t elf_relocation_target_va(
-  SgAsmElfFileHeader* header, rose_addr_t offset)
+static rose_addr_t elf_mapped_va(SgAsmElfFileHeader* header, rose_addr_t offset)
 {
   if (header->get_e_type() != SgAsmElfFileHeader::ET_DYN) return offset;
 
@@ -141,7 +139,7 @@ static rose_addr_t elf_relocation_target_va(
     return section->get_mappedActualVa() + (offset - preferred_rva);
   }
 
-  GWARN << "Unable to map ELF relocation offset " << addr_str(offset)
+  GWARN << "Unable to map ELF offset " << addr_str(offset)
         << " to its loaded address." << LEND;
   return offset;
 }
@@ -236,23 +234,43 @@ void DescriptorSet::init()
               symbolSection ? symbolSection->get_symbols() : NULL)
           {
             for (SgAsmElfRelocEntry *rel : relocSection->get_entries()->get_entries()) {
+              // The name of the symbol the relocation refers to, if it names one at all.
+              // R_*_RELATIVE entries do not.
+              std::string name;
+              unsigned long symbolIdx = rel->get_sym();
+              if (symbolIdx < symbols->get_symbols().size()) {
+                name = symbols->get_symbols()[symbolIdx]->get_name()->get_string();
+              }
+              rose_addr_t raddr = elf_mapped_va(elfHeader, rel->get_r_offset());
+
               if (rel->get_type() == SgAsmElfRelocEntry::R_X86_64_JUMP_SLOT ||
                   rel->get_type() == SgAsmElfRelocEntry::R_386_JMP_SLOT) {
-                rose_addr_t raddr = elf_relocation_target_va(elfHeader, rel->get_r_offset());
                 // ELF files don't say explicltly which files contain which symbols.  They're
                 std::string dll("ELF");
-                // Start with a NULL name.  The import descriptor constructor will change it to
-                // '*INVALID*' if we're unable to find the symbol.
-                std::string name;
-                // But if there's a name in the ELF (and there should be) use it.
-                unsigned long symbolIdx = rel->get_sym();
-                if (symbolIdx < symbols->get_symbols().size()) {
-                  SgAsmElfSymbol *symbol = symbols->get_symbols()[symbolIdx];
-                  name = symbol->get_name()->get_string();
-                }
+                // The name is left empty if we were unable to find the symbol, and the import
+                // descriptor constructor will change it to '*INVALID*'.
                 add_import(raddr, dll, name);
                 //OINFO << "Added ELF 'import':" << addr_str(raddr) << " " << name << LEND;
               }
+              // Data relocations are not imports, because nothing calls them, but the symbol
+              // they name is still the only description of a word that the dynamic linker
+              // fills in.  Itanium RTTI needs them to recognize which of the __cxxabiv1
+              // type_info classes a typeinfo record belongs to.
+              else if (!name.empty()) {
+                reloc_symbols.emplace(raddr, name);
+              }
+            }
+          }
+        }
+        // The symbols the file defines itself.  A stripped binary keeps its .dynsym, which is
+        // where the interesting ones live: a C++ binary exports its vtable and typeinfo
+        // symbols so that the classes have a single definition across the whole program.
+        else if (SgAsmElfSymbolSection *symbolSection = isSgAsmElfSymbolSection(section)) {
+          if (SgAsmElfSymbolList *symbols = symbolSection->get_symbols()) {
+            for (SgAsmElfSymbol *symbol : symbols->get_symbols()) {
+              if (symbol->get_value() == 0) continue;
+              defined_symbols.emplace(symbol->get_name()->get_string(),
+                                      elf_mapped_va(elfHeader, symbol->get_value()));
             }
           }
         }

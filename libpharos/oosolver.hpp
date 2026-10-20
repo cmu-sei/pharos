@@ -10,132 +10,8 @@
 
 namespace pharos {
 
-// Forward declaration for add_rtti_facts() prototype.
+// Forward declaration for add_msvc_rtti_facts() prototype.
 class VirtualFunctionTable;
-class OOClassDescriptor;
-class OOSolver;
-
-using OOClassDescriptorPtr = std::shared_ptr<OOClassDescriptor>;
-
-class OOSolverAnalysisPass {
- protected:
-  std::string pass_name_;
- public:
-  virtual bool solve(std::vector<OOClassDescriptorPtr>& classes)=0;
-  virtual void set_name(std::string n);
-  virtual std::string get_name();
-  virtual ~OOSolverAnalysisPass() = default;
-};
-
-// run a sequence of analysis passes
-class OOSolverAnalysisPassRunner {
- private:
-  OOSolver *solver_;
-  std::vector< std::shared_ptr<OOSolverAnalysisPass> > passes_;
- public:
-  OOSolverAnalysisPassRunner() : solver_(NULL) { }
-  OOSolverAnalysisPassRunner(OOSolver *s) : solver_(s) { }
-  void add_pass(std::shared_ptr<OOSolverAnalysisPass> p);
-  void run();
-};
-
-class SolveClassesFromProlog : public OOSolverAnalysisPass {
- private:
-  std::shared_ptr<prolog::Session> session_;
-  const DescriptorSet& ds;
- public:
-  SolveClassesFromProlog(std::shared_ptr<prolog::Session> s, const DescriptorSet& ds_)
-    : session_(s), ds(ds_) {
-    set_name("SolveClassesFromProlog");
-  }
-  virtual bool solve(std::vector<OOClassDescriptorPtr>& classes);
-};
-
-class SolveInheritanceFromProlog : public OOSolverAnalysisPass {
- protected:
-  std::shared_ptr<prolog::Session> session_;
-  const DescriptorSet& ds;
- public:
-  SolveInheritanceFromProlog(std::shared_ptr<prolog::Session> s, const DescriptorSet& ds_)
-    : session_(s), ds(ds_) {
-    set_name("SolveInheritanceFromProlog");
-  }
-  virtual bool solve(std::vector<OOClassDescriptorPtr>& classes);
-};
-
-class SolveVFTableFromProlog : public OOSolverAnalysisPass {
- protected:
-  std::shared_ptr<prolog::Session> session_;
-  const DescriptorSet& ds;
- public:
-  SolveVFTableFromProlog(std::shared_ptr<prolog::Session> s, const DescriptorSet& ds_)
-    : session_(s), ds(ds_) {
-    set_name("SolveVFTableFromProlog");
-  }
-  virtual bool solve(std::vector<OOClassDescriptorPtr>& classes);
-};
-
-class SolveMemberAccessFromProlog : public OOSolverAnalysisPass {
- protected:
-  std::shared_ptr<prolog::Session> session_;
-  const DescriptorSet& ds;
- public:
-  SolveMemberAccessFromProlog(std::shared_ptr<prolog::Session> s, const DescriptorSet& ds_)
-    : session_(s), ds(ds_) {
-    set_name("SolveMemberAccessFromProlog");
-  }
-  virtual bool solve(std::vector<OOClassDescriptorPtr>& classes);
-};
-
-class SolveEmbeddedObjFromProlog : public OOSolverAnalysisPass {
- protected:
-  std::shared_ptr<prolog::Session> session_;
-  const DescriptorSet& ds;
- public:
-  SolveEmbeddedObjFromProlog(std::shared_ptr<prolog::Session> s, const DescriptorSet& ds_)
-    : session_(s), ds(ds_) {
-    set_name("SolveEmbeddedObjFromProlog");
-  }
-  virtual bool solve(std::vector<OOClassDescriptorPtr>& classes);
-};
-
-class SolveMemberFromProlog : public OOSolverAnalysisPass {
- protected:
-  std::shared_ptr<prolog::Session> session_;
-  const DescriptorSet& ds;
- public:
-  SolveMemberFromProlog(std::shared_ptr<prolog::Session> s, const DescriptorSet& ds_)
-    : session_(s), ds(ds_) {
-    set_name("SolveMemberFromProlog");
-  }
-  virtual bool solve(std::vector<OOClassDescriptorPtr>& classes);
-};
-
-class SolveMethodPropertyFromProlog : public OOSolverAnalysisPass {
- protected:
-  std::shared_ptr<prolog::Session> session_;
-  const DescriptorSet& ds;
- public:
-  SolveMethodPropertyFromProlog(std::shared_ptr<prolog::Session> s, const DescriptorSet& ds_)
-    : session_(s), ds(ds_) {
-    set_name("SolveMethodPropertyFromProlog");
-  }
-  virtual bool solve(std::vector<OOClassDescriptorPtr>& clgasses);
-};
-
-class SolveResolvedVirtualCallFromProlog : public OOSolverAnalysisPass {
- protected:
-  std::shared_ptr<prolog::Session> session_;
-  const DescriptorSet& ds;
- public:
-  SolveResolvedVirtualCallFromProlog(std::shared_ptr<prolog::Session> s, const DescriptorSet& ds_)
-    : session_(s), ds(ds_) {
-    set_name("SolveResolvedVirtualCallFromProlog");
-  }
-  virtual bool solve(std::vector<OOClassDescriptorPtr>& classes);
-};
-
-// End analysis/solve passes
 
 // Forward declaration of OOAnalyzer
 class OOAnalyzer;
@@ -183,9 +59,6 @@ class OOSolver {
   };
   std::set<ExpandedTreeNodePtr> expanded_thisptrs;
 
-  // list of created classes
-  std::vector<OOClassDescriptorPtr> classes;
-
   // A list of addreses with exported facts (de-duplicates RTTI information).
   AddrSet visited;
 
@@ -208,14 +81,17 @@ class OOSolver {
   // Private implementation of add_facts() broken into several parts.
   void add_method_facts(const OOAnalyzer& ooa);
   void add_vftable_facts(const OOAnalyzer& ooa);
-  void add_rtti_facts(const VirtualFunctionTable* vft);
-  void add_rtti_chd_facts(const rose_addr_t addr);
+  void add_msvc_rtti_facts(const VirtualFunctionTable* vft);
+  void add_msvc_rtti_chd_facts(const rose_addr_t addr);
+  void add_itanium_rtti_facts(const OOAnalyzer& ooa, const VirtualFunctionTable* vft);
+  void add_itanium_typeinfo_facts(const OOAnalyzer& ooa, const rose_addr_t addr);
   void add_usage_facts(const OOAnalyzer& ooa);
   void add_call_facts(const OOAnalyzer& ooa);
   void add_thisptroffset_facts();
   void add_thisptrdefinition_facts();
   void add_function_facts(const OOAnalyzer& ooa);
   void add_import_facts(const OOAnalyzer& ooa);
+  bool solve();
 
   // Private implementation of dump_facts() and dump_results().
   void dump_facts_private();
@@ -233,11 +109,8 @@ class OOSolver {
   bool analyze(const OOAnalyzer& ooa);
 
   bool add_facts(const OOAnalyzer& ooa);
-  bool import_results();
   bool dump_facts();
   bool dump_results();
-  std::vector<OOClassDescriptorPtr>& get_classes();
-  void update_virtual_call_targets();
 };
 
 } // namespace pharos

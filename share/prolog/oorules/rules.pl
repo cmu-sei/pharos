@@ -171,7 +171,7 @@ reasonMethod_P(Method) :-
 
 %reasonMethod_Q(Method) :-
 % Does this rule remove the need for dethunk in other reasonMethod.
-%    thunk(Method, Called),
+%    thunk(Method, Called, _),
 %    factMethod(Called).
 
 reasonMethodSet(Set) :-
@@ -340,15 +340,27 @@ reasonNOTConstructor_G(Method) :-
     logtraceln('~@~Q.', [not(factNOTConstructor(Method)),
                          reasonNOTConstructor_G(Caller, Method)]).
 
+installsConstructionVFTable(Method) :-
+    possibleVFTableWrite(_Insn, Method, _ThisPtr, _Offset, VFTable),
+    possibleConstructionVFTable(VFTable).
+
 % If we know which VFTable is associated with this class, and the method does not install it,
 % it's NOT a constructor.
 reasonNOTConstructor_H(Method) :-
     % There is a VFTable on a class
     findVFTable(VFTable, Class),
+    % But not a construction vtable.  Under the Itanium ABI a class' complete-object and
+    % base-object constructors install disjoint sets of tables: the complete-object variant
+    % installs the class' own tables, and the base-object variant installs whichever
+    % construction vtables its caller's VTT names.  Neither installs the other's, so once both
+    % variants are on the class, this rule must not read that division of labor as evidence.
+    not(possibleConstructionVFTable(VFTable)),
     % There is a method on the class
     findMethod(Method, Class),
     % The method does not install the vftable
     not(possibleVFTableWrite(_Insn, Method, _ThisPtr, _, VFTable)),
+    % And the method is not the base-object variant, which never installs the class' own tables.
+    not(installsConstructionVFTable(Method)),
     % Since we don't have visibility into VFTable writes from imported constructors and
     % destructors this rule does not apply to imported methods.
     not(symbolClass(Method, _, _, _)),
@@ -851,6 +863,16 @@ reasonVFTable(VFTable) :-
 reasonVFTable(VFTable) :-
     factVirtualFunctionCall(_Insn, _Method, _ObjectOffset, VFTable, _VFTableOffset).
 
+% Because a VTT names the table, and that VTT is corroborated by its own entry zero already
+% being a known table.  Per the Itanium ABI, entry zero of a VTT is the most-derived class' own
+% primary table, which its complete-object constructor installs from a constant, so a real
+% vtable group always has a write for it.
+reasonVFTable(VFTable) :-
+    possibleVTTEntry(VTT, _Offset, VFTable),
+    possibleVTTEntry(VTT, 0, PrimaryVFTable),
+    factVFTable(PrimaryVFTable),
+    logtraceln('~Q.', reasonVFTable2(VFTable)).
+
 % Implement: Derived/Base class relationships validate the virtual function tables at the same
 % offsets in oteher class?  Is it possible to conclude the derived class relationship without
 % the being certain of the VFTables (if there are VFTables)?
@@ -901,19 +923,19 @@ reasonNOTVFTable_D(Address) :-
 reasonNOTVFTable_E(Address) :-
     rTTIEnabled,
     rTTIValid,
-    rTTICompleteObjectLocator(Address, _, _, _, _, _),
+    rTTIMSVCCompleteObjectLocator(Address, _, _, _, _, _),
     logtraceln('~Q.', reasonNOTVFTable_E(Address)).
 
 reasonNOTVFTable_F(Address) :-
     rTTIEnabled,
     rTTIValid,
-    rTTIClassHierarchyDescriptor(Address, _, _),
+    rTTIMSVCClassHierarchyDescriptor(Address, _, _),
     logtraceln('~Q.', reasonNOTVFTable_F(Address)).
 
 reasonNOTVFTable_G(Address) :-
     rTTIEnabled,
     rTTIValid,
-    rTTIBaseClassDescriptor(Address, _, _, _, _, _, _, _),
+    rTTIMSVCBaseClassDescriptor(Address, _, _, _, _, _, _, _),
     logtraceln('~Q.', reasonNOTVFTable_G(Address)).
 
 reasonNOTVFTable_H(Address) :-
@@ -1220,6 +1242,23 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
     ).
 
 % --------------------------------------------------------------------------------------------
+% The first entry in a table, and the nearest entry below an offset.  Both skip NULL slots,
+% which are not entries, so a gap in the middle of a table does not break the chain.
+:- table firstVFTableEntry/3 as opaque.
+firstVFTableEntry(VFTable, Offset, Entry) :-
+    possibleVFTableEntry(VFTable, Offset, Entry),
+    not((possibleVFTableEntry(VFTable, SmallerOffset, _OtherEntry),
+         SmallerOffset < Offset)).
+
+:- table precedingVFTableEntry/4 as opaque.
+precedingVFTableEntry(VFTable, Offset, PrevOffset, PrevEntry) :-
+    possibleVFTableSlot(VFTable, Offset),
+    possibleVFTableEntry(VFTable, PrevOffset, PrevEntry),
+    PrevOffset < Offset,
+    not((possibleVFTableEntry(VFTable, BetweenOffset, _MidEntry),
+         BetweenOffset < Offset, BetweenOffset > PrevOffset)).
+
+% --------------------------------------------------------------------------------------------
 % The offset in the VFTable is a valid VFTable entry.
 :- table reasonVFTableEntry/3 as incremental.
 
@@ -1228,11 +1267,12 @@ reasonVFTableBelongsToClass(VFTable, Offset, Class, Rule, VFTableWrite) :-
 reasonVFTableEntry(VFTable, Offset, Entry) :-
     factVFTableEntry(VFTable, Offset, Entry).
 
-% Because the first entry in the VFTable is always valid (they are no zero size VFTables).
+% Because the first valid entry in the VFTable is always valid (there are no zero size
+% VFTables).  Usually that is offset zero, but an Itanium table can open with NULL slots.
 % PAPER: VFTable-VFTableEntry
-reasonVFTableEntry(VFTable, 0, Entry) :-
+reasonVFTableEntry(VFTable, Offset, Entry) :-
     factVFTable(VFTable),
-    possibleVFTableEntry(VFTable, 0, Entry).
+    firstVFTableEntry(VFTable, Offset, Entry).
 
 % Because there is a larger valid VFTable entry in the same VFTable.
 % PAPER: Larger-VFTableEntry
@@ -1292,11 +1332,8 @@ reasonNOTVFTableEntry_B(VFTableAddress, Offset, Entry) :-
 reasonNOTVFTableEntry_C(VFTable, Offset, Entry) :-
     factVFTable(VFTable),
     possibleVFTableEntry(VFTable, Offset, Entry),
-    Offset \= 0,
-    pointerSize(PtrSize),
-    ComputedOffset is Offset - PtrSize,
-    possibleVFTableEntry(VFTable, ComputedOffset, OtherEntry),
-    factNOTVFTableEntry(VFTable, ComputedOffset, OtherEntry).
+    precedingVFTableEntry(VFTable, Offset, PrevOffset, PrevEntry),
+    factNOTVFTableEntry(VFTable, PrevOffset, PrevEntry).
 
 % Because the address is already used for the RTTI data structure of a confirmed VFTable.
 % PAPER: rTTI-NotVFTableEntry
@@ -1304,7 +1341,7 @@ reasonNOTVFTableEntry_D(VFTable, Offset, Entry) :-
     factVFTable(VFTable),
     possibleVFTableEntry(VFTable, Offset, Entry),
     ComputedAddress is VFTable + Offset,
-    rTTICompleteObjectLocator(ComputedAddress, _Address, _TDAddress, _CHDAddress, _O1, _O2).
+    rTTIMSVCCompleteObjectLocator(ComputedAddress, _Address, _TDAddress, _CHDAddress, _O1, _O2).
 
 % Because the method it points to is certain to be a constructor.  This rule is suspicious.
 % Are we really sure that the method is a constructor?  Why does it appear to be in the virtual
@@ -2082,29 +2119,29 @@ reasonDerivedClassRelationship(D, B) :- reasonDerivedClassRelationship(D, B, _O)
 % It is certain that there is a class relationship between the two classes (either through
 % inheritance or embedding).
 
-% reasonClassRelationship_internal(_, _) is generally a small table, but it can be very
-% expensive to maintain all variants.  So we have a front-end here that always queries
-% reasonClassRelationship(_, _).
+% Avoid a separate incremental table for each bound pair by querying with an unbound second
+% argument and filtering the answers. Other call modes retain their original table variants.
 
-reasonClassRelationship_fe(Class1, Class2) :- var(Class1), var(Class2), !,
+reasonClassRelationship(Class1, Class2) :- var(Class1), var(Class2), !,
    reasonClassRelationship_internal(Class1, Class2).
 
-reasonClassRelationship_fe(Class1, Class2) :- integer(Class1), var(Class2), !,
+reasonClassRelationship(Class1, Class2) :- integer(Class1), var(Class2), !,
    % Unbound call
    reasonClassRelationship_internal(Class1, Class2UB),
    % Unification
    Class2=Class2UB.
 
-reasonClassRelationship_fe(Class1, Class2) :- integer(Class1), integer(Class2), !,
+reasonClassRelationship(Class1, Class2) :- integer(Class1), integer(Class2), !,
    % Unbound call
-   reasonClassRelationship(Class1, Class2UB),
+   reasonClassRelationship_internal(Class1, Class2UB),
    % Unification
    %Class1=Class1UB,
    Class2=Class2UB.
 
-reasonClassRelationship_fe(_, _) :- throw(system_error(reasonClassRelationship)).
+reasonClassRelationship(Class1, Class2) :- var(Class1), integer(Class2), !,
+   reasonClassRelationship_internal(Class1, Class2).
 
-reasonClassRelationship(A,B) :- reasonClassRelationship_internal(A,B).
+reasonClassRelationship(_, _) :- throw(system_error(reasonClassRelationship)).
 
 % This causes a huge amount of tabling space in FireFall.
 :- table reasonClassRelationship_internal/2 as incremental.
@@ -2475,19 +2512,41 @@ reasonClassCallsMethod_B(Class1, Method2) :-
 
 % Because one method calls another method on the same this-pointer.  This rule is direction
 % safe because we know what class Method1 is associated with, and if that conclusion was
-% correct, this rule will be correct as well.  Does require the methodCallAtOffset offset to be
-% zero.
+% correct, this rule will be correct as well.
 % PAPER: Call-3
 reasonClassCallsMethod_C(Class1, Method2) :-
-    validMethodCallAtOffset(_Insn, Method1, Method2, 0),
+    validMethodCallAtOffset(_Insn, Method1, Method2, Offset),
     iso_dif(Method1, Method2),
     find(Method1, Class1),
     % Don't propose assignments we already know.
     find(Method2, Class2),
     iso_dif(Class1, Class2),
+
+    % ejs 8/31/22 So this rule is not as simple as it seems.  Because Method2 could live on an
+    % embedded object.  To make matters worse, there could be a more complicated chain like
+    % inheritance and embedding that we don't see because of inlining. For example, we might
+    % have C0 --inherits--> Middle --embeds--> C1.
+
+    % So what we really want to know is, for all objects that start at Offset, do they all come
+    % from inheritance?  Wait until we know what is there; the forall/2 alone is not a check.
+    not(mayHavePendingObjectInObject(Class1, Offset)),
+    forall(reasonClassAtOffset(Class1, Offset, _AnyInnerClass, Seq),
+           sequenceAreAllDerived(Seq)),
+
     % Debugging
     logtraceln('~@~Q.', [not(factClassCallsMethod(Class1, Method2)),
                          reasonClassCallsMethod_C(Method1, Class1, Method2)]).
+
+% True when something is expected at Offset within Class but we have not concluded what it is.
+% reasonClassAtOffset/4 is grounded in factObjectInObject, so before that fact exists it has no
+% solutions and a forall/2 over it succeeds vacuously, waving through the cases it should
+% reject.  In ooex1 that merged Composite::func3 into Derived before the embedded object at
+% offset 4 was concluded, which then blocked it forever.  A non-zero call offset is itself
+% evidence of a subobject, so treat it as pending until decided.  Compare
+% mayHavePendingOverwrites/1.
+mayHavePendingObjectInObject(Class, Offset) :-
+    iso_dif(Offset, 0),
+    not(reasonClassAtOffset(Class, Offset, _, _)).
 
 % This predicate is used to see if the object at the listed offset is a Class, and if so, which
 % one.  It's notable in that it is recursive however, so it can cover multiple levels.  It
@@ -3146,6 +3205,12 @@ reasonNOTMergeClasses_E(Class1, Class2, Insn1, Method1, 0, VFTable1) :-
     % the complications of caring which value overwrote which other value.
     not((factVFTableWrite(_Insn3, Method1, 0, VFTable2))),
     not((factVFTableWrite(_Insn4, Method2, 0, VFTable1))),
+    % A second counter example, from the Itanium ABI.  A base-object constructor or destructor
+    % does not name the table it installs.  Its caller hands it a slice of the caller's VTT, so
+    % the table records the complete object type being built rather than the class of the
+    % callee.  See vttSlice and the synthetic write it feeds in initial.pl.
+    not(vttSlice(_CallInsn1, Method1, VFTable1)),
+    not(vttSlice(_CallInsn2, Method2, VFTable2)),
     % Debugging
     logtraceln('~@~Q.', [not(dynFactNOTMergeClasses(Class1, Class2)),
                          reasonNOTMergeClasses_E(Class1, Class2)]).
@@ -3324,9 +3389,9 @@ reasonNOTMergeClasses_P(Class1Sorted, Class2Sorted) :-
     factMethod(Caller),
     factMethod(Method),
     iso_dif(Method, Caller),
-    (factConstructor(Method);
-     (factDeletingDestructor(Method), not(factRealDestructor(Caller)));
-     factRealDestructor(Method)),
+    % Containment does not care what kind of method this is, so restricting to constructors and
+    % destructors was leaving the ordinary case unblocked.
+    (not(factDeletingDestructor(Method)); not(factRealDestructor(Caller))),
     % Handle symmetry
     sort_tuple((Class1, Class2), (Class1Sorted, Class2Sorted)),
     % Debugging

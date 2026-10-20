@@ -11,6 +11,7 @@ set(PHAROS_SOURCES
   cdg.cpp
   config.cpp
   convention.cpp
+  datatypes.cpp
   defuse.cpp
   demangle.cpp
   demangle_json.cpp
@@ -28,12 +29,7 @@ set(PHAROS_SOURCES
   method.cpp
   misc.cpp
   ooanalyzer.cpp
-  ooclass.cpp
-  ooelement.cpp
-  oomember.cpp
-  oomethod.cpp
   oosolver.cpp
-  oovftable.cpp
   options.cpp
   path.cpp
   pdg.cpp
@@ -173,7 +169,8 @@ set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/config.yaml.ii"
 macro(convert_tags_file tags)
 add_custom_command(
   OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${tags}"
-  COMMAND sed -e [=[s/#.*$//g; :a; N; s/#.*$//g; $!ba; s/[[:space:]]//g; s/:/: /g]=]
+  COMMAND sed -e [=[s/#.*$//g]=] -e :a -e N -e [=[s/#.*$//g]=]
+    -e [=[$!ba]=] -e [=[s/[[:space:]]//g]=] -e [=[s/:/: /g]=]
   < "${CMAKE_CURRENT_SOURCE_DIR}/${tags}"
   > "${CMAKE_CURRENT_BINARY_DIR}/${tags}"
   VERBATIM

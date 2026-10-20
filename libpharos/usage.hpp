@@ -78,10 +78,6 @@ class ThisPtrUsage {
     method_evidence[call_insn].insert(tcm);
   }
 
-  const MethodEvidenceMap& get_method_evidence() const { return method_evidence; }
-
-  const FunctionDescriptor* get_fd() const { return fd; }
-
   void analyze_alloc();
 
   // Prolog mode constructor destructor test based on call order.

@@ -12,10 +12,7 @@ VirtualFunctionCallAnalyzer::VirtualFunctionCallAnalyzer(
   : call_insn(i), fd(fd_), pdg(fd_->get_pdg())
 {}
 
-VirtualFunctionCallAnalyzer::~VirtualFunctionCallAnalyzer() { /* Nothing to do here */ }
-
 bool VirtualFunctionCallAnalyzer::resolve_object(const TreeNodePtr& object_expr,
-                                                 const TreeNodePtr& vtable_ptr,
                                                  int64_t vtable_offset) {
 
   // Step 8.  Extract the variable and constant portions from the vtable abstract access
@@ -50,17 +47,14 @@ bool VirtualFunctionCallAnalyzer::resolve_object(const TreeNodePtr& object_expr,
   // this is a virtual function call. Save the call information
   VirtualFunctionCallInformation vci;
 
-  vci.vtable_ptr = vtable_ptr;
   vci.vtable_offset = object_offset;
   vci.vfunc_offset = vtable_offset;
   vci.obj_ptr = SymbolicValue::treenode_instance(object_expr);
   vci.expanded_obj_ptr = ThisPtrUsage::expand_thisptr (fd, call_insn, vci.obj_ptr);
-  vci.lobj_ptr = lobj_ptr;
-
   vcall_infos.push_back(vci);
 
   GINFO << "Virtual Call: vtoff=" << object_offset << " vfoff=" << vtable_offset
-        << " thisptr=" << *(vci.lobj_ptr) << " insn=" << debug_instruction(call_insn) << LEND;
+        << " thisptr=" << *lobj_ptr << " insn=" << debug_instruction(call_insn) << LEND;
   return true;
 }
 
@@ -315,7 +309,7 @@ bool VirtualFunctionCallAnalyzer::analyze() {
                 continue;
               }
 
-              if (resolve_object(tn, vtable_ptr, vtable_offset)) matched = true;
+              if (resolve_object(tn, vtable_offset)) matched = true;
             }
             // We're still returning true on the _first_ matched entry, so results should be
             // fairly similar.
@@ -323,8 +317,7 @@ bool VirtualFunctionCallAnalyzer::analyze() {
           }
           else {
             GTRACE << "VCall Non-ITE:" << *object_sv << LEND;
-            if (resolve_object(object_sv->get_expression(),
-                               vtable_ptr, vtable_offset)) return true;
+            if (resolve_object(object_sv->get_expression(), vtable_offset)) return true;
           }
         }
       }

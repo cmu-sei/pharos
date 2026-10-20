@@ -73,6 +73,65 @@ class VirtualBaseTable {
 
 using TypeRTTICompleteObjectLocatorPtr = std::shared_ptr<TypeRTTICompleteObjectLocator>;
 
+TypeRTTICompleteObjectLocatorPtr read_msvc_rtti(const DescriptorSet& ds, rose_addr_t addr);
+
+using ItaniumTypeInfoMap = std::map<rose_addr_t, TypeItaniumTypeInfo>;
+
+// The Itanium ABI counterpart of read_msvc_rtti(), which has to be a class rather than a
+// function because it answers a question no single record can: which of the three __cxxabiv1
+// classes a record is an instance of decides its layout, and the record does not say.
+//
+// Three things can answer it, in descending order of reliability.  A relocation on the
+// record's own vtable word names the __cxxabiv1 class, which is what a binary that gets the
+// class from libstdc++ has.  A symbol names one of the three type_info vtables, which is what
+// a binary carrying its own copy has.  Failing both, the record's own shape decides, and that
+// answer is remembered per type_info vtable rather than per record, because it cannot stand on
+// its own: two adjacent 16-byte __class_type_info records are laid out exactly like one
+// __si_class_type_info naming the other.
+//
+// Records are memoized by address, since one record serves every table of its class and the
+// record of a non-polymorphic base class belongs to no table at all.
+class ItaniumTypeInfoFinder {
+ public:
+  ItaniumTypeInfoFinder(const DescriptorSet& ds_);
+
+  // Read the record at an address, and the records of its base classes.  Returns nullptr if
+  // there is no type information record there.  The returned pointer is stable.
+  const TypeItaniumTypeInfo* read(rose_addr_t addr);
+
+  // Is this the two word header that precedes a virtual table's address point?  True when the
+  // second word names a type information record and the first is a plausible offset-to-top.
+  // This is what ends the walk of the table that precedes the header.
+  bool is_address_point_header(rose_addr_t addr);
+
+  const ItaniumTypeInfoMap& get_records() const { return records; }
+
+ private:
+  const DescriptorSet& ds;
+  size_t arch_bytes;
+
+  ItaniumTypeInfoMap records;
+  // The addresses that hold no record, so that a base class pointer into another shared
+  // object is only diagnosed once.
+  AddrSet rejected;
+  // The kind of each type_info vtable, keyed by the address point that a record's vtable word
+  // holds.  Seeded from the ELF symbols, extended as records are classified structurally.
+  std::map<rose_addr_t, ItaniumTypeInfoKind> vtable_kinds;
+
+  // Seed vtable_kinds from the ELF symbols for the three __cxxabiv1 type_info vtables.
+  void find_abi_vtables();
+  // Is there a plausible mangled type name at this address?
+  bool is_name(rose_addr_t addr) const;
+  // Decide which of the three classes the record at an address is an instance of.
+  ItaniumTypeInfoKind classify(rose_addr_t addr, rose_addr_t vptr);
+  // Do the words after the name parse as an __vmi_class_type_info base class array?
+  bool reads_as_vmi(rose_addr_t addr) const;
+};
+
+// Demangle an Itanium ABI type name, as type_info::name() reports it.  Returns an empty string
+// if the name does not demangle.
+std::string demangle_itanium_type(std::string const & name);
+
 class VirtualFunctionTable {
 
   const DescriptorSet& ds;
@@ -84,81 +143,59 @@ class VirtualFunctionTable {
   // The address in memory where the virtual function table is located.
   rose_addr_t addr;
 
-  // Known minimum size, in entries (not bytes)
-  size_t min_size;
-  // Known maximum size, in entries (not bytes)
-  size_t max_size;
   // Non-function pointers found.  This field was added because legitimate virtual function
   // tables were being rejected because none of the pointers were to recognized functions.
   unsigned int non_function;
-  // Best guess at size given current information, in entries (not bytes)
-  size_t best_size;
-  // Confidence in the best guess at size
-  GenericConfidence size_confidence;
+
+  // Whether analyze() got as far as one entry.  This is not the same question as valid(), since
+  // a table made entirely of pointers that we could not identify as functions has no entries but
+  // is still accepted.  How many entries a table really has is decided in OOSolver, which is the
+  // only place that needs to know.
+  bool has_entries;
 
   // RTTI information is stored directly above the virtual function table. It can be saved here
   // for later usage (if it is present).
-  TypeRTTICompleteObjectLocatorPtr rtti;
+  TypeRTTICompleteObjectLocatorPtr msvc_rtti;
 
   // the address of the rtti structures
-  rose_addr_t rtti_addr;
+  rose_addr_t msvc_rtti_addr;
 
   // The confidence is based on the technique used to identify RTTI.
-  GenericConfidence rtti_confidence;
+  GenericConfidence msvc_rtti_confidence;
 
-  // This constructor should be deprecated in favor of the one that requires an address if
-  // that's not a problem.
-  VirtualFunctionTable(const DescriptorSet& ds_) : ds(ds_) {
-    addr = 0;
-    min_size = 0;
-    max_size = 0;
-    non_function = 0;
-    best_size = 0;
-    size_confidence = ConfidenceNone;
-    rtti_confidence = ConfidenceNone;
-  }
+  // Under the Itanium ABI the word above the table points at the type information of the class
+  // the table serves, and the word above that says where in the object the subobject it serves
+  // begins.  The record is owned by the finder, which outlives every table.
+  const TypeItaniumTypeInfo* itanium_rtti;
+  int64_t offset_to_top;
 
   VirtualFunctionTable(const DescriptorSet& ds_, rose_addr_t a) : ds(ds_) {
     addr = a;
-    min_size = 0;
-    max_size = 0;
     non_function = 0;
-    best_size = 0;
-    size_confidence = ConfidenceNone;
-    rtti_confidence = ConfidenceNone;
+    has_entries = false;
+    msvc_rtti_confidence = ConfidenceNone;
+    itanium_rtti = nullptr;
+    offset_to_top = 0;
   }
 
   // Determine if RTTI is present with this virtual function table
-  void analyze_rtti(const rose_addr_t address);
+  void analyze_msvc_rtti(const rose_addr_t address);
 
-  // This method updates the minimum size of the table based on new information (typically a
-  // known virtual function call using the table).  This value always grows, because we're
-  // supposed to be making sound assertions about the minimum size.
-  void update_minimum_size(size_t new_size);
-
-  // This method updates the maximum size of the table based on new information (typically by
-  // walking the memory of the vtable looking for valid function pointers).  This value always
-  // shrinks, because we're supposed to be making sound assertions about the maximum size.
-  void update_maximum_size(size_t new_size);
-
-  void update_best_size(size_t besty);
-
-  // Take a "guess" at the correct table size, and update our confidence appropriately.
-  void update_size_guess();
+  // The Itanium ABI equivalent, reading the type information record that the word above the
+  // table names, and the offset-to-top beside it.
+  void analyze_itanium_rtti(ItaniumTypeInfoFinder& typeinfo);
 
   // Read an entry from the table.
   rose_addr_t read_entry(unsigned int entry) const;
-
-  // A convenience version of the above interface when you expect a fully valid function
-  // descriptor object pointer.
-  const FunctionDescriptor * read_entry_fd(unsigned int entry) const;
 
   // This method updates the fields describing the virtual function table based on analyzing
   // the contents of the memory at the address of the table.  Returns true if the table is
   // valid, and false if it is not.  Requires a list of existing tables to check for overlaps,
   // and becuse of some complexity with finding the next vftable unsolicited, it also needs
-  // update access.  More cleanup is required.
-  bool analyze(VFTableAddrMap& vftables);
+  // update access.  More cleanup is required.  The type information finder is needed because
+  // under the Itanium ABI it is what says where the table ends: the next component of the
+  // group announces itself with the two word header below its own address point.
+  bool analyze(VFTableAddrMap& vftables, ItaniumTypeInfoFinder& typeinfo);
 };
 
 } // namespace pharos

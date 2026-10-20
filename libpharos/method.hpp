@@ -9,35 +9,6 @@
 
 namespace pharos {
 
-// Forward declaration.
-class ThisCallMethod;
-
-// This class describes the passing of object pointers from a __thiscall method to another
-// __thiscall method.  This includes objects embedded in the current object.
-class FuncOffset {
-
- public:
-
-  // The address being called.
-  rose_addr_t address;
-
-  // This is the offset into the object from the caller that is passed to the target.  Or in
-  // other words, the offset of the embedded object the type of which corresponds to the called
-  // method.
-  int64_t offset;
-
-  // The call instruction that does the call in question.
-  SgAsmX86Instruction* insn;
-
-  FuncOffset(rose_addr_t a, int64_t o, SgAsmX86Instruction* i) {
-    address = a;
-    offset = o;
-    insn = i;
-    assert(insn != NULL);
-  }
-};
-
-
 // This class is just so that we could eliminate maps of pairs, and be clear about what
 // represents a "member".  This should probably be replaced with a class that we've given some
 // thought to -- in particular Jeff Gennari made some progress in this area I think.
@@ -62,27 +33,10 @@ class Member {
 
   Member(unsigned int o, unsigned int s, SgAsmX86Instruction* i, bool b);
 
-  // Member (in)equality is determined by comparing size and offset for two different members
-  friend bool operator== (Member &m1, Member &m2) {
-    return (m1.offset == m2.offset && m1.size == m2.size);
-    // Cory's unclear on when we added vftable to the comparison, and whether we should have.
-    // When changing how vftables worked, he removed: m1.get_vftable() == m2.get_vftable()
-  }
-
-  friend bool operator!= (Member &m1, Member &m2) {
-    return !(m1 == m2);
-  }
-
   void merge(Member& m);
 };
 
 using MemberMap = std::map<unsigned int, Member>;
-
-// A map of functions to their offsets in something related to passing this-pointers.
-using FuncOffsetMap = std::map<rose_addr_t, FuncOffset>;
-
-// Forward reference so an OOAnalyzer can be passed into find_passed_func_offsets.
-class OOAnalyzer;
 
 // This class is for tracking all object oriented methods, regardless of whether they're
 // constructors, destructors, or just normal methods.
@@ -92,7 +46,6 @@ class ThisCallMethod {
   bool find_this_pointer_from_stack();
   void test_for_constructor();
   void find_members();
-  void analyze_vftables();
 
   // The symbolic value of the this-pointer in this function.  This value cannot be NULL in a
   // ThisCallMethod that was accepted as __thiscall.
@@ -118,11 +71,6 @@ class ThisCallMethod {
   // the object, and the value is a Member class instance.
   MemberMap data_members;
 
-  // This map is populated by find_passed_func_offsets(), which is the second phase of
-  // find_this_call_methods().  It's read in analyze_passed_func_offsets(), where the
-  // information is transferred to classes.
-  FuncOffsetMap passed_func_offsets;
-
   // FunctionDescriptor should probably be a reference so that we don't have to keep checking
   // it for NULL.
   ThisCallMethod(FunctionDescriptor *f);
@@ -138,11 +86,6 @@ class ThisCallMethod {
 
   // Do late stage validation of virtual table pointers.
   bool validate_vtable(ConstVirtualTableInstallationPtr install);
-
-  // Most analysis methods in ThisCallMethod are private, but this one has to be called after
-  // we've updated the oo_properties member on the function descriptors.  It updates the
-  // passed_func_offsets map with the stack offsets of passed this-pointers.
-  void find_passed_func_offsets(const OOAnalyzer& ooa);
 
   // Given an expression, return true if the expression contains a reference to our
   // this-pointer and false if it does not.  This logic still requires that our this-pointer be
@@ -184,12 +127,6 @@ struct ThisCallMethodCompare {
 
 // Specifically, the class description needs a set of methods associate with the class.
 using ThisCallMethodSet = std::set<const ThisCallMethod*, ThisCallMethodCompare>;
-
-using ThisCallMethodMap = std::map<rose_addr_t, ThisCallMethod>;
-using ThisCallMethodVector = std::vector<ThisCallMethod *>;
-
-// This function seems most related to ThisCallMethods...
-ThisCallMethod * follow_oo_thunks(const DescriptorSet& ds, rose_addr_t addr);
 
 } // namespace pharos
 

@@ -72,6 +72,32 @@ bool TagManager::check(key_t const & key, tag_t const & tag) const
                      [&tag](auto const & t) { return t.second == tag; });
 }
 
+namespace {
+template <typename T, typename V>
+T const * alternative(V const & v)
+{
+#if __cplusplus >= 201703L
+  return std::get_if<T>(&v);
+#else
+  return boost::get<T>(&v);
+#endif
+}
+} // unnamed namespace
+
+std::vector<std::string> TagManager::names_with_tag(tag_t const & tag) const
+{
+  std::vector<std::string> names;
+  for (auto const & entry : map) {
+    if (entry.second != tag) continue;
+    if (auto const * name = alternative<Name>(entry.first)) {
+      names.push_back((*name)());
+    }
+  }
+  // The map is unordered; sort so that callers behave identically from run to run.
+  std::sort(names.begin(), names.end());
+  return names;
+}
+
 void TagManager::merge(char const *yaml, size_t length)
 {
   merge(YAML::Load(std::string{yaml, length}));

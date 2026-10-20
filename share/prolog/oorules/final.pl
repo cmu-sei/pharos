@@ -43,6 +43,10 @@ reasonPrimaryVFTableForClassFinal(V, C) :-
     nonvar(C),
     % Hey we found one!
     findVFTable(V, 0, C),
+    % A construction vtable is not one of them.  It is installed only while a base subobject is
+    % under construction, and it names the complete object being built rather than the class it
+    % is on, so it cannot stand for that class' identity.
+    not(possibleConstructionVFTable(V)),
     !,
     % No one else better also claim it
     forall(findVFTable(V, 0, OC), C = OC).
@@ -77,6 +81,7 @@ classIdentifier(Method, ID) :-
     % VFTable.
     (
         once((findVFTable(VFTable, Class),
+              not(possibleConstructionVFTable(VFTable)),
               forall(findVFTable(OtherVFTable, Class),
                      VFTable = OtherVFTable),
               logtraceln('Setting classID of ~Q to only vftable ~Q', [Class, VFTable])))
@@ -113,6 +118,18 @@ classIdentifier(Method, ID) :-
         true
     )
     -> ID is MinimumMethod).
+
+% --------------------------------------------------------------------------------------------
+% An adjusting thunk retargets the this-pointer onto a different subobject before jumping, so
+% the implementation it reaches belongs to some other class.  Under the Itanium ABI the virtual
+% base slice of a derived class's vftable is full of these, and the class owning that vptr slot
+% is the base -- so reporting them as methods makes every derived override look like a method of
+% the virtual base.  We do not currently know how to attribute them, so leave them out of the
+% results rather than claim an owner we know is wrong.  eventualThunk/2 and finalThunk/2 exclude
+% them for the same underlying reason: the target does not stand in for the thunk.
+:- table adjustingThunk/1 as opaque.
+adjustingThunk(Thunk) :-
+    once((thunk(Thunk, _Target, Adjustment), Adjustment \= 0)).
 
 % --------------------------------------------------------------------------------------------
 % A helper for identifying "worthless" classes to reduce noise in the output.
@@ -197,7 +214,8 @@ finalClass(ClassID, VFTableOrNull, CSize, LSize, RealDestructorOrNull, MethodLis
       factRealDestructor(RealDestructor))
      -> RealDestructorOrNull=RealDestructor; RealDestructorOrNull=0),
     findallMethods(Class, UnsortedMethodList),
-    sort(UnsortedMethodList, MethodList).
+    exclude(adjustingThunk, UnsortedMethodList, ReportableMethodList),
+    sort(ReportableMethodList, MethodList).
 
 % --------------------------------------------------------------------------------------------
 % This final result defines the properties of a VFTable.   More details in results.txt.
@@ -387,7 +405,10 @@ finalMethodProperty(Method, virtual, certain) :-
     knownVirtualMethod(Method),
     find(Method, Class),
     not(worthlessClass(Class)),
-    not(purecall(Method)).
+    not(purecall(Method)),
+    % An adjusting thunk is not reported as a method of the class, so do not report properties
+    % for it either.
+    not(adjustingThunk(Method)).
 
 % Unimplemented rule: There might be a reasoning rule about transferring knowledge from one
 % virtual function to another.  Specifically that the virtual function table of a Derived class
@@ -410,8 +431,9 @@ finalResolvedVirtualCall(Insn, VFTable, Target) :-
 % --------------------------------------------------------------------------------------------
 %:- table finalThunk/2 as incremental.
 finalThunk(From, To) :-
-    % First there needs to be a thunk.
-    thunk(From, To),
+    % First there needs to be a thunk.  Adjusting thunks are excluded here for the same reason
+    % that eventualThunk/2 excludes them: the target does not stand in for the thunk.
+    thunk(From, To, 0),
     % But it also needs to appear in a finalVFTableEntry.
     once(finalVFTableEntry(_Address, _Offset, From)),
     % And the target needs to be associated with finalClass method.

@@ -23,7 +23,7 @@ minof(A, B) :-
     ->
         (bagof(A, B, Cp),
          sort(Cp, Cp2),
-         nth0(1, Cp2, A))
+         nth0(0, Cp2, A))
     ;   B.
 
 tuple_to_list((A,B), L) :-
@@ -166,6 +166,21 @@ genericThisPtrABIParam(ecx) :- fileInfo(_, _, 'MSVC_32', _).
 genericThisPtrABIParam(rcx) :- fileInfo(_, _, 'MSVC_64', _).
 genericThisPtrABIParam(rdi) :- fileInfo(_, _, 'SYSV_64', _).
 genericThisPtrABIParam(0)   :- fileInfo(_, _, 'SYSV_32', _).
+
+% itaniumABI
+% True when the analyzed file follows the Itanium C++ ABI, which differs from the MSVC one in
+% ways that matter to reasoning -- most notably that constructors return void.
+:- table itaniumABI/0 as opaque.
+itaniumABI :- fileInfo(_, _, 'SYSV_32', _).
+itaniumABI :- fileInfo(_, _, 'SYSV_64', _).
+
+% msvcABI
+% True when the analyzed file follows the MSVC C++ ABI.  Spelled out rather than written as the
+% negation of itaniumABI, so that a rule choosing between the two says which ABI each branch is
+% for, and so that neither branch fires when the ABI is something we do not know about.
+:- table msvcABI/0 as opaque.
+msvcABI :- fileInfo(_, _, 'MSVC_32', _).
+msvcABI :- fileInfo(_, _, 'MSVC_64', _).
 
 % explicitThisCallConvention(Method)
 % True when Method's calling convention is an explicitly identified OO this-call convention.

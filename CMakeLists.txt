@@ -37,7 +37,11 @@ include(AddCXXCompilerFlags)
 add_cxx_compiler_flags(-pedantic -pedantic-errors -Wall -Wextra -Wshadow -Wstrict-aliasing -Wno-misleading-indentation "-ftemplate-depth=1024" "-ftrack-macro-expansion=0")
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH true)
-set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
+if(APPLE)
+  set(CMAKE_INSTALL_RPATH "@loader_path/../lib")
+else()
+  set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
+endif()
 set(BUILD_SHARED_LIBS true)
 
 # Load the user's customizations, then the site customization, then

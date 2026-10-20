@@ -9,7 +9,6 @@
 #include "calls.hpp"
 #include "masm.hpp"
 #include "misc.hpp"
-#include "vcall.hpp"
 
 #include <Rose/BinaryAnalysis/Partitioner2/Utility.h>
 
@@ -33,7 +32,6 @@ template<> char const* EnumStrings<CallType>::data[] = {
   "Register",
   "Import",
   "GlobalVariable",
-  "VirtualFunction",
   "Unknown",
   "Unspecified"
 };
@@ -405,19 +403,6 @@ void CallDescriptor::update_call_type(CallType ct, GenericConfidence conf) {
   write_guard<decltype(mutex)> guard{mutex};
   call_type = ct;
   confidence = conf;
-}
-
-void
-CallDescriptor::add_virtual_resolution(
-  VirtualFunctionCallInformation& vci,
-  GenericConfidence conf)
-{
-  write_guard<decltype(mutex)> guard{mutex};
-  // Begin by marking the call as a virtual function call.
-  call_type = CallVirtualFunction;
-  confidence = conf;
-  // Add the virtual call information to the descriptor.
-  virtual_calls.push_back(vci);
 }
 
 void CallDescriptor::_print(std::ostream &o) const {

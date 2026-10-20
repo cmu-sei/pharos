@@ -26,6 +26,7 @@
 #include <Rose/As.h>
 #else
 #include <Sawyer/SharedPointer.h>
+#include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
 #include <memory>
 #endif
@@ -301,6 +302,34 @@ bool insn_is_nop(const SgAsmX86Instruction* insn);
 // Is the instruction an ENDBR32/ENDBR64 CET landing pad?  ROSE decodes these as x86_nop, so
 // only a raw byte match can tell them apart from an ordinary no-op.
 bool insn_is_endbr(const SgAsmX86Instruction* insn);
+
+// How a thunk adjusts the this-pointer before jumping to its target, as the virtual and
+// non-virtual adjustor stubs emitted for multiple inheritance do.  A thunk with an adjustment is
+// not an identity function: it retargets the callee onto a different subobject.
+struct ThunkAdjustment {
+  // Where a thunk reads the run-time part of the adjustment from, when it adjusts for a virtual
+  // base.  The two ABIs differ in both the base of the displacement and its sign, so the two
+  // cannot be folded into a single signed slot.
+  enum class VirtualKind {
+    // Itanium vcall offset: this += *(vptr + slot), where vptr is the object's vftable pointer.
+    // The slot lives in read-only vtable data, so its value may be recoverable statically.
+    vcall_offset,
+    // MSVC vtordisp: this -= *(this + slot).  The field lives in the object itself and is
+    // written during construction, so its value is only ever known at run time.
+    vtordisp,
+  };
+
+  struct VirtualAdjustment {
+    VirtualKind kind;
+    // The displacement of the slot, relative to the base implied by kind.
+    int64_t slot;
+  };
+
+  // The signed constant added to the this-pointer.  Zero when there is no constant adjustment.
+  int64_t fixed_delta = 0;
+  // The run-time part of the adjustment, absent for a purely fixed adjustor.
+  boost::optional<VirtualAdjustment> virtual_adjustment;
+};
 
 // Is the instruction a no-op whose purpose is to mark a function entry point rather than to pad
 // between functions?  Covers the CET landing pad and the MSVC "mov edi, edi" hot-patch slot.

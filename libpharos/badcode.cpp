@@ -3,7 +3,6 @@
 #include "badcode.hpp"
 #include "descriptors.hpp"
 #include "riscops.hpp"
-#include "method.hpp"
 #include "pdg.hpp"
 #include "masm.hpp"
 

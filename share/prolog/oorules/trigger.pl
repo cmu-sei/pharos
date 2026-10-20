@@ -64,9 +64,9 @@ dispatchTrigger(factVFTableEntry(VFTable, _Offset, Entry), Out) :-
     setof(DerivedClass,
           AncestorVFTable^DerivedVFTable^Entry^((AncestorVFTable=VFTable;DerivedVFTable=VFTable),
                                                  reasonClassHasUnknownBase_C1(DerivedClass, AncestorVFTable, DerivedVFTable, Entry),
-                                                 not(factClassHasUnknownBase(Class)),
-                                                 not(factClassHasNoBase(Class)),
-                                                 loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(Class))),
+                                                 not(factClassHasUnknownBase(DerivedClass)),
+                                                 not(factClassHasNoBase(DerivedClass)),
+                                                 loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(DerivedClass))),
           ClassSets),
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -77,9 +77,9 @@ dispatchTrigger(findint(FindMethod, FindClass), Out) :-
           Method^AncestorConstructor^AncestorClass^AncestorVFTable^((FindMethod=Method; FindMethod=AncestorConstructor),
                                                                                                      FindClass=AncestorClass,
                                                                                                      reasonClassHasUnknownBase_C2(DerivedClass, Method, AncestorConstructor, AncestorClass, AncestorVFTable),
-                                                                                                     not(factClassHasUnknownBase(Class)),
-                                                                                                     not(factClassHasNoBase(Class)),
-                                                                                                     loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(Class))),
+                                                                                                     not(factClassHasUnknownBase(DerivedClass)),
+                                                                                                     not(factClassHasNoBase(DerivedClass)),
+                                                                                                     loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(DerivedClass))),
           ClassSets),
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -88,9 +88,9 @@ dispatchTrigger(findint(FindMethod, FindClass), Out) :-
 dispatchTrigger(findint(DerivedConstructor, DerivedClass), Out) :-
     setof(DerivedClass,
           DerivedVFTable^(reasonClassHasUnknownBase_C3(DerivedClass, DerivedConstructor, DerivedVFTable),
-            not(factClassHasUnknownBase(Class)),
-            not(factClassHasNoBase(Class)),
-            loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(Class))),
+            not(factClassHasUnknownBase(DerivedClass)),
+            not(factClassHasNoBase(DerivedClass)),
+            loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(DerivedClass))),
           ClassSets),
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -99,9 +99,9 @@ dispatchTrigger(findint(DerivedConstructor, DerivedClass), Out) :-
 dispatchTrigger(factConstructor(AncestorConstructor), Out) :-
     setof(DerivedClass,
           Method^AncestorClass^AncestorVFTable^(reasonClassHasUnknownBase_C2(DerivedClass, Method, AncestorConstructor, AncestorClass, AncestorVFTable),
-           not(factClassHasUnknownBase(Class)),
-           not(factClassHasNoBase(Class)),
-           loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(Class))),
+           not(factClassHasUnknownBase(DerivedClass)),
+           not(factClassHasNoBase(DerivedClass)),
+           loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(DerivedClass))),
           ClassSets),
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -110,9 +110,9 @@ dispatchTrigger(factConstructor(AncestorConstructor), Out) :-
 dispatchTrigger(factConstructor(DerivedConstructor), Out) :-
     setof(DerivedClass,
           DerivedVFTable^(reasonClassHasUnknownBase_C3(DerivedClass, DerivedConstructor, DerivedVFTable),
-           not(factClassHasUnknownBase(Class)),
-           not(factClassHasNoBase(Class)),
-           loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(Class))),
+           not(factClassHasUnknownBase(DerivedClass)),
+           not(factClassHasNoBase(DerivedClass)),
+           loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(DerivedClass))),
           ClassSets),
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -121,9 +121,9 @@ dispatchTrigger(factConstructor(DerivedConstructor), Out) :-
 dispatchTrigger(factVFTableWrite(_Insn, AncestorConstructor, _Offset, AncestorVFTable), Out) :-
     setof(DerivedClass,
           Method^AncestorClass^(reasonClassHasUnknownBase_C2(DerivedClass, Method, AncestorConstructor, AncestorClass, AncestorVFTable),
-            not(factClassHasUnknownBase(Class)),
-            not(factClassHasNoBase(Class)),
-            loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(Class))),
+            not(factClassHasUnknownBase(DerivedClass)),
+            not(factClassHasNoBase(DerivedClass)),
+            loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(DerivedClass))),
           ClassSets),
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).
@@ -132,9 +132,9 @@ dispatchTrigger(factVFTableWrite(_Insn, AncestorConstructor, _Offset, AncestorVF
 dispatchTrigger(factVFTableWrite(_Insn, DerivedConstructor, _Offset, DerivedVFTable), Out) :-
     setof(DerivedClass,
           (reasonClassHasUnknownBase_C3(DerivedClass, DerivedConstructor, DerivedVFTable),
-           not(factClassHasUnknownBase(Class)),
-           not(factClassHasNoBase(Class)),
-           loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(Class))),
+           not(factClassHasUnknownBase(DerivedClass)),
+           not(factClassHasNoBase(DerivedClass)),
+           loginfoln('Concluding ~Q.', factClassHasUnknownBase_C(DerivedClass))),
           ClassSets),
     maplist(try_assert_builder(factClassHasUnknownBase), ClassSets, ActionSets),
     Out = all(ActionSets).

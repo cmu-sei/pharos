@@ -28,7 +28,6 @@
 
 // these next ones needed for global obj cleanup...
 #include "riscops.hpp"
-#include "vftable.hpp"
 
 // for non portable unhandled exception stuff in pharos_main:
 #ifdef __GNUC__

@@ -20,17 +20,12 @@ class VirtualFunctionCallInformation {
   // the offset in the virtual function table for the call
   unsigned int vfunc_offset;
 
-  // The expression pointing to the virtual function table.
-  TreeNodePtr vtable_ptr;
-
   // the symbolic value for the object to which the virtual function belongs
   SymbolicValuePtr obj_ptr;
 
   // expanded version of obj_ptr
   TreeNodePtr expanded_obj_ptr;
 
-  // The leaf node of the this-pointer to which the virtual function belongs
-  LeafNodePtr lobj_ptr;
 };
 
 // A vector of VirtualCallInformation objects.
@@ -49,7 +44,6 @@ class VirtualFunctionCallAnalyzer {
 
   // Resolves one of several object pointers to a virtual call.
   bool resolve_object(const TreeNodePtr& object_expr,
-                      const TreeNodePtr& vtable_ptr,
                       int64_t vtable_offset);
 
  public:
@@ -59,7 +53,7 @@ class VirtualFunctionCallAnalyzer {
 
   VirtualFunctionCallAnalyzer(SgAsmX86Instruction *i, const FunctionDescriptor *fd);
 
-  ~VirtualFunctionCallAnalyzer();
+  ~VirtualFunctionCallAnalyzer() = default;
 
   // Analyze the call to determine if it is a virtual function call
   // the call_info parameter is an output parameter or null;

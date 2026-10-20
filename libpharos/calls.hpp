@@ -12,7 +12,6 @@
 #include "state.hpp"
 #include "convention.hpp"
 #include "typedb.hpp"
-#include "vcall.hpp"
 #include "threads.hpp"
 
 namespace pharos {
@@ -24,7 +23,6 @@ enum CallType {
   CallRegister,
   CallImport,
   CallGlobalVariable,
-  CallVirtualFunction,
   CallUnknown,
   CallUnspecified
 };
@@ -45,7 +43,6 @@ enum TargetSetCardinality {
 
 // this forward declaration is needed to create a filtered iterator on the call descriptor map
 class CallDescMapPredicate;
-class VirtualFunctionCallAnalyzer;
 
 class CallDescriptor : private Immobile {
 
@@ -123,9 +120,6 @@ class CallDescriptor : private Immobile {
   // that information.
   StackDelta stack_delta;
 
-  // The resolution details for virtual function calls.
-  VirtualFunctionCallVector virtual_calls;
-
   void analyze();
 
   void _update_connections();
@@ -202,13 +196,6 @@ class CallDescriptor : private Immobile {
   // Are we a tail-call optimized JMP instruction?
   bool is_tail_call() const {
     return insn_is_jmp(insn);
-  }
-
-  // Add virtual call resolutions
-  void add_virtual_resolution(VirtualFunctionCallInformation& vci, GenericConfidence conf);
-  // Available only if object oriented analysis has been performed, empty otherwise.
-  auto get_virtual_calls() const {
-    return make_read_locked_range(virtual_calls, mutex);
   }
 
   CallType get_call_type() const  {

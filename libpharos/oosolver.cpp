@@ -15,13 +15,6 @@
 #include "demangle.hpp"
 #include "prolog_symexp.hpp"
 
-// C++ data structures
-#include "ooelement.hpp"
-#include "ooclass.hpp"
-#include "oomethod.hpp"
-#include "oomember.hpp"
-#include "oovftable.hpp"
-
 namespace bf = boost::filesystem;
 
 namespace pharos {
@@ -30,17 +23,6 @@ using namespace prolog;
 
 // Place enum declartion here because no-one else needs it, and if we delcare it here we can
 // allocate the strings in the same place.
-enum prolog_certainty_enum {
-  Certain,
-  Likely
-};
-
-template <>
-const char *pharos::EnumStrings<prolog_certainty_enum>::data[] = {
-  "certain",
-  "likely"
-};
-
 enum prolog_method_property_enum {
   Constructor,
   DeletingDestructor,
@@ -228,7 +210,24 @@ OOSolver::add_facts(const OOAnalyzer& ooa) {
   return true;
 }
 
-// The main analysis call.  It adds facts, invokes the anlaysis, and reports the results.
+bool
+OOSolver::solve() {
+  if (!session) return false;
+  try {
+    GINFO << "Analyzing object oriented data structures..." << LEND;
+    auto query = session->query("solve", "ooanalyzer_tool");
+    if (query->done()) {
+      GERROR << "The solution found is not internally consistent and may have significant errors!" << LEND;
+    }
+  }
+  catch (const Error& error) {
+    GFATAL << error.what() << LEND;
+    return false;
+  }
+  return true;
+}
+
+// The main analysis call.  It adds facts, invokes the analysis, and reports the results.
 bool
 OOSolver::analyze(const OOAnalyzer& ooa) {
   if (!session) return false;
@@ -238,9 +237,8 @@ OOSolver::analyze(const OOAnalyzer& ooa) {
   }
 
   if (perform_analysis) {
-    // The Prolog analysis will "run" as a consequence of us making queries.
-    if (!import_results()) {
-      GERROR << "Failed to import object oriented results into Pharos." << LEND;
+    if (!solve()) {
+      GERROR << "Failed to analyze object oriented data structures." << LEND;
       return false;
     }
 
@@ -350,33 +348,112 @@ OOSolver::add_vftable_facts(const OOAnalyzer& ooa)
 
   size_t arch_bytes = ooa.ds.get_arch_bytes();
   const VFTableAddrMap& vftables = ooa.get_vftables();
+  const ItaniumVTTMap& vtts = ooa.get_itanium_vtts();
+
+  // How far a table extends is decided here rather than during analysis, because this is the only
+  // place that needs the answer.  Two knobs, both fixed by the ABI: what counts as a table entry,
+  // and how many consecutive slots may fail that test before the table has ended.
+  //
+  // MSVC keeps its long standing rule, where any mapped value is an entry and the first unmapped
+  // one ends the table.  Being generous here is deliberate: reasonVFTableSizeGTE and
+  // reasonVFTableSizeLTE work out the real size in Prolog, and they can only do that from entries
+  // we exported.
+  //
+  // The Itanium ABI cannot use that rule.  A construction vtable has zeroed destructor slots in
+  // the middle of it, so an unmapped value cannot end a table; and the type information records
+  // that follow the last table alternate unmapped and mapped words, so a tolerance counted over
+  // unmapped values never runs out.  Requiring an entry to be a function pointer solves both,
+  // because the zeroed slots are covered by the tolerance while the pointers into those records
+  // are not functions and do end the walk.  Three is the right tolerance because the next table's
+  // header is always at least that many non-function words: the virtual call and base offsets, the
+  // offset to the top of the object, and the type information pointer, which is itself zero when
+  // the binary was built without RTTI.
+  //
+  // "Function pointer" has to mean any address in executable memory, not just one we successfully
+  // partitioned into a function.  Requiring a known function loses the last entry of a table
+  // whenever its target went unpartitioned, which is what happens in the stripped builds: the
+  // adjusting thunk for the final method of five separate tables goes unrecognized, lands as a
+  // trailing failure and is trimmed away.  Nothing that has to end a walk is executable -- the
+  // offsets in the next table's header are small integers, and the type information pointers are
+  // in read only data -- so accepting all of .text costs nothing.
+  const bool itanium = ooa.ds.is_itanium_abi();
+  auto is_entry = [&ooa, itanium](rose_addr_t value) {
+    if (!itanium) return ooa.ds.memory.is_mapped(value);
+    if (ooa.ds.get_func(value) != NULL || ooa.ds.get_import(value) != NULL) return true;
+    uint8_t byte;
+    return ooa.ds.memory.get_memmap()->at(value).limit(1)
+      .require(MemoryMap::EXECUTABLE).read(&byte).size() == size_t(1);
+  };
+  const size_t tolerance = itanium ? 3 : 0;
+
+  // The next component of a vtable group announces itself with the two word header below its
+  // address point: the offset-to-top of the subobject it serves, which is zero for a primary
+  // table and negative for a secondary one, and the pointer to the type information of its
+  // class.  That header is never an entry of the table before it, so recognizing it ends the
+  // walk exactly where the tolerance above can only guess.  Every record has been read by the
+  // time facts are exported, so the map is all that is needed to recognize one.
+  const ItaniumTypeInfoMap& typeinfo = ooa.get_itanium_typeinfo();
+  auto is_next_component = [&ooa, &typeinfo, arch_bytes](rose_addr_t addr) {
+    if (!ooa.ds.memory.is_mapped(addr) || !ooa.ds.memory.is_mapped(addr + arch_bytes)) {
+      return false;
+    }
+    int64_t offset_to_top = IntegerOps::signExtend2(
+      ooa.ds.memory.read_address(addr, Bytes(arch_bytes)), 8 * arch_bytes, 64);
+    if (offset_to_top > 0) return false;
+    return typeinfo.count(
+      ooa.ds.memory.read_address(addr + arch_bytes, Bytes(arch_bytes))) != 0;
+  };
+
   for (auto const & vft : boost::adaptors::values(vftables)) {
-    size_t e = 0;
-    while (true) {
-      rose_addr_t value = vft->read_entry(e);
-      if (!(ooa.ds.memory.is_mapped(value))) {
-        break;
-      }
+    // Collect before emitting, because a slot that failed the test can still turn out to be inside
+    // the table.  Only the failures the table ends on should be dropped.
+    std::vector<rose_addr_t> slots;
+    size_t entries = 0;
+    size_t strikes = 0;
+    for (size_t e = 0; ; e++) {
       rose_addr_t eaddr = vft->addr + (e * arch_bytes);
+      if (!ooa.ds.memory.is_mapped(eaddr)) break;
+
+      // Another table starts here, so this one has ended.  Only the starting address has to be
+      // right for Prolog's benefit: possibleVFTableEntry/3 refuses to step onto the start of
+      // another table and works out the extent for itself.  A VTT bounds a table the same way,
+      // and while the tolerance below would usually stop the walk anyway, a two entry VTT
+      // followed by the next table's two word header is exactly at the limit.
+      if (e != 0 && (vftables.find(eaddr) != vftables.end()
+                     || vtts.find(eaddr) != vtts.end())) break;
 
       // Skip this entry if it's already been proccessed.
-      auto finder = exported.find(eaddr);
-      if (finder != exported.end()) break;
+      if (exported.find(eaddr) != exported.end()) break;
+
+      if (e != 0 && itanium && is_next_component(eaddr)) break;
+
+      rose_addr_t value = vft->read_entry(e);
+      if (is_entry(value)) strikes = 0;
+      else if (++strikes > tolerance) break;
+
+      slots.push_back(value);
+      if (strikes == 0) entries = slots.size();
+    }
+    slots.resize(entries);
+
+    // We used to follow thunks and export the dethunked entry, but it turns out that thunks
+    // sometimes play an important role if differentiating functions, especially in vftable
+    // entries.  A common scenario is for the compiler to create two different thunks jumping
+    // to the same method implementation, and to put the distinct thunks in the vftable.  If
+    // we've exported thunk facts to Prolog, we can sort that out correctly, and identify
+    // that the single implementation is a shared implementation.
+
+    for (size_t e = 0; e < slots.size(); e++) {
+      rose_addr_t eaddr = vft->addr + (e * arch_bytes);
       exported.insert(eaddr);
-
-      // We used to follow thunks and export the dethunked entry, but it turns out that thunks
-      // sometimes play an important role if differentiating functions, especially in vftable
-      // entries.  A common scenario is for the compiler to create two different thunks jumping
-      // to the same method implementation, and to put the distinct thunks in the vftable.  If
-      // we've exported thunk facts to Prolog, we can sort that out correctly, and identify
-      // that the single implementation is a shared implementation.
-
-      session->add_fact("initialMemory", eaddr, value);
-      e++;
+      session->add_fact("initialMemory", eaddr, slots[e]);
     }
 
-    if (vft->rtti) {
-      add_rtti_facts(vft.get());
+    if (vft->msvc_rtti) {
+      add_msvc_rtti_facts(vft.get());
+    }
+    else if (vft->itanium_rtti) {
+      add_itanium_rtti_facts(ooa, vft.get());
     }
   }
 
@@ -394,24 +471,36 @@ OOSolver::add_vftable_facts(const OOAnalyzer& ooa)
       session->add_fact("initialMemory", eaddr, value);
     }
   }
+
+  // The tables a VTT names have already been exported above, since discovering a VTT is what
+  // put them in vftables.  What is left is the shape of the VTT itself, which is what says
+  // which tables belong to the same construction sequence.  Its slots are deliberately not
+  // also reported as initialMemory: a VTT sits adjacent to the tables it describes, and
+  // possibleVFTableEntry/3 would walk out of the end of the preceding table and absorb them as
+  // though they were virtual function pointers.
+  for (auto const & vtt : vtts) {
+    for (size_t e = 0; e < vtt.second.size(); e++) {
+      session->add_fact("possibleVTTEntry", vtt.first, e * arch_bytes, vtt.second[e]);
+    }
+  }
 }
 
 void
-OOSolver::add_rtti_facts(const VirtualFunctionTable* vft)
+OOSolver::add_msvc_rtti_facts(const VirtualFunctionTable* vft)
 {
-  if (vft->rtti_confidence == ConfidenceNone) return;
+  if (vft->msvc_rtti_confidence == ConfidenceNone) return;
 
-  const TypeRTTICompleteObjectLocatorPtr rtti = vft->rtti;
+  const TypeRTTICompleteObjectLocatorPtr rtti = vft->msvc_rtti;
 
   // Check for --ignore-rtti option?
   if (rtti->signature.value != 0) return;
   if (rtti->class_desc.signature.value != 0) return;
 
-  if (visited.find(vft->rtti_addr) == visited.end()) {
-    session->add_fact("rTTICompleteObjectLocator", vft->rtti_addr, rtti->address,
+  if (visited.find(vft->msvc_rtti_addr) == visited.end()) {
+    session->add_fact("rTTIMSVCCompleteObjectLocator", vft->msvc_rtti_addr, rtti->address,
                       rtti->pTypeDescriptor.value, rtti->pClassDescriptor.value,
                       rtti->offset.value, rtti->cdOffset.value);
-    visited.insert(vft->rtti_addr);
+    visited.insert(vft->msvc_rtti_addr);
   }
 
   if (visited.find(rtti->pTypeDescriptor.value) == visited.end()) {
@@ -434,12 +523,12 @@ OOSolver::add_rtti_facts(const VirtualFunctionTable* vft)
   }
 
   if (visited.find(rtti->pClassDescriptor.value) == visited.end()) {
-    add_rtti_chd_facts(rtti->pClassDescriptor.value);
+    add_msvc_rtti_chd_facts(rtti->pClassDescriptor.value);
   }
 }
 
 void
-OOSolver::add_rtti_chd_facts(const rose_addr_t addr)
+OOSolver::add_msvc_rtti_chd_facts(const rose_addr_t addr)
 {
   visited.insert(addr);
   try {
@@ -449,7 +538,7 @@ OOSolver::add_rtti_chd_facts(const rose_addr_t addr)
     std::vector<uint32_t> base_addresses;
     for (const TypeRTTIBaseClassDescriptor& base : chd.base_classes) {
       if (visited.find(base.address) == visited.end()) {
-        session->add_fact("rTTIBaseClassDescriptor", base.address,
+        session->add_fact("rTTIMSVCBaseClassDescriptor", base.address,
                           base.pTypeDescriptor.value, base.numContainedBases.value,
                           base.where_mdisp.value, base.where_pdisp.value,
                           base.where_vdisp.value, base.attributes.value,
@@ -461,7 +550,7 @@ OOSolver::add_rtti_chd_facts(const rose_addr_t addr)
         // present.
         if (base.attributes.value & 0x40 &&
             visited.find(base.pClassDescriptor.value) == visited.end()) {
-          add_rtti_chd_facts(base.pClassDescriptor.value);
+          add_msvc_rtti_chd_facts(base.pClassDescriptor.value);
         }
       }
 
@@ -487,7 +576,7 @@ OOSolver::add_rtti_chd_facts(const rose_addr_t addr)
       base_addresses.push_back(base.address);
     }
 
-    session->add_fact("rTTIClassHierarchyDescriptor", addr,
+    session->add_fact("rTTIMSVCClassHierarchyDescriptor", addr,
                       chd.attributes.value, base_addresses);
   }
   catch (std::exception &e) {
@@ -495,6 +584,53 @@ OOSolver::add_rtti_chd_facts(const rose_addr_t addr)
   }
   catch (...) {
     GERROR << "RTTI Class Hierarchy Descriptor was bad at " << addr_str(addr) << LEND;
+  }
+}
+
+// The Itanium ABI counterpart of add_msvc_rtti_facts().  The type information record takes the
+// place of both the complete object locator and the class hierarchy descriptor: it names the
+// class and lists its direct base classes, and the table points at it directly rather than
+// through a locator.  Bases are followed recursively the way add_msvc_rtti_chd_facts() follows
+// base class descriptors, because a base class' record is reported even when the base has no
+// virtual function table of its own to reach it from.
+void
+OOSolver::add_itanium_rtti_facts(const OOAnalyzer& ooa, const VirtualFunctionTable* vft)
+{
+  session->add_fact("rTTIItaniumVFTableTypeInfo", vft->addr, vft->itanium_rtti->address,
+                    vft->offset_to_top);
+
+  add_itanium_typeinfo_facts(ooa, vft->itanium_rtti->address);
+}
+
+void
+OOSolver::add_itanium_typeinfo_facts(const OOAnalyzer& ooa, const rose_addr_t addr)
+{
+  if (visited.find(addr) != visited.end()) return;
+
+  // A base class whose record is in another shared object, where the pointer to it is a
+  // relocation that the dynamic linker was going to fill in.  There is nothing to report.
+  const ItaniumTypeInfoMap& records = ooa.get_itanium_typeinfo();
+  auto found = records.find(addr);
+  if (found == records.end()) return;
+  const TypeItaniumTypeInfo& ti = found->second;
+  visited.insert(addr);
+
+  std::string demangled_name = demangle_itanium_type(ti.name.value);
+  if (demangled_name.empty()) {
+    GWARN << "Unable to demangle type " << ti.name.value << LEND;
+  }
+
+  // The same fact the MSVC path asserts, because the record describes the same thing: the
+  // type_info vtable, the mangled name of the class, and its demangling.
+  session->add_fact("rTTITypeDescriptor", ti.address, ti.pVTable.value,
+                    ti.name.value, demangled_name);
+  session->add_fact("rTTIItaniumTypeInfo", ti.address, kind_str(ti.kind));
+
+  for (const TypeItaniumBaseTypeInfo & base : ti.base_classes) {
+    session->add_fact("rTTIItaniumBaseTypeInfo", ti.address, base.pTypeInfo.value,
+                      base.offset(), base.is_virtual() ? "true" : "false",
+                      base.is_public() ? "true" : "false");
+    add_itanium_typeinfo_facts(ooa, base.pTypeInfo.value);
   }
 }
 
@@ -526,10 +662,28 @@ OOSolver::add_usage_facts(const OOAnalyzer& ooa)
   }
 }
 
+// Is Address one of the slots of a VTT we found?  Under the Itanium ABI a complete-object
+// constructor hands each base-object constructor a slice of its VTT to load a vptr from, and the
+// slice address is the only evidence of which construction vtable the callee installs.  Empty for
+// MSVC, which has no VTTs.
+static bool
+on_vtt_slot(const ItaniumVTTMap& vtts, size_t arch_bytes, rose_addr_t address)
+{
+  // The greatest VTT at or below the address, if there is one.
+  auto vtt = vtts.upper_bound(address);
+  if (vtt == vtts.begin()) return false;
+  --vtt;
+  rose_addr_t offset = address - vtt->first;
+  return (offset % arch_bytes) == 0 && (offset / arch_bytes) < vtt->second.size();
+}
+
 // Dump facts primarily associated with each call instruction in the program.
 void
 OOSolver::add_call_facts(const OOAnalyzer& ooa)
 {
+  const ItaniumVTTMap& vtts = ooa.get_itanium_vtts();
+  size_t arch_bytes = ooa.ds.get_arch_bytes();
+
   const CallDescriptorMap& call_map = ooa.ds.get_call_map();
   for (const CallDescriptor& cd : boost::adaptors::values(call_map)) {
 
@@ -587,14 +741,26 @@ OOSolver::add_call_facts(const OOAnalyzer& ooa)
       TreeNodePtr expr = cpd.get_expression();
       if (!expr) continue;
       // If the expression is a constant and not a global variable we do not want to export it.
+      // A VTT slice is neither, but it names the construction vtable a base-object constructor
+      // installs, which nothing else records, so let that one kind of constant through too.
+      bool vtt_slice = false;
       if (expr->isIntegerConstant()) {
         if (expr->nBits() > 64) continue;
-        if (ooa.ds.get_global(*expr->toUnsigned()) == NULL) continue;
+        vtt_slice = on_vtt_slot(vtts, arch_bytes, *expr->toUnsigned());
+        if (!vtt_slice && ooa.ds.get_global(*expr->toUnsigned()) == NULL) continue;
       }
 
       // If the expression is of the form ite(cond value 0), extract just the non-NULL part of
       // the value.  See additional commentary in usage.cpp for more background.
       expr = pick_non_null_expr(expr);
+
+      // Prolog needs the slice's value, not just its identity, to work out which VTT entry the
+      // callee loads.  callParameter carries only a hash, so report the expression through
+      // thisPtrDefinition as well, where an integer constant is exported as an integer.
+      if (vtt_slice) {
+        expanded_thisptrs.insert(
+          ExpandedTreeNodePtr{expr, cd.get_address(), callfunc->get_address()});
+      }
 
       std::string term = "sv_" + std::to_string(expr->hash());
       if (cpd.is_reg()) {
@@ -605,24 +771,6 @@ OOSolver::add_call_facts(const OOAnalyzer& ooa)
       else {
         session->add_fact("callParameter", cd.get_address(),
                           callfunc->get_address(), cpd.get_num(), term);
-      }
-    }
-
-    // Report all parameters for every function (in the future we'll try using an OO subset)
-    auto creturns = call_params.get_returns();
-    for (const ParameterDefinition& cpd : creturns) {
-      if (!cpd.get_value()) continue;
-      TreeNodePtr expr = cpd.get_value()->get_expression();
-      if (!expr) continue;
-      // If the expression is a constant and not a global variable we do not want to export it.
-      if (expr->isIntegerConstant()) {
-        if (expr->nBits() > 64) continue;
-        if (ooa.ds.get_global(*expr->toUnsigned()) == NULL) continue;
-      }
-      std::string term = "sv_" + std::to_string(expr->hash());
-      if (cpd.is_reg()) {
-        std::string regname = unparseX86Register(cpd.get_register(), {});
-        session->add_fact("callReturn", cd.get_address(), callfunc->get_address(), regname, term);
       }
     }
 
@@ -701,9 +849,25 @@ OOSolver::add_function_facts(const OOAnalyzer& ooa)
 
     // Turns out that we need to export thunk data to Prolog, because the presence or absence
     // of thunks can affect our logic.  For example, thunk1 and thunk2 can be assigned to
-    // different classes, even if they jump to the same function.
+    // different classes, even if they jump to the same function.  The third argument reports
+    // how the thunk adjusts the this-pointer, which is what distinguishes an ordinary thunk
+    // from an adjustor stub that retargets the callee onto a different subobject.
     if (fd.is_thunk()) {
-      session->add_fact("thunk", fdaddr, fd.get_jmp_addr());
+      auto adjustment = fd.get_thunk_adjustment();
+      int64_t fixed = adjustment ? adjustment->fixed_delta : 0;
+      if (adjustment && adjustment->virtual_adjustment) {
+        // The two ABIs read the run-time part of the adjustment from different places and
+        // combine it with opposite signs, so each gets its own functor rather than a shared
+        // one that would mean different things on different binaries.
+        auto const & virt = *adjustment->virtual_adjustment;
+        const char* name = virt.kind == ThunkAdjustment::VirtualKind::vcall_offset
+          ? "virtual" : "vtordisp";
+        session->add_fact("thunk", fdaddr, fd.get_jmp_addr(),
+                          functor(name, fixed, virt.slot));
+      }
+      else {
+        session->add_fact("thunk", fdaddr, fd.get_jmp_addr(), fixed);
+      }
     }
 
     // Report all calling conventions for all functions, filtered by the detected ABI so that
@@ -737,23 +901,6 @@ OOSolver::add_function_facts(const OOAnalyzer& ooa)
       }
     }
 
-    // Report all parameters for every function (in the future we'll try using an OO subset)
-    auto freturns = func_params.get_returns();
-    for (const ParameterDefinition& fpd : freturns) {
-      if (!fpd.get_value()) continue;
-      TreeNodePtr expr = fpd.get_value()->get_expression();
-      if (!expr) continue;
-      // If the expression is a constant and not a global variable we do not want to export it.
-      if (expr->isIntegerConstant()) {
-        if (expr->nBits() > 64) continue;
-        if (ooa.ds.get_global(*expr->toUnsigned()) == NULL) continue;
-      }
-      std::string term = "sv_" + std::to_string(expr->hash());
-      if (fpd.is_reg()) {
-        std::string regname = unparseX86Register(fpd.get_register(), {});
-        session->add_fact("funcReturn", fdaddr, regname, term);
-      }
-    }
   }
 }
 
@@ -886,11 +1033,15 @@ OOSolver::dump_facts_private()
   exported += session->print_predicate(facts_file, "methodMemberAccess", 4);
   exported += session->print_predicate(facts_file, "possibleVFTableWrite", 6);
   exported += session->print_predicate(facts_file, "possibleVBTableWrite", 6);
+  exported += session->print_predicate(facts_file, "possibleVTTEntry", 3);
   exported += session->print_predicate(facts_file, "initialMemory", 2);
-  exported += session->print_predicate(facts_file, "rTTICompleteObjectLocator", 6);
+  exported += session->print_predicate(facts_file, "rTTIMSVCCompleteObjectLocator", 6);
   exported += session->print_predicate(facts_file, "rTTITypeDescriptor", 4);
-  exported += session->print_predicate(facts_file, "rTTIClassHierarchyDescriptor", 3);
-  exported += session->print_predicate(facts_file, "rTTIBaseClassDescriptor", 8);
+  exported += session->print_predicate(facts_file, "rTTIMSVCClassHierarchyDescriptor", 3);
+  exported += session->print_predicate(facts_file, "rTTIMSVCBaseClassDescriptor", 8);
+  exported += session->print_predicate(facts_file, "rTTIItaniumTypeInfo", 2);
+  exported += session->print_predicate(facts_file, "rTTIItaniumVFTableTypeInfo", 3);
+  exported += session->print_predicate(facts_file, "rTTIItaniumBaseTypeInfo", 5);
   exported += session->print_predicate(facts_file, "thisPtrAllocation", 5);
   exported += session->print_predicate(facts_file, "possibleVirtualFunctionCall", 5);
   exported += session->print_predicate(facts_file, "thisPtrDefinition", 4);
@@ -898,12 +1049,10 @@ OOSolver::dump_facts_private()
   exported += session->print_predicate(facts_file, "symbolGlobalObject", 3);
   exported += session->print_predicate(facts_file, "symbolClass", 4);
   exported += session->print_predicate(facts_file, "symbolProperty", 2);
-  exported += session->print_predicate(facts_file, "thunk", 2);
+  exported += session->print_predicate(facts_file, "thunk", 3);
   exported += session->print_predicate(facts_file, "callingConvention", 2);
   exported += session->print_predicate(facts_file, "funcParameter", 3);
-  exported += session->print_predicate(facts_file, "funcReturn", 3);
   exported += session->print_predicate(facts_file, "callParameter", 4);
-  exported += session->print_predicate(facts_file, "callReturn", 4);
   exported += session->print_predicate(facts_file, "callTarget", 3);
 
   facts_file << "% Object fact exporting complete." << std::endl;
@@ -962,575 +1111,6 @@ OOSolver::dump_results_private()
   GINFO << "Exported " << exported << " Prolog results to '" << results_filename << "'." << LEND;
 
 }
-
-std::vector<OOClassDescriptorPtr>&
-OOSolver::get_classes() {
-  return classes;
-}
-
-std::string
-OOSolverAnalysisPass::get_name() {
-  return pass_name_;
-}
-
-void
-OOSolverAnalysisPass::set_name(std::string n) {
-  pass_name_ = n;
-}
-
-void
-OOSolverAnalysisPassRunner::add_pass(std::shared_ptr<OOSolverAnalysisPass> p) {
-  passes_.push_back(p);
-}
-
-void
-OOSolverAnalysisPassRunner::run() {
-
-  if (solver_) {
-    std::vector<OOClassDescriptorPtr>& classes = solver_->get_classes();
-    for (auto pass : passes_) {
-      GDEBUG << "Running pass: " << pass->get_name() << " ... " << LEND;
-      if (!pass->solve(classes)) GWARN << " Pass failed" << LEND;
-      else GDEBUG << "Pass completeed successfully" << LEND;
-    }
-  }
-}
-
-bool
-SolveClassesFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
-
-  // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-  // finalClass(ClassID, VFTable, CSize, LSize, RealDestructor, MethodList)
-  // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-  rose_addr_t cid, vft, dtor;
-  size_t csize;
-  std::vector<rose_addr_t> method_list;
-
-  auto class_query = session_->query("finalClass",
-                                     var(cid),
-                                     var(vft),
-                                     var(csize),
-                                     any(), // we'll use the certain size for now
-                                     var(dtor),
-                                     var(method_list));
-  // populate the master class list
-  while (!class_query->done()) {
-    OOClassDescriptorPtr new_cls = std::make_shared<OOClassDescriptor>(
-      cid, vft, csize, dtor, method_list, ds);
-    classes.push_back(new_cls);
-    GDEBUG << "Adding class: " << new_cls->get_name() << LEND;
-    class_query->next();
-  }
-  GDEBUG << "generated class list with " << classes.size() << " entries." << LEND;
-
-  return true;
-}
-
-
-bool
-SolveInheritanceFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
-
-  // Add inheritance relationship elements ... we have to do it this way because of prolog
-  // restrictions on how many queries can be run simultaneously (spoiler alert: the answer is
-  // one)
-
-  // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-  // finalInheritance(DerivedClassID, BaseClassID, ObjectOffset, VFTable, Virtual)
-  // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-
-  rose_addr_t derived_id, base_id, derived_vft;
-  size_t obj_offset;
-
-  auto parent_query = session_->query("finalInheritance",
-                                      var(derived_id),
-                                      var(base_id),
-                                      var(obj_offset),
-                                      var(derived_vft),
-                                      any() // disregard virtual property because it's new?
-    );
-
-  while (!parent_query->done()) {
-
-    OOClassDescriptorPtr derived=NULL, base=NULL;
-
-    auto dit = std::find_if(classes.begin(), classes.end(),
-                            [derived_id](OOClassDescriptorPtr cls)
-                            { return cls->get_id() == derived_id; });
-    if (dit != classes.end()) {
-      derived = *dit;
-    }
-
-    auto bit = std::find_if(classes.begin(), classes.end(),
-                            [base_id](OOClassDescriptorPtr cls)
-                            { return cls->get_id() == base_id; });
-    if (bit != classes.end()) {
-      base = *bit;
-    }
-
-    if (derived && base) {
-      // Add the parent as a shared pointer
-      derived->add_parent(obj_offset, base);
-
-      GDEBUG << "Adding parent: Derived="
-             << derived->get_name() << ", Base=" << base->get_name()
-             << " @ " << addr_str(obj_offset) << LEND;
-
-      // To quote Cory: "If the base class is not the first base class (non-zero offset) and the
-      // base class has a virtual function table, the VFTable field will contain the derived
-      // class instance of that virtual function table."
-
-      if (derived_vft && obj_offset!=0) {
-        derived->add_vftable(obj_offset, derived_vft);
-      }
-    }
-    parent_query->next();
-  }
-
-  return true;
-}
-
-bool
-SolveVFTableFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
-
-  // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-  // finalVFTable(VFTable, CertainSize, LikelySize, RTTIAddress, RTTIName)
-  // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-
-  // Now fill in the details for the virtual function tables via prolog
-  rose_addr_t vft_addr, rtti_addr;
-  size_t vft_size;
-  std::string rtti_name;
-  auto vft_query = session_->query("finalVFTable",
-                                   var(vft_addr),
-                                   var(vft_size),
-                                   any(),
-                                   var(rtti_addr),
-                                   var(rtti_name));
-
-  while (!vft_query->done()) {
-    GDEBUG << "Prolog returned VFTable " << addr_str(vft_addr) << " with size " << addr_str(vft_size) << LEND;
-
-    bool found = false;
-    for (OOClassDescriptorPtr cls : classes) {
-      for (OOVirtualFunctionTablePtr v : cls->get_vftables()) {
-        if (v->get_address() == vft_addr) {
-          found = true;
-
-          GDEBUG << "Assigned " << addr_str(vft_addr) << " to class " << addr_str(cls->get_id()) << LEND;
-          v->set_size(vft_size);
-
-          v->set_rtti(rtti_addr, read_RTTI(ds, rtti_addr));
-
-          // If the class ID is not the vftable address, then either the vftable is not the
-          // primary one OR it is claimed by multiple classes and we should not use its name.
-          // Without this check we can get duplicate json keys.
-          if (cls->get_id() == v->get_address()) {
-
-            // set the class name based on RTTI
-            if (rtti_name.size() > 0) {
-              GDEBUG << "Renaming " << cls->get_name() << " to " << rtti_name << LEND;
-              cls->set_name(rtti_name);
-
-              // Attempt to set the demangled name too
-              try {
-                auto dtype = demangle::visual_studio_demangle(rtti_name);
-                cls->set_demangled_name(dtype->get_class_name());
-              } catch (const demangle::Error &e) {
-                GWARN << "Unable to demangle RTTI Class name " << rtti_name
-                      << ": " << e.what () << LEND;
-              }
-
-              GDEBUG << "Found RTTI name for "
-                     <<  addr_str(cls->get_id()) << " = " << cls->get_name() << LEND;
-            }
-          }
-          // We won't find the same vftable twice in a class
-          break;
-        }
-      }
-    }
-
-    if (!found) {
-      GDEBUG << "Unable to find VFTable " << addr_str(vft_addr) << " in imported classes." << LEND;
-    }
-
-    vft_query->next();
-  }
-  return true;
-}
-
-bool
-SolveMemberAccessFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
-
-  // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-  // finalMemberAccess(Class, Offset, Size, EvidenceList)
-  // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-
-  size_t mbr_cid, mbr_off, mbr_size;
-  std::vector<rose_addr_t> mbr_evidence;
-
-  // Add tradtional (primative) class members
-  auto mbr_access_query = session_->query("finalMemberAccess",
-                                          var(mbr_cid),
-                                          var(mbr_off),
-                                          var(mbr_size),
-                                          var(mbr_evidence));
-  while (!mbr_access_query->done()) {
-
-    auto mit = std::find_if(classes.begin(), classes.end(),
-                            [mbr_cid](OOClassDescriptorPtr cls)
-                            { return cls->get_id() == mbr_cid; });
-
-    if (mit != classes.end()) {
-      OOClassDescriptorPtr cls = *mit;
-
-      // ingest the new member evidence as a set of instructions, not addresses
-      InsnSet insn_evidence;
-      std::stringstream ss;
-
-      // convert evidence from instructions to addresses
-      for (rose_addr_t a : mbr_evidence) {
-        SgAsmInstruction* i = ds.get_insn(a);
-        if (i) {
-          insn_evidence.insert(i);
-          ss << addr_str(i->get_address()) << " ";
-        }
-      }
-
-      // If the member doesn't exist, we need to create it.  There are "member accesses" for
-      // members that are not explicitly on the class.  This occurs because there can be
-      // derived methods that access members in the base class.
-      OOElementPtr existing_elm = cls->member_at(mbr_off);
-      if (!existing_elm) {
-        OOElementPtr elm = std::make_shared<OOMember>(mbr_size, insn_evidence);
-        // Mark the member as being on a base/embedded class.
-        elm->set_exactly(false);
-        cls->add_member(mbr_off, elm);
-      }
-      else {
-        // this is a traditional member because that is what prolog reports for this query
-        // OOMemberPtr existing_mbr = std::dynamic_pointer_cast<OOMember>(existing_elm);
-
-        existing_elm->add_evidence(insn_evidence);
-
-        // Only override the size if it is less than what is previously reported. In other
-        // words, the biggest size wins
-        if (existing_elm->get_size() < mbr_size) {
-
-          GDEBUG << "Class member: "<< cls->get_name() << " @ " << addr_str(mbr_off)
-                 << " has a conflicting size with access, previous size=" << existing_elm->get_size()
-                 << " access size=" << mbr_size << LEND;
-
-          existing_elm->set_size(mbr_size);
-        }
-        GDEBUG << "Updating member on " << cls->get_name() << " @ " << addr_str(mbr_off)
-               << " as " << existing_elm->get_name() << " evidence=" << ss.str() << LEND;
-      }
-    }
-    mbr_access_query->next();
-  }
-  return true;
-}
-
-bool
-SolveMemberFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
-
-  // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-  // finalMember(Class, Offset, Size, EvidenceList)
-  // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-
-  size_t mbr_cid, mbr_off;
-  std::vector<size_t>mbr_sizes;
-
-  // Add tradtional (primative) class members
-  auto mbr_query = session_->query("finalMember",
-                                   var(mbr_cid),
-                                   var(mbr_off),
-                                   var(mbr_sizes),
-                                   any());
-  while (!mbr_query->done()) {
-
-    auto mit = std::find_if(classes.begin(), classes.end(),
-                            [mbr_cid](OOClassDescriptorPtr cls)
-                            { return cls->get_id() == mbr_cid; });
-
-    if (mit != classes.end()) {
-      OOClassDescriptorPtr cls = *mit;
-
-      // for now, we will just use the biggest size. I'm sure this will change
-      auto sit = max_element(mbr_sizes.begin(), mbr_sizes.end());
-      size_t selected_size = *sit;
-
-      // Embedded object and inherited bases are not listed again as finalMembers.  Instead
-      // they are list in the finalEmbeddedObject and finalInheritance results.
-      OOElementPtr elm = std::make_shared<OOMember>(selected_size);
-
-      cls->add_member(mbr_off, elm);
-
-      GDEBUG << "Adding new member to " << cls->get_name() << " @ " << addr_str(mbr_off)
-             << " as " << elm->get_name() << LEND;
-    }
-    mbr_query->next();
-  }
-  return true;
-}
-
-bool
-SolveEmbeddedObjFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
-
-  // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-  // finalEmbeddedObject(OuterClass, Offset, EmbeddedClass, likely)
-  // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-
-  rose_addr_t out_cid, emb_cid;
-  size_t emb_off;
-
-  OOClassDescriptorPtr outer=NULL, embedded=NULL;
-  auto emb_obj_query = session_->query("finalEmbeddedObject",
-                                       var(out_cid),
-                                       var(emb_off),
-                                       var(emb_cid),
-                                       any());
-  while (!emb_obj_query->done()) {
-
-    // look up the outer class by id
-    auto oit = std::find_if(classes.begin(),
-                            classes.end(),
-                            [out_cid](OOClassDescriptorPtr cls)
-                            { return out_cid == cls->get_id(); });
-
-    if (oit != classes.end()) {
-      outer = *oit;
-    }
-
-    // look up the embedded class by id
-    auto eit = std::find_if(classes.begin(),
-                            classes.end(),
-                            [emb_cid](OOClassDescriptorPtr cls)
-                            { return emb_cid == cls->get_id(); });
-
-    if (eit != classes.end()) {
-      embedded = *eit;
-    }
-
-    if (outer && embedded) {
-      OOElementPtr emb_elm = embedded;
-      emb_elm->set_size(embedded->get_size());
-      outer->add_member(emb_off, emb_elm);
-
-      GDEBUG << "Adding embedded object member " << emb_elm->get_name()
-             << " to " << outer->get_name() << "@ " << addr_str(emb_off) << LEND;
-    }
-    emb_obj_query->next();
-  }
-  return true;
-}
-
-bool
-SolveMethodPropertyFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
-
-  // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-  // finalMethodProperty(Method, constructor|deletingDestructor|realDestructor|virtual, certain)
-  // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-
-
-  // This query should not add new methods to the class, rather it should update existing
-  // methods on a class
-
-  for (OOClassDescriptorPtr cls : classes) {
-    for (OOMethodPtr meth : cls->get_methods()) {
-
-      std::string meth_prop;
-      auto meth_query = session_->query("finalMethodProperty",
-                                        meth->get_address(),
-                                        var(meth_prop),
-                                        any());
-      while (!meth_query->done()) {
-
-        if (meth_prop == "virtual") {
-          meth->set_virtual(true);
-
-          // find the vftable that this virtual function resides in, and add it at the right
-          // offset
-          for (OOVirtualFunctionTablePtr vftbl : cls->get_vftables()) {
-
-            GDEBUG << "Processing vftable " << addr_str(vftbl->get_address()) << LEND;
-
-            size_t arch_bytes = ds.get_arch_bytes();
-            size_t table_size = vftbl->get_size() / ds.get_arch_bytes();
-            for (size_t offset=0; offset<table_size; offset++) {
-
-              rose_addr_t faddr = ds.memory.read_address(
-                vftbl->get_address()+(offset*arch_bytes));
-
-              // Handle thunks ... sigh
-              const FunctionDescriptor *f = ds.get_func(faddr);
-              if (f) {
-                if (f->is_thunk()) faddr = f->get_jmp_addr();
-
-                GDEBUG << "faddr=" << addr_str(faddr)
-                       << ", meth->get_address()="
-                       << addr_str(meth->get_address()) << LEND;
-
-                if (faddr == meth->get_address() ) {
-                  vftbl->add_virtual_function(OOVirtualFunctionTableEntry(offset, meth));
-
-                  GDEBUG << "Added virtual function " << addr_str(meth->get_address())
-                          << " to vftable " << addr_str(vftbl->get_address())
-                          << " @ " << offset << LEND;
-
-                  // Just because we found the method in a table doesn't mean that we can't
-                  //find it again (even in the same table), so don't break here...
-                }
-              }
-            }
-          }
-        }
-        if (meth_prop == "constructor") {
-          meth->set_type(OOMethodType::CTOR);
-        }
-        else if (meth_prop == "realDestructor") {
-          meth->set_type(OOMethodType::DTOR);
-        }
-        else if (meth_prop == "deletingDestructor") {
-          meth->set_type(OOMethodType::DELDTOR);
-        }
-
-        GDEBUG << "Updating method for " << cls->get_name()
-               << " Method=" << addr_str(meth->get_address())
-               << ", Virtual=" << ((meth->is_virtual()) ? "yes" : "no")
-               << ", CTOR=" << ((meth->is_constructor()) ? "yes" : "no")
-               << ", DTOR=" << ((meth->is_destructor()) ? "yes" : "no")
-               << ", Del DTOR=" << ((meth->is_deleting_destructor()) ? "yes" : "no") << LEND;
-
-        meth_query->next();
-      }
-    }
-  }
-  return true;
-}
-
-bool
-SolveResolvedVirtualCallFromProlog::solve(std::vector<OOClassDescriptorPtr>& classes) {
-
-  // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-  // finalResolvedVirtualCall(Insn, VFTable, Target)
-  // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-  rose_addr_t to_addr, vfcall_id, from_addr;
-  auto vcall_query = session_->query("finalResolvedVirtualCall",
-                                     var(from_addr),
-                                     var(vfcall_id),
-                                     var(to_addr));
-  while (!vcall_query->done()) {
-    for (OOClassDescriptorPtr cls : classes) {
-      for (OOVirtualFunctionTablePtr vftcall : cls->get_vftables()) {
-        if (vftcall->get_address() == vfcall_id) {
-          const CallDescriptor* vcall_cd = ds.get_call(from_addr);
-
-          if (vcall_cd) {
-            vftcall->add_virtual_call(vcall_cd, to_addr);
-
-            GDEBUG << "Added virtual function call for " << cls->get_name()
-                   << " in vftable " << addr_str(vftcall->get_address())
-                   << " from=" << addr_str(vcall_cd->get_address())
-                   << ", to=" << addr_str(to_addr) << LEND;
-          } else {
-            GDEBUG << "Could not add virtual function call from="
-                   << addr_str(from_addr)
-                   << ", to=" << addr_str(to_addr)
-                   << " due to invalid call descriptor" << LEND;
-          }
-        }
-      }
-    }
-    vcall_query->next();
-  }
-  return true;
-}
-
-// Because the entire OO analysis is read-only with respect to the descriptor set until we
-// discover some new targets for some virtual function calls, we need a separate method (this
-// one) to _update_ a descriptor set with the the new call targets.
-void OOSolver::update_virtual_call_targets() {
-  for (OOClassDescriptorPtr cls : classes) {
-    for (OOVirtualFunctionTablePtr vftcall : cls->get_vftables()) {
-      for (auto& pair : vftcall->get_virtual_call_targets()) {
-        const CallDescriptor* vcall_cd = pair.first;
-        CallDescriptor* vcall_rw_cd = ds.get_rw_call(vcall_cd->get_address());
-        for (rose_addr_t target : pair.second) {
-          vcall_rw_cd->add_target(target);
-        }
-      }
-    }
-  }
-}
-
-// The public interface to importing results back into C++ classes.  It's wrapped in a
-// try/catch for more graceful handling of unexpected conditions.
-bool
-OOSolver::import_results() {
-  if (!session) return false;
-  try {
-    GINFO << "Analyzing object oriented data structures..." << LEND;
-    {
-      auto query = session->query("solve", "ooanalyzer_tool");
-      if (query->done()) {
-        GERROR << "The solution found is not internally consistent and may have significant errors!" << LEND;
-      }
-    }
-    // Populate the C++ data structures with the prolog results
-    OOSolverAnalysisPassRunner runner(this);
-
-    std::shared_ptr<OOSolverAnalysisPass> final_class
-      = std::make_shared<SolveClassesFromProlog>(session, ds);
-    runner.add_pass(final_class);
-
-    // Inheritance relationships must be loaded before VFTables so that tables from multiple
-    // inheritance are created before they're updated in the VFTable import step.
-    std::shared_ptr<OOSolverAnalysisPass> final_inheritance
-      = std::make_shared<SolveInheritanceFromProlog>(session, ds);
-    runner.add_pass(final_inheritance);
-
-    // VFTables importing must come after inheritance importing so that the VFTables can be
-    // found in the correct classes.
-    std::shared_ptr<OOSolverAnalysisPass> final_vftable
-      = std::make_shared<SolveVFTableFromProlog>(session, ds);
-    runner.add_pass(final_vftable);
-
-    // Not importing virtual base tables (yet)...
-
-    std::shared_ptr<OOSolverAnalysisPass> final_mem
-      = std::make_shared<SolveMemberFromProlog>(session, ds);
-    runner.add_pass(final_mem);
-
-    std::shared_ptr<OOSolverAnalysisPass> final_emb_obj
-      = std::make_shared<SolveEmbeddedObjFromProlog>(session, ds);
-    runner.add_pass(final_emb_obj);
-
-    std::shared_ptr<OOSolverAnalysisPass> final_mem_access
-      = std::make_shared<SolveMemberAccessFromProlog>(session, ds);
-    runner.add_pass(final_mem_access);
-
-    std::shared_ptr<OOSolverAnalysisPass> final_method
-      = std::make_shared<SolveMethodPropertyFromProlog>(session, ds);
-    runner.add_pass(final_method);
-
-    std::shared_ptr<OOSolverAnalysisPass> final_vcall
-      = std::make_shared<SolveResolvedVirtualCallFromProlog>(session, ds);
-    runner.add_pass(final_vcall);
-
-    GINFO << "Ingesting prolog results ... " << LEND;
-    runner.run();
-    GINFO << "Done!" << LEND;
-
-  }
-  catch (const Error& error) {
-    GFATAL << error.what() << LEND;
-    return false;
-  }
-  return true;
-}
-
 
 } // namespace pharos
 

@@ -16,14 +16,8 @@
 
 namespace pharos {
 
-// Some of these should probably be methods on OOAnalyzer, and others might be best just local
-// to this file.  Since the original objdigger.cpp design didn't have a master class, we'll
-// just prototype all of the functions here for now.
-// OOSolver
-void analyze_vtable_overlap();
-
 OOAnalyzer::OOAnalyzer(DescriptorSet& ds_, const ProgOptVarMap& vm_) :
-  BottomUpAnalyzer(ds_, vm_) {
+  BottomUpAnalyzer(ds_, vm_), itanium_typeinfo(ds_) {
   user_new_addrs = option_addr_list(vm, "new-method");
   user_delete_addrs = option_addr_list(vm, "delete-method");
   user_purecall_addrs = option_addr_list(vm, "purecall");
@@ -301,8 +295,7 @@ void OOAnalyzer::visit(FunctionDescriptor* fd) {
   // Experimental new memory reduction undiscussed major design revision. ;-) ;-)
   fd->free_pdg();
 
-  // Record the symbolic value of the possible this-pointer at each call.
-  record_this_ptrs_for_calls(fd);
+  discard_call_states(fd);
 }
 
 void OOAnalyzer::start() {
@@ -343,11 +336,6 @@ void OOAnalyzer::finish() {
   // reads and writes for each function with a virtual call in it.
   // ds.update_vf_call_descriptors();
 
-  // Look for methods that pass their this-pointers to other methods.
-  for (auto & tcm : boost::adaptors::values(methods)) {
-    tcm->find_passed_func_offsets(*this);
-  }
-
   // Test virtual base tables and virtual function tables for overlaps.  This is the new Prolog
   // compatible approach, and it may not actually modify function tables yet.
   // For every virtual base table...
@@ -360,17 +348,12 @@ void OOAnalyzer::finish() {
   //  vft->analyze_overlaps(vftables, vbtables);
   //}
 
-  //analyze_vftables_in_all_fds();
+  // Itanium construction vtables are reachable only through a VTT, and this is the first point
+  // at which every table that an instruction does name has been found.
+  if (ds.is_itanium_abi()) find_itanium_vtts();
 
   OOSolver oosolver = OOSolver(ds, vm);
   oosolver.analyze(*this);
-  // The OO Classes are the classes from prolog. Should these be the pure output classes?
-  ooclasses = oosolver.get_classes();
-}
-
-std::vector<OOClassDescriptorPtr>
-OOAnalyzer::get_result_classes() {
-  return ooclasses;
 }
 
 void OOAnalyzer::handle_heap_allocs(const rose_addr_t saddr) {
@@ -517,7 +500,7 @@ bool OOAnalyzer::analyze_possible_vtable(rose_addr_t address, bool allow_base) {
   // If we did not find a valid vitual base table, try creating a virtual function table.
   auto vftable = make_unique<VirtualFunctionTable>(ds, address);
   // If the vbtable is valid add it to the list.
-  if (vftable->analyze(vftables)) {
+  if (vftable->analyze(vftables, itanium_typeinfo)) {
     vftables[address] = std::move(vftable);
     virtual_tables[address] = true;
     return true;
@@ -527,30 +510,139 @@ bool OOAnalyzer::analyze_possible_vtable(rose_addr_t address, bool allow_base) {
   return false;
 }
 
-// Find the value of ECX at the time of the call, by inspecting the state that was saved when
-// the call was evaluated.  Uses the state from the call descriptor!  The FunctionDescriptor is
-// non-const, because we're going to free the states in each CallDescriptor that we visit.
-void OOAnalyzer::record_this_ptrs_for_calls(FunctionDescriptor* fd) {
-  for (const CallDescriptor* cd : fd->get_outgoing_calls()) {
-    SymbolicStatePtr state = cd->get_state();
-    if (state == NULL) {
-      // Customize this message a little to account for known failure modes.,
-      if (cd->is_tail_call()) {
-        GINFO << "Tail call at " << cd->address_string() << " was not analyzed correctly for OO usages." << LEND;
+// Under the Itanium ABI, a class with virtual bases gets a virtual table table (VTT): an array
+// of vftable address points that the complete-object constructor passes down to the
+// base-object constructors of its base subobjects, so that each base installs the construction
+// vtable appropriate to the stage of construction it is in.  A construction vtable is
+// therefore never named as a constant by any instruction, and find_vtable_installations()
+// cannot see it.
+//
+// An address point is recognizable structurally, with no RTTI, from the two word header the
+// ABI places immediately below it:
+//
+//   [vcall offsets ...]     only in virtual base secondary components
+//   [vbase offsets ...]
+//   [offset-to-top]         small signed integer, zero or negative
+//   [typeinfo pointer]      pointer to a _ZTI record, or zero under -fno-rtti
+//   --------------------    <- the address point: what a vptr and a VTT slot point at
+//   [virtual function pointers ...]
+//
+// A VTT is then a run of consecutive aligned words that are all address points, and its
+// entries are the tables we are missing.  They are handed to analyze_possible_vtable() so that
+// they take the same path as installation-seeded tables rather than getting measured here: the
+// walk in VirtualFunctionTable::analyze() and the export in OOSolver::add_vftable_facts()
+// already know how to cope with a construction vtable's zeroed destructor slots.
+void OOAnalyzer::find_itanium_vtts() {
+  // A bound on how far below the top of an object a subobject can begin.  Only there to keep a
+  // large negative number from reading as a plausible offset-to-top; no real object is close.
+  constexpr int64_t max_object_size = 1 << 24;
+
+  size_t arch_bytes = ds.get_arch_bytes();
+  auto memmap = ds.memory.get_memmap();
+
+  AddressIntervalSet executable;
+  for (const MemoryMap::Node & node : memmap->nodes()) {
+    if ((node.value().accessibility() & MemoryMap::EXECUTABLE) != 0) {
+      executable.insert(node.key());
+    }
+  }
+
+  // Executable memory rather than a partitioned function, for the same reason the fact
+  // exporter uses it: the last entry of a table is routinely an adjusting thunk that went
+  // unrecognized in the stripped builds.
+  auto is_code = [&](rose_addr_t v) {
+    if (v == 0) return false;
+    if (ds.get_func(v) != NULL || ds.get_import(v) != NULL) return true;
+    return executable.contains(AddressInterval(v));
+  };
+
+  auto in_data = [&](rose_addr_t v) {
+    return ds.memory.is_mapped(v) && !executable.contains(AddressInterval(v));
+  };
+
+  auto is_address_point = [&](rose_addr_t v) {
+    if (v == 0 || (v % arch_bytes) != 0 || v < 2 * arch_bytes) return false;
+    if (!in_data(v) || !in_data(v - 2 * arch_bytes) || !in_data(v - arch_bytes)) return false;
+
+    // The offset to the top of the object.  Zero for a primary table, and negative for a
+    // secondary one, since the subobject it serves begins somewhere after the top.  It is a
+    // pointer-width signed integer, so it has to be sign extended before it is compared, or
+    // every secondary table in a 32-bit binary reads as a large positive number.
+    int64_t offset_to_top = IntegerOps::signExtend2(
+      ds.memory.read_address(v - 2 * arch_bytes), 8 * arch_bytes, 64);
+    if (offset_to_top > 0 || offset_to_top < -max_object_size) return false;
+
+    // The typeinfo pointer, which is zero when the binary was built without RTTI.
+    rose_addr_t typeinfo = ds.memory.read_address(v - arch_bytes);
+    if (typeinfo != 0 && !in_data(typeinfo)) return false;
+
+    // And the first slot of the table itself, which is a virtual function pointer unless it is
+    // one of the destructor slots that GCC zeroes in a construction vtable.
+    rose_addr_t first = ds.memory.read_address(v);
+    return first == 0 || is_code(first);
+  };
+
+  // Accept a run of address points as a VTT if we already know one of the tables it names.
+  // Per the ABI, VTT entry zero is the most-derived class' own primary vtable, which its
+  // complete-object constructor does install from a constant, so we have already seen it.
+  // This also rejects the only realistic false positive, the two adjacent pointers inside an
+  // Itanium __si_class_type_info.
+  auto consider_vtt = [&](rose_addr_t start, std::vector<rose_addr_t> const & entries) {
+    if (entries.size() < 2) return;
+    bool anchored = false;
+    for (rose_addr_t entry : entries) {
+      if (vftables.find(entry) != vftables.end()) anchored = true;
+    }
+    if (!anchored) return;
+    GINFO << "Found Itanium VTT at " << addr_str(start) << " with "
+          << entries.size() << " entries." << LEND;
+    itanium_vtts[start] = entries;
+  };
+
+  // Only bother with the segments that contain a vftable we already know about, since a VTT is
+  // always stored alongside the tables it describes.
+  AddressIntervalSet scan;
+  for (rose_addr_t known : boost::adaptors::keys(vftables)) {
+    for (const MemoryMap::Node & node : memmap->nodes()) {
+      if (node.key().contains(AddressInterval(known))) scan.insert(node.key());
+    }
+  }
+
+  for (const AddressInterval & interval : scan.intervals()) {
+    std::vector<rose_addr_t> run;
+    rose_addr_t run_start = 0;
+    // Stop short of the end so that the final read cannot run off the segment.
+    for (rose_addr_t addr = interval.least();
+         addr + arch_bytes - 1 <= interval.greatest(); addr += arch_bytes) {
+      rose_addr_t value = ds.memory.read_address(addr);
+      if (is_address_point(value)) {
+        if (run.empty()) run_start = addr;
+        run.push_back(value);
       }
       else {
-        GINFO << "Call at " << cd->address_string() << " was not analyzed correctly for OO usages." << LEND;
+        consider_vtt(run_start, run);
+        run.clear();
       }
-      continue;
     }
-    write_guard<decltype(mutex)> guard{mutex};
-    SymbolicValuePtr this_ptr = pharos::get_this_ptr_for_call(cd);
-    if (this_ptr->is_valid()) {
-      callptrs[cd->get_address()] = this_ptr;
+    consider_vtt(run_start, run);
+  }
+
+  // Seeding is a separate pass so that growing vftables cannot change the anchor test partway
+  // through the scan.
+  for (auto const & entries : boost::adaptors::values(itanium_vtts)) {
+    for (rose_addr_t addr_point : entries) {
+      if (vftables.find(addr_point) != vftables.end()) continue;
+      // A construction vtable is never a virtual base table, so don't offer that reading.
+      if (analyze_possible_vtable(addr_point, false)) {
+        GINFO << "Found Itanium vftable at " << addr_str(addr_point)
+              << " referenced only by a VTT." << LEND;
+      }
     }
-    // Now that we've saved a copy of the this-pointer value, we don't need the the rest of the
-    // state anymore, and we can free a lot of memory simply by removing the reference to the
-    // state from the call descriptor.
+  }
+}
+
+void OOAnalyzer::discard_call_states(FunctionDescriptor* fd) {
+  for (const CallDescriptor* cd : fd->get_outgoing_calls()) {
     CallDescriptor* nccd = ds.get_rw_call(cd->get_address());
     nccd->discard_state();
   }

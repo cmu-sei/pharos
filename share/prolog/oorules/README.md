@@ -270,7 +270,7 @@ It is normal for this phase to complete with the following messages.
 
 ```
 OOAN[INFO ]: Exported <xxxx> Prolog facts to 'ooprog-facts.pl'.
-OPTI[WARN ]: OOAnalyzer did not perform C++ class analysis.
+OPTI[WARN ]: OOAnalyzer did not perform Prolog class analysis.
 OPTI[INFO ]: OOAnalyzer analysis complete.
 ```
 

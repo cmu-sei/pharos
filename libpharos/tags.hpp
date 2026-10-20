@@ -7,6 +7,7 @@
 #include <string>        // For std::string
 #include <unordered_map> // For std::unordered_map
 #include <utility>       // For std::move
+#include <vector>        // For std::vector
 
 #if __cplusplus >= 201703L
 #include <variant>
@@ -96,6 +97,10 @@ class TagManager {
     return [tag = std::move(tag), this](std::string const & key) {
       return check(Name{key}, tag); };
   }
+  // The Name keys carrying this tag, sorted.  Unlike check(), this does not need to know the
+  // names in advance, which is what lets the partitioner be configured from the tags.
+  std::vector<std::string> names_with_tag(tag_t const & tag) const;
+
   auto checker_address(tag_t tag) const {
     return [tag = std::move(tag), this](rose_addr_t key) {
       return check(key, tag); };

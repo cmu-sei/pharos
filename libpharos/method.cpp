@@ -4,7 +4,6 @@
 #include "method.hpp"
 #include "vftable.hpp"
 #include "masm.hpp"
-#include "ooanalyzer.hpp"
 
 #include <integerOps.h>
 
@@ -61,7 +60,6 @@ ThisCallMethod::ThisCallMethod(FunctionDescriptor *f) {
 void ThisCallMethod::stage2() {
   // Do these really belong here (inside constructor test?) in OOAnalyzer?
   if (returns_self) {
-    //analyze_vftables();
     uninitialized_reads = test_for_uninit_reads();
   }
   find_members();
@@ -508,45 +506,6 @@ void ThisCallMethod::find_members() {
                  << ") write at insn " << debug_instruction(insn) << LEND;
         }
       }
-    }
-  }
-}
-
-// This method is called in OOAnalyzer::finish(), not OOAnalyzer::visit().
-void ThisCallMethod::find_passed_func_offsets(const OOAnalyzer& ooa)
-{
-  for (const CallDescriptor* cd : fd->get_outgoing_calls()) {
-    SgAsmX86Instruction* insn = isSgAsmX86Instruction(cd->get_insn());
-    assert(insn != NULL);
-
-    SymbolicValuePtr tPtr = ooa.get_this_ptr_for_call(cd->get_address());
-    // We're only interested in valid pointers.
-    if (!tPtr || !(tPtr->is_valid())) continue;
-
-    // Get any offset added to our this-pointer.
-    boost::optional<int64_t> offset = get_offset(tPtr->get_expression());
-    // We're only interested in pointers that reference our object.
-    // First ensure that we got a concerete offset from the expression.
-    if (!offset) continue;
-
-    // We could check for offset zero or four here, but that does not seem to be the best
-    // approach.  if (*offset != 0) continue;
-
-    for (rose_addr_t saddr : cd->get_targets()) {
-      // Since we've changed the way that thunks are being handled, we probably shouldn't
-      // be following thunks at all here, but that's not the bug being fixed right now.
-      const FunctionDescriptor* tfd = fd->ds.get_func(saddr);
-      if (tfd == nullptr) continue;
-      bool endless = false;
-      rose_addr_t caddr = tfd->follow_thunks(&endless);
-      if (endless) continue;
-
-      // If we've already processed this target, continue.
-      if (passed_func_offsets.find(caddr) != passed_func_offsets.end()) continue;
-
-      // Adding an entry to passed func offsets here, reading only in main().
-      FuncOffset fo(caddr, *offset, insn);
-      passed_func_offsets.insert(FuncOffsetMap::value_type(caddr, fo));
     }
   }
 }

@@ -5,6 +5,7 @@
 
 #include "ir.hpp"
 #include "znode.hpp"
+#include <type_traits>
 
 using namespace pharos::ir;
 
@@ -17,7 +18,8 @@ struct back_inserter_iter :
   back_inserter_iter(C & c) : container(&c) {}
   back_inserter_iter(back_inserter_iter const &) = default;
   back_inserter_iter & operator=(back_inserter_iter const &) = default;
-  template <typename T>
+  template <typename T, typename std::enable_if<
+    !std::is_same<typename std::decay<T>::type, back_inserter_iter>::value, int>::type = 0>
   auto operator=(T && x) { container->push_back(std::forward<T>(x)); return *this; }
   back_inserter_iter & operator*() { return *this; }
   back_inserter_iter & operator++() { return *this; }

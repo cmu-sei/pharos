@@ -177,6 +177,16 @@ possibleVFTable(VFTable) :-
     possibleVFTableWrite(_Insn, Func, _ThisPtr, _Offset1, VFTable),
     (factMethod(Func); factMethod(Entry)).
 
+% A construction vtable has no writer to corroborate, since no instruction names it.  Its VTT
+% membership stands in: the group is anchored by entry zero of the VTT, which is the
+% most-derived class' own primary table and is already known to be one.
+possibleVFTable(VFTable) :-
+    possibleVTTEntry(VTT, _Offset3, VFTable),
+    possibleVTTEntry(VTT, 0, PrimaryVFTable),
+    factVFTable(PrimaryVFTable),
+    possibleVFTableEntry(VFTable, _Offset4, Entry),
+    factMethod(Entry).
+
 guessVFTable(Out) :-
     reportFirstSeen('guessVFTable'),
     % See the commentary at possibleVFTable for how this goal constrains our guesses (and

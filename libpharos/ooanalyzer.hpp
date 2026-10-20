@@ -13,7 +13,6 @@
 #include "defuse.hpp"
 #include "method.hpp"
 #include "usage.hpp"
-#include "ooclass.hpp"
 #include "vftable.hpp"
 #include "vcall.hpp"
 #include "bua.hpp"
@@ -25,6 +24,9 @@ using ProcessedAddresses = std::map<rose_addr_t, bool>;
 using VirtualTableInstallationMap = std::map<rose_addr_t, VirtualTableInstallationPtr>;
 using VirtualFunctionCallMap = std::map<rose_addr_t, VirtualFunctionCallVector>;
 using MethodMap = std::map<rose_addr_t, std::unique_ptr<ThisCallMethod>>;
+// An Itanium ABI virtual table table (VTT), mapping its address to the vftable address points
+// that it references, in table order.
+using ItaniumVTTMap = std::map<rose_addr_t, std::vector<rose_addr_t>>;
 
 class OOAnalyzer : public BottomUpAnalyzer {
  private:
@@ -39,10 +41,15 @@ class OOAnalyzer : public BottomUpAnalyzer {
   VirtualFunctionCallMap vcalls;
   MethodMap methods;
 
-  // Map of call addresses to the symbolic values of the this-pointers at the time of the call.
-  std::map<rose_addr_t, SymbolicValuePtr> callptrs;
-
   ProcessedAddresses virtual_tables;
+
+  // The Itanium ABI virtual table tables, which are how the construction vtables get found.
+  ItaniumVTTMap itanium_vtts;
+
+  // The Itanium ABI type information records.  One record serves every table of its class, and
+  // the record of a non-polymorphic base class belongs to no table at all, so the finder is
+  // per-program rather than per-table.
+  ItaniumTypeInfoFinder itanium_typeinfo;
 
   // This entire new/delete/purecall system needs a major rewrite.  The new design is to have a
   // FunctionFinder() class that get initialized with some properties (names, hashes, etc.),
@@ -70,22 +77,22 @@ class OOAnalyzer : public BottomUpAnalyzer {
   bool analyze_possible_vtable(rose_addr_t address, bool allow_base = true);
   // Find possible virtual tables in a given function.
   void find_vtable_installations(FunctionDescriptor const & fd);
+  // Find the Itanium ABI VTTs, and through them the vtables that no instruction names.
+  void find_itanium_vtts();
 
   // Find heap allocations?
   void find_heap_allocs();
   // Handlethem by adding them to the previously global map?
   void handle_heap_allocs(const rose_addr_t saddr);
 
-  // Record this-pointers in a map more efficiently than in call descriptor states.
-  void record_this_ptrs_for_calls(FunctionDescriptor* fd);
+  // Release call states after all per-function analyses have consumed them.
+  void discard_call_states(FunctionDescriptor* fd);
 
   bool identify_new_method(FunctionDescriptor const & fd);
   bool identify_free_method(FunctionDescriptor const & fd);
   bool identify_delete_method(FunctionDescriptor const & fd);
   bool identify_purecall_method(FunctionDescriptor const & fd);
   bool identify_nonreturn_method(FunctionDescriptor & fd);
-
-  std::vector<OOClassDescriptorPtr> ooclasses;
 
   // Mark methods as new(), delete(), and purecall() respectively.
   void set_new_method(rose_addr_t addr) {
@@ -128,6 +135,10 @@ class OOAnalyzer : public BottomUpAnalyzer {
   const VFTableAddrMap& get_vftables() const { return vftables; }
   const VBTableAddrMap& get_vbtables() const { return vbtables; }
   const VirtualFunctionCallMap& get_vcalls() const { return vcalls; }
+  const ItaniumVTTMap& get_itanium_vtts() const { return itanium_vtts; }
+  const ItaniumTypeInfoMap& get_itanium_typeinfo() const {
+    return itanium_typeinfo.get_records();
+  }
 
   // Is the provided address a new(), delete(), or purecall() method?
   bool is_new_method(rose_addr_t addr) const {
@@ -184,14 +195,6 @@ class OOAnalyzer : public BottomUpAnalyzer {
 
   const MethodMap& get_methods() const { return methods; }
 
-  // Once the this-pointers have been recorded for each call, e.g. during visit(), then this
-  // method can be used to access them again during finish(), even though the states from the
-  // call descriptors have been freed.
-  const SymbolicValuePtr get_this_ptr_for_call(rose_addr_t addr) const {
-    if (callptrs.find(addr) == callptrs.end()) return SymbolicValuePtr();
-    return callptrs.at(addr);
-  }
-
   const ThisCallMethod* follow_thunks(rose_addr_t addr) const {
     const FunctionDescriptor* fd = ds.get_func(addr);
     if (fd == nullptr) return nullptr;
@@ -207,7 +210,6 @@ class OOAnalyzer : public BottomUpAnalyzer {
   // A map of object uses.  Populated in analyze_functions_for_object_uses().
   ObjectUseMap object_uses;
 
-  std::vector<OOClassDescriptorPtr> get_result_classes();
   void visit(FunctionDescriptor* fd) override;
   void start() override;
   void finish() override;

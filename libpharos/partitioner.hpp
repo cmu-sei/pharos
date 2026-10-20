@@ -13,6 +13,10 @@
 #include <Rose/BinaryAnalysis/Partitioner2/DataBlock.h>
 #include <Rose/BinaryAnalysis/Partitioner2/Utility.h>
 
+#include <Rose/BinaryAnalysis/Partitioner2/Thunk.h>
+
+#include <boost/optional.hpp>
+
 #include "limit.hpp"
 #include "misc.hpp"
 
@@ -21,6 +25,19 @@ namespace pharos {
 using P2Engine = Rose::BinaryAnalysis::Partitioner2::EngineBinary;
 
 #define CODE_THRESHOLD 0.7
+
+// An adjusting thunk recognized at the start of an instruction sequence.
+struct AdjustingThunk {
+  // The number of instructions belonging to the thunk, including the jump.
+  size_t ninsns = 0;
+  ThunkAdjustment adjustment;
+};
+
+// Recognize an adjusting thunk at the start of insns, and report how it modifies the
+// this-pointer.  Tries both the Itanium ABI SysV pattern and the MSVC MOV/ADD/JMP pattern.
+boost::optional<AdjustingThunk>
+detect_adjusting_thunk(P2::PartitionerConstPtr const & partitioner,
+                       const std::vector<SgAsmInstruction*> & insns);
 
 // This basic block call back refuses to make code out of too many zero bytes.  Technically,
 // two zero bytes (four zero nybbles) decoded into the X86 instruction "add byte ds:[eax], al".
@@ -188,6 +205,7 @@ class CERTEngine: public P2Engine {
   bool consume_thunks(P2::PartitionerPtr const & partitioner, bool top, bool bottom);
   bool consume_padding(P2::PartitionerPtr const & partitioner, bool top, bool bottom);
   bool create_arbitrary_code(P2::PartitionerPtr const & partitioner);
+  void merge_endbr_preambles(P2::PartitionerPtr const & partitioner);
   void merge_got_preambles(P2::PartitionerPtr const & partitioner);
 
  public:

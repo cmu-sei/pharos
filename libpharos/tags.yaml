@@ -262,7 +262,35 @@ names:
   "_free_dbg": free,
   "_aligned_free": free,
   "_aligned_free_dbg": free,
-  "HeapFree": free
+  "HeapFree": free,
+
+  # ============================================================================
+  # non-returning functions by name
+  # ============================================================================
+  # A call to one of these has no fall-through.  That matters because compilers
+  # put exception-cleanup landing pads after such a call, out of line past the
+  # function's normal return, precisely because nothing reaches them.  Treating
+  # the fall-through as real splices that cleanup code back into the control
+  # flow, where it looks like ordinary code that happens to live at a high
+  # address.  See FunctionDescriptor::get_pharos_cfg().
+
+  # The unwinder transfers control to an exception handler.
+  "_Unwind_Resume": nonreturn,
+  # The stack-protector failure handler aborts.  i386 PIC calls it through a
+  # local wrapper rather than the PLT.
+  "__stack_chk_fail": nonreturn,
+  "__stack_chk_fail_local": nonreturn,
+  # Throwing, terminating, and the libstdc++ __throw_* helpers that inlined
+  # container and string code branches to.
+  "__cxa_throw": nonreturn,
+  "__cxa_rethrow": nonreturn,
+  "_ZSt9terminatev": nonreturn,
+  "_ZSt17__throw_bad_allocv": nonreturn,
+  "_ZSt19__throw_logic_errorPKc": nonreturn,
+  "_ZSt20__throw_length_errorPKc": nonreturn,
+  "_ZSt20__throw_out_of_rangePKc": nonreturn,
+  "_ZSt24__throw_out_of_range_fmtPKcz": nonreturn,
+  "_ZSt28__throw_bad_array_new_lengthv": nonreturn
   },
 hashes:
   {

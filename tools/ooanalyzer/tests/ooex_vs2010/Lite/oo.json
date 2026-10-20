@@ -794,20 +794,6 @@
                     "name": "dtor_0x402509",
                     "type": "dtor"
                 },
-                "0x402534": {
-                    "demangled_name": "",
-                    "ea": "0x402534",
-                    "import": false,
-                    "name": "virt_meth_0x402534",
-                    "type": "meth"
-                },
-                "0x40253c": {
-                    "demangled_name": "",
-                    "ea": "0x40253c",
-                    "import": false,
-                    "name": "virt_meth_0x40253c",
-                    "type": "meth"
-                },
                 "0x402544": {
                     "demangled_name": "",
                     "ea": "0x402544",
@@ -921,14 +907,6 @@
                             "offset": 0,
                             "type": "deldtor"
                         },
-                        "1": {
-                            "demangled_name": "",
-                            "ea": "0x402534",
-                            "import": false,
-                            "name": "virt_meth_0x402534",
-                            "offset": 1,
-                            "type": "meth"
-                        },
                         "10": {
                             "demangled_name": "",
                             "ea": "0x402716",
@@ -967,14 +945,6 @@
                             "import": false,
                             "name": "virt_meth_0x402558",
                             "offset": 14,
-                            "type": "meth"
-                        },
-                        "2": {
-                            "demangled_name": "",
-                            "ea": "0x40253c",
-                            "import": false,
-                            "name": "virt_meth_0x40253c",
-                            "offset": 2,
                             "type": "meth"
                         },
                         "3": {

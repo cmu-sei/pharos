@@ -8,17 +8,48 @@
 
 :- table possibleVFTableWrite/5 as opaque.
 :- table possibleVBTableWrite/5 as opaque.
+:- table possibleConstantVFTableWrite/5 as opaque.
+:- table possibleVTTVFTableWrite/5 as opaque.
 
-% For now, ignore the ExpandedThisPtr argument.
-possibleVFTableWrite(Insn, Function, ThisPtr, Offset, VFTable) :-
+% An instruction names the table as a constant.  Only a write of this kind says that the
+% writer's own class owns the table.  For now, ignore the ExpandedThisPtr argument.
+possibleConstantVFTableWrite(Insn, Function, ThisPtr, Offset, VFTable) :-
   possibleVFTableWrite(Insn, Function, ThisPtr, Offset, _ExpandedThisPtr, VFTable).
+
+% A base-object constructor loads its vptr from the VTT slice its caller hands it rather than
+% naming a constant, so no fact reports the write it makes.  See vttSlice below.
+possibleVTTVFTableWrite(Insn, Callee, ThisPtr, 0, VFTable) :-
+  vttSlice(_CallInsn, Callee, VFTable),
+  vttSliceVptrStore(Callee, Insn),
+  thisParamFuncParameter(Callee, ThisPtr).
+
+possibleVFTableWrite(Insn, Function, ThisPtr, Offset, VFTable) :-
+  possibleConstantVFTableWrite(Insn, Function, ThisPtr, Offset, VFTable).
+
+possibleVFTableWrite(Insn, Function, ThisPtr, Offset, VFTable) :-
+  possibleVTTVFTableWrite(Insn, Function, ThisPtr, Offset, VFTable).
+
 possibleVBTableWrite(Insn, Function, ThisPtr, Offset, VBTable) :-
   possibleVBTableWrite(Insn, Function, ThisPtr, Offset, _ExpandedThisPtr, VBTable).
+
+% The evidence that a method could be a constructor.  Returning the this-pointer counts under any
+% ABI -- MSVC specifies it, and while the Itanium C++ ABI (3.1.3.5) says constructors return void,
+% a constructor may still leave the this-pointer in rax incidentally, for instance when it ends in
+% a memset or memcpy of the object.  But the Itanium ABI does not require it, so returnsSelf
+% cannot be a prerequisite for candidacy there; a vftable write is accepted in its place.
+:- table constructorABIEvidence/1 as opaque.
+
+constructorABIEvidence(M) :-
+    returnsSelf(M).
+
+constructorABIEvidence(M) :-
+    itaniumABI,
+    possibleVFTableWrite(_Insn, M, _ThisPtr, _Offset, _VFTable).
 
 :- table possibleConstructor/1 as opaque.
 
 possibleConstructor(M) :-
-    (returnsSelf(M), noCallsBefore(M));
+    (constructorABIEvidence(M), noCallsBefore(M));
     symbolProperty(M, constructor).
 
 :- table possibleDestructor/1 as opaque.
@@ -31,29 +62,58 @@ possibleDestructor(M) :-
 
 % --------------------------------------------------------------------------------------------
 
-% Hack togetther compatability with the old system.
+% Hack together compatability with the old system.
+:- table possibleVFTableSlot/2 as opaque.
 :- table possibleVFTableEntry/3 as opaque.
 :- table possibleVBTableEntry/3 as opaque.
 
-possibleVFTableEntry(VFTable, 0, Entry) :-
-    possibleVFTableWrite(_Insn, _Func, _ThisPtr, _ObjectOffset, VFTable),
-    initialMemory(VFTable, Entry).
+% A slot is any word in the table, including the NULLs GCC leaves for an abstract class'
+% destructor pair, a construction vtable's, and displaced primary slots.  They sit wherever the
+% destructor was declared and can run to three, so only adjacency can decide where a table ends.
+% possibleVFTableEntry below filters the slots down to plausible code pointers.
 
-possibleVFTableEntry(VFTable, 0, Entry) :-
-    rTTICompleteObjectLocator(Pointer, _Address, _TDAddress, _CHAddress, _Offset, _CDOffset),
+possibleVFTableSlot(VFTable, 0) :-
+    possibleVFTableWrite(_Insn, _Func, _ThisPtr, _ObjectOffset, VFTable),
+    initialMemory(VFTable, _Value).
+
+possibleVFTableSlot(VFTable, 0) :-
+    rTTIMSVCCompleteObjectLocator(Pointer, _Address, _TDAddress, _CHAddress, _Offset, _CDOffset),
     pointerSize(PtrSize),
     VFTable is Pointer + PtrSize,
-    initialMemory(VFTable, Entry).
+    initialMemory(VFTable, _Value).
 
-possibleVFTableEntry(VFTable, NewOffset, Entry) :-
-    possibleVFTableEntry(VFTable, Offset, _),
+% The Itanium ABI equivalent, where the type information record is named by the table directly.
+possibleVFTableSlot(VFTable, 0) :-
+    rTTIItaniumVFTableTypeInfo(VFTable, _TDAddress, _OffsetToTop),
+    initialMemory(VFTable, _Value).
+
+% A construction vtable is usually named only by a VTT slot, since the constructor reads its
+% address point from the VTT rather than naming it as a constant.
+% XXX this will change soon
+possibleVFTableSlot(VFTable, 0) :-
+    possibleVTTEntry(_VTT, _Offset, VFTable),
+    initialMemory(VFTable, _Value).
+
+possibleVFTableSlot(VFTable, NewOffset) :-
+    possibleVFTableSlot(VFTable, Offset),
     pointerSize(PtrSize),
     NewOffset is Offset + PtrSize,
     Address is VFTable + NewOffset,
-    not(possibleVFTableWrite(_Insn, _Func, _ThisPtr, _Offset, Address)),
+    not(possibleVFTableWrite(_Insn, _Func, _ThisPtr, _WriteOffset, Address)),
+    % The start of another table ends this one, whether it is installed or named by a VTT.
+    not(possibleVTTEntry(_VTT, _VTTOffset, Address)),
+    initialMemory(Address, Value),
+    % NULL slots are Itanium-only, and add_vftable_facts already fixed the extent there, so the
+    % gap it leaves between tables is what stops the walk.  Elsewhere the first implausible value
+    % ends it, keeping it out of the virtual base table entries initialMemory also carries.
+    (itaniumABI; Value > 0x1000).
+
+% Only a slot holding a plausible code pointer is an entry, and every seed reaches this one
+% test.  Reporting a NULL would reach reasonMethod_G and make address zero a method.
+possibleVFTableEntry(VFTable, Offset, Entry) :-
+    possibleVFTableSlot(VFTable, Offset),
+    Address is VFTable + Offset,
     initialMemory(Address, Entry),
-    % Now that initialMemory facts also include virtual base table entries, we need some
-    % additional validation to prevent adding base table entries as methods.
     Entry > 0x1000.
 
 possibleVBTableEntry(VBTable, Offset, Value) :-
@@ -77,7 +137,7 @@ possibleVBTableEntry(VBTable, NewOffset, Value) :-
 % separating plausible methods from arbitrary addresses during guessing.
 possibleMethod(Address) :-
     callingConvention(Address, _CallingConvention);
-    thunk(Address, _Target1);
+    thunk(Address, _Target1, _Adjustment1);
     noCallsAfter(Address);
     noCallsBefore(Address);
     returnsSelf(Address);
@@ -197,12 +257,49 @@ methodCallAtOffset(Insn, Caller, Callee, 0) :-
 :- table thisPtrUsage/4 as opaque.
 
 thisPtrUsage(Insn, Function, ThisPtr, Method) :-
+    callParameter(Insn, Function, Param, ThisPtr),
     callTarget(Insn, Function, Thunk),
     dethunk(Thunk, Method),
     thisPtrParam(Method, Param),
-    callParameter(Insn, Function, Param, ThisPtr),
     %loginfoln('~Q.', thisPtrUsage(Insn, Function, ThisPtr, Method)),
     true.
+
+% The hidden VTT argument a base-object constructor or destructor receives.  Only those variants
+% take one, and the VTT slot it points at names the table the callee installs at offset zero.
+:- table vttSlice/3 as opaque.
+
+vttSlice(Insn, Callee, VFTable) :-
+    callTarget(Insn, Caller, Thunk),
+    dethunk(Thunk, Callee),
+    thisPtrParam(Callee, ThisParam),
+    callParameter(Insn, Caller, Param, SV),
+    iso_dif(Param, ThisParam),
+    thisPtrDefinition(SV, Slice, _DefInsn, _DefFunc),
+    integer(Slice),
+    possibleVTTEntry(VTT, Offset, VFTable),
+    Slice =:= VTT + Offset.
+
+% ejs 8/26/26 Hack Alert!!!
+% possibleVFTableWrite needs the address of an instruction doing a store.  We don't have it because it's not being stored as a constant.  So instead we'll use the member access at 0.  This is a huge hack.  The address is not used for too much, but it is used for ConstructorDestructorSpecial and overwriting.  These are probably not always going to work right.
+:- table vttSliceVptrStore/2 as opaque.
+
+vttSliceVptrStore(Callee, Insn) :-
+    vttSlice(_CallInsn, Callee, _VFTable),
+    pointerSize(PtrSize),
+    methodMemberAccess(Insn, Callee, 0, PtrSize),
+    not((methodMemberAccess(Earlier, Callee, 0, PtrSize), Earlier < Insn)).
+
+% A construction vtable exists only to be handed to a base-object constructor through a VTT, so
+% no instruction names it as a constant.  Every other table a VTT names -- entry zero, which is
+% the owner's own primary table, and the owner's secondary components -- is installed directly
+% by the owner's complete-object constructor.  It remains "possible" because inlining can fold
+% the VTT load into a constant, giving the construction vtable a write of its own; it then reads
+% as an ordinary base class table installed by the inlining constructor.
+:- table possibleConstructionVFTable/1 as opaque.
+
+possibleConstructionVFTable(VFTable) :-
+    possibleVTTEntry(_VTT, _Offset, VFTable),
+    not(possibleConstantVFTableWrite(_Insn, _Func, _ThisPtr, _WriteOffset, VFTable)).
 
 % Here's an example of how we can use the "invalid" offsets to our advantage.  Defining an
 % invalid access as an offset greater than 100,000 allows us to subsequently observe that
@@ -265,7 +362,7 @@ trivial(Address):-
     not(noCallsBefore(Address)),
     not(noCallsAfter(Address)),
     % No thunking to other functions.
-    not(thunk(Address, _)),
+    not(thunk(Address, _, _)),
     % No allocating memory.
     not(thisPtrAllocation(_, Address, _, _, _)),
 
@@ -301,14 +398,19 @@ possiblyReused(Function):-
 % ============================================================================================
 
 % What function does a given thunk eventually end at?
+%
+% Only non-adjusting thunks are followed.  An adjusting thunk moves the this-pointer to a
+% different subobject, so its target cannot stand in for it.  Note that the base case rejects
+% Func only when it is itself a _non-adjusting_ thunk, so that a chain of ordinary thunks ending
+% in an adjusting one correctly stops at the adjusting thunk.
 :- table eventualThunk/2 as opaque.
 eventualThunk(Thunk, Func) :-
-    thunk(Thunk, Func),
-    not(thunk(Func, _)).
+    thunk(Thunk, Func, 0),
+    not(thunk(Func, _, 0)).
 
 eventualThunk(Thunk, Func) :-
     eventualThunk(Middle, Func),
-    thunk(Thunk, Middle).
+    thunk(Thunk, Middle, 0).
 
 :- table dethunk/2 as opaque.
 dethunk(Thunk, Result) :-
