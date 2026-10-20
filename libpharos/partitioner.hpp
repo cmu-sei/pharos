@@ -198,7 +198,10 @@ class CERTEngine: public P2Engine {
 
   // These are the methods that primarily alter the behavior of the partitioner.
   virtual void runPartitioner(P2::PartitionerPtr const &partitioner) override;
-  virtual void runPartitionerRecursive(P2::PartitionerPtr const & partitioner) override;
+  // Run our extra discovery passes before ROSE's final cleanup. Recent ROSE versions bypass
+  // runPartitionerRecursive overrides; this hook still dispatches virtually. Our passes
+  // explicitly rerun recursive discovery as needed (see the implementation).
+  virtual void runPartitionerFinal(P2::PartitionerPtr const & partitioner) override;
 };
 
 // This is primary mechanism by which the partitioning occurs.  It's called from the global

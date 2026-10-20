@@ -1400,6 +1400,8 @@ CERTEngine::create_arbitrary_code(P2::PartitionerPtr const & partitioner) {
 
 void
 CERTEngine::runPartitioner(P2::PartitionerPtr const &partitioner) {
+  // Permit overlapping code during ROSE's initial, non-speculative discovery pass.
+  overlapping_code_detector->set_refusing(false);
   P2Engine::runPartitioner(partitioner);
 
   // For each padding block, assign the data block to the function that preceeds it.  The
@@ -1439,24 +1441,15 @@ CERTEngine::runPartitioner(P2::PartitionerPtr const &partitioner) {
 }
 
 void
-CERTEngine::runPartitionerRecursive(P2::PartitionerPtr const & partitioner) {
-  using clock = std::chrono::steady_clock;
-  using time_point = std::chrono::time_point<clock>;
-  using duration = std::chrono::duration<double>;
-
-  time_point start_ts = clock::now();
-
-  // Pass one.  Do all the "usual" things the partitioner does.  This includes following flow
-  // control, creating functions from matched prologues, creating functions from data segment
-  // addresses (disabled by default).  It then does "additional" work, like finding dead code
-  // (branches not taken due to opaque predicates), and making code and data from gaps inside a
-  // function.
-
-  // In this pass, we'll permit overlapping code because we're (mostly) not doing speculative
-  // things.
-  overlapping_code_detector->set_refusing(false);
-
-  P2Engine::runPartitionerRecursive(partitioner);
+CERTEngine::runPartitionerFinal(P2::PartitionerPtr const & partitioner) {
+  // These discovery passes used to live in our runPartitionerRecursive override. Recent
+  // ROSE versions run initial discovery through a private, non-virtual overload instead,
+  // silently bypassing that override. Use the still-virtual finalization hook so our passes
+  // run after initial discovery and before ROSE's final cleanup on both old and new ROSE.
+  // This hook does not automatically restart recursive discovery: create_arbitrary_code()
+  // explicitly reruns it when it adds code, and we run it once more below before merging
+  // GOT preambles and calling the base runPartitionerFinal(). This preserves the previous
+  // ordering of discovery, preamble merging, and cleanup.
 
   GDEBUG << "Making functions for Prologue phase!" << LEND;
 
@@ -1466,8 +1459,6 @@ CERTEngine::runPartitionerRecursive(P2::PartitionerPtr const & partitioner) {
   // From this point on, our behavior is too speculative to permit overlapping code.
   overlapping_code_detector->set_refusing(true);
 
-  duration secs = clock::now() - start_ts;
-  OINFO << "ROSE stock partitioning took " << secs.count() << " seconds." << LEND;
   report_partitioner_statistics(partitioner);
 
   // Disable these...
@@ -1512,6 +1503,8 @@ CERTEngine::runPartitionerRecursive(P2::PartitionerPtr const & partitioner) {
   merge_got_preambles(partitioner);
 
   GDEBUG << "Custom partitioner 2 recursive pass complete." << LEND;
+
+  P2Engine::runPartitionerFinal(partitioner);
 }
 
 // In 32-bit PIC ELF code GCC emits a GOT preamble (call <pic_thunk>; add REG, IMM) at the
