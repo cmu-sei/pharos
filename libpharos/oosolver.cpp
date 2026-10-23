@@ -404,17 +404,25 @@ OOSolver::add_rtti_facts(const VirtualFunctionTable* vft)
   const TypeRTTICompleteObjectLocatorPtr rtti = vft->rtti;
 
   // Check for --ignore-rtti option?
-  if (rtti->signature.value != 0) return;
+  if (rtti->signature.value != 0 && rtti->signature.value != 1) return;
   if (rtti->class_desc.signature.value != 0) return;
 
+  RTTIParsingContext ctx(ds.memory);
+  if (rtti->signature.value == 1) {
+    ctx.image_base = rtti->address - rtti->pSelf.value;
+    ctx.image_base_relative = true;
+  }
+
+  auto type_descriptor_ea = ctx.ea(rtti->pTypeDescriptor.value);
+  auto class_descriptor_ea = ctx.ea(rtti->pClassDescriptor.value);
   if (visited.find(vft->rtti_addr) == visited.end()) {
     session->add_fact("rTTICompleteObjectLocator", vft->rtti_addr, rtti->address,
-                      rtti->pTypeDescriptor.value, rtti->pClassDescriptor.value,
+                      type_descriptor_ea, class_descriptor_ea,
                       rtti->offset.value, rtti->cdOffset.value);
     visited.insert(vft->rtti_addr);
   }
 
-  if (visited.find(rtti->pTypeDescriptor.value) == visited.end()) {
+  if (visited.find(type_descriptor_ea) == visited.end()) {
     std::string demangled_name;
     demangle::DemangledTypePtr demangled;
 
@@ -427,45 +435,47 @@ OOSolver::add_rtti_facts(const VirtualFunctionTable* vft)
     if (demangled) {
       demangled_name = demangled->get_class_name();
     }
-    session->add_fact("rTTITypeDescriptor", rtti->pTypeDescriptor.value,
+    session->add_fact("rTTITypeDescriptor", type_descriptor_ea,
                       rtti->type_desc.pVFTable.value, rtti->type_desc.name.value,
                       demangled_name);
-    visited.insert(rtti->pTypeDescriptor.value);
+    visited.insert(type_descriptor_ea);
   }
 
-  if (visited.find(rtti->pClassDescriptor.value) == visited.end()) {
-    add_rtti_chd_facts(rtti->pClassDescriptor.value);
+  if (visited.find(class_descriptor_ea) == visited.end()) {
+    add_rtti_chd_facts(ctx, class_descriptor_ea);
   }
 }
 
 void
-OOSolver::add_rtti_chd_facts(const rose_addr_t addr)
+OOSolver::add_rtti_chd_facts(RTTIParsingContext & ctx, const rose_addr_t addr)
 {
   visited.insert(addr);
   try {
-    TypeRTTIClassHierarchyDescriptor chd{ds.memory};
-    chd.read(addr);
+    TypeRTTIClassHierarchyDescriptor chd(ctx, addr);
+    chd.read(ctx, addr);
 
-    std::vector<uint32_t> base_addresses;
-    for (const TypeRTTIBaseClassDescriptor& base : chd.base_classes) {
+    std::vector<rose_addr_t> base_addresses;
+    for (const TypeRTTIBaseClassDescriptor& base : *chd.base_classes) {
+      auto type_descriptor_ea = ctx.ea(base.pTypeDescriptor.value);
+      auto class_descriptor_ea = ctx.ea(base.pClassDescriptor.value);
       if (visited.find(base.address) == visited.end()) {
         session->add_fact("rTTIBaseClassDescriptor", base.address,
-                          base.pTypeDescriptor.value, base.numContainedBases.value,
+                          type_descriptor_ea, base.numContainedBases.value,
                           base.where_mdisp.value, base.where_pdisp.value,
                           base.where_vdisp.value, base.attributes.value,
-                          base.pClassDescriptor.value);
+                          class_descriptor_ea);
         visited.insert(base.address);
 
         // This is where we read and export facts for the undocumented "sub-chd", but only if
         // the base.attributes flag has bit 0x40 set, which indicates that optional pointer is
         // present.
         if (base.attributes.value & 0x40 &&
-            visited.find(base.pClassDescriptor.value) == visited.end()) {
-          add_rtti_chd_facts(base.pClassDescriptor.value);
+            visited.find(class_descriptor_ea) == visited.end()) {
+          add_rtti_chd_facts(ctx, class_descriptor_ea);
         }
       }
 
-      if (visited.find(base.pTypeDescriptor.value) == visited.end()) {
+      if (visited.find(type_descriptor_ea) == visited.end()) {
         std::string demangled_name;
         demangle::DemangledTypePtr demangled;
 
@@ -478,10 +488,10 @@ OOSolver::add_rtti_chd_facts(const rose_addr_t addr)
         if (demangled) {
           demangled_name = demangled->get_class_name();
         }
-        session->add_fact("rTTITypeDescriptor", base.pTypeDescriptor.value,
+        session->add_fact("rTTITypeDescriptor", type_descriptor_ea,
                           base.type_desc.pVFTable.value, base.type_desc.name.value,
                           demangled_name);
-        visited.insert(base.pTypeDescriptor.value);
+        visited.insert(type_descriptor_ea);
       }
 
       base_addresses.push_back(base.address);

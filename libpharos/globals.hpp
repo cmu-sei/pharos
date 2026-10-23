@@ -26,6 +26,7 @@ inline bool possible_global_address(rose_addr_t addr) {
 // time, this will get the job done.
 enum DataType {
   DTypeNone,
+  DTypeAddr,
   DTypeByte,
   DTypeWord,
   DTypeWordInt,
